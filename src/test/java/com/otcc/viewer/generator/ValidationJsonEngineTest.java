@@ -38,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ValidationJsonEngineTest {
 
     static final Path OUT_DIR = Path.of("generated");
-    static final Path SCHEMA_PATH = Path.of("src", "app_backup", "version.5", "main", "config.schema.json");
+    static final Path SCHEMA_PATH = Path.of("exapp", "viewer_frontend", "main", "config.schema.json");
 
     static ValidationDataset dataset;
     static ValidationConfig config;
