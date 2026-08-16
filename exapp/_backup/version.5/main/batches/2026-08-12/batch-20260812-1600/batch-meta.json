@@ -1,0 +1,20 @@
+{
+  "batchId": "batch-20260812-1600",
+  "batchName": "daily-20260812",
+  "date": "2026-08-12",
+  "executedAt": "2026-08-12T16:00:00+08:00",
+  "formatVersion": 2,
+  "dataUrl": "deepseek-validation-data.json",
+  "ignoreUrl": "ignore-config-by-platform.json",
+  "commandLine": [
+    "java",
+    "-jar",
+    "ccp-report.jar",
+    "--date=2026-08-12"
+  ],
+  "summary": {
+    "items": 18,
+    "channels": 3
+  },
+  "description": "每日例行批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：T+0 全部成交\n- 模式：增量比对"
+}

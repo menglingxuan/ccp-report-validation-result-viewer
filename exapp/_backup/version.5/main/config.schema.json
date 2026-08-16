@@ -1,0 +1,157 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/deepseek-validation-config.schema.json",
+  "title": "深度验证结果展示 · 运行配置 Schema",
+  "description": "deepseek-validation-config.json 的结构定义。所有字段均可省略，省略时使用内置默认值。",
+  "type": "object",
+  "properties": {
+    "configVersion": {
+      "type": "integer",
+      "description": "配置结构版本号，用于将来迁移/兼容。当前为 2。",
+      "default": 2
+    },
+    "runType": {
+      "type": "string",
+      "enum": ["dev", "test", "prod"],
+      "description": "运行环境。dev/test：features 未显式配置的项默认 true（全量展示）；prod：默认 false（按需开启）。",
+      "default": "dev"
+    },
+    "urls": {
+      "type": "object",
+      "description": "数据/忽略规则文件的相对路径（与 HTML 同目录）。",
+      "properties": {
+        "data": { "type": "string", "description": "比对结果数据 JSON 的相对路径。", "default": "deepseek-validation-data.json" },
+        "ignore": { "type": "string", "description": "忽略配置 JSON 的相对路径。", "default": "ignore-config-by-platform.json" },
+        "batches": { "type": "string", "description": "批次索引 JSON（最近批次面板数据源）的相对路径。", "default": "batches-index.json" }
+      }
+    },
+    "ui": {
+      "type": "object",
+      "description": "界面默认项（可被浏览器 localStorage 中的用户偏好覆盖）。",
+      "properties": {
+        "lang": {
+          "type": "string",
+          "enum": ["zh-CN", "zh-HK", "en"],
+          "description": "默认语言：zh-CN 简体中文 / zh-HK 繁體中文（香港）/ en English。",
+          "default": "zh-CN"
+        },
+        "theme": {
+          "type": "string",
+          "enum": ["light", "dark", "warm", "forest", "midnight", "ocean", "graphite", "violet", "sunset", "neon", "aurora"],
+          "description": "默认主题配色。",
+          "default": "light"
+        },
+        "sidebarMode": {
+          "type": "string",
+          "enum": ["combined", "lazy", "pagination"],
+          "description": "侧栏 item 列表加载方式：combined 虚拟滚动（一体滚动）/ lazy 懒加载 / pagination 分页。",
+          "default": "combined"
+        },
+        "sidebarWidth": {
+          "type": "number",
+          "minimum": 160,
+          "description": "侧栏初始宽度（像素）。",
+          "default": 280
+        },
+        "reportCatDefault": {
+          "type": ["string", "null"],
+          "enum": [null, "charts", "files", "note"],
+          "description": "报告信息默认展开的分类：null 收起 / charts 统计图表 / files 输入配置文件 / note 任务说明。",
+          "default": null
+        },
+        "batchDockSide": {
+          "type": "string",
+          "enum": ["left", "right"],
+          "description": "最近批次 dock 停靠与面板呼出方向：left 左侧 / right 右侧。",
+          "default": "left"
+        },
+        "progressBarStyle": {
+          "type": "string",
+          "enum": ["status", "uniform"],
+          "description": "左侧 item 列表卡片进度条样式：status 按状态着色（通过绿、有警告且无失败黄）/ uniform 统一绿色。",
+          "default": "status"
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "description": "功能开关（18 项，布尔）。含义详见 CONFIG.md。未显式配置时按 runType 取默认。",
+      "properties": {
+        "uncomparedXpath": { "type": "boolean" },
+        "uncomparedItems": { "type": "boolean" },
+        "uncomparedCsv": { "type": "boolean" },
+        "logs": { "type": "boolean" },
+        "conversionRule": { "type": "boolean" },
+        "validationRule": { "type": "boolean" },
+        "excelMapping": { "type": "boolean" },
+        "excelConversionRule": { "type": "boolean" },
+        "excelValidationRule": { "type": "boolean" },
+        "columnHover": { "type": "boolean" },
+        "sidebarSearch": { "type": "boolean" },
+        "sidebarTradeId": { "type": "boolean" },
+        "compare": { "type": "boolean" },
+        "healthOverview": { "type": "boolean" },
+        "globalSearch": { "type": "boolean" },
+        "keyboardShortcuts": { "type": "boolean" },
+        "modalPrints": { "type": "boolean" },
+        "recentBatches": { "type": "boolean", "description": "是否启用「最近批次」左侧 dock + 面板。" }
+      }
+    },
+    "batches": {
+      "type": "object",
+      "description": "最近批次面板的行为配置。",
+      "properties": {
+        "recentCount": { "type": "integer", "minimum": 1, "description": "dock 中显示的最近批次数量。", "default": 5 },
+        "pageSize": { "type": "integer", "minimum": 1, "description": "批次面板列表每页条数。", "default": 8 },
+        "listMode": {
+          "type": "string",
+          "enum": ["lazy", "pagination"],
+          "description": "批次列表加载方式：lazy 懒加载（点击“加载更多”逐页追加）/ pagination 分页（页码跳转）。",
+          "default": "lazy"
+        },
+        "detailMode": {
+          "type": "string",
+          "enum": ["quick", "modal"],
+          "description": "批次详情交互方式：quick 单击浮动预览 + 双击加载（默认）/ modal 单击加载 + 信息图标弹窗。",
+          "default": "quick"
+        },
+        "panelWidth": { "type": "integer", "minimum": 240, "description": "批次面板展开宽度（像素）。", "default": 320 }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "description": "分页与数量上限。",
+      "properties": {
+        "pageSize": { "type": "integer", "minimum": 1, "description": "字段比较表每页条数。", "default": 20 },
+        "pageSizeOptions": { "type": "array", "items": { "type": "integer", "minimum": 1 }, "description": "每页条数的可选值。", "default": [10, 20, 50] },
+        "sidebarPageSize": { "type": "integer", "minimum": 1, "description": "侧栏 item 列表每页条数。", "default": 8 },
+        "msgPageSize": { "type": "integer", "minimum": 1, "description": "警告/错误/未比较等消息表每页条数。", "default": 20 },
+        "globalSearchLimit": { "type": "integer", "minimum": 1, "description": "全局搜索最大返回结果数。", "default": 200 }
+      }
+    },
+    "columns": {
+      "type": "object",
+      "description": "字段比较表默认列可见性。",
+      "properties": {
+        "default": {
+          "type": "object",
+          "description": "列名 → 布尔（true 显示 / false 隐藏）。可用列名：channel, source, f, x, aoCsv, t, ctx, eo, ao, result, note。",
+          "properties": {
+            "channel": { "type": "boolean" },
+            "source": { "type": "boolean" },
+            "f": { "type": "boolean" },
+            "x": { "type": "boolean" },
+            "aoCsv": { "type": "boolean" },
+            "t": { "type": "boolean" },
+            "ctx": { "type": "boolean" },
+            "eo": { "type": "boolean" },
+            "ao": { "type": "boolean" },
+            "result": { "type": "boolean" },
+            "note": { "type": "boolean" }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
