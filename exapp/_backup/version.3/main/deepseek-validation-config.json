@@ -1,0 +1,18 @@
+{
+  "runType": "dev",
+  "ui": {
+    "sidebarMode": "combined"
+  },
+  "features": {
+    "uncomparedXpath": true,
+    "uncomparedItems": true,
+    "uncomparedCsv": true,
+    "logs": true,
+    "conversionRule": true,
+    "validationRule": true,
+    "excelMapping": true,
+    "excelConversionRule": true,
+    "excelValidationRule": true,
+    "columnHover": true
+  }
+}

@@ -1,0 +1,77 @@
+:root {
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #4b5563;
+      --accent: #2563eb;
+      --pass: #15803d;
+      --pass-bg: #dcfce7;
+      --fail: #b91c1c;
+      --fail-bg: #fee2e2;
+      --warn: #b45309;
+      --warn-bg: #fef3c7;
+      --surface: #ffffff;
+      --surface-2: #f9fafb;
+      --hover: #f3f4f6;
+      --accent-bg: #eff6ff;
+      --indigo-bg: #eef2ff;
+      --indigo-fg: #4338ca;
+      --row-fail-bg: #fffafa;
+      --row-ignored-bg: #f3f4f6;
+      --row-ignored-fg: #9ca3af;
+      --mark-bg: #fde68a;
+      --bar-bg: #eef0f3;
+      --bar-warn: #eab308;
+      --num-muted: #9ca3af;
+      --print-fg: #334155;
+      --chip-platform-bg: #e0f2fe; --chip-platform-fg: #0369a1;
+      --chip-product-bg: #ede9fe; --chip-product-fg: #6d28d9;
+      --chip-context-bg: #fef3c7; --chip-context-fg: #b45309;
+      --chip-ctx-bg: #ecfdf5; --chip-ctx-fg: #047857;
+      --chip-code-bg: #cffafe; --chip-code-fg: #0e7490;
+      --ignore-on-bg: #f0fdf4; --ignore-on-fg: #15803d; --ignore-on-border: #86efac;
+      --modal-backdrop: rgba(15, 23, 42, .45);
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+/* 主题配色 */
+    body.theme-dark { --bg:#0b1220; --card:#131c2e; --border:#2b3a55; --text:#e6edf7; --muted:#8fa3bd; --accent:#60a5fa; --pass:#34d399; --pass-bg:#0a2e1f; --fail:#fb7185; --fail-bg:#3b1220; --warn:#fbbf24; --warn-bg:#3a2806; --surface:#1a2540; --surface-2:#101827; --hover:#23314f; --accent-bg:#1a2a4a; --indigo-bg:#1e2d55; --indigo-fg:#9db8f0; --row-fail-bg:#2b1520; --row-ignored-bg:#0f1626; --row-ignored-fg:#5b6b84; --mark-bg:#8a6d1a; --bar-bg:#243248; --bar-warn:#facc15; --num-muted:#64748b; --print-fg:#cbd5e1; --ignore-on-bg:#062b1d; --ignore-on-fg:#34d399; --ignore-on-border:#0f5c3e; --modal-backdrop:rgba(2,6,23,.62); }
+    body.theme-dark .topbar { background: linear-gradient(120deg,#050a16,#1e3a8a,#2563eb); }
+
+    body.theme-warm { --bg:#fdf6f0; --card:#fffdf9; --border:#eaded3; --text:#3d2c1e; --muted:#6b5546; --accent:#c2410c; --pass:#15803d; --pass-bg:#dcfce7; --fail:#b91c1c; --fail-bg:#fee2e2; --warn:#b45309; --warn-bg:#fef3c7; --surface:#fffdf9; --surface-2:#faf4ec; }
+    body.theme-warm .topbar { background: linear-gradient(120deg,#7c2d12,#c2410c,#ea580c); }
+
+    body.theme-forest { --bg:#f0f7f1; --card:#ffffff; --border:#d5e6d9; --text:#14301f; --muted:#42604d; --accent:#15803d; --pass:#15803d; --pass-bg:#dcfce7; --fail:#b91c1c; --fail-bg:#fee2e2; --warn:#b45309; --warn-bg:#fef9c3; --surface:#ffffff; --surface-2:#f3f8f4; }
+    body.theme-forest .topbar { background: linear-gradient(120deg,#052e16,#15803d,#22c55e); }
+
+    body.theme-midnight { --bg:#070d1f; --card:#0e1830; --border:#223255; --text:#dce6fb; --muted:#7f90b8; --accent:#818cf8; --pass:#4ade80; --pass-bg:#052e16; --fail:#f87171; --fail-bg:#450a0a; --warn:#fbbf24; --warn-bg:#422006; --surface:#141f42; --surface-2:#0b1429; --hover:#1d2b54; --accent-bg:#1a2452; --indigo-bg:#1e2b5e; --indigo-fg:#a5b4fc; --row-fail-bg:#2a1220; --row-ignored-bg:#0c1429; --row-ignored-fg:#5a6a92; --mark-bg:#6d5a10; --bar-bg:#1b2a4d; --bar-warn:#facc15; --num-muted:#64748b; --print-fg:#cbd5e1; --ignore-on-bg:#062b1d; --ignore-on-fg:#4ade80; --ignore-on-border:#0f5c3e; --modal-backdrop:rgba(2,6,23,.65); }
+    body.theme-midnight .topbar { background: linear-gradient(120deg,#050a1c,#312e81,#6366f1); }
+
+    body.theme-ocean { --bg:#e9f4fb; --card:#ffffff; --border:#cfe3f0; --text:#0c2a3d; --muted:#4e7188; --accent:#0369a1; --pass:#047857; --pass-bg:#d1fae5; --fail:#b91c1c; --fail-bg:#fee2e2; --warn:#b45309; --warn-bg:#fef3c7; --surface:#ffffff; --surface-2:#f0f7fc; --hover:#e2eff8; --accent-bg:#e0f2fe; --indigo-bg:#e0f2fe; --indigo-fg:#0369a1; --row-fail-bg:#fef2f2; --row-ignored-bg:#f1f5f9; --row-ignored-fg:#94a3b8; --mark-bg:#fde68a; --bar-bg:#dbeafe; --bar-warn:#eab308; --num-muted:#94a3b8; --print-fg:#334155; --ignore-on-bg:#f0fdf4; --ignore-on-fg:#047857; --ignore-on-border:#86efac; --modal-backdrop:rgba(3,20,35,.45); }
+    body.theme-ocean .topbar { background: linear-gradient(120deg,#0c4a6e,#0284c7,#22d3ee); }
+
+    body.theme-graphite { --bg:#14161b; --card:#1c1f26; --border:#323742; --text:#e8eaf0; --muted:#9aa1ad; --accent:#f59e0b; --pass:#34d399; --pass-bg:#0a2e1f; --fail:#f87171; --fail-bg:#3b1220; --warn:#fbbf24; --warn-bg:#3a2806; --surface:#252932; --surface-2:#17191f; --hover:#2d323d; --accent-bg:#2b2a1f; --indigo-bg:#2a2d36; --indigo-fg:#d1d5db; --row-fail-bg:#2b1520; --row-ignored-bg:#101218; --row-ignored-fg:#626a78; --mark-bg:#8a6d1a; --bar-bg:#2a2d36; --bar-warn:#facc15; --num-muted:#717985; --print-fg:#cbd5e1; --ignore-on-bg:#062b1d; --ignore-on-fg:#34d399; --ignore-on-border:#0f5c3e; --modal-backdrop:rgba(0,0,0,.6); }
+    body.theme-graphite .topbar { background: linear-gradient(120deg,#101114,#2b2e36,#f59e0b); }
+
+    body.theme-violet { --bg:#14081f; --card:#1e1030; --border:#3b2454; --text:#efe6fb; --muted:#a78fc0; --accent:#c084fc; --pass:#4ade80; --pass-bg:#052e16; --fail:#f87171; --fail-bg:#450a0a; --warn:#fbbf24; --warn-bg:#422006; --surface:#2a1748; --surface-2:#180b2d; --hover:#38225e; --accent-bg:#2f1b52; --indigo-bg:#331e5a; --indigo-fg:#c4b5fd; --row-fail-bg:#2e1220; --row-ignored-bg:#160a26; --row-ignored-fg:#6d5a8a; --mark-bg:#6d5a10; --bar-bg:#2c1a4d; --bar-warn:#facc15; --num-muted:#6b5f80; --print-fg:#d8c7f0; --ignore-on-bg:#062b1d; --ignore-on-fg:#4ade80; --ignore-on-border:#0f5c3e; --modal-backdrop:rgba(10,2,20,.65); }
+    body.theme-violet .topbar { background: linear-gradient(120deg,#0d0419,#6b21a8,#c084fc); }
+
+    body.theme-sunset { --bg:#1a0f10; --card:#241416; --border:#46262a; --text:#f9e8e4; --muted:#c99d96; --accent:#fb7185; --pass:#4ade80; --pass-bg:#052e16; --fail:#f87171; --fail-bg:#450a0a; --warn:#fbbf24; --warn-bg:#422006; --surface:#33191e; --surface-2:#1c1114; --hover:#46242a; --accent-bg:#3c1a22; --indigo-bg:#3e1c26; --indigo-fg:#fda4af; --row-fail-bg:#3b1520; --row-ignored-bg:#1a0e12; --row-ignored-fg:#8a5e63; --mark-bg:#8a6d1a; --bar-bg:#3c1f26; --bar-warn:#facc15; --num-muted:#8a6b6f; --print-fg:#eec9c4; --ignore-on-bg:#062b1d; --ignore-on-fg:#4ade80; --ignore-on-border:#0f5c3e; --modal-backdrop:rgba(20,5,8,.65); }
+    body.theme-sunset .topbar { background: linear-gradient(120deg,#3f0d12,#e11d48,#f97316); }
+
+    body.theme-neon { --bg:#030a06; --card:#07150c; --border:#123f24; --text:#d6ffe4; --muted:#5fa87a; --accent:#39ff14; --pass:#39ff14; --pass-bg:#0a2e13; --fail:#ff3860; --fail-bg:#3b0d1a; --warn:#ffd60a; --warn-bg:#3a2e06; --surface:#0a2112; --surface-2:#041008; --hover:#0e2f1a; --accent-bg:#0b2915; --indigo-bg:#0b2915; --indigo-fg:#7affa4; --row-fail-bg:#2b1018; --row-ignored-bg:#041009; --row-ignored-fg:#3f6b50; --mark-bg:#5a4a08; --bar-bg:#0e2f1a; --bar-warn:#ffd60a; --num-muted:#4c8a61; --print-fg:#b8f2c8; --ignore-on-bg:#0a2e13; --ignore-on-fg:#39ff14; --ignore-on-border:#155c2e; --modal-backdrop:rgba(0,10,4,.72); }
+    body.theme-neon .topbar { background: linear-gradient(120deg,#021106,#0a3d1c,#39ff14); }
+    body.theme-neon .tab.active, body.theme-neon .pg.cur { color:#04150a; }
+
+    body.theme-aurora { --bg:#04120f; --card:#0a1f1a; --border:#154334; --text:#d9f5ec; --muted:#6fa89b; --accent:#2dd4bf; --pass:#34d399; --pass-bg:#062b1d; --fail:#fb7185; --fail-bg:#3b1220; --warn:#fbbf24; --warn-bg:#3a2806; --surface:#0e2a23; --surface-2:#071713; --hover:#123a2f; --accent-bg:#0d2c24; --indigo-bg:#0d2c24; --indigo-fg:#7ff0d4; --row-fail-bg:#2b1520; --row-ignored-bg:#061411; --row-ignored-fg:#4a7a6c; --mark-bg:#8a6d1a; --bar-bg:#123a2f; --bar-warn:#facc15; --num-muted:#5a8c7e; --print-fg:#b9e8da; --ignore-on-bg:#062b1d; --ignore-on-fg:#34d399; --ignore-on-border:#0f5c3e; --modal-backdrop:rgba(2,12,9,.65); }
+    body.theme-aurora .topbar { background: linear-gradient(120deg,#02110c,#0f766e,#7c3aed); }
+
+    /* 深色主题共享芯片色（避免亮底刺眼） */
+    body.theme-dark, body.theme-midnight, body.theme-graphite, body.theme-violet, body.theme-sunset, body.theme-neon, body.theme-aurora {
+      --chip-platform-bg:#0c2f44; --chip-platform-fg:#7dd3fc;
+      --chip-product-bg:#2a1c4a; --chip-product-fg:#c4b5fd;
+      --chip-context-bg:#3a2806; --chip-context-fg:#fcd34d;
+      --chip-ctx-bg:#062b1d; --chip-ctx-fg:#6ee7b7;
+      --chip-code-bg:#083344; --chip-code-fg:#67e8f9;
+    }
+  }

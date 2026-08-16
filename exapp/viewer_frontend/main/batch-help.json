@@ -1,0 +1,353 @@
+{
+  "zh-CN": {
+    "title": "使用帮助 · 金融监管报告比较与批次扫描",
+    "sections": [
+      {
+        "h": "一、功能概览",
+        "p": [
+          "本工具用于多渠道监管报告比对：将 CSV 来源数据与 XML/CSV 监管报送逐渠道、逐行、逐字段比对，并支持对多批次（多次运行）报告的统一管理与回溯。"
+        ],
+        "items": [
+          "报告渠道：HKTR / JSFA / CFTC",
+          "比对维度：字段期望值（EO）与实际值（AO）",
+          "批次：每次运行生成一份独立报告，可跨日期、跨版本统一浏览"
+        ]
+      },
+      {
+        "h": "二、批次扫描器（scan-batches.js）",
+        "p": [
+          "批次扫描器位于项目根目录，用于扫描 basedir 下所有批次目录，生成批次索引 batches-index.json，供「最近批次」面板使用。"
+        ],
+        "items": [
+          "用法：node scan-batches.js [basedir]（默认 basedir = src/main/batches）",
+          "批次目录判定：目录内含 batch-meta.json 或 deepseek-validation-data.json",
+          "batch-meta.json 可声明：batchId / batchName / date / executedAt / formatVersion / dataUrl / ignoreUrl / commandLine / argv / cwd / description / summary",
+          "扫描完成后，最近批次面板即可列出全部批次"
+        ],
+        "code": "node scan-batches.js src/main/batches"
+      },
+      {
+        "h": "三、最近批次面板",
+        "p": [
+          "屏幕左侧的浮动 dock（☰）用于呼出批次面板；dock 可上下拖动，并可在左右两侧停靠（⇄ 切换）。"
+        ],
+        "items": [
+          "dock 显示最近 N 个批次（默认 5，可配置）",
+          "批次面板支持：按名称 / 命令行 / 描述搜索、按日期筛选、执行时间升降序、兼容性过滤",
+          "列表支持懒加载（默认，点「加载更多」逐页追加）与传统分页两种模式（batches.listMode）",
+          "列表高度可拖动调整（上下两个手柄）",
+          "重新扫描（⟳）完成后以灯环动画提示"
+        ]
+      },
+      {
+        "h": "四、批次详情与加载",
+        "p": [
+          "默认交互（quick）：单击批次行在侧边浮动展示详情，双击加载该批次数据。"
+        ],
+        "items": [
+          "详情包含：批次名、日期、执行时间、批次目录（可复制）、版本兼容性、Item 数量、命令行参数、批次描述",
+          "批次目录右侧 ⧉ 按钮可一键复制对应文本",
+          "双击加载后详情自动关闭，顶栏显示「当前批次：xxx」",
+          "可切换为 modal 交互（单击加载 + 信息图标弹窗）"
+        ]
+      },
+      {
+        "h": "五、版本兼容策略",
+        "p": [
+          "不同版本查看器生成的报告可能结构不兼容，因此按 formatVersion 判定兼容性。"
+        ],
+        "items": [
+          "当前查看器仅兼容 formatVersion = 2",
+          "不兼容批次在列表中置灰并标记 ⚠，不可直接加载",
+          "点击不兼容批次会二次确认；确认后可强制加载（顶部出现警告横幅，可一键恢复默认报告）"
+        ]
+      },
+      {
+        "h": "六、搜索与过滤（含正则）",
+        "p": [
+          "批次面板的三个搜索框均支持普通包含匹配与正则匹配。"
+        ],
+        "items": [
+          "批次名搜索：匹配 batchName / batchId",
+          "命令行搜索：匹配 commandLine / argv",
+          "描述搜索：匹配批次描述",
+          "正则语法：以 regex: 开头，例如 regex:nightly.* 或 regex:^eod",
+          "日期筛选：输入或 📅 选择 YYYY-MM-DD"
+        ],
+        "code": "regex:nightly.*\nregex:^daily-2026081[56]"
+      },
+      {
+        "h": "七、配置说明",
+        "p": [
+          "主配置文件 deepseek-validation-config.json 控制数据源、功能开关、界面默认值与批次行为。"
+        ],
+        "items": [
+          "configVersion：配置结构版本号（当前 2）",
+          "runType：运行环境 dev / test / prod —— 未显式声明的 features 在 dev/test 默认开、prod 默认关",
+          "urls：数据 / 忽略规则 / 批次索引路径（data / ignore / batches）",
+          "ui：界面默认项（lang / theme / sidebarMode / sidebarWidth / reportCatDefault / batchDockSide / progressBarStyle）",
+          "features：18 个功能开关（uncomparedXpath / uncomparedItems / uncomparedCsv / logs / conversionRule / validationRule / excelMapping / excelConversionRule / excelValidationRule / columnHover / sidebarSearch / sidebarTradeId / compare / healthOverview / globalSearch / keyboardShortcuts / modalPrints / recentBatches）",
+          "limits：分页与上限（pageSize / pageSizeOptions / sidebarPageSize / msgPageSize / globalSearchLimit）",
+          "batches：批次面板（recentCount / pageSize / listMode / detailMode / panelWidth）",
+          "columns.default：字段比较表默认列可见性（channel / source / f / x / aoCsv / t / ctx / eo / ao / result / note）",
+          "完整说明与默认值见 CONFIG.md 与 config.schema.json"
+        ],
+        "code": "\"batches\": { \"recentCount\": 5, \"pageSize\": 8, \"listMode\": \"lazy\", \"detailMode\": \"quick\", \"panelWidth\": 320 }"
+      },
+      {
+        "h": "八、键盘快捷键",
+        "items": [
+          "/ 聚焦主搜索框",
+          "G 全局搜索",
+          "H 健康总览",
+          "J / K 上 / 下一个 item",
+          "批次列表：↑ / ↓ 移动焦点，Enter 加载",
+          "Esc 关闭弹窗 / 浮层"
+        ]
+      },
+      {
+        "h": "九、注意事项",
+        "items": [
+          "数据 / 索引 / 帮助等资源需通过本地 HTTP 服务器访问（file:// 直接打开会因跨域导致数据回退）",
+          "修改批次数据后需重新运行 scan-batches.js 刷新索引",
+          "语言与主题切换、dock 停靠方向、面板尺寸等偏好保存在浏览器 localStorage",
+          "键盘：批次列表中 ↑ / ↓ 移动、Enter 加载；全局 / 搜索、G 全局搜索、H 健康总览"
+        ]
+      }
+    ]
+  },
+  "zh-HK": {
+    "title": "使用幫助 · 金融監管報告比較與批次掃描",
+    "sections": [
+      {
+        "h": "一、功能概覽",
+        "p": [
+          "本工具用於多渠道監管報告比對：將 CSV 來源數據與 XML/CSV 監管報送逐渠道、逐行、逐字段比對，並支援對多批次（多次運行）報告的統一管理與回溯。"
+        ],
+        "items": [
+          "報告渠道：HKTR / JSFA / CFTC",
+          "比對維度：字段期望值（EO）與實際值（AO）",
+          "批次：每次運行生成一份獨立報告，可跨日期、跨版本統一瀏覽"
+        ]
+      },
+      {
+        "h": "二、批次掃描器（scan-batches.js）",
+        "p": [
+          "批次掃描器位於專案根目錄，用於掃描 basedir 下所有批次目錄，生成批次索引 batches-index.json，供「最近批次」面板使用。"
+        ],
+        "items": [
+          "用法：node scan-batches.js [basedir]（預設 basedir = src/main/batches）",
+          "批次目錄判定：目錄內含 batch-meta.json 或 deepseek-validation-data.json",
+          "batch-meta.json 可宣告：batchId / batchName / date / executedAt / formatVersion / dataUrl / ignoreUrl / commandLine / argv / cwd / description / summary",
+          "掃描完成後，最近批次面板即可列出全部批次"
+        ],
+        "code": "node scan-batches.js src/main/batches"
+      },
+      {
+        "h": "三、最近批次面板",
+        "p": [
+          "螢幕左側的浮動 dock（☰）用於呼出批次面板；dock 可上下拖動，並可在左右兩側停靠（⇄ 切換）。"
+        ],
+        "items": [
+          "dock 顯示最近 N 個批次（預設 5，可配置）",
+          "批次面板支援：按名稱 / 命令行 / 描述搜尋、按日期篩選、執行時間升降序、相容性過濾",
+          "列表支援懶載入（預設，點「載入更多」逐頁追加）與傳統分頁兩種模式（batches.listMode）",
+          "列表高度可拖動調整（上下兩個手柄）",
+          "重新掃描（⟳）完成後以燈環動畫提示"
+        ]
+      },
+      {
+        "h": "四、批次詳情與載入",
+        "p": [
+          "預設互動（quick）：單擊批次行在側邊浮動展示詳情，雙擊載入該批次數據。"
+        ],
+        "items": [
+          "詳情包含：批次名、日期、執行時間、批次目錄（可複製）、版本相容性、Item 數量、命令行參數、批次描述",
+          "批次目錄右側 ⧉ 按鈕可一鍵複製對應文本",
+          "雙擊載入後詳情自動關閉，頂欄顯示「當前批次：xxx」",
+          "可切換為 modal 互動（單擊載入 + 資訊圖標彈窗）"
+        ]
+      },
+      {
+        "h": "五、版本相容策略",
+        "p": [
+          "不同版本檢視器生成的報告可能結構不相容，因此按 formatVersion 判定相容性。"
+        ],
+        "items": [
+          "當前檢視器僅相容 formatVersion = 2",
+          "不相容批次在列表中置灰並標記 ⚠，不可直接載入",
+          "點擊不相容批次會二次確認；確認後可強制載入（頂部出現警告橫幅，可一鍵恢復預設報告）"
+        ]
+      },
+      {
+        "h": "六、搜尋與過濾（含正則）",
+        "p": [
+          "批次面板的三個搜尋框均支援普通包含匹配與正則匹配。"
+        ],
+        "items": [
+          "批次名搜尋：匹配 batchName / batchId",
+          "命令行搜尋：匹配 commandLine / argv",
+          "描述搜尋：匹配批次描述",
+          "正則語法：以 regex: 開頭，例如 regex:nightly.* 或 regex:^eod",
+          "日期篩選：輸入或 📅 選擇 YYYY-MM-DD"
+        ],
+        "code": "regex:nightly.*\nregex:^daily-2026081[56]"
+      },
+      {
+        "h": "七、配置說明",
+        "p": [
+          "主配置文件 deepseek-validation-config.json 控制數據源、功能開關、介面預設值與批次行為。"
+        ],
+        "items": [
+          "configVersion：配置結構版本號（當前 2）",
+          "runType：運行環境 dev / test / prod —— 未顯式聲明的 features 在 dev/test 預設開、prod 預設關",
+          "urls：數據 / 忽略規則 / 批次索引路徑（data / ignore / batches）",
+          "ui：介面預設項（lang / theme / sidebarMode / sidebarWidth / reportCatDefault / batchDockSide / progressBarStyle）",
+          "features：18 個功能開關（uncomparedXpath / uncomparedItems / uncomparedCsv / logs / conversionRule / validationRule / excelMapping / excelConversionRule / excelValidationRule / columnHover / sidebarSearch / sidebarTradeId / compare / healthOverview / globalSearch / keyboardShortcuts / modalPrints / recentBatches）",
+          "limits：分頁與上限（pageSize / pageSizeOptions / sidebarPageSize / msgPageSize / globalSearchLimit）",
+          "batches：批次面板（recentCount / pageSize / listMode / detailMode / panelWidth）",
+          "columns.default：字段比較表預設列可見性（channel / source / f / x / aoCsv / t / ctx / eo / ao / result / note）",
+          "完整說明與預設值見 CONFIG.md 與 config.schema.json"
+        ],
+        "code": "\"batches\": { \"recentCount\": 5, \"pageSize\": 8, \"listMode\": \"lazy\", \"detailMode\": \"quick\", \"panelWidth\": 320 }"
+      },
+      {
+        "h": "八、鍵盤快捷鍵",
+        "items": [
+          "/ 聚焦主搜尋框",
+          "G 全域搜尋",
+          "H 健康總覽",
+          "J / K 上 / 下一個 item",
+          "批次列表：↑ / ↓ 移動焦點，Enter 載入",
+          "Esc 關閉彈窗 / 浮層"
+        ]
+      },
+      {
+        "h": "九、注意事項",
+        "items": [
+          "數據 / 索引 / 幫助等資源需通過本地 HTTP 伺服器存取（file:// 直接開啟會因跨域導致數據回退）",
+          "修改批次數據後需重新運行 scan-batches.js 刷新索引",
+          "語言與主題切換、dock 停靠方向、面板尺寸等偏好會保存在瀏覽器 localStorage",
+          "鍵盤：批次列表中 ↑ / ↓ 移動、Enter 載入；全域 / 搜尋、G 全域搜尋、H 健康總覽"
+        ]
+      }
+    ]
+  },
+  "en": {
+    "title": "Help · Regulatory Report Comparison & Batch Scanning",
+    "sections": [
+      {
+        "h": "1. Overview",
+        "p": [
+          "This tool compares multi-channel regulatory reports: CSV source data is compared against XML/CSV regulatory submissions channel-by-channel, row-by-row, and field-by-field. It also manages and revisits reports from multiple batches (runs)."
+        ],
+        "items": [
+          "Report channels: HKTR / JSFA / CFTC",
+          "Comparison dimension: expected value (EO) vs. actual value (AO)",
+          "Batch: each run produces an independent report, browsable across dates and versions"
+        ]
+      },
+      {
+        "h": "2. Batch scanner (scan-batches.js)",
+        "p": [
+          "The scanner lives in the project root. It scans all batch directories under a basedir and generates batches-index.json for the Recent Batches panel."
+        ],
+        "items": [
+          "Usage: node scan-batches.js [basedir] (default basedir = src/main/batches)",
+          "A batch directory must contain batch-meta.json or deepseek-validation-data.json",
+          "batch-meta.json may declare: batchId / batchName / date / executedAt / formatVersion / dataUrl / ignoreUrl / commandLine / argv / cwd / description / summary",
+          "After scanning, all batches appear in the Recent Batches panel"
+        ],
+        "code": "node scan-batches.js src/main/batches"
+      },
+      {
+        "h": "3. Recent batches panel",
+        "p": [
+          "The floating dock (☰) on the left opens the batch panel. The dock can be dragged vertically and docked left or right (⇄)."
+        ],
+        "items": [
+          "The dock shows the N most recent batches (default 5, configurable)",
+          "The panel supports search by name / command line / description, date filter, ascending/descending execution time, and compatibility filter",
+          "List supports lazy loading (default, Load more) and traditional pagination (batches.listMode)",
+          "List height is resizable via the top and bottom handles",
+          "Rescan (⟳) finishes with a ring flash animation"
+        ]
+      },
+      {
+        "h": "4. Batch details & loading",
+        "p": [
+          "Default interaction (quick): single-click a batch row to show floating details beside it; double-click to load its data."
+        ],
+        "items": [
+          "Details include: name, date, executed time, batch directory (copyable), version compatibility, item count, command line, description",
+          "The ⧉ button next to the batch directory copies its text",
+          "After double-click loading the details auto-close and the top bar shows \"Current batch: xxx\"",
+          "Switch to modal interaction (single-click load + info-icon dialog) via config"
+        ]
+      },
+      {
+        "h": "5. Version compatibility",
+        "p": [
+          "Reports generated by different viewer versions may be structurally incompatible, so compatibility is judged by formatVersion."
+        ],
+        "items": [
+          "The current viewer only supports formatVersion = 2",
+          "Incompatible batches are dimmed with ⚠ and cannot be loaded directly",
+          "Clicking an incompatible batch prompts for confirmation; forcing the load shows a warning banner with one-click restore"
+        ]
+      },
+      {
+        "h": "6. Search & filtering (regex)",
+        "p": [
+          "All three search boxes support plain substring matching and regular expressions."
+        ],
+        "items": [
+          "Name search: matches batchName / batchId",
+          "Command-line search: matches commandLine / argv",
+          "Description search: matches the batch description",
+          "Regex syntax: prefix with regex:, e.g. regex:nightly.* or regex:^eod",
+          "Date filter: type or pick YYYY-MM-DD"
+        ],
+        "code": "regex:nightly.*\nregex:^daily-2026081[56]"
+      },
+      {
+        "h": "7. Configuration",
+        "p": [
+          "The main config deepseek-validation-config.json controls data sources, feature flags, UI defaults, and batch behavior."
+        ],
+        "items": [
+          "configVersion: config schema version (currently 2)",
+          "runType: environment dev / test / prod — undeclared features default on in dev/test, off in prod",
+          "urls: data / ignore / batch index paths (data / ignore / batches)",
+          "ui: UI defaults (lang / theme / sidebarMode / sidebarWidth / reportCatDefault / batchDockSide / progressBarStyle)",
+          "features: 18 feature flags (uncomparedXpath / uncomparedItems / uncomparedCsv / logs / conversionRule / validationRule / excelMapping / excelConversionRule / excelValidationRule / columnHover / sidebarSearch / sidebarTradeId / compare / healthOverview / globalSearch / keyboardShortcuts / modalPrints / recentBatches)",
+          "limits: paging & caps (pageSize / pageSizeOptions / sidebarPageSize / msgPageSize / globalSearchLimit)",
+          "batches: batch panel (recentCount / pageSize / listMode / detailMode / panelWidth)",
+          "columns.default: default column visibility (channel / source / f / x / aoCsv / t / ctx / eo / ao / result / note)",
+          "See CONFIG.md and config.schema.json for full details and defaults"
+        ],
+        "code": "\"batches\": { \"recentCount\": 5, \"pageSize\": 8, \"listMode\": \"lazy\", \"detailMode\": \"quick\", \"panelWidth\": 320 }"
+      },
+      {
+        "h": "8. Keyboard shortcuts",
+        "items": [
+          "/ Focus main search",
+          "G Global search",
+          "H Health overview",
+          "J / K Previous / next item",
+          "Batch list: ↑ / ↓ move focus, Enter load",
+          "Esc Close dialog / popover"
+        ]
+      },
+      {
+        "h": "9. Notes",
+        "items": [
+          "Data / index / help resources must be served over HTTP (opening file:// directly causes CORS fallback)",
+          "Re-run scan-batches.js after changing batch data",
+          "Language, theme, dock side, and panel size preferences persist in browser localStorage",
+          "Keyboard: ↑ / ↓ navigate and Enter loads in the batch list; / search, G global search, H health overview"
+        ]
+      }
+    ]
+  }
+}

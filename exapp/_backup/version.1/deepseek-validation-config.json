@@ -1,0 +1,14 @@
+{
+  "runType": "dev",
+  "features": {
+    "uncomparedXpath": true,
+    "uncomparedItems": true,
+    "uncomparedCsv": true,
+    "logs": true,
+    "conversionRule": true,
+    "validationRule": true,
+    "excelMapping": true,
+    "excelConversionRule": true,
+    "excelValidationRule": true
+  }
+}

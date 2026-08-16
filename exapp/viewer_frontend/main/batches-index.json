@@ -1,0 +1,444 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-16T08:20:34.198Z",
+  "basedir": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches",
+  "count": 20,
+  "batches": [
+    {
+      "batchId": "batch-20260816-2000",
+      "batchName": "eod-20260816",
+      "date": "2026-08-16",
+      "executedAt": "2026-08-16T20:00:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-16/batch-20260816-2000",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--date=2026-08-16"
+      ],
+      "description": "日终批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：当日全部数据\n- 模式：终值校验",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260816-1400",
+      "batchName": "afternoon-20260816",
+      "date": "2026-08-16",
+      "executedAt": "2026-08-16T14:00:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-16/batch-20260816-1400",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--date=2026-08-16"
+      ],
+      "description": "下午补充批处理：\n- 渠道：HKTR\n- 范围：下午新增交易",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260816-0930",
+      "batchName": "intraday-20260816-0930",
+      "date": "2026-08-16",
+      "executedAt": "2026-08-16T09:30:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-16/batch-20260816-0930",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--job=intraday",
+        "--date=2026-08-16",
+        "--channels=HKTR,CFTC"
+      ],
+      "description": "盘中增量批处理：\n- 渠道：HKTR / CFTC\n- 范围：盘中新成交\n- 模式：快速比对",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260816-0400",
+      "batchName": "nightly-20260816",
+      "date": "2026-08-16",
+      "executedAt": "2026-08-16T04:00:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "batches/2026-08-16/batch-20260816-0400/deepseek-validation-data.json",
+      "ignoreUrl": null,
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-16/batch-20260816-0400",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--job=nightly",
+        "--date=2026-08-16",
+        "--channels=HKTR,JSFA,CFTC"
+      ],
+      "argv": [
+        "--job=nightly",
+        "--date=2026-08-16",
+        "--channels=HKTR,JSFA,CFTC"
+      ],
+      "cwd": "E:\\repos\\otcc-testing\\app\\ccp-report-validation-result-viewer",
+      "description": "夜间全量批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：当日全部交易\n- 模式：全量比对 + 汇总报表",
+      "summary": {
+        "items": 2,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260815-1800",
+      "batchName": "daily-20260815-1800",
+      "date": "2026-08-15",
+      "executedAt": "2026-08-15T18:00:00+08:00",
+      "formatVersion": 1,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": null,
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-15/batch-20260815-1800",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--job=daily",
+        "--date=2026-08-15"
+      ],
+      "description": "每日例行批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：T+0 全部成交\n- 模式：增量比对",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260815-1200",
+      "batchName": "intraday-20260815",
+      "date": "2026-08-15",
+      "executedAt": "2026-08-15T12:00:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-15/batch-20260815-1200",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--date=2026-08-15"
+      ],
+      "description": "盘中增量批处理：\n- 渠道：HKTR / CFTC\n- 范围：盘中新成交\n- 模式：快速比对",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260815-0900",
+      "batchName": "daily-20260815",
+      "date": "2026-08-15",
+      "executedAt": "2026-08-15T09:00:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-15/batch-20260815-0900",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--job=daily",
+        "--date=2026-08-15",
+        "--channels=HKTR,JSFA,CFTC"
+      ],
+      "description": "每日例行批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：T+0 全部成交\n- 模式：增量比对",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260814-2230",
+      "batchName": "legacy-20260814",
+      "date": "2026-08-14",
+      "executedAt": "2026-08-14T22:30:00+08:00",
+      "formatVersion": 1,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": null,
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-14/batch-20260814-2230",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--job=daily",
+        "--date=2026-08-14"
+      ],
+      "description": "历史版本批次（v1）：\n- 由旧版扫描器生成\n- 字段结构存在差异",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260814-1500",
+      "batchName": "legacy-20260814b",
+      "date": "2026-08-14",
+      "executedAt": "2026-08-14T15:00:00+08:00",
+      "formatVersion": 1,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-14/batch-20260814-1500",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--date=2026-08-14"
+      ],
+      "description": "历史版本批次（v1）：\n- 由旧版扫描器生成\n- 字段结构存在差异",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260814-0800",
+      "batchName": "morning-20260814",
+      "date": "2026-08-14",
+      "executedAt": "2026-08-14T08:00:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-14/batch-20260814-0800",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--date=2026-08-14"
+      ],
+      "description": "早间批处理：\n- 渠道：JSFA / CFTC\n- 范围：隔夜成交",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260814-0130",
+      "batchName": "nightly-20260814",
+      "date": "2026-08-14",
+      "executedAt": "2026-08-14T01:30:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": null,
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-14/batch-20260814-0130",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--job=nightly",
+        "--date=2026-08-14",
+        "--channels=HKTR,JSFA,CFTC"
+      ],
+      "description": "夜间全量批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：当日全部交易\n- 模式：全量比对 + 汇总报表",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260813-1900",
+      "batchName": "legacy-20260813",
+      "date": "2026-08-13",
+      "executedAt": "2026-08-13T19:00:00+08:00",
+      "formatVersion": 1,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-13/batch-20260813-1900",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--date=2026-08-13"
+      ],
+      "description": "历史版本批次（v1）：\n- 由旧版扫描器生成\n- 字段结构存在差异",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260813-1100",
+      "batchName": "daily-20260813",
+      "date": "2026-08-13",
+      "executedAt": "2026-08-13T11:00:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-13/batch-20260813-1100",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--date=2026-08-13"
+      ],
+      "description": "每日例行批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：T+0 全部成交\n- 模式：增量比对",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260813-0300",
+      "batchName": "nightly-20260813",
+      "date": "2026-08-13",
+      "executedAt": "2026-08-13T03:00:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-13/batch-20260813-0300",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--date=2026-08-13"
+      ],
+      "description": "夜间全量批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：当日全部交易\n- 模式：全量比对 + 汇总报表",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260812-1600",
+      "batchName": "daily-20260812",
+      "date": "2026-08-12",
+      "executedAt": "2026-08-12T16:00:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-12/batch-20260812-1600",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--date=2026-08-12"
+      ],
+      "description": "每日例行批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：T+0 全部成交\n- 模式：增量比对",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260812-0600",
+      "batchName": "nightly-20260812",
+      "date": "2026-08-12",
+      "executedAt": "2026-08-12T06:00:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-12/batch-20260812-0600",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--date=2026-08-12"
+      ],
+      "description": "夜间全量批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：当日全部交易\n- 模式：全量比对 + 汇总报表",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260811-2100",
+      "batchName": "legacy-20260811",
+      "date": "2026-08-11",
+      "executedAt": "2026-08-11T21:00:00+08:00",
+      "formatVersion": 1,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-11/batch-20260811-2100",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--date=2026-08-11"
+      ],
+      "description": "历史版本批次（v1）：\n- 由旧版扫描器生成\n- 字段结构存在差异",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260811-0900",
+      "batchName": "daily-20260811",
+      "date": "2026-08-11",
+      "executedAt": "2026-08-11T09:00:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-11/batch-20260811-0900",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--date=2026-08-11"
+      ],
+      "description": "每日例行批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：T+0 全部成交\n- 模式：增量比对",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260810-1200",
+      "batchName": "daily-20260810",
+      "date": "2026-08-10",
+      "executedAt": "2026-08-10T12:00:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-10/batch-20260810-1200",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--date=2026-08-10"
+      ],
+      "description": "每日例行批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：T+0 全部成交\n- 模式：增量比对",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    },
+    {
+      "batchId": "batch-20260810-0800",
+      "batchName": "morning-20260810",
+      "date": "2026-08-10",
+      "executedAt": "2026-08-10T08:00:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "deepseek-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/src/main/batches/2026-08-10/batch-20260810-0800",
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--date=2026-08-10"
+      ],
+      "description": "早间批处理：\n- 渠道：JSFA / CFTC\n- 范围：隔夜成交",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      }
+    }
+  ]
+}

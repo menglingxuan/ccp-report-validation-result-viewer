@@ -1,0 +1,2429 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>金融监管报告比较 · 结果展示</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --pass: #16a34a;
+      --pass-bg: #dcfce7;
+      --fail: #dc2626;
+      --fail-bg: #fee2e2;
+      --warn: #d97706;
+      --warn-bg: #fef3c7;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* 顶栏 */
+    .topbar {
+      background: linear-gradient(120deg, #0b1f3a 0%, #1e3a8a 55%, #2563eb 100%);
+      color: #fff;
+      padding: 18px 24px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, .18);
+    }
+    .topbar-inner {
+      max-width: 1400px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    }
+    .topbar-title { font-size: 21px; font-weight: 700; letter-spacing: .3px; }
+    .topbar-title .accent { color: #7dd3fc; }
+    .topbar-sub { font-size: 13px; color: rgba(255,255,255,.72); margin-top: 4px; }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .env-badge {
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.25);
+      color: #fde68a;
+      border-radius: 999px; padding: 5px 14px; font-size: 12px; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .env-badge::before { content: '●'; font-size: 8px; color: #4ade80; }
+
+    .page { max-width: 1400px; margin: 0 auto; padding: 20px 24px 40px; }
+
+    /* 统计卡片 */
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .card-label { color: var(--muted); font-size: 12px; }
+    .card-value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+    .card-value.ok { color: var(--pass); }
+    .card-value.bad { color: var(--fail); }
+    .card-value.warn { color: var(--warn); }
+
+    /* 工具栏 */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+    .toolbar input[type="search"] {
+      flex: 1 1 240px;
+      min-width: 180px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+    }
+    .toolbar input[type="search"]:focus { border-color: var(--accent); }
+    .toolbar select {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      cursor: pointer;
+    }
+    .toolbar select:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* 主体布局 */
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 16px;
+      align-items: stretch;
+    }
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    /* 侧栏 item 列表 */
+    .sidebar {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar-head {
+      padding: 12px 14px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sidebar-head .count {
+      background: #eef2ff;
+      color: #4338ca;
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 12px;
+    }
+    .item { padding: 12px 14px; cursor: pointer; border-bottom: 1px solid var(--border); }
+    .item:last-child { border-bottom: none; }
+    .item:hover { background: #f9fafb; }
+    .item.active { background: #eff6ff; box-shadow: inset 3px 0 0 var(--accent); }
+    .item-id { font-weight: 600; font-family: var(--mono); }
+    .item-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .bar { height: 6px; background: #eef0f3; border-radius: 999px; margin-top: 8px; overflow: hidden; }
+    .bar-fill { height: 100%; background: var(--pass); border-radius: 999px; }
+
+    /* 详情区 */
+    .detail {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .detail-head { padding: 16px 18px 0; }
+    .detail-head h2 { margin: 0; font-size: 18px; font-family: var(--mono); }
+    .detail-head .channels { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 14px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+    .tab {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 6px 14px;
+      cursor: pointer;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tab:hover { border-color: var(--accent); color: var(--accent); }
+    .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .tab-count {
+      background: rgba(0,0,0,.08);
+      border-radius: 999px;
+      padding: 0 8px;
+      font-size: 12px;
+    }
+    .tab.active .tab-count { background: rgba(255,255,255,.25); }
+
+    .channel-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 12px 18px 0;
+    }
+    .ctab {
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 5px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .ctab:hover { border-color: var(--accent); color: var(--accent); }
+    .ctab.active { background: #eef2ff; border-color: var(--accent); color: var(--accent); font-weight: 600; }
+    .ctab-count { color: var(--muted); font-size: 12px; }
+    .ctab.active .ctab-count { color: var(--accent); }
+
+    .content { padding: 16px 18px 20px; }
+
+    /* 表格 */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { background: #f9fafb; color: var(--muted); font-weight: 600; font-size: 12px; white-space: nowrap; }
+    tr.row-fail td { background: #fffafa; }
+    .mono { font-family: var(--mono); font-size: 12px; }
+    .xpath { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .note { color: var(--muted); }
+    .empty { text-align: center; color: var(--muted); padding: 28px !important; }
+
+    /* 徽章与芯片 */
+    .chip { display: inline-block; border-radius: 6px; padding: 2px 8px; font-size: 12px; white-space: nowrap; }
+    .channel-chip { background: #eef2ff; color: #4338ca; }
+    .tp-platform { background: #e0f2fe; color: #0369a1; }
+    .tp-product { background: #ede9fe; color: #6d28d9; }
+    .tp-context { background: #fef3c7; color: #b45309; }
+    .badge { display: inline-block; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
+    .badge.pass { background: var(--pass-bg); color: var(--pass); }
+    .badge.fail { background: var(--fail-bg); color: var(--fail); }
+    .badge.warn { background: var(--warn-bg); color: var(--warn); }
+
+    /* 分页 */
+    .pagination { display: flex; align-items: center; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
+    .pg {
+      min-width: 30px; height: 30px;
+      border: 1px solid var(--border);
+      background: #fff; color: var(--text);
+      border-radius: 8px; cursor: pointer; font-size: 13px;
+    }
+    .pg:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .pg.cur { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .pg:disabled { opacity: .4; cursor: not-allowed; }
+    .pg-info { color: var(--muted); font-size: 12px; margin: 0 6px; }
+    .pagination select { padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; }
+
+    /* 日志 */
+    .log-box {
+      background: #0f172a; color: #d1fae5;
+      border-radius: 10px; padding: 14px 16px;
+      font-family: var(--mono); font-size: 12px;
+      max-height: 520px; overflow: auto;
+    }
+    .log-line { white-space: pre-wrap; word-break: break-all; }
+
+    .meta-note { margin-top: 10px; color: var(--muted); font-size: 12px; }
+    .footer-note { margin-top: 20px; color: var(--muted); font-size: 12px; text-align: center; }
+
+    /* 过滤标识 chips */
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .filters:empty { display: none; }
+    .filter-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #eef2ff; color: #4338ca;
+      border-radius: 999px; padding: 4px 10px; font-size: 12px;
+    }
+    .filter-chip button {
+      border: none; background: none; color: #4338ca;
+      cursor: pointer; font-size: 13px; line-height: 1; padding: 0;
+    }
+    .filter-chip button:hover { color: #1e3a8a; }
+
+    /* 可点击统计卡片 */
+    .card.clickable { cursor: pointer; transition: box-shadow .15s, border-color .15s, background .15s; }
+    .card.clickable:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(37,99,235,.12); }
+    .card.active-filter { border-color: var(--accent); background: #eff6ff; }
+
+    /* 元信息行 */
+    .meta-line { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+    /* 文件面板 */
+    .files { margin-top: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: #fafbfc; }
+    .files-title { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    .files-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .file-card { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: #fff; min-width: 210px; flex: 1 1 210px; }
+    .file-card .fc-head { font-weight: 600; font-size: 12px; color: #4338ca; margin-bottom: 4px; }
+    .file-card .fc-row { font-size: 12px; color: var(--text); font-family: var(--mono); word-break: break-all; line-height: 1.6; }
+    .file-card .fc-row .fc-label { color: var(--muted); font-family: inherit; }
+
+    /* 表头排序 + 过滤输入 */
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { color: var(--accent); }
+    th .sort-arrow { font-size: 10px; margin-left: 2px; color: var(--accent); }
+    th .hfilter {
+      margin-top: 4px; width: 100%; padding: 4px 6px;
+      border: 1px solid var(--border); border-radius: 6px;
+      font-size: 12px; font-weight: 400; color: var(--text);
+      background: #fff;
+    }
+    th .hfilter:focus { border-color: var(--accent); outline: none; }
+    th select.hfilter { padding: 4px 2px; }
+
+    /* 值预览 */
+    .val {
+      max-width: 200px; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap; font-family: var(--mono); font-size: 12px;
+      display: inline-block; vertical-align: middle;
+    }
+    .val-link { color: var(--accent); cursor: pointer; text-decoration: none; }
+    .val-link:hover { text-decoration: underline; }
+
+    /* 详情弹窗 */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(15,23,42,.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 50; padding: 20px;
+    }
+    .modal {
+      background: #fff; border-radius: 12px; max-width: 880px; width: 100%;
+      max-height: 90vh; display: flex; flex-direction: column;
+      box-shadow: 0 20px 50px rgba(0,0,0,.25);
+    }
+    .modal-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .modal-head h3 { margin: 0; font-size: 16px; }
+    .modal-close { border: none; background: none; font-size: 24px; cursor: pointer; color: var(--muted); line-height: 1; }
+    .modal-close:hover { color: var(--text); }
+    .modal-body { padding: 16px 18px; overflow: auto; }
+    .kv { display: grid; grid-template-columns: 110px 1fr; gap: 6px 10px; margin-bottom: 14px; font-size: 13px; }
+    .kv .k { color: var(--muted); }
+    .kv .v { font-family: var(--mono); font-size: 12px; word-break: break-all; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .pair-box { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .pair-box .pb-head { background: #f9fafb; padding: 6px 10px; font-size: 12px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .pair-box pre { margin: 0; padding: 10px; font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-word; max-height: 280px; overflow: auto; }
+    .print-box { margin-top: 14px; }
+    .print-box .pb-head { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    .print-box .print-line { font-family: var(--mono); font-size: 12px; color: #334155; white-space: pre-wrap; word-break: break-word; }
+    @media (max-width: 640px) { .pair { grid-template-columns: 1fr; } }
+
+    /* item 元信息栏 */
+    .item-bar { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+    .item-bar h2 { margin: 0; font-size: 18px; font-family: var(--mono); }
+    .item-bar .meta-line { margin-top: 0; }
+
+    /* 可折叠报告信息 */
+    .collapse-toggle {
+      margin-top: 10px; border: 1px solid var(--border); background: #f9fafb;
+      border-radius: 8px; padding: 4px 12px; cursor: pointer; font-size: 13px; color: var(--muted);
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .collapse-toggle:hover { color: var(--accent); border-color: var(--accent); }
+    .collapse-toggle .chev { transition: transform .15s; }
+    .collapse-toggle.open .chev { transform: rotate(180deg); }
+    .report-info { margin-top: 8px; }
+
+    /* 侧栏过滤 */
+    .sidebar-filters { padding: 10px 12px; border-bottom: 1px solid var(--border); display: flex; gap: 6px; }
+    .sidebar-filters input, .sidebar-filters select {
+      flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 12px; color: var(--text); outline: none; background: #fff;
+    }
+    .sidebar-filters input:focus, .sidebar-filters select:focus { border-color: var(--accent); }
+    .sidebar-list { flex: 1; overflow: auto; }
+    .sidebar-pager { padding: 8px 12px; border-top: 1px solid var(--border); display: flex; justify-content: center; align-items: center; gap: 4px; }
+    .sidebar-pager:empty { display: none; }
+
+    /* 表头过滤图标按钮 */
+    th .hf-toggle, th .mhf-toggle, th .special-toggle, th .bulk-toggle {
+      margin-left: 4px; border: none; background: none; cursor: pointer;
+      color: var(--muted); font-size: 12px; padding: 0 2px; vertical-align: middle;
+    }
+    th .hf-toggle:hover, th .hf-toggle.active, th .mhf-toggle:hover, th .mhf-toggle.active, th .special-toggle:hover, th .special-toggle.active, th .bulk-toggle:hover { color: var(--accent); }
+
+    /* 浮层 popover */
+    .popover {
+      position: fixed; z-index: 40; background: #fff; border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.15);
+    }
+    .pop-control {
+      width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 13px; color: var(--text); outline: none; box-sizing: border-box; background: #fff;
+    }
+    .pop-control:focus { border-color: var(--accent); }
+    .col-option { display: flex; align-items: center; gap: 8px; padding: 5px 6px; font-size: 13px; cursor: pointer; border-radius: 6px; }
+    .col-option:hover { background: #f3f4f6; }
+    .popover-title { font-size: 12px; color: var(--muted); margin: 0 0 6px; }
+
+    /* 字段工具栏 */
+    .fields-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .col-toggle {
+      border: 1px solid var(--border); background: #fff; border-radius: 8px;
+      padding: 5px 12px; cursor: pointer; font-size: 13px; color: var(--muted);
+    }
+    .col-toggle:hover, .col-toggle.active { color: var(--accent); border-color: var(--accent); }
+    .fields-count { color: var(--muted); font-size: 12px; }
+
+    /* item 属性芯片 */
+    .attr-chip { background: #eef2ff; color: #4338ca; border-radius: 6px; padding: 2px 8px; font-size: 12px; white-space: nowrap; }
+
+    /* 任务说明 */
+    .task-note { margin-top: 12px; border-top: 1px dashed var(--border); padding-top: 10px; }
+    .task-note-title { font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+    .task-note-text { font-size: 13px; white-space: pre-wrap; word-break: break-word; color: var(--text); }
+
+    /* 侧栏多选按钮 */
+    .sidebar-filters { flex-wrap: wrap; }
+    .sidebar-filters input[type="search"] { flex: 1 1 100%; }
+    .sidebar-filters select { flex: 1 1 auto; }
+    .sidebar-filters .search-wrap { flex: 1 1 100%; position: relative; }
+    .sidebar-filters .search-wrap input { width: 100%; }
+    .sidebar-filters .search-clear {
+      position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+      border: none; background: none; color: var(--muted); cursor: pointer;
+      font-size: 14px; line-height: 1; padding: 2px; display: none;
+    }
+    .sidebar-filters .search-wrap.has-value .search-clear { display: block; }
+    .side-multi {
+      border: 1px solid var(--border); background: #fff; border-radius: 8px;
+      padding: 6px 8px; cursor: pointer; font-size: 12px; color: var(--muted); flex: 0 0 auto;
+    }
+    .side-multi:hover, .side-multi.active { color: var(--accent); border-color: var(--accent); }
+    .side-multi.has-filter { color: var(--accent); border-color: var(--accent); background: #eff6ff; }
+    .channel-tabs .col-toggle { margin-left: auto; }
+
+    /* 侧栏过滤 chips */
+    .sidebar-chips { padding: 8px 12px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 6px; }
+    .sidebar-chips:empty { display: none; }
+
+    /* 值单元格展开 */
+    .val-full { font-family: var(--mono); font-size: 12px; word-break: break-word; }
+    .val-details { display: inline-block; max-width: 300px; vertical-align: middle; }
+    .val-details summary {
+      cursor: pointer; color: var(--accent); font-family: var(--mono); font-size: 12px;
+      list-style: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px;
+    }
+    .val-details summary::-webkit-details-marker { display: none; }
+    .val-details summary::before { content: '▸ '; }
+    .val-details[open] summary::before { content: '▾ '; }
+    .val-details pre {
+      margin: 4px 0 0; padding: 6px 8px; background: #f9fafb;
+      border: 1px solid var(--border); border-radius: 6px;
+      font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-word;
+      max-height: 220px; overflow: auto; max-width: 420px;
+    }
+
+    /* 高亮 */
+    mark { background: #fde68a; color: inherit; padding: 0 1px; border-radius: 2px; }
+
+    /* 进度条警告色 */
+    .bar-fill.bar-warn { background: #eab308; }
+
+    /* 忽略行与按钮 */
+    tr.row-ignored td { background: #f3f4f6 !important; color: #9ca3af !important; }
+    tr.row-ignored td .chip, tr.row-ignored td .badge { opacity: .55; }
+    .ignore-btn {
+      border: 1px solid var(--border); background: #fff; border-radius: 6px;
+      padding: 3px 10px; cursor: pointer; font-size: 12px; color: var(--muted); white-space: nowrap;
+    }
+    .ignore-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .ignore-btn.ignored { color: #16a34a; border-color: #86efac; background: #f0fdf4; }
+
+    /* 文本长内容展开 */
+    .text-full { font-size: 13px; word-break: break-word; }
+    .text-details { display: inline-block; max-width: 480px; vertical-align: top; }
+    .text-details summary {
+      cursor: pointer; color: var(--accent); font-size: 13px; list-style: none;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 360px;
+    }
+    .text-details summary::-webkit-details-marker { display: none; }
+    .text-details summary::before { content: '▸ '; }
+    .text-details[open] summary::before { content: '▾ '; }
+    .text-details pre {
+      margin: 4px 0 0; padding: 6px 8px; background: #f9fafb; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 13px; white-space: pre-wrap; word-break: break-word;
+      max-height: 200px; overflow: auto; max-width: 560px; font-family: inherit;
+    }
+
+    /* 警告页签工具栏 */
+    .warn-toolbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+    .warn-toolbar:empty { display: none; }
+    .export-btn {
+      border: 1px solid var(--border); background: #fff; border-radius: 8px;
+      padding: 5px 12px; cursor: pointer; font-size: 12px; color: var(--muted);
+    }
+    .export-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* 警告统计第二数字置灰 */
+    .num-muted { color: #9ca3af; font-weight: 400; }
+
+    /* 禁用渠道页签 */
+    .ctab.disabled { opacity: .55; }
+
+    /* 命中Ctx 标签 */
+    .ctx-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .ctx-chip { background: #ecfdf5; color: #047857; white-space: normal; word-break: break-all; max-width: 220px; }
+
+    /* 未启用渠道提示 */
+    .channel-disabled { padding: 40px 20px; text-align: center; }
+    .channel-disabled .cd-title { font-size: 16px; font-weight: 600; color: var(--muted); }
+    .channel-disabled .cd-desc { margin-top: 10px; font-size: 13px; color: var(--muted); }
+
+    /* 批量忽略确认对话框 */
+    .bulk-desc { font-size: 13px; color: var(--text); margin: 0 0 16px; }
+    .bulk-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .bulk-btn { border: 1px solid var(--border); background: #fff; border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+    .bulk-btn.ignore-all { color: var(--accent); border-color: var(--accent); }
+    .bulk-btn.unignore-all { color: #16a34a; border-color: #86efac; }
+    .bulk-btn:hover { opacity: .85; }
+
+    /* 悬停长文本 */
+    .hover-trunc { font-size: 13px; color: var(--text); border-bottom: 1px dashed var(--border); cursor: help; }
+
+    /* 日期选择按钮 */
+    .sidebar-filters #reportDateFilter { padding-right: 46px; }
+    #reportDatePickerHelper { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    .cal-btn {
+      position: absolute; right: 24px; top: 50%; transform: translateY(-50%);
+      border: none; background: none; cursor: pointer; color: var(--muted); font-size: 13px; padding: 2px; line-height: 1;
+    }
+    .cal-btn:hover { color: var(--accent); }
+
+    /* 主题配色 */
+    body.theme-dark { --bg:#0f172a; --card:#1e293b; --border:#334155; --text:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; --pass:#4ade80; --pass-bg:#052e16; --fail:#f87171; --fail-bg:#450a0a; --warn:#fbbf24; --warn-bg:#422006; }
+    body.theme-dark .topbar { background: linear-gradient(120deg,#020617,#1e3a8a,#0ea5e9); }
+    body.theme-dark .log-box { background:#020617; color:#a7f3d0; }
+    body.theme-dark tr.row-fail td { background:#2a1215; }
+    body.theme-dark tr.row-ignored td { background:#1e293b !important; color:#64748b !important; }
+    body.theme-warm { --bg:#fdf6f0; --card:#fffdf9; --border:#eaded3; --text:#3d2c1e; --muted:#8a7465; --accent:#c2410c; --pass:#15803d; --pass-bg:#dcfce7; --fail:#b91c1c; --fail-bg:#fee2e2; --warn:#b45309; --warn-bg:#fef3c7; }
+    body.theme-warm .topbar { background: linear-gradient(120deg,#7c2d12,#c2410c,#ea580c); }
+    body.theme-forest { --bg:#f0f7f1; --card:#ffffff; --border:#d5e6d9; --text:#14301f; --muted:#5f7a68; --accent:#15803d; --pass:#16a34a; --pass-bg:#dcfce7; --fail:#dc2626; --fail-bg:#fee2e2; --warn:#ca8a04; --warn-bg:#fef9c3; }
+    body.theme-forest .topbar { background: linear-gradient(120deg,#052e16,#15803d,#22c55e); }
+    .top-select {
+      background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.3); color: #fff;
+      border-radius: 8px; padding: 5px 8px; font-size: 12px; cursor: pointer; outline: none;
+    }
+    .top-select option { color: #111827; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-left">
+        <div class="topbar-title" id="appTitle"></div>
+        <div class="topbar-sub" id="appSub"></div>
+      </div>
+      <div class="topbar-right">
+        <span class="env-badge" id="envBadge"></span>
+        <select class="top-select" id="themeSelect" title="风格配色"></select>
+        <select class="top-select" id="langSelect" title="语言">
+          <option value="zh-CN">简体中文</option>
+          <option value="zh-HK">繁體中文（香港）</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <div class="page">
+    <section class="summary" id="summary"></section>
+
+    <div class="filters" id="filterChips"></div>
+
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="搜索 字段 / XPath / 期望值 / 实际值 / Ctx / 信息…">
+    </div>
+
+    <main class="layout">
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-head"><span id="sidebarTitle">比较 item 列表</span><span class="count" id="itemCount">0</span></div>
+        <div class="sidebar-filters">
+          <div class="search-wrap">
+            <input type="search" id="itemSearch" placeholder="搜索 item id / 报告日期 / 平台 / 产品…">
+            <button class="search-clear" id="itemSearchClear" title="清除">✕</button>
+          </div>
+          <div class="search-wrap">
+            <input type="text" id="reportDateFilter" placeholder="YYYY-mm-dd" inputmode="numeric" maxlength="10" title="按报告日期筛选（YYYY-mm-dd）">
+            <input type="date" id="reportDatePickerHelper" tabindex="-1" aria-hidden="true">
+            <button class="search-clear" id="reportDateClear" title="清除日期">✕</button>
+            <button class="cal-btn" id="reportDateCal" title="选择日期">📅</button>
+          </div>
+          <select id="itemFilter">
+            <option value="ALL">全部状态</option>
+            <option value="PASSED">全部通过</option>
+            <option value="FAILED">存在失败</option>
+            <option value="WARN">存在警告</option>
+          </select>
+          <button class="side-multi" id="platformFilterBtn" data-field="itemPlatforms">平台 ▾</button>
+          <button class="side-multi" id="productFilterBtn" data-field="itemProducts">产品 ▾</button>
+        </div>
+        <div class="sidebar-chips" id="sidebarChips"></div>
+        <div class="sidebar-list" id="sidebarList"></div>
+        <div class="sidebar-pager" id="sidebarPager"></div>
+      </aside>
+      <section class="detail">
+        <div class="detail-head">
+          <div class="item-bar">
+            <h2 id="itemMeta"></h2>
+            <div class="meta-line" id="reportMeta"></div>
+          </div>
+          <button class="collapse-toggle" id="reportInfoToggle">报告信息 <span class="chev">▾</span></button>
+          <div class="report-info" id="reportInfo" style="display:none">
+            <div class="channels" id="channelMeta"></div>
+            <div class="files" id="filesPanel"></div>
+            <div class="task-note" id="taskNote"></div>
+          </div>
+          <div class="tabs" id="tabs"></div>
+          <div class="channel-tabs" id="channelTabs"></div>
+        </div>
+        <div class="content" id="content"></div>
+      </section>
+    </main>
+
+    <p class="footer-note">示例数据为内置生成器产出，可替换为真实比对结果 JSON。</p>
+  </div>
+
+  <script>
+    /* ============================================================
+     * 数据模型说明
+     * item (tradeId) -> 报告渠道 (HKTR/JSFA/CFTC)
+     *   -> 来源渠道 (A/B, 各有一套字段映射)
+     *     -> 字段比较结果 { f, xpath, type, ctx, eo, ao, result, note, prints }
+     * item 级别: reportDate / generatedAt / overviewLogs
+     * 报告渠道级别: files / warnings[] / errors[] / uncompared[] / logs[]
+     * ============================================================ */
+
+    const TYPE_META = {
+      platformAssertion: { label: '平台断言', cls: 'tp-platform' },
+      productAssertion:  { label: '产品断言', cls: 'tp-product' },
+      contextAssertion:  { label: '上下文断言', cls: 'tp-context' },
+    };
+
+    const CHANNELS = [
+      { name: 'HKTR', desc: '香港交易资料储存库' },
+      { name: 'JSFA', desc: '日本金融厅' },
+      { name: 'CFTC', desc: '美国商品期货交易委员会' },
+    ];
+
+    // 整份报告的运行环境（所有 item 同属该环境）
+    const ENV = 'OTCXXX';
+    // 本次比较任务的说明文本（多行）
+    const TASK_NOTE = '本次比较任务说明：\n1. 校验多渠道来源数据与监管报送数据的一致性。\n2. 验证配置驱动映射（Excel）与命中上下文逻辑。\n3. 回归测试多行字段与特殊字符的展示效果。';
+
+    // 每个报告渠道的字段定义: [字段, XPath, 断言类型, 值类型]
+    const FIELD_DEFS = {
+      HKTR: [
+        ['tradeId',      '/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId',          'contextAssertion', 'id'],
+        ['reportId',     '/HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId',        'contextAssertion', 'id'],
+        ['product',      '/HKTR/Report/Product/ProductDetails/ProductIdentifier',               'productAssertion',  'product'],
+        ['notional',     '/HKTR/Report/Notional/AmountDetails/NotionalValue',                   'productAssertion',  'num'],
+        ['currency',     '/HKTR/Report/Notional/AmountDetails/CurrencyCode',                    'productAssertion',  'code'],
+        ['tradeDate',    '/HKTR/Report/Header/TradeDetails/TradeDate',                          'contextAssertion', 'date'],
+        ['maturityDate', '/HKTR/Report/Header/TradeDetails/MaturityDate',                       'contextAssertion', 'date'],
+        ['counterparty', '/HKTR/Report/Counterparty/PartyDetails/PartyName',                    'contextAssertion', 'text'],
+        ['platform',     '/HKTR/Report/Execution/PlatformDetails/PlatformIdentifier',           'platformAssertion', 'text'],
+        ['venue',        '/HKTR/Report/Execution/VenueDetails/VenueIdentifier',                 'platformAssertion', 'text'],
+        ['price',        '/HKTR/Report/Pricing/PriceDetails/PriceValue',                        'productAssertion',  'num'],
+        ['quantity',     '/HKTR/Report/Pricing/QuantityDetails/QuantityValue',                  'productAssertion',  'num'],
+        ['remarks',      '/HKTR/Report/Header/AdditionalInformation/Remarks',                   'contextAssertion', 'multi'],
+      ],
+      JSFA: [
+        ['tradeId',        '/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId',     'contextAssertion', 'id'],
+        ['reportId',       '/JSFA/Report/Header/ReportDetails/ReportIdentifier/ReportId',        'contextAssertion', 'id'],
+        ['product',        '/JSFA/Report/Product/ProductDetails/ProductIdentifier',              'productAssertion',  'product'],
+        ['notional',       '/JSFA/Report/Notional/AmountDetails/NotionalValue',                  'productAssertion',  'num'],
+        ['currency',       '/JSFA/Report/Notional/AmountDetails/CurrencyCode',                   'productAssertion',  'code'],
+        ['tradeDate',      '/JSFA/Report/Header/TransactionDetails/TradeDate',                   'contextAssertion', 'date'],
+        ['settlementDate', '/JSFA/Report/Header/SettlementDetails/SettlementDate',               'contextAssertion', 'date'],
+        ['counterparty',   '/JSFA/Report/Counterparty/PartyDetails/PartyName',                   'contextAssertion', 'text'],
+        ['platform',       '/JSFA/Report/Execution/PlatformDetails/PlatformIdentifier',          'platformAssertion', 'text'],
+        ['venue',          '/JSFA/Report/Execution/VenueDetails/VenueIdentifier',                'platformAssertion', 'text'],
+        ['price',          '/JSFA/Report/Pricing/PriceDetails/PriceValue',                       'productAssertion',  'num'],
+        ['quantity',       '/JSFA/Report/Pricing/QuantityDetails/QuantityValue',                 'productAssertion',  'num'],
+        ['remarks',        '/JSFA/Report/Header/AdditionalInformation/Remarks',                  'contextAssertion', 'multi'],
+      ],
+      CFTC: [
+        ['tradeId',      '/CFTC/Data/Header/SwapDetails/UniqueSwapIdentifier',                   'contextAssertion', 'id'],
+        ['reportId',     '/CFTC/Data/Header/ReportDetails/ReportIdentifier/ReportId',            'contextAssertion', 'id'],
+        ['product',      '/CFTC/Data/Product/ProductDetails/ProductIdentifier',                  'productAssertion',  'product'],
+        ['notional',     '/CFTC/Data/Notional/AmountDetails/NotionalValue',                      'productAssertion',  'num'],
+        ['currency',     '/CFTC/Data/Notional/AmountDetails/CurrencyCode',                       'productAssertion',  'code'],
+        ['tradeDate',    '/CFTC/Data/Header/SwapDetails/ExecutionTimestamp',                     'contextAssertion', 'date'],
+        ['maturityDate', '/CFTC/Data/Header/SwapDetails/ExpirationDate',                         'contextAssertion', 'date'],
+        ['counterparty', '/CFTC/Data/Counterparty/PartyDetails/PartyName',                       'contextAssertion', 'text'],
+        ['platform',     '/CFTC/Data/Execution/PlatformDetails/PlatformIdentifier',              'platformAssertion', 'text'],
+        ['venue',        '/CFTC/Data/Execution/VenueDetails/VenueIdentifier',                    'platformAssertion', 'text'],
+        ['price',        '/CFTC/Data/Pricing/PriceDetails/PriceValue',                           'productAssertion',  'num'],
+        ['quantity',     '/CFTC/Data/Pricing/QuantityDetails/QuantityValue',                     'productAssertion',  'num'],
+        ['remarks',      '/CFTC/Data/Header/AdditionalInformation/Remarks',                      'contextAssertion', 'multi'],
+      ],
+    };
+
+    /* ---------- 示例数据生成器（真实数据可替换此部分） ---------- */
+    function mulberry32(a) {
+      return function () {
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        let t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    const MULTI_TEXT =
+      '第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id="P1"> & "quote" & \'single\'。</PartyRole>\n' +
+      '第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n' +
+      '第三行备注：配置驱动比较，命中上下文后取得字段对应关系。';
+
+    function genValue(kind, rng) {
+      if (kind === 'id') return 'TX-2024-' + String(100000 + Math.floor(rng() * 900000));
+      if (kind === 'num') return (100000 + rng() * 9900000).toFixed(2);
+      if (kind === 'date') {
+        const d = new Date(Date.UTC(2024, 0, 1) + Math.floor(rng() * 364) * 86400000);
+        return d.toISOString().slice(0, 10);
+      }
+      if (kind === 'code') return ['USD', 'CNY', 'HKD', 'JPY', 'EUR'][Math.floor(rng() * 5)];
+      if (kind === 'product') return ['IRS', 'CDS', 'FXS', 'SWAP', 'FORWARD'][Math.floor(rng() * 5)];
+      if (kind === 'text') {
+        const roll = rng();
+        if (roll < 0.08) return '';
+        if (roll < 0.16) return '   ';
+        if (roll < 0.24) return 'ABC\u200BBank';
+        return ['ABC Bank', 'Citi Group', 'HSBC', 'Nomura', 'Goldman Sachs'][Math.floor(rng() * 5)];
+      }
+      if (kind === 'multi') return MULTI_TEXT;
+      return 'VAL-' + Math.floor(rng() * 9999);
+    }
+
+    function mutateValue(v, kind, rng) {
+      if (kind === 'num') {
+        const n = parseFloat(v);
+        const delta = (rng() < 0.5 ? -1 : 1) * (0.01 + Math.floor(rng() * 99));
+        return (n + delta).toFixed(2);
+      }
+      if (kind === 'date') {
+        const d = new Date(v);
+        d.setUTCDate(d.getUTCDate() + 1 + Math.floor(rng() * 9));
+        return d.toISOString().slice(0, 10);
+      }
+      if (kind === 'code') { const codes = ['USD', 'CNY', 'HKD', 'JPY', 'EUR']; return codes.find(c => c !== v) || 'GBP'; }
+      if (kind === 'product') { const ps = ['IRS', 'CDS', 'FXS', 'SWAP', 'FORWARD']; return ps.find(p => p !== v) || 'OPTION'; }
+      if (kind === 'id') return v.slice(0, -1) + String(Math.floor(rng() * 10));
+      if (kind === 'multi') return v.replace('已确认条款', '存在差异条款') + '\n[差异] 新增差异行：内容不一致。';
+      const texts = ['XYZ Bank', 'Deutsche Bank', 'Mizuho', 'BNP Paribas', 'Barclays'];
+      return texts.find(t => t !== v) || 'Other Bank';
+    }
+
+    function noteFor(kind) {
+      if (kind === 'num') return '数值差异';
+      if (kind === 'date') return '日期差异';
+      if (kind === 'code' || kind === 'product') return '码值差异';
+      if (kind === 'multi') return '内容差异';
+      return '值不一致';
+    }
+
+    const WARN_TEXTS = [
+      '配置映射缺失：CSV 字段未找到对应 XPath，已跳过',
+      '字段格式与映射配置不一致，使用默认校验规则',
+      '日期格式异常，已自动规范化处理',
+      '空值处理：期望值为空，按容错策略判定通过',
+      '关键字段重复，仅保留首条记录',
+    ];
+    const ERR_TEXTS = [
+      'XPath 解析失败：节点不存在',
+      '类型转换异常：无法转换为数值',
+      '映射配置错误：XPath 语法非法',
+      '运行时异常：字段比较过程被中断',
+      '日志缓冲达到上限，部分日志被丢弃',
+    ];
+
+    function buildMessages(level, rng, channelName, fieldsDef, platform, product) {
+      const count = 2 + Math.floor(rng() * 4);
+      const pool = level === 'warning' ? WARN_TEXTS : ERR_TEXTS;
+      const keys = Object.keys(TYPE_META);
+      const levelPool = level === 'warning' ? ['WARN', 'INFO', 'NOTICE', 'DEBUG'] : ['ERROR', 'FATAL', 'SEVERE'];
+      const msgs = [];
+      for (let i = 0; i < count; i++) {
+        const base = pool[Math.floor(rng() * pool.length)];
+        const text = rng() < 0.2
+          ? base + '\n详情：该字段的映射配置可能缺失或与当前 context 不匹配。\n建议检查映射表对应 sheet 的配置，确认 XPath 与命中的 context 是否正确，并核对字段类型。'
+          : base;
+        msgs.push({
+          channel: channelName,
+          platform: platform,
+          product: product,
+          type: keys[Math.floor(rng() * keys.length)],
+          level: levelPool[Math.floor(rng() * levelPool.length)],
+          text: text,
+          field: rng() < 0.8 ? fieldsDef[Math.floor(rng() * fieldsDef.length)][0] : '',
+        });
+      }
+      return msgs;
+    }
+
+    function buildChannelUncompared(channelName, rng, fieldsDef, platform, product) {
+      const list = [];
+      const n = Math.floor(rng() * 2);
+      const ctxPool = [channelName.toLowerCase() + '.ctx.default', channelName.toLowerCase() + '.ctx.v2', channelName.toLowerCase() + '.ctx.v3'];
+      for (let i = 0; i < n; i++) {
+        const d = fieldsDef[Math.floor(rng() * fieldsDef.length)];
+        const note = rng() < 0.35
+          ? '未在映射配置中匹配到对应 CSV 字段\n详情：Excel 映射配置中未找到与该 XPath 对应的条目，可能因 context 定义变化导致。\n请检查映射表并确认该 XPath 是否仍需要参与比较。'
+          : '未在映射配置中匹配到对应 CSV 字段';
+        list.push({ channel: channelName, xpath: d[1], note: note, platform: platform, product: product, ctx: ctxPool[Math.floor(rng() * ctxPool.length)] });
+      }
+      return list;
+    }
+
+    function buildChannelLogs(ch, tradeId) {
+      const t = '2024-08-14 10:23:0';
+      return [
+        t + '0.200 INFO  [' + ch.name + '] 读取报送文件 ' + ch.files.ao.join(', '),
+        t + '0.300 INFO  [' + ch.name + '] 应用映射配置 ' + ch.files.excel.file + ' [sheet: ' + ch.files.excel.sheet + ']',
+        t + '0.400 INFO  [' + ch.name + '] 完成字段比较，渠道结果已生成',
+      ];
+    }
+
+    function buildPrints(f, x, ctx, chName, srcName, eo, ao, result, note) {
+      return [
+        '[INFO] 比较字段 ' + f + '（报告渠道 ' + chName + ' / ' + srcName + '）',
+        '[INFO] XPath=' + x + '，命中Ctx=' + (Array.isArray(ctx) ? ctx.join(',') : ctx),
+        '[INFO] EO=' + eo + '，AO=' + ao + ' → ' + result + (note ? '（' + note + '）' : ''),
+      ];
+    }
+
+    function buildChannelData(ch, tradeId, reportDate, rng, failRate, platform, product) {
+      const fieldsDef = FIELD_DEFS[ch.name];
+      const ctxPool = [
+        ch.name.toLowerCase() + '.ctx.default',
+        ch.name.toLowerCase() + '.ctx.v2',
+        ch.name.toLowerCase() + '.ctx.v3',
+        ch.name.toLowerCase() + '.ctx.extended.production.region.east.v2024.latest',
+      ];
+      const sources = [1, 2].map(sn => {
+        const fields = fieldsDef.map(([f, x, t, k], idx) => {
+          const eo = genValue(k, rng);
+          const failed = rng() < failRate;
+          const ao = failed ? mutateValue(eo, k, rng) : eo;
+          const ctx = [];
+          const ctxCount = rng() < 0.3 ? 2 : 1;
+          for (let ci = 0; ci < ctxCount; ci++) {
+            const c = ctxPool[Math.floor(rng() * ctxPool.length)];
+            if (ctx.indexOf(c) === -1) ctx.push(c);
+          }
+          const result = failed ? 'FAILED' : 'PASSED';
+          let note = failed ? noteFor(k) : '';
+          if (note && rng() < 0.3) note += '\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。';
+          return {
+            id: ch.name + '-' + sn + '-' + idx,
+            f: f, x: x, t: t, k: k, ctx: ctx,
+            eo: eo, ao: ao,
+            result: result, note: note,
+            prints: buildPrints(f, x, ctx, ch.name, '来源渠道 ' + (sn === 1 ? 'A' : 'B'), eo, ao, result, note),
+          };
+        });
+        return { name: '来源渠道 ' + (sn === 1 ? 'A' : 'B'), fields: fields };
+      });
+
+      const files = {
+        eo: [ch.name.toLowerCase() + '_srcA_' + tradeId + '.csv', ch.name.toLowerCase() + '_srcB_' + tradeId + '.csv'],
+        ao: [ch.name.toUpperCase() + '_' + tradeId + '_001.xml', ch.name.toUpperCase() + '_' + tradeId + '_002.xml'],
+        excel: { file: 'mapping.xlsx', sheet: ch.name },
+      };
+
+      return {
+        name: ch.name, desc: ch.desc, files: files, sources: sources,
+        warnings: buildMessages('warning', rng, ch.name, fieldsDef, platform, product),
+        errors: buildMessages('error', rng, ch.name, fieldsDef, platform, product),
+        uncompared: buildChannelUncompared(ch.name, rng, fieldsDef, platform, product),
+        logs: buildChannelLogs({ name: ch.name, files: files }, tradeId),
+      };
+    }
+
+    function buildSkippedItems(reportDate, rng) {
+      const list = [];
+      const n = 1 + Math.floor(rng() * 3);
+      const chNames = ['HKTR', 'JSFA', 'CFTC'];
+      for (let i = 0; i < n; i++) {
+        const withChannel = rng() < 0.55;
+        const ch = withChannel ? chNames[Math.floor(rng() * chNames.length)] : 'ALL';
+        const itemId = 'T-' + reportDate.replace(/-/g, '') + '-0' + (91 + i);
+        let reason;
+        if (ch === 'ALL') reason = '未在任一报告渠道中找到对应记录，该 item 未能参与比较。';
+        else reason = '在 ' + ch + ' 渠道中未找到该 item 的对应记录，已跳过该渠道的比较。';
+        if (rng() < 0.35) reason += '\n详情：该 item 在来源 CSV 与报送 XML 中均未出现对应记录，可能因数据采集或报送延迟导致。\n建议核对上游系统是否已产生该 item 的数据。';
+        list.push({ itemId: itemId, channel: ch, reason: reason });
+      }
+      return list;
+    }
+
+    function buildOverviewLogs(tradeId, reportDate, channels) {
+      const lines = [];
+      lines.push('2024-08-14 10:23:00.100 INFO  开始比较 item=' + tradeId + '，报告日期=' + reportDate);
+      lines.push('2024-08-14 10:23:00.120 INFO  加载映射配置 mapping.xlsx（' + channels.length + ' 个报告渠道）');
+      lines.push('2024-08-14 10:23:00.140 INFO  初始化逐渠道执行器（HKTR / JSFA / CFTC）');
+      for (let i = 0; i < 60; i++) {
+        const ms = String(100 + i * 7).padStart(3, '0').slice(-3);
+        const ch = channels[i % channels.length];
+        lines.push('2024-08-14 10:23:' + String(i).padStart(2, '0') + '.' + ms + ' INFO  [' + ch.name + '] 执行字段比较步骤 ' + (i + 1) + '：读取 ' + ch.files.eo[0] + ' 与 ' + ch.files.ao[0] + '，逐字段校验映射关系。');
+      }
+      lines.push('2024-08-14 10:24:00.000 INFO  比较完成，结果已生成');
+      return lines;
+    }
+
+    function buildDataset() {
+      const rng = mulberry32(20240814);
+      const items = [];
+      const platforms = ['OTC-PLATFORM-A', 'OTC-PLATFORM-B', 'OTC-PLATFORM-C'];
+      const products = ['IRS', 'CDS', 'FX'];
+      for (let i = 0; i < 18; i++) {
+        const tradeId = 'T-20240814-' + String(1001 + i);
+        const reportDate = '2024-08-' + String(10 + Math.floor(i / 3)).padStart(2, '0');
+        const generatedAt = '2024-08-14 10:23:0' + (i % 10) + '.000';
+        const failRate = i === 0 ? 0 : (i === 2 ? 0.85 : 0.18);
+        const platform = platforms[i % platforms.length];
+        const product = products[i % products.length];
+        const channels = CHANNELS.map(ch => buildChannelData(ch, tradeId, reportDate, rng, failRate, platform, product));
+        items.push({
+          tradeId: tradeId,
+          reportDate: reportDate,
+          generatedAt: generatedAt,
+          platform: platform,
+          product: product,
+          channels: channels,
+          enabledChannels: (i % 3 === 0) ? ['HKTR', 'JSFA', 'CFTC'] : (i % 3 === 1 ? ['HKTR', 'JSFA'] : ['HKTR', 'CFTC']),
+          skippedItems: buildSkippedItems(reportDate, rng),
+          overviewLogs: buildOverviewLogs(tradeId, reportDate, channels),
+        });
+      }
+      return items;
+    }
+
+    /* ---------- 数据源与配置（外部 JSON 输入） ---------- */
+    const DATA_URL = 'deepseek-validation-data.json';
+    const IGNORE_CONFIG_URL = 'ignore-config-by-platform.json';
+    let DATA = { items: [] };
+
+    async function loadData() {
+      try {
+        const res = await fetch(DATA_URL, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const json = await res.json();
+        if (json && Array.isArray(json.items) && json.items.length) return json;
+        throw new Error('数据格式无效');
+      } catch (e) {
+        console.warn('[data] 外部 JSON 加载失败，回退到内置示例数据：', e);
+        return { items: buildDataset() };
+      }
+    }
+    const COLUMNS = [
+      { key: 'channel', label: 'colChannel', sortable: true,  filterable: 'select' },
+      { key: 'source',  label: 'colSource',  sortable: true,  filterable: 'select' },
+      { key: 'f',       label: 'colField',   sortable: true,  filterable: 'text' },
+      { key: 'x',       label: 'colXPath',   sortable: true,  filterable: 'text' },
+      { key: 't',       label: 'colType',    sortable: true,  filterable: 'select' },
+      { key: 'ctx',     label: 'colCtx',     sortable: true,  filterable: 'text' },
+      { key: 'eo',      label: 'colEO',      sortable: false, filterable: 'text' },
+      { key: 'ao',      label: 'colAO',      sortable: false, filterable: 'text' },
+      { key: 'result',  label: 'colResult',  sortable: true,  filterable: 'select' },
+      { key: 'note',    label: 'colNote',    sortable: true,  filterable: 'text' },
+    ];
+    const DEFAULT_COLUMNS = { channel: true, source: true, f: true, x: false, t: false, ctx: true, eo: true, ao: true, result: true, note: false };
+
+    let state = null;
+    function initState() {
+      state = {
+        itemId: DATA.items[0].tradeId,
+        tab: 'fields',
+        channel: 'ALL',
+        search: '',
+        colFilter: { channel: 'ALL', source: 'ALL', f: '', x: '', t: 'ALL', ctx: '', eo: '', ao: '', result: 'ALL', note: '' },
+        sort: { key: '', dir: 1 },
+        page: 1,
+        pageSize: 20,
+        columns: Object.assign({}, DEFAULT_COLUMNS),
+        itemSearch: '',
+        itemFilter: 'ALL',
+        itemPlatforms: [],
+        itemProducts: [],
+        sidebarPage: 1,
+        sidebarPageSize: 8,
+        specialFilter: { eo: 'ALL', ao: 'ALL' },
+        msgSort: { key: '', dir: 1 },
+        msgFilter: {},
+        reportDateFilter: (function () { const ds = DATA.items.map(function (i) { return i.reportDate; }).sort(); return ds.length ? ds[ds.length - 1] : ''; })(),
+      };
+    }
+    let ACTIVE_FILTERS = [];
+    let SIDEBAR_FILTERS = [];
+    let POPOVER = { el: null, cleanup: null };
+
+    /* ---------- 国际化与主题 ---------- */
+    const I18N = {
+      'zh-CN': {
+        appTitle: '金融监管报告比较结果', appSub: '多渠道来源数据（CSV）与监管报送数据（XML） · 逐渠道 / 逐行 / 逐字段比对', env: '运行环境：',
+        fieldsTotal: '字段总数', passed: '通过', failed: '失败', passRate: '通过率', warnings: '警告', errors: '错误',
+        tipFields: '该 item 在当前作用域（全部或指定报告渠道）下参与比较的字段总数。', tipPassed: '比较结果为 PASSED 的字段数量。', tipFailed: '比较结果为 FAILED 的字段数量。', tipRate: 'PASSED 字段占字段总数的百分比。', tipWarnings: '比较过程中识别的警告信息数量（未忽略/已忽略）。', tipErrors: '比较过程中识别的错误信息数量。',
+        tabFields: '字段比较', tabWarnings: '警告', tabErrors: '错误', tabUncompared: '未比较 XPath', tabUncomparedItems: '未比较 Item', tabLogs: '完整日志',
+        tipUncompared: '未在映射配置中匹配到 CSV 字段、因而未参与比较的 XPath。', tipUncomparedItems: '属于该报告日期但未能参与比较的 item id 及其原因。',
+        all: '全部', colSelector: '列选择',
+        colChannel: '报告渠道', colSource: '来源渠道', colField: '字段', colXPath: 'XPath', colType: '类型', colCtx: '命中Ctx', colEO: '期望值 (EO)', colAO: '实际值 (AO)', colResult: '结果', colNote: '说明',
+        colLevel: '级别', colText: '信息', colIgnored: '操作', colRelField: '关联字段', colItemId: 'Item ID', colReason: '未比较原因',
+        sidebarTitle: '比较 item 列表', sidebarSearch: '搜索 item id / 报告日期 / 平台 / 产品…', sidebarStatusAll: '全部状态', sidebarStatusPassed: '全部通过', sidebarStatusFailed: '存在失败', sidebarStatusWarn: '存在警告', sidebarPlatform: '平台', sidebarProduct: '产品', sidebarDate: 'YYYY-mm-dd', sidebarEmpty: '无匹配 item', sidebarReportDate: '报告日期', sidebarUnconfirmedWarnings: '未确认警告', sidebarFields: '字段', sidebarFailures: '失败', sidebarPassRate: '通过',
+        toolbarSearch: '搜索 字段 / XPath / 期望值 / 实际值 / Ctx / 信息…',
+        export: '导出忽略配置', ignore: '忽略', unignore: '取消忽略', reportInfo: '报告信息',
+        pageOf: '页', metaFields: '条字段比较记录（已应用当前过滤条件）', metaWarnings: '警告', metaErrors: '错误', metaUnignored: '未忽略', metaIgnored: '已忽略', metaInfo: '信息（', metaClose: '）',
+        metaUncomparedXpath: '个 XPath 未参与比较（', metaUncomparedItems: '个 item 未参与比较（', metaLogs: '行日志（',
+        scopeItem: 'item 级', scopeChannel: '渠道',
+        disabledTitle1: '报告渠道「', disabledTitle2: '」未启用', disabledDesc: '在当前比较任务中未启用（可能未在任务参数中指定，或程序内部配置为 disabled），因此不参与本次比较，也没有对应的结果列表。',
+        bulkTitle: '批量忽略操作确认', bulkDesc1: '当前过滤结果集共 ', bulkDesc2: '（未忽略 ', bulkDesc3: ' / 已忽略 ', bulkDesc4: '）。请选择要执行的操作：', bulkIgnoreAll: '忽略全部（', bulkUnignoreAll: '取消忽略全部（', bulkCount: ' 条）', bulkUnitWarn: '条警告', bulkUnitXpath: '个 XPath',
+        modalTitle: '字段比较详情', modalChannel: '报告渠道', modalSource: '来源渠道', modalField: '字段', modalXPath: 'XPath', modalType: '类型', modalCtx: '命中Ctx', modalResult: '结果', modalEO: '期望值 (EO)', modalAO: '实际值 (AO)', modalPrints: '相关打印信息',
+        popColTitle: '选择要显示的列', specialEmpty: '空值', specialBlank: '空白', specialSpecial: '含特殊字符',
+        typePlatform: '平台断言', typeProduct: '产品断言', typeContext: '上下文断言',
+        channelDescHKTR: '香港交易资料储存库', channelDescJSFA: '日本金融厅', channelDescCFTC: '美国商品期货交易委员会',
+        sourceA: '来源渠道 A', sourceB: '来源渠道 B',
+        filesTitle: '输入 / 配置文件（EO=来源 CSV，AO=报送 XML，Excel=映射配置）', filesEO: 'EO (CSV): ', filesAO: 'AO (XML): ', filesExcel: 'Excel: ',
+        taskNoteTitle: '任务说明', statusChipLabel: '状态: ', platformChip: '平台: ', productChip: '产品: ',
+        themeLight: '浅色', themeDark: '深色', themeWarm: '暖色', themeForest: '森林', themeLabel: '风格配色', langLabel: '语言',
+        reportDateLabel: '报告日期：', generatedAtLabel: '生成时间：', channelMetaLabel: '报告渠道：',
+      },
+      'zh-HK': {
+        appTitle: '金融監管報告比較結果', appSub: '多渠道來源數據（CSV）與監管報送數據（XML） · 逐渠道 / 逐行 / 逐字段比對', env: '運行環境：',
+        fieldsTotal: '字段總數', passed: '通過', failed: '失敗', passRate: '通過率', warnings: '警告', errors: '錯誤',
+        tipFields: '該 item 在當前作用域（全部或指定報告渠道）下參與比較的字段總數。', tipPassed: '比較結果為 PASSED 的字段數量。', tipFailed: '比較結果為 FAILED 的字段數量。', tipRate: 'PASSED 字段佔字段總數的百分比。', tipWarnings: '比較過程中識別的警告信息數量（未忽略/已忽略）。', tipErrors: '比較過程中識別的錯誤信息數量。',
+        tabFields: '字段比較', tabWarnings: '警告', tabErrors: '錯誤', tabUncompared: '未比較 XPath', tabUncomparedItems: '未比較 Item', tabLogs: '完整日誌',
+        tipUncompared: '未在映射配置中匹配到 CSV 字段、因而未參與比較的 XPath。', tipUncomparedItems: '屬於該報告日期但未能參與比較的 item id 及其原因。',
+        all: '全部', colSelector: '列選擇',
+        colChannel: '報告渠道', colSource: '來源渠道', colField: '字段', colXPath: 'XPath', colType: '類型', colCtx: '命中Ctx', colEO: '期望值 (EO)', colAO: '實際值 (AO)', colResult: '結果', colNote: '說明',
+        colLevel: '級別', colText: '信息', colIgnored: '操作', colRelField: '關聯字段', colItemId: 'Item ID', colReason: '未比較原因',
+        sidebarTitle: '比較 item 列表', sidebarSearch: '搜索 item id / 報告日期 / 平台 / 產品…', sidebarStatusAll: '全部狀態', sidebarStatusPassed: '全部通過', sidebarStatusFailed: '存在失敗', sidebarStatusWarn: '存在警告', sidebarPlatform: '平台', sidebarProduct: '產品', sidebarDate: 'YYYY-mm-dd', sidebarEmpty: '無匹配 item', sidebarReportDate: '報告日期', sidebarUnconfirmedWarnings: '未確認警告', sidebarFields: '字段', sidebarFailures: '失敗', sidebarPassRate: '通過',
+        toolbarSearch: '搜索 字段 / XPath / 期望值 / 實際值 / Ctx / 信息…',
+        export: '導出忽略配置', ignore: '忽略', unignore: '取消忽略', reportInfo: '報告信息',
+        pageOf: '頁', metaFields: '條字段比較記錄（已應用當前過濾條件）', metaWarnings: '警告', metaErrors: '錯誤', metaUnignored: '未忽略', metaIgnored: '已忽略', metaInfo: '信息（', metaClose: '）',
+        metaUncomparedXpath: '個 XPath 未參與比較（', metaUncomparedItems: '個 item 未參與比較（', metaLogs: '行日誌（',
+        scopeItem: 'item 級', scopeChannel: '渠道',
+        disabledTitle1: '報告渠道「', disabledTitle2: '」未啟用', disabledDesc: '在當前比較任務中未啟用（可能未在任務參數中指定，或程序內部配置為 disabled），因此不參與本次比較，也沒有對應的結果列表。',
+        bulkTitle: '批量忽略操作確認', bulkDesc1: '當前過濾結果集共 ', bulkDesc2: '（未忽略 ', bulkDesc3: ' / 已忽略 ', bulkDesc4: '）。請選擇要執行的操作：', bulkIgnoreAll: '忽略全部（', bulkUnignoreAll: '取消忽略全部（', bulkCount: ' 條）', bulkUnitWarn: '條警告', bulkUnitXpath: '個 XPath',
+        modalTitle: '字段比較詳情', modalChannel: '報告渠道', modalSource: '來源渠道', modalField: '字段', modalXPath: 'XPath', modalType: '類型', modalCtx: '命中Ctx', modalResult: '結果', modalEO: '期望值 (EO)', modalAO: '實際值 (AO)', modalPrints: '相關打印信息',
+        popColTitle: '選擇要顯示的列', specialEmpty: '空值', specialBlank: '空白', specialSpecial: '含特殊字符',
+        typePlatform: '平台斷言', typeProduct: '產品斷言', typeContext: '上下文斷言',
+        channelDescHKTR: '香港交易資料儲存庫', channelDescJSFA: '日本金融廳', channelDescCFTC: '美國商品期貨交易委員會',
+        sourceA: '來源渠道 A', sourceB: '來源渠道 B',
+        filesTitle: '輸入 / 配置文件（EO=來源 CSV，AO=報送 XML，Excel=映射配置）', filesEO: 'EO (CSV): ', filesAO: 'AO (XML): ', filesExcel: 'Excel: ',
+        taskNoteTitle: '任務說明', statusChipLabel: '狀態: ', platformChip: '平台: ', productChip: '產品: ',
+        themeLight: '淺色', themeDark: '深色', themeWarm: '暖色', themeForest: '森林', themeLabel: '風格配色', langLabel: '語言',
+        reportDateLabel: '報告日期：', generatedAtLabel: '生成時間：', channelMetaLabel: '報告渠道：',
+      },
+      'en': {
+        appTitle: 'Regulatory Report Comparison Results', appSub: 'Multi-channel source data (CSV) vs. regulatory submission data (XML) · channel / row / field comparison', env: 'Environment: ',
+        fieldsTotal: 'Total Fields', passed: 'Passed', failed: 'Failed', passRate: 'Pass Rate', warnings: 'Warnings', errors: 'Errors',
+        tipFields: 'Total number of fields compared for this item under the current scope (all or a specific report channel).', tipPassed: 'Number of fields with PASSED result.', tipFailed: 'Number of fields with FAILED result.', tipRate: 'Percentage of PASSED fields over total fields.', tipWarnings: 'Number of warning messages identified during comparison (unignored/ignored).', tipErrors: 'Number of error messages identified during comparison.',
+        tabFields: 'Fields', tabWarnings: 'Warnings', tabErrors: 'Errors', tabUncompared: 'Uncompared XPath', tabUncomparedItems: 'Uncompared Items', tabLogs: 'Full Log',
+        tipUncompared: 'XPaths that were not matched to a CSV field in the mapping configuration and therefore not compared.', tipUncomparedItems: 'Item IDs that belong to this report date but did not participate in comparison, with reasons.',
+        all: 'All', colSelector: 'Columns',
+        colChannel: 'Report Channel', colSource: 'Source Channel', colField: 'Field', colXPath: 'XPath', colType: 'Type', colCtx: 'Ctx', colEO: 'Expected (EO)', colAO: 'Actual (AO)', colResult: 'Result', colNote: 'Note',
+        colLevel: 'Level', colText: 'Message', colIgnored: 'Action', colRelField: 'Related Field', colItemId: 'Item ID', colReason: 'Reason',
+        sidebarTitle: 'Item List', sidebarSearch: 'Search item id / report date / platform / product…', sidebarStatusAll: 'All status', sidebarStatusPassed: 'All passed', sidebarStatusFailed: 'Has failures', sidebarStatusWarn: 'Has warnings', sidebarPlatform: 'Platform', sidebarProduct: 'Product', sidebarDate: 'YYYY-mm-dd', sidebarEmpty: 'No matching item', sidebarReportDate: 'Report date', sidebarUnconfirmedWarnings: 'unconfirmed warnings', sidebarFields: 'fields', sidebarFailures: 'failures', sidebarPassRate: 'passed',
+        toolbarSearch: 'Search field / XPath / expected / actual / Ctx / message…',
+        export: 'Export ignore config', ignore: 'Ignore', unignore: 'Unignore', reportInfo: 'Report Info',
+        pageOf: 'Page', metaFields: ' field comparison records (with current filters)', metaWarnings: 'warnings', metaErrors: 'errors', metaUnignored: 'unignored', metaIgnored: 'ignored', metaInfo: ' messages (', metaClose: ')',
+        metaUncomparedXpath: ' XPath(s) not compared (', metaUncomparedItems: ' item(s) not compared (', metaLogs: ' log line(s) (',
+        scopeItem: 'item level', scopeChannel: ' channel',
+        disabledTitle1: 'Report channel "', disabledTitle2: '" is disabled', disabledDesc: ' is not enabled in the current comparison task (either not specified in task parameters or configured as disabled), so it does not participate in this comparison and has no result list.',
+        bulkTitle: 'Confirm Bulk Ignore', bulkDesc1: 'The current filtered result set has ', bulkDesc2: ' (unignored ', bulkDesc3: ' / ignored ', bulkDesc4: '). Choose an action:', bulkIgnoreAll: 'Ignore all (', bulkUnignoreAll: 'Unignore all (', bulkCount: ' items)', bulkUnitWarn: 'warnings', bulkUnitXpath: 'XPaths',
+        modalTitle: 'Field Comparison Detail', modalChannel: 'Report Channel', modalSource: 'Source Channel', modalField: 'Field', modalXPath: 'XPath', modalType: 'Type', modalCtx: 'Ctx', modalResult: 'Result', modalEO: 'Expected (EO)', modalAO: 'Actual (AO)', modalPrints: 'Related Print Info',
+        popColTitle: 'Choose columns', specialEmpty: 'Empty', specialBlank: 'Blank', specialSpecial: 'Special chars',
+        typePlatform: 'Platform Assertion', typeProduct: 'Product Assertion', typeContext: 'Context Assertion',
+        channelDescHKTR: 'Hong Kong Trade Repository', channelDescJSFA: 'Japan FSA', channelDescCFTC: 'US CFTC',
+        sourceA: 'Source A', sourceB: 'Source B',
+        filesTitle: 'Input / Config files (EO=source CSV, AO=submission XML, Excel=mapping config)', filesEO: 'EO (CSV): ', filesAO: 'AO (XML): ', filesExcel: 'Excel: ',
+        taskNoteTitle: 'Task Note', statusChipLabel: 'Status: ', platformChip: 'Platform: ', productChip: 'Product: ',
+        themeLight: 'Light', themeDark: 'Dark', themeWarm: 'Warm', themeForest: 'Forest', themeLabel: 'Theme', langLabel: 'Language',
+        reportDateLabel: 'Report Date: ', generatedAtLabel: 'Generated At: ', channelMetaLabel: 'Report Channels: ',
+      },
+    };
+    const LANGS = [['zh-CN', '简体中文'], ['zh-HK', '繁體中文（香港）'], ['en', 'English']];
+    const THEMES = [['light', 'themeLight'], ['dark', 'themeDark'], ['warm', 'themeWarm'], ['forest', 'themeForest']];
+    let LANG = 'zh-CN';
+    let THEME = 'light';
+    function t(key) {
+      if (I18N[LANG] && I18N[LANG][key] != null) return I18N[LANG][key];
+      if (I18N['zh-CN'][key] != null) return I18N['zh-CN'][key];
+      return key;
+    }
+    function channelDesc(name) {
+      const map = { HKTR: 'channelDescHKTR', JSFA: 'channelDescJSFA', CFTC: 'channelDescCFTC' };
+      return t(map[name] || name);
+    }
+    function sourceName(name) {
+      return name === '来源渠道 B' ? t('sourceB') : t('sourceA');
+    }
+    function applyTheme(id) {
+      THEME = id || 'light';
+      document.body.classList.remove('theme-dark', 'theme-warm', 'theme-forest');
+      if (THEME !== 'light') document.body.classList.add('theme-' + THEME);
+    }
+    function applyStaticText() {
+      document.getElementById('appTitle').textContent = t('appTitle');
+      document.getElementById('appSub').textContent = t('appSub');
+      document.getElementById('envBadge').textContent = t('env') + ENV;
+      document.getElementById('search').placeholder = t('toolbarSearch');
+      document.getElementById('itemSearch').placeholder = t('sidebarSearch');
+      document.getElementById('reportDateFilter').placeholder = t('sidebarDate');
+      const itemFilter = document.getElementById('itemFilter');
+      itemFilter.options[0].text = t('sidebarStatusAll');
+      itemFilter.options[1].text = t('sidebarStatusPassed');
+      itemFilter.options[2].text = t('sidebarStatusFailed');
+      itemFilter.options[3].text = t('sidebarStatusWarn');
+      document.getElementById('platformFilterBtn').textContent = t('sidebarPlatform') + ' ▾';
+      document.getElementById('productFilterBtn').textContent = t('sidebarProduct') + ' ▾';
+      document.getElementById('reportInfoToggle').innerHTML = t('reportInfo') + ' <span class="chev">▾</span>';
+      document.getElementById('sidebarTitle').textContent = t('sidebarTitle');
+      document.getElementById('themeSelect').title = t('themeLabel');
+      document.getElementById('langSelect').title = t('langLabel');
+      const ts = document.getElementById('themeSelect');
+      ts.options.length = 0;
+      THEMES.forEach(function (th) { const o = document.createElement('option'); o.value = th[0]; o.textContent = t(th[1]); ts.appendChild(o); });
+      ts.value = THEME;
+      document.getElementById('langSelect').value = LANG;
+    }
+    function setLang(lang) { LANG = lang; applyStaticText(); render(); }
+
+    /* ---------- 警告忽略配置（动态存储，后续可改为 JSON 字段加载） ---------- */
+    const IGNORE_STORAGE_KEY = 'deepseekValidationIgnoreConfig.v1';
+    let IGNORE_CONFIG = {};
+    function groupedToFlat(grouped) {
+      const flat = {};
+      Object.keys(grouped || {}).forEach(function (platform) {
+        const g = grouped[platform];
+        if (!g || typeof g !== 'object') return;
+        (g.warnings || []).forEach(function (w) {
+          const key = JSON.stringify(['warn', w.channel || '', w.field || '', w.type || '', w.level || '', platform, w.product || '']);
+          flat[key] = true;
+        });
+        (g.uncomparedXpaths || []).forEach(function (u) {
+          const key = JSON.stringify(['xpath', u.xpath || '', u.channel || '', platform, u.product || '', u.ctx || '']);
+          flat[key] = true;
+        });
+      });
+      return flat;
+    }
+    async function loadIgnoreConfig() {
+      try {
+        const res = await fetch(IGNORE_CONFIG_URL, { cache: 'no-store' });
+        if (res.ok) {
+          const cfg = await res.json();
+          if (cfg && typeof cfg === 'object' && !Array.isArray(cfg)) {
+            const keys = Object.keys(cfg);
+            const isFlat = keys.every(function (k) { try { return Array.isArray(JSON.parse(k)); } catch (e) { return false; } });
+            IGNORE_CONFIG = isFlat ? cfg : groupedToFlat(cfg);
+            saveIgnoreConfig();
+            return;
+          }
+        }
+      } catch (e) {}
+      try { IGNORE_CONFIG = JSON.parse(localStorage.getItem(IGNORE_STORAGE_KEY) || '{}'); }
+      catch (e) { IGNORE_CONFIG = {}; }
+    }
+
+    function msgIgnoreKey(tab, m) {
+      if (tab === 'warnings') return JSON.stringify(['warn', m.channel, m.field || '', m.type, m.level, m.platform || '', m.product || '']);
+      if (tab === 'uncompared') return JSON.stringify(['xpath', m.xpath, m.channel, m.platform || '', m.product || '', m.ctx || '']);
+      return null;
+    }
+    function msgIsIgnored(tab, m) {
+      const k = msgIgnoreKey(tab, m);
+      return k ? !!IGNORE_CONFIG[k] : false;
+    }
+    function saveIgnoreConfig() {
+      try { localStorage.setItem(IGNORE_STORAGE_KEY, JSON.stringify(IGNORE_CONFIG)); } catch (e) {}
+    }
+    function toggleIgnoreByKey(key) {
+      if (IGNORE_CONFIG[key]) delete IGNORE_CONFIG[key];
+      else IGNORE_CONFIG[key] = true;
+      saveIgnoreConfig();
+      renderSummary(); renderTabs(); renderChannelTabs();
+      renderSidebar(); renderSidebarChips(); renderContent();
+    }
+    function exportIgnoreConfig() {
+      const grouped = {};
+      Object.keys(IGNORE_CONFIG).forEach(function (k) {
+        if (!IGNORE_CONFIG[k]) return;
+        let arr;
+        try { arr = JSON.parse(k); } catch (e) { return; }
+        let platform, entry;
+        if (arr[0] === 'warn') {
+          platform = arr[5] || 'UNKNOWN';
+          entry = { kind: 'warning', channel: arr[1], field: arr[2], type: arr[3], level: arr[4], product: arr[6] };
+        } else if (arr[0] === 'xpath') {
+          platform = arr[3] || 'UNKNOWN';
+          entry = { kind: 'uncomparedXpath', xpath: arr[1], channel: arr[2], product: arr[4], ctx: arr[5] };
+        } else return;
+        if (!grouped[platform]) grouped[platform] = { warnings: [], uncomparedXpaths: [] };
+        if (entry.kind === 'warning') grouped[platform].warnings.push(entry);
+        else grouped[platform].uncomparedXpaths.push(entry);
+      });
+      const blob = new Blob([JSON.stringify(grouped, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'ignore-config-by-platform.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function currentItem() {
+      return DATA.items.find(it => it.tradeId === state.itemId) || DATA.items[0];
+    }
+
+    function highlight(text, q) {
+      const s = esc(text);
+      const query = (q || '').trim();
+      if (!query) return s;
+      const lower = text.toLowerCase();
+      const ql = query.toLowerCase();
+      let out = '';
+      let i = 0;
+      while (i < text.length) {
+        const idx = lower.indexOf(ql, i);
+        if (idx === -1) { out += esc(text.slice(i)); break; }
+        out += esc(text.slice(i, idx)) + '<mark>' + esc(text.slice(idx, idx + ql.length)) + '</mark>';
+        i = idx + ql.length;
+      }
+      return out;
+    }
+
+    function scopeChannels() {
+      const it = currentItem();
+      if (state.channel === 'ALL') return it.channels.filter(function (c) { return it.enabledChannels.indexOf(c.name) !== -1; });
+      if (it.enabledChannels.indexOf(state.channel) === -1) return [];
+      return it.channels.filter(function (c) { return c.name === state.channel; });
+    }
+
+    function flatFields(item) {
+      const rows = [];
+      item.channels.forEach(ch => {
+        ch.sources.forEach(s => {
+          s.fields.forEach(f => rows.push({
+            channel: ch.name, source: s.name,
+            id: f.id, f: f.f, x: f.x, t: f.t, ctx: f.ctx,
+            eo: f.eo, ao: f.ao, result: f.result, note: f.note, prints: f.prints,
+          }));
+        });
+      });
+      return rows;
+    }
+
+    function itemStatsAll(item) {
+      let total = 0, passed = 0, failed = 0;
+      item.channels.forEach(ch => ch.sources.forEach(s => s.fields.forEach(f => {
+        total++;
+        f.result === 'PASSED' ? passed++ : failed++;
+      })));
+      let warnings = 0, warningsIgnored = 0;
+      item.channels.forEach(c => c.warnings.forEach(w => { if (msgIsIgnored('warnings', w)) warningsIgnored++; else warnings++; }));
+      const errors = item.channels.reduce((n, c) => n + c.errors.length, 0);
+      const uncompared = item.channels.reduce((n, c) => n + c.uncompared.length, 0);
+      const logs = item.overviewLogs.length + item.channels.reduce((n, c) => n + c.logs.length, 0);
+      return { total: total, passed: passed, failed: failed, rate: total ? Math.round(passed / total * 100) : 0, warnings: warnings, warningsIgnored: warningsIgnored, errors: errors, uncompared: uncompared, logs: logs };
+    }
+
+    function scopeWarnings() { const a = []; scopeChannels().forEach(c => c.warnings.forEach(w => a.push(w))); return a; }
+    function scopeErrors() { const a = []; scopeChannels().forEach(c => c.errors.forEach(w => a.push(w))); return a; }
+    function scopeUncompared() { const a = []; scopeChannels().forEach(c => c.uncompared.forEach(w => a.push(w))); return a; }
+    function scopeSkippedItems() {
+      const it = currentItem();
+      if (state.channel === 'ALL') return it.skippedItems;
+      if (it.enabledChannels.indexOf(state.channel) === -1) return [];
+      return it.skippedItems.filter(s => s.channel === 'ALL' || s.channel === state.channel);
+    }
+    function scopeLogs() {
+      const it = currentItem();
+      if (state.channel === 'ALL') {
+        const lines = it.overviewLogs.slice();
+        it.channels.forEach(c => c.logs.forEach(l => lines.push(l)));
+        return lines;
+      }
+      const c = it.channels.find(c => c.name === state.channel);
+      return c ? c.logs.slice() : [];
+    }
+
+    function scopeStats() {
+      let total = 0, passed = 0, failed = 0;
+      scopeChannels().forEach(ch => ch.sources.forEach(s => s.fields.forEach(f => {
+        total++;
+        f.result === 'PASSED' ? passed++ : failed++;
+      })));
+      return {
+        total: total, passed: passed, failed: failed,
+        rate: total ? Math.round(passed / total * 100) : 0,
+        warnings: scopeWarnings().filter(m => !msgIsIgnored('warnings', m)).length,
+        warningsIgnored: scopeWarnings().filter(m => msgIsIgnored('warnings', m)).length,
+        errors: scopeErrors().length,
+        uncompared: scopeUncompared().filter(u => !msgIsIgnored('uncompared', u)).length,
+        uncomparedIgnored: scopeUncompared().filter(u => msgIsIgnored('uncompared', u)).length,
+        logs: scopeLogs().length,
+        skipped: scopeSkippedItems().length,
+      };
+    }
+
+    function sortValue(r, key) {
+      switch (key) {
+        case 'f': return r.f;
+        case 'x': return r.x;
+        case 't': return r.t;
+        case 'result': return r.result;
+        case 'ctx': return (r.ctx || []).join(',');
+        case 'eo': return r.eo;
+        case 'ao': return r.ao;
+        case 'channel': return r.channel;
+        case 'source': return r.source;
+        case 'note': return r.note;
+        default: return '';
+      }
+    }
+
+    function specialValueMatch(v, kind) {
+      const s = String(v);
+      if (kind === 'empty') return s === '';
+      if (kind === 'blank') return /^\s+$/.test(s);
+      if (kind === 'special') return /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200B\u200C\u200D\uFEFF]/.test(s);
+      return true;
+    }
+
+    function filteredFields(item) {
+      let rows = flatFields(item);
+      if (state.channel !== 'ALL') rows = rows.filter(r => r.channel === state.channel);
+      COLUMNS.forEach(c => {
+        const v = state.colFilter[c.key];
+        if (!v || v === 'ALL') return;
+        if (c.filterable === 'select') {
+          rows = rows.filter(r => sortValue(r, c.key) === v);
+        } else if (c.filterable === 'text') {
+          rows = rows.filter(r => String(sortValue(r, c.key)).toLowerCase().includes(v.toLowerCase()));
+        }
+      });
+      ['eo', 'ao'].forEach(function (col) {
+        const sv = state.specialFilter[col];
+        if (sv && sv !== 'ALL') rows = rows.filter(function (r) { return specialValueMatch(sortValue(r, col), sv); });
+      });
+      if (state.search.trim()) {
+        const q = state.search.trim().toLowerCase();
+        rows = rows.filter(r => (r.f + ' ' + r.x + ' ' + r.eo + ' ' + r.ao + ' ' + (r.ctx || []).join(' ')).toLowerCase().includes(q));
+      }
+      if (state.sort.key) {
+        const k = state.sort.key, d = state.sort.dir;
+        rows.sort((a, b) => { const va = sortValue(a, k), vb = sortValue(b, k); if (va < vb) return -1 * d; if (va > vb) return 1 * d; return 0; });
+      }
+      return rows;
+    }
+
+    function preview(v) {
+      const s = String(v).replace(/\r?\n/g, ' ⏎ ');
+      return s.length > 32 ? s.slice(0, 32) + '…' : s;
+    }
+
+    function typeChip(type) {
+      const map = { platformAssertion: 'typePlatform', productAssertion: 'typeProduct', contextAssertion: 'typeContext' };
+      const m = TYPE_META[type] || { cls: '' };
+      return '<span class="chip ' + m.cls + '">' + esc(t(map[type] || type)) + '</span>';
+    }
+
+    function sortArrow(key) {
+      if (state.sort.key !== key) return '⇅';
+      return state.sort.dir === 1 ? '▲' : '▼';
+    }
+
+    function findFieldById(item, id) {
+      for (const ch of item.channels) {
+        for (const s of ch.sources) {
+          for (const f of s.fields) if (f.id === id) return { channel: ch.name, source: s.name, field: f };
+        }
+      }
+      return null;
+    }
+
+    /* ---- 渲染 ---- */
+    function filteredItems() {
+      const q = state.itemSearch.trim().toLowerCase();
+      const tokens = q ? q.split(/\s+/).filter(Boolean) : [];
+      const list = DATA.items.filter(it => {
+        const s = itemStatsAll(it);
+        const hay = (it.tradeId + ' ' + it.reportDate + ' ' + it.platform + ' ' + it.product).toLowerCase();
+        if (tokens.length && !tokens.every(t => hay.includes(t))) return false;
+        if (state.reportDateFilter && it.reportDate !== state.reportDateFilter) return false;
+        if (state.itemFilter === 'PASSED' && s.failed !== 0) return false;
+        if (state.itemFilter === 'FAILED' && s.failed === 0) return false;
+        if (state.itemFilter === 'WARN' && s.warnings === 0) return false;
+        if (state.itemPlatforms.length && state.itemPlatforms.indexOf(it.platform) === -1) return false;
+        if (state.itemProducts.length && state.itemProducts.indexOf(it.product) === -1) return false;
+        return true;
+      });
+      list.sort(function (a, b) { return b.reportDate.localeCompare(a.reportDate); });
+      return list;
+    }
+
+    function renderSidebar() {
+      const all = filteredItems();
+      const pages = Math.max(1, Math.ceil(all.length / state.sidebarPageSize));
+      if (state.sidebarPage > pages) state.sidebarPage = pages;
+      const start = (state.sidebarPage - 1) * state.sidebarPageSize;
+      const list = all.slice(start, start + state.sidebarPageSize);
+      const q = state.itemSearch.trim();
+      const rows = list.map(it => {
+        const s = itemStatsAll(it);
+        const cls = it.tradeId === state.itemId ? 'item active' : 'item';
+        const badgeCls = s.failed === 0 ? 'pass' : 'fail';
+        const badgeText = s.failed === 0 ? 'PASS' : 'FAIL';
+        const barCls = 'bar-fill' + (s.failed === 0 && s.warnings > 0 ? ' bar-warn' : '');
+        const warnNote = s.warnings > 0 ? ' · ' + s.warnings + ' ' + t('sidebarUnconfirmedWarnings') : '';
+        return '<div class="' + cls + '" data-id="' + it.tradeId + '">' +
+          '<div class="item-id">' + highlight(it.tradeId, q) + ' <span class="badge ' + badgeCls + '">' + badgeText + '</span></div>' +
+          '<div class="item-sub">' + s.total + ' ' + t('sidebarFields') + ' · ' + s.failed + ' ' + t('sidebarFailures') + ' · ' + s.rate + '% ' + t('sidebarPassRate') + warnNote + '</div>' +
+          '<div class="item-sub">' + t('sidebarReportDate') + ' ' + esc(it.reportDate) + '</div>' +
+          '<div class="item-sub">' + esc(it.platform) + ' · ' + esc(it.product) + '</div>' +
+          '<div class="bar"><div class="' + barCls + '" style="width:' + s.rate + '%"></div></div>' +
+          '</div>';
+      }).join('');
+      document.getElementById('sidebarList').innerHTML = rows || '<div class="empty">' + t('sidebarEmpty') + '</div>';
+      let passedItems = 0, failedItems = 0;
+      all.forEach(function (it) { if (itemStatsAll(it).failed === 0) passedItems++; else failedItems++; });
+      const pct = all.length ? Math.round(passedItems / all.length * 100) : 0;
+      document.getElementById('itemCount').textContent = passedItems + '/' + failedItems + '/' + pct + '%';
+      let pagerHtml = '';
+      if (all.length > 0) {
+        const p = state.sidebarPage;
+        const from = Math.max(1, p - 1), to = Math.min(pages, p + 1);
+        let parts = [
+          '<button class="pg" data-sidepage="1"' + (p === 1 ? ' disabled' : '') + ' title="首页">«</button>',
+          '<button class="pg" data-sidepage="' + (p - 1) + '"' + (p === 1 ? ' disabled' : '') + ' title="上一页">‹</button>'
+        ];
+        for (let i = from; i <= to; i++) parts.push('<button class="pg' + (i === p ? ' cur' : '') + '" data-sidepage="' + i + '">' + i + '</button>');
+        parts.push(
+          '<button class="pg" data-sidepage="' + (p + 1) + '"' + (p === pages ? ' disabled' : '') + ' title="下一页">›</button>',
+          '<button class="pg" data-sidepage="' + pages + '"' + (p === pages ? ' disabled' : '') + ' title="尾页">»</button>'
+        );
+        pagerHtml = parts.join('') + '<span class="pg-info">' + p + '/' + pages + '</span>';
+      }
+      document.getElementById('sidebarPager').innerHTML = pagerHtml;
+    }
+
+    function renderSidebarChips() {
+      const chips = [];
+      if (state.itemFilter !== 'ALL') {
+        chips.push({
+          label: t('statusChipLabel') + (state.itemFilter === 'PASSED' ? t('sidebarStatusPassed') : (state.itemFilter === 'WARN' ? t('sidebarStatusWarn') : t('sidebarStatusFailed'))),
+          clear: function () { state.itemFilter = 'ALL'; document.getElementById('itemFilter').value = 'ALL'; },
+        });
+      }
+      state.itemPlatforms.forEach(function (v) {
+        chips.push({
+          label: t('platformChip') + v,
+          clear: function () { const i = state.itemPlatforms.indexOf(v); if (i !== -1) state.itemPlatforms.splice(i, 1); },
+        });
+      });
+      state.itemProducts.forEach(function (v) {
+        chips.push({
+          label: t('productChip') + v,
+          clear: function () { const i = state.itemProducts.indexOf(v); if (i !== -1) state.itemProducts.splice(i, 1); },
+        });
+      });
+      SIDEBAR_FILTERS = chips;
+      document.getElementById('sidebarChips').innerHTML = chips.map((c, i) =>
+        '<span class="filter-chip">' + esc(c.label) + '<button data-sideclear="' + i + '" title="清除">✕</button></span>'
+      ).join('');
+      document.getElementById('platformFilterBtn').classList.toggle('has-filter', state.itemPlatforms.length > 0);
+      document.getElementById('productFilterBtn').classList.toggle('has-filter', state.itemProducts.length > 0);
+    }
+
+    function renderSummary() {
+      const s = scopeStats();
+      const cards = [
+        { label: t('fieldsTotal'), value: s.total, cls: '', action: 'fields', active: state.tab === 'fields' && state.colFilter.result === 'ALL', tip: t('tipFields') },
+        { label: t('passed'), value: s.passed, cls: 'ok', action: 'passed', active: state.tab === 'fields' && state.colFilter.result === 'PASSED', tip: t('tipPassed') },
+        { label: t('failed'), value: s.failed, cls: 'bad', action: 'failed', active: state.tab === 'fields' && state.colFilter.result === 'FAILED', tip: t('tipFailed') },
+        { label: t('passRate'), value: s.rate + '%', cls: '', action: null, active: false, tip: t('tipRate') },
+        { label: t('warnings'), value: s.warnings + '/<span class="num-muted">' + s.warningsIgnored + '</span>', cls: 'warn', action: 'warnings', active: state.tab === 'warnings', tip: t('tipWarnings') },
+        { label: t('errors'), value: s.errors, cls: 'bad', action: 'errors', active: state.tab === 'errors', tip: t('tipErrors') },
+      ];
+      document.getElementById('summary').innerHTML = cards.map(c => {
+        const cls = 'card' + (c.action ? ' clickable' : '') + (c.active ? ' active-filter' : '');
+        const attr = (c.action ? ' data-action="' + c.action + '"' : '') + (c.tip ? ' title="' + esc(c.tip) + '"' : '');
+        return '<div class="' + cls + '"' + attr + '>' +
+          '<div class="card-label">' + c.label + '</div>' +
+          '<div class="card-value ' + c.cls + '">' + c.value + '</div></div>';
+      }).join('');
+    }
+
+    function renderMeta() {
+      const it = currentItem();
+      document.getElementById('itemMeta').textContent = it.tradeId;
+      document.getElementById('reportMeta').textContent = t('reportDateLabel') + it.reportDate + '　　' + t('generatedAtLabel') + it.generatedAt;
+      document.getElementById('channelMeta').textContent = t('channelMetaLabel') +
+        it.channels.map(c => c.name + '（' + channelDesc(c.name) + '）').join('　');
+    }
+
+    function renderFiles() {
+      const it = currentItem();
+      const chs = state.channel === 'ALL' ? it.channels : it.channels.filter(c => c.name === state.channel);
+      const html = chs.map(ch =>
+        '<div class="file-card">' +
+        '<div class="fc-head">' + esc(ch.name) + '</div>' +
+        '<div class="fc-row"><span class="fc-label">' + t('filesEO') + '</span>' + ch.files.eo.map(esc).join('、') + '</div>' +
+        '<div class="fc-row"><span class="fc-label">' + t('filesAO') + '</span>' + ch.files.ao.map(esc).join('、') + '</div>' +
+        '<div class="fc-row"><span class="fc-label">' + t('filesExcel') + '</span>' + esc(ch.files.excel.file) + ' [sheet: ' + esc(ch.files.excel.sheet) + ']</div>' +
+        '</div>'
+      ).join('');
+      document.getElementById('filesPanel').innerHTML =
+        '<div class="files-title">' + t('filesTitle') + '</div>' +
+        '<div class="files-grid">' + html + '</div>';
+    }
+
+    function renderTaskNote() {
+      document.getElementById('taskNote').innerHTML =
+        '<div class="task-note-title">' + t('taskNoteTitle') + '</div>' +
+        '<div class="task-note-text">' + esc(TASK_NOTE).replace(/\n/g, '<br>') + '</div>';
+    }
+
+    function renderTabs() {
+      const s = scopeStats();
+      const tabs = [
+        ['fields', t('tabFields'), s.total, null],
+        ['warnings', t('tabWarnings'), s.warnings + '/' + s.warningsIgnored, null],
+        ['errors', t('tabErrors'), s.errors, null],
+        ['uncompared', t('tabUncompared'), s.uncompared + '/' + s.uncomparedIgnored, t('tipUncompared')],
+        ['uncomparedItems', t('tabUncomparedItems'), s.skipped, t('tipUncomparedItems')],
+        ['logs', t('tabLogs'), s.logs, null],
+      ];
+      document.getElementById('tabs').innerHTML = tabs.map(function (t) {
+        const cls = state.tab === t[0] ? 'tab active' : 'tab';
+        return '<button class="' + cls + '" data-tab="' + t[0] + '"' + (t[3] ? ' title="' + esc(t[3]) + '"' : '') + '>' + t[1] +
+          '<span class="tab-count">' + t[2] + '</span></button>';
+      }).join('');
+    }
+
+    function channelCount(chName, tab) {
+      const it = currentItem();
+      if (chName === 'ALL') {
+        if (tab === 'fields') return flatFields(it).length;
+        if (tab === 'warnings') return it.channels.reduce((n, c) => n + c.warnings.filter(w => !msgIsIgnored('warnings', w)).length, 0);
+        if (tab === 'errors') return it.channels.reduce((n, c) => n + c.errors.length, 0);
+        if (tab === 'uncompared') return it.channels.reduce((n, c) => n + c.uncompared.filter(u => !msgIsIgnored('uncompared', u)).length, 0);
+        if (tab === 'uncomparedItems') return it.skippedItems.length;
+        if (tab === 'logs') return it.overviewLogs.length + it.channels.reduce((n, c) => n + c.logs.length, 0);
+      }
+      const ch = it.channels.find(c => c.name === chName);
+      if (!ch) return 0;
+      if (tab === 'fields') return flatFields(it).filter(r => r.channel === chName).length;
+      if (tab === 'warnings') return ch.warnings.filter(w => !msgIsIgnored('warnings', w)).length;
+      if (tab === 'errors') return ch.errors.length;
+      if (tab === 'uncompared') return ch.uncompared.filter(u => !msgIsIgnored('uncompared', u)).length;
+      if (tab === 'uncomparedItems') return it.skippedItems.filter(s => s.channel === chName).length;
+      if (tab === 'logs') return ch.logs.length;
+      return 0;
+    }
+
+    function renderChannelTabs() {
+      const it = currentItem();
+      const chs = [['ALL', t('all')]].concat(it.channels.map(ch => [ch.name, ch.name]));
+      const html = chs.map(([k, label]) => {
+        const disabled = k !== 'ALL' && it.enabledChannels.indexOf(k) === -1;
+        const cls = 'ctab' + (state.channel === k ? ' active' : '') + (disabled ? ' disabled' : '');
+        const count = disabled ? '—' : channelCount(k, state.tab);
+        return '<button class="' + cls + '" data-channel="' + k + '" title="' + (disabled ? '该渠道未启用' : '') + '">' + esc(label) +
+          '<span class="ctab-count">' + count + '</span></button>';
+      }).join('');
+      const colBtn = state.tab === 'fields' ? '<button class="col-toggle" id="colToggle">' + t('colSelector') + ' ▾</button>' : '';
+      document.getElementById('channelTabs').innerHTML = html + colBtn;
+    }
+
+    function activeFilters() {
+      const list = [];
+      if (state.channel !== 'ALL') list.push({ label: '渠道: ' + state.channel, clear: function () { state.channel = 'ALL'; } });
+      if (state.search.trim()) list.push({ label: '搜索: ' + state.search.trim(), clear: function () { state.search = ''; document.getElementById('search').value = ''; } });
+      if (state.tab === 'fields') {
+        COLUMNS.forEach(function (c) {
+          const v = state.colFilter[c.key];
+          if (v && v !== 'ALL') {
+            list.push({
+              label: t(c.label) + ': ' + v,
+              clear: (function (key) {
+                return function () {
+                  const def = COLUMNS.find(function (x) { return x.key === key; });
+                  state.colFilter[key] = def.filterable === 'select' ? 'ALL' : '';
+                };
+              })(c.key),
+            });
+          }
+        });
+        ['eo', 'ao'].forEach(function (col) {
+          const sv = state.specialFilter[col];
+          if (sv && sv !== 'ALL') {
+            const label = col === 'eo' ? t('colEO') : t('colAO');
+            const map = { empty: t('specialEmpty'), blank: t('specialBlank'), special: t('specialSpecial') };
+            list.push({ label: label + '(' + (map[sv] || sv) + ')', clear: function () { state.specialFilter[col] = 'ALL'; } });
+          }
+        });
+      } else if (MSG_COLUMNS[state.tab]) {
+        MSG_COLUMNS[state.tab].forEach(function (c) {
+          const v = state.msgFilter[c.key];
+          if (v && v !== 'ALL') {
+            list.push({
+              label: t(c.label) + ': ' + v,
+              clear: (function (key) {
+                return function () { state.msgFilter[key] = c.filter === 'select' ? 'ALL' : ''; };
+              })(c.key),
+            });
+          }
+        });
+      }
+      return list;
+    }
+
+    function renderFilterChips() {
+      ACTIVE_FILTERS = activeFilters();
+      const html = ACTIVE_FILTERS.map((f, i) =>
+        '<span class="filter-chip">' + esc(f.label) +
+        '<button data-clear="' + i + '" title="清除此过滤">✕</button></span>'
+      ).join('');
+      document.getElementById('filterChips').innerHTML = html;
+    }
+
+    function renderPagination(total, pages) {
+      if (total === 0) return '';
+      const p = state.page;
+      const from = Math.max(1, p - 2), to = Math.min(pages, p + 2);
+      let parts = [
+        '<button class="pg" data-page="1"' + (p === 1 ? ' disabled' : '') + ' title="首页">«</button>',
+        '<button class="pg" data-page="' + (p - 1) + '"' + (p === 1 ? ' disabled' : '') + ' title="上一页">‹</button>'
+      ];
+      for (let i = from; i <= to; i++) {
+        parts.push('<button class="pg' + (i === p ? ' cur' : '') + '" data-page="' + i + '">' + i + '</button>');
+      }
+      parts.push(
+        '<button class="pg" data-page="' + (p + 1) + '"' + (p === pages ? ' disabled' : '') + ' title="下一页">›</button>',
+        '<button class="pg" data-page="' + pages + '"' + (p === pages ? ' disabled' : '') + ' title="尾页">»</button>'
+      );
+      return '<div class="pagination">' + parts.join('') +
+        '<span class="pg-info">' + p + ' / ' + pages + ' ' + t('pageOf') + '</span>' +
+        '<select id="pageSize">' +
+        [10, 20, 50].map(n => '<option' + (state.pageSize === n ? ' selected' : '') + '>' + n + '</option>').join('') +
+        '</select></div>';
+    }
+
+    /* ---- 浮层（popover）管理 ---- */
+    function closePopover() {
+      if (POPOVER.el) { POPOVER.el.remove(); POPOVER.el = null; }
+      if (POPOVER.cleanup) { POPOVER.cleanup(); POPOVER.cleanup = null; }
+      document.querySelectorAll('.hf-toggle.active, .col-toggle.active, .side-multi.active').forEach(b => b.classList.remove('active'));
+    }
+
+    function openPopover(anchor, contentHTML, title) {
+      closePopover();
+      const pop = document.createElement('div');
+      pop.className = 'popover';
+      pop.innerHTML = (title ? '<p class="popover-title">' + esc(title) + '</p>' : '') + contentHTML;
+      document.body.appendChild(pop);
+      const r = anchor.getBoundingClientRect();
+      const w = Math.min(260, window.innerWidth - 16);
+      pop.style.width = w + 'px';
+      pop.style.top = (r.bottom + 6) + 'px';
+      pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+      anchor.classList.add('active');
+      POPOVER.el = pop;
+      const docClick = function (e) {
+        if (!pop.contains(e.target) && e.target !== anchor && !anchor.contains(e.target)) closePopover();
+      };
+      document.addEventListener('click', docClick);
+      POPOVER.cleanup = function () { document.removeEventListener('click', docClick); };
+      return pop;
+    }
+
+    function selectOptionsFor(col) {
+      let arr;
+      if (col === 't' || col === 'type') arr = ['ALL', 'platformAssertion', 'productAssertion', 'contextAssertion'];
+      else if (col === 'result') arr = ['ALL', 'PASSED', 'FAILED'];
+      else if (col === 'channel') arr = ['ALL', 'HKTR', 'JSFA', 'CFTC'];
+      else if (col === 'source') arr = ['ALL', '来源渠道 A', '来源渠道 B'];
+      else if (col === 'level') arr = ['ALL', 'WARN', 'INFO', 'NOTICE', 'DEBUG', 'ERROR', 'FATAL', 'SEVERE'];
+      else arr = ['ALL'];
+      return arr.map(function (v) {
+        let l = v;
+        if (v === 'ALL') l = t('all');
+        else if (v === '来源渠道 A') l = t('sourceA');
+        else if (v === '来源渠道 B') l = t('sourceB');
+        return [v, l];
+      });
+    }
+
+    function openFilterPopover(btn, filterObj, col, kind, placeholder, onApply) {
+      if (btn.classList.contains('active')) { closePopover(); return; }
+      let control;
+      if (kind === 'select') {
+        const opts = selectOptionsFor(col);
+        control = '<select class="pop-control">' +
+          opts.map(function (o) { return '<option value="' + o[0] + '"' + (filterObj[col] === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
+      } else {
+        control = '<input class="pop-control" placeholder="' + esc(placeholder || '搜索') + '" value="' + esc(filterObj[col] || '') + '">';
+      }
+      const pop = openPopover(btn, control);
+      const ctrl = pop.querySelector('.pop-control');
+      if (ctrl.tagName === 'INPUT') ctrl.focus();
+      ctrl.addEventListener(kind === 'select' ? 'change' : 'input', function () {
+        filterObj[col] = ctrl.value;
+        state.page = 1;
+        if (onApply) onApply();
+        if (kind === 'select') closePopover();
+      });
+    }
+
+    function openHfPopover(btn) {
+      const col = btn.getAttribute('data-hf');
+      const kind = btn.getAttribute('data-kind');
+      const def = COLUMNS.find(function (c) { return c.key === col; });
+      openFilterPopover(btn, state.colFilter, col, kind, def ? t(def.label) : t('toolbarSearch'), function () { refreshFieldsBody(); renderFilterChips(); });
+    }
+
+    function openMsgFilterPopover(btn) {
+      const col = btn.getAttribute('data-hf');
+      const kind = btn.getAttribute('data-kind');
+      openFilterPopover(btn, state.msgFilter, col, kind, btn.getAttribute('data-title') || '搜索', function () { renderContent(); renderFilterChips(); });
+    }
+
+    function openSpecialPopover(btn) {
+      const col = btn.getAttribute('data-special');
+      const opts = [['ALL', t('all')], ['empty', t('specialEmpty')], ['blank', t('specialBlank')], ['special', t('specialSpecial')]];
+      const control = '<select class="pop-control">' +
+        opts.map(function (o) { return '<option value="' + o[0] + '"' + (state.specialFilter[col] === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
+      const pop = openPopover(btn, control);
+      pop.querySelector('.pop-control').addEventListener('change', function (e) {
+        state.specialFilter[col] = e.target.value;
+        state.page = 1;
+        refreshFieldsBody(); renderFilterChips();
+        closePopover();
+      });
+    }
+
+    function openColumnMenu(anchor) {
+      if (anchor.classList.contains('active')) { closePopover(); return; }
+      const buildContent = function () {
+        const allChecked = COLUMNS.every(function (c) { return state.columns[c.key]; });
+        let html = '<label class="col-option"><input type="checkbox" data-colkey="__ALL__"' + (allChecked ? ' checked' : '') + '> ' + t('all') + '</label>';
+        COLUMNS.forEach(function (c) {
+          html += '<label class="col-option"><input type="checkbox" data-colkey="' + c.key + '"' + (state.columns[c.key] ? ' checked' : '') + '> ' + t(c.label) + '</label>';
+        });
+        return html;
+      };
+      const pop = openPopover(anchor, buildContent(), t('popColTitle'));
+      const bind = function () {
+        pop.querySelectorAll('input[data-colkey]').forEach(function (cb) {
+          cb.addEventListener('change', function () {
+            const key = cb.getAttribute('data-colkey');
+            if (key === '__ALL__') COLUMNS.forEach(function (c) { state.columns[c.key] = cb.checked; });
+            else state.columns[key] = cb.checked;
+            renderFields();
+            pop.innerHTML = buildContent();
+            bind();
+          });
+        });
+      };
+      bind();
+    }
+
+    function distinctValues(prop) {
+      const s = [];
+      DATA.items.forEach(it => { if (s.indexOf(it[prop]) === -1) s.push(it[prop]); });
+      return s;
+    }
+
+    function openSideMulti(btn) {
+      if (btn.classList.contains('active')) { closePopover(); return; }
+      const field = btn.getAttribute('data-field');
+      const prop = field === 'itemPlatforms' ? 'platform' : 'product';
+      const title = field === 'itemPlatforms' ? t('sidebarPlatform') : t('sidebarProduct');
+      const vals = distinctValues(prop);
+      const buildContent = function () {
+        const allChecked = state[field].length === 0;
+        let html = '<label class="col-option"><input type="checkbox" data-val="__ALL__"' + (allChecked ? ' checked' : '') + '> ' + t('all') + '</label>';
+        vals.forEach(v => {
+          html += '<label class="col-option"><input type="checkbox" data-val="' + esc(v) + '"' + (state[field].indexOf(v) !== -1 ? ' checked' : '') + '> ' + esc(v) + '</label>';
+        });
+        return html;
+      };
+      const pop = openPopover(btn, buildContent(), title);
+      const bind = function () {
+        pop.querySelectorAll('input[data-val]').forEach(cb => {
+          cb.addEventListener('change', function () {
+            const v = cb.getAttribute('data-val');
+            if (v === '__ALL__') {
+              state[field] = [];
+            } else {
+              const arr = state[field];
+              const idx = arr.indexOf(v);
+              if (cb.checked && idx === -1) arr.push(v);
+              else if (!cb.checked && idx !== -1) arr.splice(idx, 1);
+            }
+            state.sidebarPage = 1;
+            renderSidebar();
+            renderSidebarChips();
+            pop.innerHTML = buildContent();
+            bind();
+          });
+        });
+      };
+      bind();
+    }
+
+    /* ---- 字段比较列表 ---- */
+    function valueCellHTML(v) {
+      const s = String(v);
+      const long = s.length > 32 || /\r?\n/.test(s);
+      if (!long) return '<span class="val-full">' + esc(s) + '</span>';
+      return '<details class="val-details"><summary>' + esc(preview(s)) + '</summary><pre>' + esc(s) + '</pre></details>';
+    }
+
+    function textCellHTML(v) {
+      const s = String(v);
+      const long = s.length > 40 || /\r?\n/.test(s);
+      if (!long) return '<span class="text-full">' + esc(s) + '</span>';
+      return '<details class="text-details"><summary>' + esc(preview(s)) + '</summary><pre>' + esc(s) + '</pre></details>';
+    }
+
+    function hoverCellHTML(v) {
+      const s = String(v);
+      const long = s.length > 40 || /\r?\n/.test(s);
+      if (!long) return '<span class="text-full">' + esc(s) + '</span>';
+      return '<span class="hover-trunc" title="' + esc(s) + '">' + esc(preview(s)) + '</span>';
+    }
+
+    function fieldCellHTML(r, key) {
+      switch (key) {
+        case 'channel': return '<td><span class="chip channel-chip">' + esc(r.channel) + '</span></td>';
+        case 'source': return '<td>' + esc(sourceName(r.source)) + '</td>';
+        case 'f': return '<td class="mono"><a class="val-link" data-detail="' + esc(r.id) + '" title="查看比较详情">' + esc(r.f) + '</a></td>';
+        case 'x': return '<td>' + valueCellHTML(r.x) + '</td>';
+        case 't': return '<td>' + typeChip(r.t) + '</td>';
+        case 'ctx': return '<td><div class="ctx-tags">' + (r.ctx || []).map(function (c) { return '<span class="chip ctx-chip">' + esc(c) + '</span>'; }).join('') + '</div></td>';
+        case 'eo': return '<td>' + valueCellHTML(r.eo) + '</td>';
+        case 'ao': return '<td>' + valueCellHTML(r.ao) + '</td>';
+        case 'result': {
+          const pass = r.result === 'PASSED';
+          return '<td><span class="badge ' + (pass ? 'pass' : 'fail') + '">' + r.result + '</span></td>';
+        }
+        case 'note': return '<td>' + hoverCellHTML(r.note || '—') + '</td>';
+        default: return '<td></td>';
+      }
+    }
+
+    function computeFieldPage() {
+      const rows = filteredFields(currentItem());
+      const total = rows.length;
+      const pages = Math.max(1, Math.ceil(total / state.pageSize));
+      if (state.page > pages) state.page = pages;
+      const start = (state.page - 1) * state.pageSize;
+      return { pageRows: rows.slice(start, start + state.pageSize), total: total, pages: pages };
+    }
+
+    function buildFieldRows(pageRows) {
+      const visible = COLUMNS.filter(c => state.columns[c.key]);
+      const trs = pageRows.map(r => {
+        const pass = r.result === 'PASSED';
+        return '<tr class="' + (pass ? '' : 'row-fail') + '">' +
+          visible.map(c => fieldCellHTML(r, c.key)).join('') + '</tr>';
+      }).join('');
+      return trs || '<tr><td colspan="' + visible.length + '" class="empty">无匹配记录</td></tr>';
+    }
+
+    function fieldsHeaderHTML() {
+      const cells = COLUMNS.filter(c => state.columns[c.key]).map(c => {
+        const sort = c.sortable ? ' class="sortable" data-sort="' + c.key + '"' : '';
+        let btn = '';
+        if (c.filterable) {
+          btn = '<button class="hf-toggle" data-hf="' + c.key + '" data-kind="' + c.filterable + '" title="过滤">⚲</button>';
+        }
+        let specialBtn = '';
+        if (c.key === 'eo' || c.key === 'ao') {
+          specialBtn = '<button class="special-toggle" data-special="' + c.key + '" title="空值/空白/含特殊字符过滤">∅</button>';
+        }
+        return '<th' + sort + '>' + t(c.label) +
+          (c.sortable ? ' <span class="sort-arrow">' + sortArrow(c.key) + '</span>' : '') +
+          btn + specialBtn + '</th>';
+      }).join('');
+      return '<thead><tr>' + cells + '</tr></thead>';
+    }
+
+    function fieldsFooterHTML(total, pages) {
+      return renderPagination(total, pages) +
+        '<div class="meta-note">' + total + ' ' + t('metaFields') + '</div>';
+    }
+
+    function refreshFieldsBody() {
+      const p = computeFieldPage();
+      const tbody = document.getElementById('fTbody');
+      if (tbody) tbody.innerHTML = buildFieldRows(p.pageRows);
+      const footer = document.getElementById('fFooter');
+      if (footer) footer.innerHTML = fieldsFooterHTML(p.total, p.pages);
+    }
+
+    function renderFields() {
+      const p = computeFieldPage();
+      document.getElementById('content').innerHTML =
+        '<div class="table-wrap"><table>' + fieldsHeaderHTML() +
+        '<tbody id="fTbody">' + buildFieldRows(p.pageRows) + '</tbody></table></div>' +
+        '<div id="fFooter">' + fieldsFooterHTML(p.total, p.pages) + '</div>';
+    }
+
+    /* ---- 消息类列表通用引擎（警告/错误/未比较XPath/未比较Item） ---- */
+    const MSG_COLUMNS = {
+      warnings: [
+        { key: 'channel', label: 'colChannel', sortable: true, filter: 'select' },
+        { key: 'type',    label: 'colType',    sortable: true, filter: 'select' },
+        { key: 'level',   label: 'colLevel',   sortable: true, filter: null },
+        { key: 'text',    label: 'colText',    sortable: true, filter: 'text', title: '搜索信息' },
+        { key: 'field',   label: 'colRelField', sortable: true, filter: 'text', title: '搜索关联字段' },
+        { key: 'ignored', label: 'colIgnored', sortable: true, filter: null, bulk: true },
+      ],
+      errors: [
+        { key: 'channel', label: 'colChannel', sortable: true, filter: 'select' },
+        { key: 'type',    label: 'colType',    sortable: true, filter: 'select' },
+        { key: 'level',   label: 'colLevel',   sortable: true, filter: null },
+        { key: 'text',    label: 'colText',    sortable: true, filter: 'text', title: '搜索信息' },
+        { key: 'field',   label: 'colRelField', sortable: true, filter: 'text', title: '搜索关联字段' },
+      ],
+      uncompared: [
+        { key: 'channel', label: 'colChannel', sortable: true, filter: 'select' },
+        { key: 'xpath',   label: 'colXPath',   sortable: true, filter: 'text', title: '搜索 XPath' },
+        { key: 'note',    label: 'colNote',    sortable: true, filter: 'text', title: '搜索说明' },
+        { key: 'ignored', label: 'colIgnored', sortable: true, filter: null, bulk: true },
+      ],
+      uncomparedItems: [
+        { key: 'itemId',  label: 'colItemId',  sortable: true, filter: 'text', title: '搜索 Item ID' },
+        { key: 'channel', label: 'colChannel', sortable: true, filter: 'select' },
+        { key: 'reason',  label: 'colReason',  sortable: true, filter: 'text', title: '搜索原因' },
+      ],
+    };
+
+    function msgValue(tab, m, key) {
+      switch (key) {
+        case 'channel': return m.channel || '';
+        case 'type': return m.type || '';
+        case 'level': return m.level || '';
+        case 'text': return m.text || '';
+        case 'field': return m.field || '';
+        case 'ignored': return msgIsIgnored(tab, m) ? '1' : '0';
+        case 'xpath': return m.xpath || '';
+        case 'ctx': return m.ctx || '';
+        case 'note': return m.note || '';
+        case 'itemId': return m.itemId || '';
+        case 'reason': return m.reason || '';
+        default: return '';
+      }
+    }
+
+    function getMsgRows(tab) {
+      let list;
+      if (tab === 'warnings') list = scopeWarnings();
+      else if (tab === 'errors') list = scopeErrors();
+      else if (tab === 'uncompared') list = scopeUncompared();
+      else list = scopeSkippedItems();
+      if (state.search.trim()) {
+        const q = state.search.trim().toLowerCase();
+        list = list.filter(function (m) { return JSON.stringify(m).toLowerCase().indexOf(q) !== -1; });
+      }
+      MSG_COLUMNS[tab].forEach(function (c) {
+        const v = state.msgFilter[c.key];
+        if (!v || v === 'ALL') return;
+        if (c.filter === 'select') list = list.filter(function (m) { return msgValue(tab, m, c.key) === v; });
+        else if (c.filter === 'text') list = list.filter(function (m) { return String(msgValue(tab, m, c.key)).toLowerCase().indexOf(v.toLowerCase()) !== -1; });
+      });
+      if (state.msgSort.key) {
+        const k = state.msgSort.key, d = state.msgSort.dir;
+        list.sort(function (a, b) {
+          const va = msgValue(tab, a, k), vb = msgValue(tab, b, k);
+          if (va < vb) return -1 * d;
+          if (va > vb) return 1 * d;
+          return 0;
+        });
+      }
+      return list;
+    }
+
+    function msgSortArrow(key) {
+      if (state.msgSort.key !== key) return '⇅';
+      return state.msgSort.dir === 1 ? '▲' : '▼';
+    }
+
+    function scopeLabel() { return state.channel === 'ALL' ? t('scopeItem') : state.channel + ' ' + t('scopeChannel'); }
+
+    function msgHeaderHTML(tab) {
+      const cells = MSG_COLUMNS[tab].map(function (c) {
+        const sortAttr = c.sortable ? ' class="sortable" data-sort="' + c.key + '"' : '';
+        let filterBtn = '';
+        if (c.filter) filterBtn = '<button class="mhf-toggle" data-hf="' + c.key + '" data-kind="' + c.filter + '" data-title="' + t(c.label) + '" title="过滤">⚲</button>';
+        let bulkBtn = '';
+        if (c.bulk) bulkBtn = '<button class="bulk-toggle" data-bulk-open="1" title="批量忽略/取消忽略（作用于当前过滤结果集）">☰</button>';
+        return '<th' + sortAttr + '>' + t(c.label) +
+          (c.sortable ? ' <span class="sort-arrow">' + msgSortArrow(c.key) + '</span>' : '') +
+          filterBtn + bulkBtn + '</th>';
+      }).join('');
+      return '<thead><tr>' + cells + '</tr></thead>';
+    }
+
+    function msgCellHTML(tab, m, c) {
+      switch (c.key) {
+        case 'channel':
+          return '<td>' + (m.channel === 'ALL' ? '<span class="chip channel-chip">ALL</span>' : '<span class="chip channel-chip">' + esc(m.channel) + '</span>') + '</td>';
+        case 'type': return '<td>' + typeChip(m.type) + '</td>';
+        case 'level': {
+          const isWarn = tab === 'warnings';
+          return '<td><span class="badge ' + (isWarn ? 'warn' : 'fail') + '">' + esc(m.level || '') + '</span></td>';
+        }
+        case 'text': return '<td>' + hoverCellHTML(m.text) + '</td>';
+        case 'field': return '<td class="mono">' + esc(m.field || '—') + '</td>';
+        case 'ignored': {
+          const ignored = msgIsIgnored(tab, m);
+          const k = msgIgnoreKey(tab, m);
+          return '<td><button class="ignore-btn' + (ignored ? ' ignored' : '') + '" data-ignore="' + esc(k) + '">' + (ignored ? t('unignore') : t('ignore')) + '</button></td>';
+        }
+        case 'xpath': return '<td>' + valueCellHTML(m.xpath) + '</td>';
+        case 'ctx': return '<td class="mono">' + esc(m.ctx || '—') + '</td>';
+        case 'note': return '<td>' + hoverCellHTML(m.note) + '</td>';
+        case 'itemId': return '<td class="mono">' + esc(m.itemId) + '</td>';
+        case 'reason': return '<td>' + hoverCellHTML(m.reason) + '</td>';
+        default: return '<td></td>';
+      }
+    }
+
+    function renderMsgTable(tab, metaText) {
+      const list = getMsgRows(tab);
+      const cols = MSG_COLUMNS[tab];
+      const rows = list.map(function (m) {
+        const ignoredRow = msgIsIgnored(tab, m);
+        return '<tr class="' + (ignoredRow ? 'row-ignored' : '') + '">' +
+          cols.map(function (c) { return msgCellHTML(tab, m, c); }).join('') + '</tr>';
+      }).join('');
+      document.getElementById('content').innerHTML =
+        ((tab === 'warnings' || tab === 'uncompared') ? '<div class="warn-toolbar"><button class="export-btn" id="exportIgnoreBtn">' + t('export') + '</button></div>' : '') +
+        '<div class="table-wrap"><table>' + msgHeaderHTML(tab) +
+        '<tbody>' + (rows || '<tr><td colspan="' + cols.length + '" class="empty">无记录</td></tr>') + '</tbody></table></div>' +
+        '<div class="meta-note">' + metaText + '</div>';
+    }
+
+    function openBulkIgnoreDialog() {
+      const tab = state.tab;
+      const list = getMsgRows(tab);
+      const keys = list.map(function (m) { return msgIgnoreKey(tab, m); }).filter(function (k) { return k; });
+      const active = keys.filter(function (k) { return !IGNORE_CONFIG[k]; }).length;
+      const ignored = keys.length - active;
+      const unit = tab === 'uncompared' ? t('bulkUnitXpath') : t('bulkUnitWarn');
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop';
+      backdrop.innerHTML =
+        '<div class="modal"><div class="modal-head"><h3>' + t('bulkTitle') + '</h3><button class="modal-close">✕</button></div>' +
+        '<div class="modal-body">' +
+        '<p class="bulk-desc">' + t('bulkDesc1') + keys.length + ' ' + unit + t('bulkDesc2') + active + t('bulkDesc3') + ignored + t('bulkDesc4') + '</p>' +
+        '<div class="bulk-actions">' +
+        '<button class="bulk-btn ignore-all" data-bulk="ignore">' + t('bulkIgnoreAll') + active + t('bulkCount') + '</button>' +
+        '<button class="bulk-btn unignore-all" data-bulk="unignore">' + t('bulkUnignoreAll') + ignored + t('bulkCount') + '</button>' +
+        '</div></div></div>';
+      backdrop.addEventListener('click', function (e) {
+        if (e.target === backdrop || e.target.closest('.modal-close')) { backdrop.remove(); return; }
+        const btn = e.target.closest('[data-bulk]');
+        if (!btn) return;
+        const op = btn.getAttribute('data-bulk');
+        keys.forEach(function (k) { if (op === 'ignore') IGNORE_CONFIG[k] = true; else delete IGNORE_CONFIG[k]; });
+        saveIgnoreConfig();
+        backdrop.remove();
+        renderSummary(); renderTabs(); renderChannelTabs();
+        renderSidebar(); renderSidebarChips(); renderContent();
+      });
+      document.body.appendChild(backdrop);
+    }
+
+    function renderMessages(level) {
+      const tab = level === 'warning' ? 'warnings' : 'errors';
+      const list = getMsgRows(tab);
+      const isWarn = tab === 'warnings';
+      const unignored = isWarn ? list.filter(function (m) { return !msgIsIgnored('warnings', m); }).length : 0;
+      const ignoredN = isWarn ? list.length - unignored : 0;
+      const meta = list.length + ' ' + (isWarn ? t('metaWarnings') + '（' + t('metaUnignored') + ' ' + unignored + ' / ' + t('metaIgnored') + ' ' + ignoredN + '）' : t('metaErrors')) + t('metaInfo') + scopeLabel() + t('metaClose');
+      renderMsgTable(tab, meta);
+    }
+
+    function renderUncompared() {
+      renderMsgTable('uncompared', getMsgRows('uncompared').length + ' ' + t('metaUncomparedXpath') + scopeLabel() + t('metaClose'));
+    }
+
+    function renderUncomparedItems() {
+      renderMsgTable('uncomparedItems', getMsgRows('uncomparedItems').length + ' ' + t('metaUncomparedItems') + scopeLabel() + t('metaClose'));
+    }
+
+    function renderLogs() {
+      let lines = scopeLogs();
+      if (state.search.trim()) {
+        const q = state.search.trim().toLowerCase();
+        lines = lines.filter(l => l.toLowerCase().includes(q));
+      }
+      const html = lines.map(l => '<div class="log-line">' + esc(l) + '</div>').join('');
+      document.getElementById('content').innerHTML =
+        '<div class="log-box">' + (html || '<div>无日志</div>') + '</div>' +
+        '<div class="meta-note">' + lines.length + ' ' + t('metaLogs') + scopeLabel() + t('metaClose') + '</div>';
+    }
+
+    function renderDisabledChannel(name) {
+      const ch = CHANNELS.find(function (c) { return c.name === name; });
+      document.getElementById('content').innerHTML =
+        '<div class="channel-disabled">' +
+        '<div class="cd-title">' + t('disabledTitle1') + esc(name) + t('disabledTitle2') + '</div>' +
+        '<div class="cd-desc">' + channelDesc(name) + ' ' + t('disabledDesc') + '</div>' +
+        '</div>';
+    }
+
+    function renderContent() {
+      if (state.channel !== 'ALL' && currentItem().enabledChannels.indexOf(state.channel) === -1) {
+        renderDisabledChannel(state.channel);
+        return;
+      }
+      if (state.tab === 'fields') renderFields();
+      else if (state.tab === 'warnings') renderMessages('warning');
+      else if (state.tab === 'errors') renderMessages('error');
+      else if (state.tab === 'uncompared') renderUncompared();
+      else if (state.tab === 'uncomparedItems') renderUncomparedItems();
+      else if (state.tab === 'logs') renderLogs();
+    }
+
+    function render() {
+      closePopover();
+      renderSidebar();
+      renderSidebarChips();
+      renderSummary();
+      renderMeta();
+      renderFiles();
+      renderTaskNote();
+      renderTabs();
+      renderChannelTabs();
+      renderFilterChips();
+      renderContent();
+    }
+
+    /* ---------- 详情弹窗 ---------- */
+    function closeModal() {
+      const b = document.querySelector('.modal-backdrop');
+      if (b) b.remove();
+    }
+
+    function openModal(id) {
+      const found = findFieldById(currentItem(), id);
+      if (!found) return;
+      const f = found.field;
+      const pass = f.result === 'PASSED';
+      const typeMap = { platformAssertion: 'typePlatform', productAssertion: 'typeProduct', contextAssertion: 'typeContext' };
+      const typeLabel = t(typeMap[f.t] || f.t);
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop';
+      backdrop.innerHTML =
+        '<div class="modal">' +
+        '<div class="modal-head"><h3>' + t('modalTitle') + '：' + esc(f.f) + '</h3>' +
+        '<button class="modal-close" title="关闭">✕</button></div>' +
+        '<div class="modal-body">' +
+        '<div class="kv">' +
+        '<span class="k">' + t('modalChannel') + '</span><span class="v">' + esc(found.channel) + '</span>' +
+        '<span class="k">' + t('modalSource') + '</span><span class="v">' + esc(sourceName(found.source)) + '</span>' +
+        '<span class="k">' + t('modalField') + '</span><span class="v">' + esc(f.f) + '</span>' +
+        '<span class="k">' + t('modalXPath') + '</span><span class="v">' + esc(f.x) + '</span>' +
+        '<span class="k">' + t('modalType') + '</span><span class="v">' + esc(typeLabel) + '（' + esc(f.t) + '）</span>' +
+        '<span class="k">' + t('modalCtx') + '</span><span class="v">' + esc((f.ctx || []).join(', ')) + '</span>' +
+        '<span class="k">' + t('modalResult') + '</span><span class="v"><span class="badge ' + (pass ? 'pass' : 'fail') + '">' + f.result + '</span>' +
+        (f.note ? '　' + esc(f.note) : '') + '</span>' +
+        '</div>' +
+        '<div class="pair">' +
+        '<div class="pair-box"><div class="pb-head">' + t('modalEO') + '</div><pre>' + esc(f.eo) + '</pre></div>' +
+        '<div class="pair-box"><div class="pb-head">' + t('modalAO') + '</div><pre>' + esc(f.ao) + '</pre></div>' +
+        '</div>' +
+        '<div class="print-box"><div class="pb-head">' + t('modalPrints') + '</div>' +
+        f.prints.map(p => '<div class="print-line">' + esc(p) + '</div>').join('') +
+        '</div>' +
+        '</div></div>';
+      backdrop.addEventListener('click', function (e) {
+        if (e.target === backdrop || e.target.closest('.modal-close')) closeModal();
+      });
+      document.body.appendChild(backdrop);
+    }
+
+    /* ---------- 事件绑定 ---------- */
+    function bindEvents() {
+      applyStaticText();
+      applyTheme('light');
+      document.getElementById('themeSelect').addEventListener('change', function (e) { applyTheme(e.target.value); });
+      document.getElementById('langSelect').addEventListener('change', function (e) { setLang(e.target.value); });
+
+      const dateInput = document.getElementById('reportDateFilter');
+      const datePicker = document.getElementById('reportDatePickerHelper');
+      function formatDateDigits(v) {
+        const digits = v.replace(/\D/g, '').slice(0, 8);
+        let out = digits;
+        if (digits.length > 4) out = digits.slice(0, 4) + '-' + digits.slice(4);
+        if (digits.length > 6) out = digits.slice(0, 4) + '-' + digits.slice(4, 6) + '-' + digits.slice(6);
+        return out;
+      }
+      dateInput.value = state.reportDateFilter || '';
+      dateInput.parentElement.classList.toggle('has-value', !!state.reportDateFilter);
+      dateInput.addEventListener('input', function (e) {
+        const formatted = formatDateDigits(e.target.value);
+        if (formatted !== e.target.value) e.target.value = formatted;
+        const digits = formatted.replace(/\D/g, '');
+        state.sidebarPage = 1;
+        if (digits.length === 8) {
+          state.reportDateFilter = formatted;
+          e.target.parentElement.classList.toggle('has-value', true);
+          renderSidebar();
+        } else if (digits.length === 0) {
+          state.reportDateFilter = '';
+          e.target.parentElement.classList.toggle('has-value', false);
+          renderSidebar();
+        }
+      });
+      document.getElementById('reportDateClear').addEventListener('click', function () {
+        state.reportDateFilter = '';
+        state.sidebarPage = 1;
+        dateInput.value = '';
+        datePicker.value = '';
+        dateInput.parentElement.classList.remove('has-value');
+        renderSidebar();
+      });
+      document.getElementById('reportDateCal').addEventListener('click', function () {
+        const r = this.getBoundingClientRect();
+        datePicker.style.left = r.left + 'px';
+        datePicker.style.top = r.top + 'px';
+        try { datePicker.showPicker(); } catch (err) { datePicker.focus(); datePicker.click(); }
+      });
+      datePicker.addEventListener('change', function () {
+        if (datePicker.value) {
+          state.reportDateFilter = datePicker.value;
+          state.sidebarPage = 1;
+          dateInput.value = datePicker.value;
+          dateInput.parentElement.classList.toggle('has-value', true);
+          renderSidebar();
+        }
+      });
+
+      document.getElementById('search').addEventListener('input', function (e) {
+        state.search = e.target.value; state.page = 1;
+        renderFilterChips(); renderContent();
+      });
+
+      document.getElementById('itemSearch').addEventListener('input', function (e) {
+        state.itemSearch = e.target.value;
+        state.sidebarPage = 1;
+        e.target.parentElement.classList.toggle('has-value', !!e.target.value);
+        renderSidebar();
+      });
+
+      document.getElementById('itemSearchClear').addEventListener('click', function () {
+        const input = document.getElementById('itemSearch');
+        input.value = '';
+        input.parentElement.classList.remove('has-value');
+        state.itemSearch = '';
+        state.sidebarPage = 1;
+        renderSidebar();
+      });
+
+      document.getElementById('itemFilter').addEventListener('change', function (e) {
+        state.itemFilter = e.target.value;
+        state.sidebarPage = 1;
+        renderSidebar();
+        renderSidebarChips();
+      });
+
+      document.getElementById('sidebarChips').addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-sideclear]');
+        if (!btn) return;
+        const idx = parseInt(btn.getAttribute('data-sideclear'), 10);
+        if (SIDEBAR_FILTERS[idx]) SIDEBAR_FILTERS[idx].clear();
+        state.sidebarPage = 1;
+        renderSidebar();
+        renderSidebarChips();
+      });
+
+      document.getElementById('platformFilterBtn').addEventListener('click', function () {
+        openSideMulti(this);
+      });
+
+      document.getElementById('productFilterBtn').addEventListener('click', function () {
+        openSideMulti(this);
+      });
+
+      document.getElementById('reportInfoToggle').addEventListener('click', function () {
+        const info = document.getElementById('reportInfo');
+        const show = info.style.display === 'none';
+        info.style.display = show ? 'block' : 'none';
+        this.classList.toggle('open', show);
+      });
+
+      document.getElementById('summary').addEventListener('click', function (e) {
+        const card = e.target.closest('[data-action]');
+        if (!card) return;
+        const action = card.getAttribute('data-action');
+        state.page = 1;
+        if (action === 'fields') { state.tab = 'fields'; state.colFilter.result = 'ALL'; }
+        else if (action === 'passed') { state.tab = 'fields'; state.colFilter.result = 'PASSED'; }
+        else if (action === 'failed') { state.tab = 'fields'; state.colFilter.result = 'FAILED'; }
+        else if (action === 'warnings') { state.tab = 'warnings'; }
+        else if (action === 'errors') { state.tab = 'errors'; }
+        render();
+      });
+
+      document.getElementById('filterChips').addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-clear]');
+        if (!btn) return;
+        const idx = parseInt(btn.getAttribute('data-clear'), 10);
+        if (ACTIVE_FILTERS[idx]) ACTIVE_FILTERS[idx].clear();
+        state.page = 1;
+        render();
+      });
+
+      document.getElementById('sidebar').addEventListener('click', function (e) {
+        const pg = e.target.closest('[data-sidepage]');
+        if (pg && !pg.disabled) {
+          state.sidebarPage = parseInt(pg.getAttribute('data-sidepage'), 10);
+          renderSidebar();
+          return;
+        }
+        const el = e.target.closest('[data-id]');
+        if (!el) return;
+        state.itemId = el.getAttribute('data-id');
+        state.page = 1;
+        state.channel = 'ALL';
+        state.colFilter = { channel: 'ALL', source: 'ALL', f: '', x: '', t: 'ALL', ctx: '', eo: '', ao: '', result: 'ALL', note: '' };
+        state.sort = { key: '', dir: 1 };
+        state.msgSort = { key: '', dir: 1 };
+        state.msgFilter = {};
+        state.specialFilter = { eo: 'ALL', ao: 'ALL' };
+        state.search = '';
+        document.getElementById('search').value = '';
+        render();
+      });
+
+      document.getElementById('tabs').addEventListener('click', function (e) {
+        const el = e.target.closest('[data-tab]');
+        if (!el) return;
+        state.tab = el.getAttribute('data-tab'); state.page = 1;
+        state.msgSort = { key: '', dir: 1 };
+        state.msgFilter = {};
+        closePopover();
+        renderTabs(); renderChannelTabs(); renderFilterChips(); renderContent();
+      });
+
+      document.getElementById('channelTabs').addEventListener('click', function (e) {
+        const colToggle = e.target.closest('.col-toggle');
+        if (colToggle) { openColumnMenu(colToggle); return; }
+        const el = e.target.closest('[data-channel]');
+        if (!el) return;
+        state.channel = el.getAttribute('data-channel'); state.page = 1;
+        render();
+      });
+
+      document.getElementById('content').addEventListener('click', function (e) {
+        const pg = e.target.closest('[data-page]');
+        if (pg && !pg.disabled) {
+          state.page = parseInt(pg.getAttribute('data-page'), 10);
+          renderContent();
+          return;
+        }
+        const detail = e.target.closest('[data-detail]');
+        if (detail) { openModal(detail.getAttribute('data-detail')); return; }
+        const ign = e.target.closest('.ignore-btn');
+        if (ign) { toggleIgnoreByKey(ign.getAttribute('data-ignore')); return; }
+        const exp = e.target.closest('#exportIgnoreBtn');
+        if (exp) { exportIgnoreConfig(); return; }
+        const bulk = e.target.closest('.bulk-toggle');
+        if (bulk) { openBulkIgnoreDialog(); return; }
+        const hf = e.target.closest('.hf-toggle');
+        if (hf) { openHfPopover(hf); return; }
+        const mhf = e.target.closest('.mhf-toggle');
+        if (mhf) { openMsgFilterPopover(mhf); return; }
+        const special = e.target.closest('.special-toggle');
+        if (special) { openSpecialPopover(special); return; }
+        const colToggle = e.target.closest('.col-toggle');
+        if (colToggle) { openColumnMenu(colToggle); return; }
+        const th = e.target.closest('th.sortable');
+        if (th && !e.target.closest('.hf-toggle') && !e.target.closest('.mhf-toggle') && !e.target.closest('.special-toggle') && !e.target.closest('.bulk-toggle')) {
+          const key = th.getAttribute('data-sort');
+          const sort = state.tab === 'fields' ? state.sort : state.msgSort;
+          if (sort.key === key) sort.dir = sort.dir === 1 ? -1 : 1;
+          else { sort.key = key; sort.dir = 1; }
+          state.page = 1;
+          renderContent();
+        }
+      });
+
+      document.getElementById('content').addEventListener('change', function (e) {
+        if (e.target && e.target.id === 'pageSize') {
+          state.pageSize = parseInt(e.target.value, 10);
+          state.page = 1;
+          renderContent();
+        }
+      });
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { closeModal(); closePopover(); }
+      });
+    }
+
+    async function initApp() {
+      await loadIgnoreConfig();
+      DATA = await loadData();
+      initState();
+      bindEvents();
+      render();
+    }
+
+    initApp();
+  </script>
+</body>
+</html>

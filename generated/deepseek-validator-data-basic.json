@@ -1,0 +1,569 @@
+{
+  "items" : [ {
+    "tradeId" : "BASIC-0001",
+    "reportDate" : "2026-08-17",
+    "generatedAt" : "2026-08-17T00:00:00+08:00",
+    "platform" : "OTC-PLATFORM-A",
+    "product" : "IRS",
+    "productCategory" : "IR",
+    "counterpartyItemId" : "T-20240814-1001",
+    "platformTradeId" : "PT-BASIC-0001",
+    "platformDealId" : "PD-BASIC-0001",
+    "enabledChannels" : [ "HKTR", "JSFA", "CFTC" ],
+    "channels" : [ {
+      "name" : "HKTR",
+      "desc" : "香港交易资料储存库",
+      "format" : "xml",
+      "files" : {
+        "eo" : [ {
+          "name" : "hktr_srcA_BASIC-0001.csv",
+          "path" : "data/eo/hktr_srcA_BASIC-0001.csv"
+        } ],
+        "ao" : [ {
+          "name" : "HKTR_BASIC-0001_001.xml",
+          "path" : "data/ao/HKTR_BASIC-0001_001.xml"
+        } ],
+        "excel" : {
+          "file" : "mapping.xlsx",
+          "sheet" : "HKTR",
+          "path" : "data/excel/mapping.xlsx"
+        }
+      },
+      "sources" : [ {
+        "name" : "来源渠道 A",
+        "fields" : [ {
+          "id" : "HKTR-1-0",
+          "f" : "tradeId",
+          "x" : "/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId",
+          "aoCsv" : "",
+          "t" : "contextAssertion",
+          "k" : "id",
+          "ctx" : [ "hktr.ctx.default", "hktr.ctx.v2" ],
+          "eo" : "TX-BASIC-0001",
+          "ao" : "TX-BASIC-0001",
+          "result" : "PASSED",
+          "note" : "",
+          "eoConverted" : true,
+          "eoUnconverted" : "BASIC-0001",
+          "extraResults" : [ {
+            "label" : "期望值 (EO, Unconverted)",
+            "value" : "BASIC-0001"
+          } ],
+          "conversionRule" : {
+            "ctx" : [ "hktr.ctx.default", "hktr.ctx.v2" ],
+            "value" : "@normalizeId"
+          },
+          "validationRule" : {
+            "ctx" : [ "hktr.ctx.default", "hktr.ctx.v2" ],
+            "value" : "regex:^TX-\\d{6}$"
+          },
+          "excelMapping" : "-; /HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId",
+          "excelConversionRule" : "-; @normalizeId",
+          "excelValidationRule" : "-; regex:^TX-\\d{6}$",
+          "prints" : [ "[INFO] 比较字段 tradeId（报告渠道 HKTR / 来源渠道 A）", "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId，命中Ctx=hktr.ctx.default,hktr.ctx.v2", "[INFO] EO=TX-BASIC-0001，AO=TX-BASIC-0001 → PASSED" ]
+        }, {
+          "id" : "HKTR-1-1",
+          "f" : "notional",
+          "x" : "/HKTR/Report/Notional/AmountDetails/NotionalValue",
+          "aoCsv" : "",
+          "t" : "productAssertion",
+          "k" : "num",
+          "ctx" : [ "hktr.ctx.default", "hktr.ctx.v2" ],
+          "eo" : "1000000.00",
+          "ao" : "1000050.00",
+          "result" : "FAILED",
+          "note" : "数值差异",
+          "eoConverted" : true,
+          "eoUnconverted" : "100000000",
+          "extraResults" : [ {
+            "label" : "期望值 (EO, Unconverted)",
+            "value" : "100000000"
+          } ],
+          "conversionRule" : {
+            "ctx" : [ "hktr.ctx.default", "hktr.ctx.v2" ],
+            "value" : "@round2"
+          },
+          "validationRule" : {
+            "ctx" : [ "hktr.ctx.default", "hktr.ctx.v2" ],
+            "value" : "regex:^\\d+(\\.\\d{2})?$"
+          },
+          "excelMapping" : "-; /HKTR/Report/Notional/AmountDetails/NotionalValue",
+          "excelConversionRule" : "-; @round2",
+          "excelValidationRule" : "-; regex:^\\d+(\\.\\d{2})?$",
+          "prints" : [ "[INFO] 比较字段 notional（报告渠道 HKTR / 来源渠道 A）", "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/NotionalValue，命中Ctx=hktr.ctx.default,hktr.ctx.v2", "[INFO] EO=1000000.00，AO=1000050.00 → FAILED（数值差异）" ]
+        } ]
+      }, {
+        "name" : "来源渠道 B",
+        "fields" : [ {
+          "id" : "HKTR-2-0",
+          "f" : "tradeId",
+          "x" : "/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId",
+          "aoCsv" : "",
+          "t" : "contextAssertion",
+          "k" : "id",
+          "ctx" : [ "hktr.ctx.default", "hktr.ctx.v2" ],
+          "eo" : "TX-BASIC-0001",
+          "ao" : "TX-BASIC-0001",
+          "result" : "PASSED",
+          "note" : "",
+          "eoConverted" : true,
+          "eoUnconverted" : "BASIC-0001",
+          "extraResults" : [ {
+            "label" : "期望值 (EO, Unconverted)",
+            "value" : "BASIC-0001"
+          } ],
+          "conversionRule" : {
+            "ctx" : [ "hktr.ctx.default", "hktr.ctx.v2" ],
+            "value" : "@normalizeId"
+          },
+          "validationRule" : {
+            "ctx" : [ "hktr.ctx.default", "hktr.ctx.v2" ],
+            "value" : "regex:^TX-\\d{6}$"
+          },
+          "excelMapping" : "-; /HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId",
+          "excelConversionRule" : "-; @normalizeId",
+          "excelValidationRule" : "-; regex:^TX-\\d{6}$",
+          "prints" : [ "[INFO] 比较字段 tradeId（报告渠道 HKTR / 来源渠道 B）", "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId，命中Ctx=hktr.ctx.default,hktr.ctx.v2", "[INFO] EO=TX-BASIC-0001，AO=TX-BASIC-0001 → PASSED" ]
+        }, {
+          "id" : "HKTR-2-1",
+          "f" : "notional",
+          "x" : "/HKTR/Report/Notional/AmountDetails/NotionalValue",
+          "aoCsv" : "",
+          "t" : "productAssertion",
+          "k" : "num",
+          "ctx" : [ "hktr.ctx.default", "hktr.ctx.v2" ],
+          "eo" : "1000000.00",
+          "ao" : "1000050.00",
+          "result" : "FAILED",
+          "note" : "数值差异",
+          "eoConverted" : true,
+          "eoUnconverted" : "100000000",
+          "extraResults" : [ {
+            "label" : "期望值 (EO, Unconverted)",
+            "value" : "100000000"
+          } ],
+          "conversionRule" : {
+            "ctx" : [ "hktr.ctx.default", "hktr.ctx.v2" ],
+            "value" : "@round2"
+          },
+          "validationRule" : {
+            "ctx" : [ "hktr.ctx.default", "hktr.ctx.v2" ],
+            "value" : "regex:^\\d+(\\.\\d{2})?$"
+          },
+          "excelMapping" : "-; /HKTR/Report/Notional/AmountDetails/NotionalValue",
+          "excelConversionRule" : "-; @round2",
+          "excelValidationRule" : "-; regex:^\\d+(\\.\\d{2})?$",
+          "prints" : [ "[INFO] 比较字段 notional（报告渠道 HKTR / 来源渠道 B）", "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/NotionalValue，命中Ctx=hktr.ctx.default,hktr.ctx.v2", "[INFO] EO=1000000.00，AO=1000050.00 → FAILED（数值差异）" ]
+        } ]
+      } ],
+      "warnings" : [ {
+        "channel" : "HKTR",
+        "platform" : "OTC-PLATFORM-A",
+        "product" : "IRS",
+        "type" : "productAssertion",
+        "level" : "WARN",
+        "text" : "字段格式与映射配置不一致，使用默认校验规则",
+        "field" : "notional"
+      } ],
+      "errors" : [ {
+        "channel" : "HKTR",
+        "platform" : "OTC-PLATFORM-A",
+        "product" : "IRS",
+        "type" : "mappingError",
+        "level" : "ERROR",
+        "text" : "映射配置错误：XPath 语法非法",
+        "field" : "tradeId"
+      } ],
+      "uncompared" : [ {
+        "channel" : "HKTR",
+        "xpath" : "/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId",
+        "note" : "未在映射配置中匹配到对应 CSV 字段",
+        "platform" : "OTC-PLATFORM-A",
+        "product" : "IRS",
+        "ctx" : "hktr.ctx.default"
+      } ],
+      "uncomparedCsv" : [ ],
+      "logs" : [ "2026-08-17 00:00:00.200 INFO  [HKTR] 读取报送文件 HKTR_BASIC-0001_001.xml", "2026-08-17 00:00:00.300 INFO  [HKTR] 完成字段比较，渠道结果已生成" ]
+    }, {
+      "name" : "JSFA",
+      "desc" : "日本金融厅",
+      "format" : "xml",
+      "files" : {
+        "eo" : [ {
+          "name" : "jsfa_srcA_BASIC-0001.csv",
+          "path" : "data/eo/jsfa_srcA_BASIC-0001.csv"
+        } ],
+        "ao" : [ {
+          "name" : "JSFA_BASIC-0001_001.xml",
+          "path" : "data/ao/JSFA_BASIC-0001_001.xml"
+        } ],
+        "excel" : {
+          "file" : "mapping.xlsx",
+          "sheet" : "JSFA",
+          "path" : "data/excel/mapping.xlsx"
+        }
+      },
+      "sources" : [ {
+        "name" : "来源渠道 A",
+        "fields" : [ {
+          "id" : "JSFA-1-0",
+          "f" : "tradeId",
+          "x" : "/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId",
+          "aoCsv" : "",
+          "t" : "contextAssertion",
+          "k" : "id",
+          "ctx" : [ "jsfa.ctx.default", "jsfa.ctx.v2" ],
+          "eo" : "TX-BASIC-0001",
+          "ao" : "TX-BASIC-0001",
+          "result" : "PASSED",
+          "note" : "",
+          "eoConverted" : true,
+          "eoUnconverted" : "BASIC-0001",
+          "extraResults" : [ {
+            "label" : "期望值 (EO, Unconverted)",
+            "value" : "BASIC-0001"
+          } ],
+          "conversionRule" : {
+            "ctx" : [ "jsfa.ctx.default", "jsfa.ctx.v2" ],
+            "value" : "@normalizeId"
+          },
+          "validationRule" : {
+            "ctx" : [ "jsfa.ctx.default", "jsfa.ctx.v2" ],
+            "value" : "regex:^TX-\\d{6}$"
+          },
+          "excelMapping" : "-; /JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId",
+          "excelConversionRule" : "-; @normalizeId",
+          "excelValidationRule" : "-; regex:^TX-\\d{6}$",
+          "prints" : [ "[INFO] 比较字段 tradeId（报告渠道 JSFA / 来源渠道 A）", "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId，命中Ctx=jsfa.ctx.default,jsfa.ctx.v2", "[INFO] EO=TX-BASIC-0001，AO=TX-BASIC-0001 → PASSED" ]
+        }, {
+          "id" : "JSFA-1-1",
+          "f" : "notional",
+          "x" : "/JSFA/Report/Notional/AmountDetails/NotionalValue",
+          "aoCsv" : "",
+          "t" : "productAssertion",
+          "k" : "num",
+          "ctx" : [ "jsfa.ctx.default", "jsfa.ctx.v2" ],
+          "eo" : "1000000.00",
+          "ao" : "1000050.00",
+          "result" : "FAILED",
+          "note" : "数值差异",
+          "eoConverted" : true,
+          "eoUnconverted" : "100000000",
+          "extraResults" : [ {
+            "label" : "期望值 (EO, Unconverted)",
+            "value" : "100000000"
+          } ],
+          "conversionRule" : {
+            "ctx" : [ "jsfa.ctx.default", "jsfa.ctx.v2" ],
+            "value" : "@round2"
+          },
+          "validationRule" : {
+            "ctx" : [ "jsfa.ctx.default", "jsfa.ctx.v2" ],
+            "value" : "regex:^\\d+(\\.\\d{2})?$"
+          },
+          "excelMapping" : "-; /JSFA/Report/Notional/AmountDetails/NotionalValue",
+          "excelConversionRule" : "-; @round2",
+          "excelValidationRule" : "-; regex:^\\d+(\\.\\d{2})?$",
+          "prints" : [ "[INFO] 比较字段 notional（报告渠道 JSFA / 来源渠道 A）", "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/NotionalValue，命中Ctx=jsfa.ctx.default,jsfa.ctx.v2", "[INFO] EO=1000000.00，AO=1000050.00 → FAILED（数值差异）" ]
+        } ]
+      }, {
+        "name" : "来源渠道 B",
+        "fields" : [ {
+          "id" : "JSFA-2-0",
+          "f" : "tradeId",
+          "x" : "/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId",
+          "aoCsv" : "",
+          "t" : "contextAssertion",
+          "k" : "id",
+          "ctx" : [ "jsfa.ctx.default", "jsfa.ctx.v2" ],
+          "eo" : "TX-BASIC-0001",
+          "ao" : "TX-BASIC-0001",
+          "result" : "PASSED",
+          "note" : "",
+          "eoConverted" : true,
+          "eoUnconverted" : "BASIC-0001",
+          "extraResults" : [ {
+            "label" : "期望值 (EO, Unconverted)",
+            "value" : "BASIC-0001"
+          } ],
+          "conversionRule" : {
+            "ctx" : [ "jsfa.ctx.default", "jsfa.ctx.v2" ],
+            "value" : "@normalizeId"
+          },
+          "validationRule" : {
+            "ctx" : [ "jsfa.ctx.default", "jsfa.ctx.v2" ],
+            "value" : "regex:^TX-\\d{6}$"
+          },
+          "excelMapping" : "-; /JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId",
+          "excelConversionRule" : "-; @normalizeId",
+          "excelValidationRule" : "-; regex:^TX-\\d{6}$",
+          "prints" : [ "[INFO] 比较字段 tradeId（报告渠道 JSFA / 来源渠道 B）", "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId，命中Ctx=jsfa.ctx.default,jsfa.ctx.v2", "[INFO] EO=TX-BASIC-0001，AO=TX-BASIC-0001 → PASSED" ]
+        }, {
+          "id" : "JSFA-2-1",
+          "f" : "notional",
+          "x" : "/JSFA/Report/Notional/AmountDetails/NotionalValue",
+          "aoCsv" : "",
+          "t" : "productAssertion",
+          "k" : "num",
+          "ctx" : [ "jsfa.ctx.default", "jsfa.ctx.v2" ],
+          "eo" : "1000000.00",
+          "ao" : "1000050.00",
+          "result" : "FAILED",
+          "note" : "数值差异",
+          "eoConverted" : true,
+          "eoUnconverted" : "100000000",
+          "extraResults" : [ {
+            "label" : "期望值 (EO, Unconverted)",
+            "value" : "100000000"
+          } ],
+          "conversionRule" : {
+            "ctx" : [ "jsfa.ctx.default", "jsfa.ctx.v2" ],
+            "value" : "@round2"
+          },
+          "validationRule" : {
+            "ctx" : [ "jsfa.ctx.default", "jsfa.ctx.v2" ],
+            "value" : "regex:^\\d+(\\.\\d{2})?$"
+          },
+          "excelMapping" : "-; /JSFA/Report/Notional/AmountDetails/NotionalValue",
+          "excelConversionRule" : "-; @round2",
+          "excelValidationRule" : "-; regex:^\\d+(\\.\\d{2})?$",
+          "prints" : [ "[INFO] 比较字段 notional（报告渠道 JSFA / 来源渠道 B）", "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/NotionalValue，命中Ctx=jsfa.ctx.default,jsfa.ctx.v2", "[INFO] EO=1000000.00，AO=1000050.00 → FAILED（数值差异）" ]
+        } ]
+      } ],
+      "warnings" : [ {
+        "channel" : "JSFA",
+        "platform" : "OTC-PLATFORM-A",
+        "product" : "IRS",
+        "type" : "productAssertion",
+        "level" : "WARN",
+        "text" : "字段格式与映射配置不一致，使用默认校验规则",
+        "field" : "notional"
+      } ],
+      "errors" : [ {
+        "channel" : "JSFA",
+        "platform" : "OTC-PLATFORM-A",
+        "product" : "IRS",
+        "type" : "mappingError",
+        "level" : "ERROR",
+        "text" : "映射配置错误：XPath 语法非法",
+        "field" : "tradeId"
+      } ],
+      "uncompared" : [ {
+        "channel" : "JSFA",
+        "xpath" : "/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId",
+        "note" : "未在映射配置中匹配到对应 CSV 字段",
+        "platform" : "OTC-PLATFORM-A",
+        "product" : "IRS",
+        "ctx" : "jsfa.ctx.default"
+      } ],
+      "uncomparedCsv" : [ ],
+      "logs" : [ "2026-08-17 00:00:00.200 INFO  [JSFA] 读取报送文件 JSFA_BASIC-0001_001.xml", "2026-08-17 00:00:00.300 INFO  [JSFA] 完成字段比较，渠道结果已生成" ]
+    }, {
+      "name" : "CFTC",
+      "desc" : "美国商品期货交易委员会",
+      "format" : "csv",
+      "files" : {
+        "eo" : [ {
+          "name" : "cftc_srcA_BASIC-0001.csv",
+          "path" : "data/eo/cftc_srcA_BASIC-0001.csv"
+        } ],
+        "ao" : [ {
+          "name" : "CFTC_BASIC-0001_001.csv",
+          "path" : "data/ao/CFTC_BASIC-0001_001.csv"
+        } ],
+        "excel" : {
+          "file" : "mapping.xlsx",
+          "sheet" : "CFTC",
+          "path" : "data/excel/mapping.xlsx"
+        }
+      },
+      "sources" : [ {
+        "name" : "来源渠道 A",
+        "fields" : [ {
+          "id" : "CFTC-1-0",
+          "f" : "tradeId",
+          "x" : "",
+          "aoCsv" : "trade_id",
+          "t" : "contextAssertion",
+          "k" : "id",
+          "ctx" : [ "cftc.ctx.default", "cftc.ctx.v2" ],
+          "eo" : "TX-BASIC-0001",
+          "ao" : "TX-BASIC-0001",
+          "result" : "PASSED",
+          "note" : "",
+          "eoConverted" : true,
+          "eoUnconverted" : "BASIC-0001",
+          "extraResults" : [ {
+            "label" : "期望值 (EO, Unconverted)",
+            "value" : "BASIC-0001"
+          } ],
+          "conversionRule" : {
+            "ctx" : [ "cftc.ctx.default", "cftc.ctx.v2" ],
+            "value" : "@normalizeId"
+          },
+          "validationRule" : {
+            "ctx" : [ "cftc.ctx.default", "cftc.ctx.v2" ],
+            "value" : "regex:^TX-\\d{6}$"
+          },
+          "excelMapping" : "-; trade_id",
+          "excelConversionRule" : "-; @normalizeId",
+          "excelValidationRule" : "-; regex:^TX-\\d{6}$",
+          "prints" : [ "[INFO] 比较字段 tradeId（报告渠道 CFTC / 来源渠道 A）", "[INFO] CSV字段=trade_id，命中Ctx=cftc.ctx.default,cftc.ctx.v2", "[INFO] EO=TX-BASIC-0001，AO=TX-BASIC-0001 → PASSED" ]
+        }, {
+          "id" : "CFTC-1-1",
+          "f" : "notional",
+          "x" : "",
+          "aoCsv" : "notional_amount",
+          "t" : "productAssertion",
+          "k" : "num",
+          "ctx" : [ "cftc.ctx.default", "cftc.ctx.v2" ],
+          "eo" : "1000000.00",
+          "ao" : "1000050.00",
+          "result" : "FAILED",
+          "note" : "数值差异",
+          "eoConverted" : true,
+          "eoUnconverted" : "100000000",
+          "extraResults" : [ {
+            "label" : "期望值 (EO, Unconverted)",
+            "value" : "100000000"
+          } ],
+          "conversionRule" : {
+            "ctx" : [ "cftc.ctx.default", "cftc.ctx.v2" ],
+            "value" : "@round2"
+          },
+          "validationRule" : {
+            "ctx" : [ "cftc.ctx.default", "cftc.ctx.v2" ],
+            "value" : "regex:^\\d+(\\.\\d{2})?$"
+          },
+          "excelMapping" : "-; notional_amount",
+          "excelConversionRule" : "-; @round2",
+          "excelValidationRule" : "-; regex:^\\d+(\\.\\d{2})?$",
+          "prints" : [ "[INFO] 比较字段 notional（报告渠道 CFTC / 来源渠道 A）", "[INFO] CSV字段=notional_amount，命中Ctx=cftc.ctx.default,cftc.ctx.v2", "[INFO] EO=1000000.00，AO=1000050.00 → FAILED（数值差异）" ]
+        } ]
+      }, {
+        "name" : "来源渠道 B",
+        "fields" : [ {
+          "id" : "CFTC-2-0",
+          "f" : "tradeId",
+          "x" : "",
+          "aoCsv" : "trade_id",
+          "t" : "contextAssertion",
+          "k" : "id",
+          "ctx" : [ "cftc.ctx.default", "cftc.ctx.v2" ],
+          "eo" : "TX-BASIC-0001",
+          "ao" : "TX-BASIC-0001",
+          "result" : "PASSED",
+          "note" : "",
+          "eoConverted" : true,
+          "eoUnconverted" : "BASIC-0001",
+          "extraResults" : [ {
+            "label" : "期望值 (EO, Unconverted)",
+            "value" : "BASIC-0001"
+          } ],
+          "conversionRule" : {
+            "ctx" : [ "cftc.ctx.default", "cftc.ctx.v2" ],
+            "value" : "@normalizeId"
+          },
+          "validationRule" : {
+            "ctx" : [ "cftc.ctx.default", "cftc.ctx.v2" ],
+            "value" : "regex:^TX-\\d{6}$"
+          },
+          "excelMapping" : "-; trade_id",
+          "excelConversionRule" : "-; @normalizeId",
+          "excelValidationRule" : "-; regex:^TX-\\d{6}$",
+          "prints" : [ "[INFO] 比较字段 tradeId（报告渠道 CFTC / 来源渠道 B）", "[INFO] CSV字段=trade_id，命中Ctx=cftc.ctx.default,cftc.ctx.v2", "[INFO] EO=TX-BASIC-0001，AO=TX-BASIC-0001 → PASSED" ]
+        }, {
+          "id" : "CFTC-2-1",
+          "f" : "notional",
+          "x" : "",
+          "aoCsv" : "notional_amount",
+          "t" : "productAssertion",
+          "k" : "num",
+          "ctx" : [ "cftc.ctx.default", "cftc.ctx.v2" ],
+          "eo" : "1000000.00",
+          "ao" : "1000050.00",
+          "result" : "FAILED",
+          "note" : "数值差异",
+          "eoConverted" : true,
+          "eoUnconverted" : "100000000",
+          "extraResults" : [ {
+            "label" : "期望值 (EO, Unconverted)",
+            "value" : "100000000"
+          } ],
+          "conversionRule" : {
+            "ctx" : [ "cftc.ctx.default", "cftc.ctx.v2" ],
+            "value" : "@round2"
+          },
+          "validationRule" : {
+            "ctx" : [ "cftc.ctx.default", "cftc.ctx.v2" ],
+            "value" : "regex:^\\d+(\\.\\d{2})?$"
+          },
+          "excelMapping" : "-; notional_amount",
+          "excelConversionRule" : "-; @round2",
+          "excelValidationRule" : "-; regex:^\\d+(\\.\\d{2})?$",
+          "prints" : [ "[INFO] 比较字段 notional（报告渠道 CFTC / 来源渠道 B）", "[INFO] CSV字段=notional_amount，命中Ctx=cftc.ctx.default,cftc.ctx.v2", "[INFO] EO=1000000.00，AO=1000050.00 → FAILED（数值差异）" ]
+        } ]
+      } ],
+      "warnings" : [ {
+        "channel" : "CFTC",
+        "platform" : "OTC-PLATFORM-A",
+        "product" : "IRS",
+        "type" : "productAssertion",
+        "level" : "WARN",
+        "text" : "字段格式与映射配置不一致，使用默认校验规则",
+        "field" : "notional"
+      } ],
+      "errors" : [ {
+        "channel" : "CFTC",
+        "platform" : "OTC-PLATFORM-A",
+        "product" : "IRS",
+        "type" : "mappingError",
+        "level" : "ERROR",
+        "text" : "映射配置错误：XPath 语法非法",
+        "field" : "tradeId"
+      } ],
+      "uncompared" : [ ],
+      "uncomparedCsv" : [ {
+        "channel" : "CFTC",
+        "csvField" : "remarks",
+        "note" : "未在映射配置中匹配到对应来源字段",
+        "platform" : "OTC-PLATFORM-A",
+        "product" : "IRS",
+        "ctx" : "cftc.ctx.default"
+      } ],
+      "logs" : [ "2026-08-17 00:00:00.200 INFO  [CFTC] 读取报送文件 CFTC_BASIC-0001_001.csv", "2026-08-17 00:00:00.300 INFO  [CFTC] 完成字段比较，渠道结果已生成" ]
+    } ],
+    "skippedItems" : [ {
+      "itemId" : "T-20260817-0001",
+      "channel" : "JSFA",
+      "reason" : "在 JSFA 渠道中未找到该 item 的对应记录，已跳过该渠道的比较。"
+    } ],
+    "overviewLogs" : [ "2026-08-17 00:00:00.100 INFO  开始比较 item=BASIC-0001，报告日期=2026-08-17", "2026-08-17 00:00:00.200 INFO  比较完成，结果已生成" ]
+  } ],
+  "ctxDefs" : {
+    "hktr.ctx.default" : {
+      "def" : "HKTR 默认上下文（标准报送场景）",
+      "hits" : "命中 3 个映射条目（EO 2 / AO 1）"
+    },
+    "hktr.ctx.v2" : {
+      "def" : "HKTR v2 上下文（2024 新版映射）",
+      "hits" : "命中 2 个映射条目（EO 1 / AO 1）"
+    },
+    "jsfa.ctx.default" : {
+      "def" : "JSFA 默认上下文（标准报送场景）",
+      "hits" : "命中 3 个映射条目（EO 2 / AO 1）"
+    },
+    "jsfa.ctx.v2" : {
+      "def" : "JSFA v2 上下文（2024 新版映射）",
+      "hits" : "命中 2 个映射条目（EO 1 / AO 1）"
+    },
+    "cftc.ctx.default" : {
+      "def" : "CFTC 默认上下文（标准报送场景）",
+      "hits" : "命中 3 个映射条目（EO 2 / AO 1）"
+    },
+    "cftc.ctx.v2" : {
+      "def" : "CFTC v2 上下文（2024 新版映射）",
+      "hits" : "命中 2 个映射条目（EO 1 / AO 1）"
+    }
+  }
+}

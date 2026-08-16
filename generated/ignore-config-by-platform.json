@@ -1,0 +1,35 @@
+{
+  "OTC-PLATFORM-A" : {
+    "warnings" : [ {
+      "kind" : "warning",
+      "channel" : "HKTR",
+      "field" : "",
+      "type" : "contextAssertion",
+      "level" : "NOTICE",
+      "product" : "IRS"
+    } ],
+    "uncomparedXpaths" : [ ]
+  },
+  "OTC-PLATFORM-B" : {
+    "warnings" : [ {
+      "kind" : "warning",
+      "channel" : "HKTR",
+      "field" : "",
+      "type" : "contextAssertion",
+      "level" : "NOTICE",
+      "product" : "IRS"
+    } ],
+    "uncomparedXpaths" : [ ]
+  },
+  "OTC-PLATFORM-C" : {
+    "warnings" : [ {
+      "kind" : "warning",
+      "channel" : "HKTR",
+      "field" : "",
+      "type" : "contextAssertion",
+      "level" : "NOTICE",
+      "product" : "IRS"
+    } ],
+    "uncomparedXpaths" : [ ]
+  }
+}

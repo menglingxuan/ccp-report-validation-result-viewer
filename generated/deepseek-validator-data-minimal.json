@@ -1,0 +1,52 @@
+{
+  "items" : [ {
+    "tradeId" : "ME-0001",
+    "reportDate" : "2026-08-17",
+    "generatedAt" : "2026-08-17T00:00:00+08:00",
+    "platform" : "OTC-PLATFORM-A",
+    "product" : "IRS",
+    "productCategory" : "IR",
+    "counterpartyItemId" : "",
+    "platformTradeId" : "PT-ME-0001",
+    "platformDealId" : "PD-ME-0001",
+    "enabledChannels" : [ "HKTR" ],
+    "channels" : [ {
+      "name" : "HKTR",
+      "desc" : "香港交易资料储存库",
+      "format" : "xml",
+      "files" : {
+        "eo" : [ ],
+        "ao" : [ ],
+        "excel" : {
+          "file" : "mapping.xlsx",
+          "sheet" : "HKTR"
+        }
+      },
+      "sources" : [ {
+        "name" : "来源渠道 A",
+        "fields" : [ {
+          "id" : "HKTR-1-0",
+          "f" : "tradeId",
+          "x" : "/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId",
+          "aoCsv" : "",
+          "t" : "contextAssertion",
+          "k" : "id",
+          "ctx" : [ ],
+          "eo" : "TX-ME-0001",
+          "ao" : "TX-ME-0001",
+          "result" : "PASSED",
+          "note" : "",
+          "prints" : [ ]
+        } ]
+      } ],
+      "warnings" : [ ],
+      "errors" : [ ],
+      "uncompared" : [ ],
+      "uncomparedCsv" : [ ],
+      "logs" : [ ]
+    } ],
+    "skippedItems" : [ ],
+    "overviewLogs" : [ ]
+  } ],
+  "ctxDefs" : { }
+}

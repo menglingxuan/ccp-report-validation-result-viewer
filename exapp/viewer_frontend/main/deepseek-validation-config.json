@@ -1,0 +1,71 @@
+{
+    "configVersion":  2,
+    "runType":  "dev",
+    "urls":  {
+                 "data":  "deepseek-validation-data.json",
+                 "ignore":  "ignore-config-by-platform.json",
+                 "batches":  "batches-index.json"
+             },
+    "ui":  {
+               "lang":  "zh-CN",
+               "theme":  "light",
+               "sidebarMode":  "combined",
+               "sidebarWidth":  280,
+               "reportCatDefault":  null,
+               "batchDockSide":  "left",
+               "progressBarStyle":  "status"
+           },
+    "features":  {
+                     "uncomparedXpath":  true,
+                     "uncomparedItems":  true,
+                     "uncomparedCsv":  true,
+                     "logs":  true,
+                     "conversionRule":  true,
+                     "validationRule":  true,
+                     "excelMapping":  true,
+                     "excelConversionRule":  true,
+                     "excelValidationRule":  true,
+                     "columnHover":  true,
+                     "sidebarSearch":  true,
+                     "sidebarTradeId":  true,
+                     "compare":  true,
+                     "healthOverview":  true,
+                     "globalSearch":  true,
+                     "keyboardShortcuts":  true,
+                     "modalPrints":  true,
+                     "recentBatches":  true
+                 },
+    "limits":  {
+                   "pageSize":  20,
+                   "pageSizeOptions":  [
+                                           10,
+                                           20,
+                                           50
+                                       ],
+                   "sidebarPageSize":  8,
+                   "msgPageSize":  20,
+                   "globalSearchLimit":  200
+               },
+    "batches":  {
+                    "recentCount":  5,
+                    "pageSize":  8,
+                    "listMode":  "lazy",
+                    "detailMode":  "quick",
+                    "panelWidth":  320
+                },
+    "columns":  {
+                    "default":  {
+                                    "channel":  true,
+                                    "source":  true,
+                                    "f":  true,
+                                    "x":  true,
+                                    "aoCsv":  true,
+                                    "t":  false,
+                                    "ctx":  false,
+                                    "eo":  true,
+                                    "ao":  true,
+                                    "result":  true,
+                                    "note":  false
+                                }
+                }
+}

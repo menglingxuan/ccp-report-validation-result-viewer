@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>金融监管报告比较 · 结果展示</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --pass: #16a34a;
+      --pass-bg: #dcfce7;
+      --fail: #dc2626;
+      --fail-bg: #fee2e2;
+      --warn: #d97706;
+      --warn-bg: #fef3c7;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* 顶栏 */
+    .topbar {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+    }
+    .topbar h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    .topbar .sub { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+
+    .page { max-width: 1400px; margin: 0 auto; padding: 20px 24px 40px; }
+
+    /* 统计卡片 */
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .card-label { color: var(--muted); font-size: 12px; }
+    .card-value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+    .card-value.ok { color: var(--pass); }
+    .card-value.bad { color: var(--fail); }
+    .card-value.warn { color: var(--warn); }
+
+    /* 工具栏 */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+    .toolbar input[type="search"] {
+      flex: 1 1 240px;
+      min-width: 180px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+    }
+    .toolbar input[type="search"]:focus { border-color: var(--accent); }
+    .toolbar select {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      cursor: pointer;
+    }
+    .toolbar select:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* 主体布局 */
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    /* 侧栏 item 列表 */
+    .sidebar {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .sidebar-head {
+      padding: 12px 14px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sidebar-head .count {
+      background: #eef2ff;
+      color: #4338ca;
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 12px;
+    }
+    .item { padding: 12px 14px; cursor: pointer; border-bottom: 1px solid var(--border); }
+    .item:last-child { border-bottom: none; }
+    .item:hover { background: #f9fafb; }
+    .item.active { background: #eff6ff; box-shadow: inset 3px 0 0 var(--accent); }
+    .item-id { font-weight: 600; font-family: var(--mono); }
+    .item-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .bar { height: 6px; background: #eef0f3; border-radius: 999px; margin-top: 8px; overflow: hidden; }
+    .bar-fill { height: 100%; background: var(--pass); border-radius: 999px; }
+
+    /* 详情区 */
+    .detail {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .detail-head { padding: 16px 18px 0; }
+    .detail-head h2 { margin: 0; font-size: 18px; font-family: var(--mono); }
+    .detail-head .channels { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 14px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+    .tab {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 6px 14px;
+      cursor: pointer;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tab:hover { border-color: var(--accent); color: var(--accent); }
+    .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .tab-count {
+      background: rgba(0,0,0,.08);
+      border-radius: 999px;
+      padding: 0 8px;
+      font-size: 12px;
+    }
+    .tab.active .tab-count { background: rgba(255,255,255,.25); }
+
+    .channel-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 12px 18px 0;
+    }
+    .ctab {
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 5px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .ctab:hover { border-color: var(--accent); color: var(--accent); }
+    .ctab.active { background: #eef2ff; border-color: var(--accent); color: var(--accent); font-weight: 600; }
+    .ctab-count { color: var(--muted); font-size: 12px; }
+    .ctab.active .ctab-count { color: var(--accent); }
+
+    .content { padding: 16px 18px 20px; }
+
+    /* 表格 */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { background: #f9fafb; color: var(--muted); font-weight: 600; font-size: 12px; white-space: nowrap; }
+    tr.row-fail td { background: #fffafa; }
+    .mono { font-family: var(--mono); font-size: 12px; }
+    .xpath { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .note { color: var(--muted); }
+    .empty { text-align: center; color: var(--muted); padding: 28px !important; }
+
+    /* 徽章与芯片 */
+    .chip { display: inline-block; border-radius: 6px; padding: 2px 8px; font-size: 12px; white-space: nowrap; }
+    .channel-chip { background: #eef2ff; color: #4338ca; }
+    .tp-platform { background: #e0f2fe; color: #0369a1; }
+    .tp-product { background: #ede9fe; color: #6d28d9; }
+    .tp-context { background: #fef3c7; color: #b45309; }
+    .badge { display: inline-block; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
+    .badge.pass { background: var(--pass-bg); color: var(--pass); }
+    .badge.fail { background: var(--fail-bg); color: var(--fail); }
+    .badge.warn { background: var(--warn-bg); color: var(--warn); }
+
+    /* 分页 */
+    .pagination { display: flex; align-items: center; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
+    .pg {
+      min-width: 30px; height: 30px;
+      border: 1px solid var(--border);
+      background: #fff; color: var(--text);
+      border-radius: 8px; cursor: pointer; font-size: 13px;
+    }
+    .pg:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .pg.cur { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .pg:disabled { opacity: .4; cursor: not-allowed; }
+    .pg-info { color: var(--muted); font-size: 12px; margin: 0 6px; }
+    .pagination select { padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; }
+
+    /* 日志 */
+    .log-box {
+      background: #0f172a; color: #d1fae5;
+      border-radius: 10px; padding: 14px 16px;
+      font-family: var(--mono); font-size: 12px;
+      max-height: 520px; overflow: auto;
+    }
+    .log-line { white-space: pre-wrap; word-break: break-all; }
+
+    .meta-note { margin-top: 10px; color: var(--muted); font-size: 12px; }
+    .footer-note { margin-top: 20px; color: var(--muted); font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <h1>金融监管报告比较 · 结果展示</h1>
+    <p class="sub">item (tradeId) → 报告渠道 (HKTR / JSFA / CFTC) → 来源渠道 → 字段级比较（EO 期望值 vs AO 实际值）</p>
+  </header>
+
+  <div class="page">
+    <section class="summary" id="summary"></section>
+
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="搜索 字段 / XPath / 期望值 / 实际值 / 信息…">
+      <select id="statusFilter">
+        <option value="ALL">结果：全部</option>
+        <option value="PASSED">结果：PASSED</option>
+        <option value="FAILED">结果：FAILED</option>
+      </select>
+      <select id="typeFilter">
+        <option value="ALL">类型：全部</option>
+        <option value="platformAssertion">platformAssertion</option>
+        <option value="productAssertion">productAssertion</option>
+        <option value="contextAssertion">contextAssertion</option>
+      </select>
+    </div>
+
+    <main class="layout">
+      <aside class="sidebar" id="sidebar"></aside>
+      <section class="detail">
+        <div class="detail-head">
+          <h2 id="itemMeta"></h2>
+          <div class="channels" id="channelMeta"></div>
+          <div class="tabs" id="tabs"></div>
+          <div class="channel-tabs" id="channelTabs"></div>
+        </div>
+        <div class="content" id="content"></div>
+      </section>
+    </main>
+
+    <p class="footer-note">示例数据为内置生成器产出，可替换为真实比对结果 JSON。</p>
+  </div>
+
+  <script>
+    /* ============================================================
+     * 数据模型说明
+     * item (tradeId) -> 报告渠道 (HKTR/JSFA/CFTC)
+     *   -> 来源渠道 (A/B, 各有一套字段映射)
+     *     -> 字段比较结果 { f, xpath, type, eo, ao, result, note }
+     * item 级别: warnings[] / errors[] / uncompared[] / logs[]
+     * ============================================================ */
+
+    const TYPE_META = {
+      platformAssertion: { label: '平台断言', cls: 'tp-platform' },
+      productAssertion:  { label: '产品断言', cls: 'tp-product' },
+      contextAssertion:  { label: '上下文断言', cls: 'tp-context' },
+    };
+
+    const CHANNELS = [
+      { name: 'HKTR', desc: '香港交易资料储存库' },
+      { name: 'JSFA', desc: '日本金融厅' },
+      { name: 'CFTC', desc: '美国商品期货交易委员会' },
+    ];
+
+    // 每个报告渠道的字段定义: [字段, XPath, 断言类型, 值类型]
+    const FIELD_DEFS = {
+      HKTR: [
+        ['tradeId',      '/HKTR/Rpt/Header/TradeId',     'contextAssertion', 'id'],
+        ['reportId',     '/HKTR/Rpt/Header/RptId',       'contextAssertion', 'id'],
+        ['product',      '/HKTR/Rpt/Product/Id',         'productAssertion',  'product'],
+        ['notional',     '/HKTR/Rpt/Notional/Amt',       'productAssertion',  'num'],
+        ['currency',     '/HKTR/Rpt/Notional/Ccy',       'productAssertion',  'code'],
+        ['tradeDate',    '/HKTR/Rpt/Header/TradeDt',     'contextAssertion', 'date'],
+        ['maturityDate', '/HKTR/Rpt/Header/MaturityDt',  'contextAssertion', 'date'],
+        ['counterparty', '/HKTR/Rpt/Cpty/Name',          'contextAssertion', 'text'],
+        ['platform',     '/HKTR/Rpt/Pltfrm/Id',          'platformAssertion', 'text'],
+        ['venue',        '/HKTR/Rpt/Venu/Id',            'platformAssertion', 'text'],
+        ['price',        '/HKTR/Rpt/Price/Amt',          'productAssertion',  'num'],
+        ['quantity',     '/HKTR/Rpt/Qty/Amt',            'productAssertion',  'num'],
+      ],
+      JSFA: [
+        ['tradeId',        '/JSFA/Report/Header/TradeId',        'contextAssertion', 'id'],
+        ['reportId',       '/JSFA/Report/Header/ReportId',       'contextAssertion', 'id'],
+        ['product',        '/JSFA/Report/Product/ProductId',     'productAssertion',  'product'],
+        ['notional',       '/JSFA/Report/Notional/Amount',       'productAssertion',  'num'],
+        ['currency',       '/JSFA/Report/Notional/Currency',     'productAssertion',  'code'],
+        ['tradeDate',      '/JSFA/Report/Header/TradeDate',      'contextAssertion', 'date'],
+        ['settlementDate', '/JSFA/Report/Header/SettlementDate', 'contextAssertion', 'date'],
+        ['counterparty',   '/JSFA/Report/Counterparty/Name',     'contextAssertion', 'text'],
+        ['platform',       '/JSFA/Report/Execution/Platform',    'platformAssertion', 'text'],
+        ['venue',          '/JSFA/Report/Execution/Venue',       'platformAssertion', 'text'],
+        ['price',          '/JSFA/Report/Pricing/Price',         'productAssertion',  'num'],
+        ['quantity',       '/JSFA/Report/Pricing/Quantity',      'productAssertion',  'num'],
+      ],
+      CFTC: [
+        ['tradeId',      '/CFTC/Data/Header/UniqueSwapId',    'contextAssertion', 'id'],
+        ['reportId',     '/CFTC/Data/Header/ReportId',        'contextAssertion', 'id'],
+        ['product',      '/CFTC/Data/Product/ProductId',      'productAssertion',  'product'],
+        ['notional',     '/CFTC/Data/Notional/Amount',        'productAssertion',  'num'],
+        ['currency',     '/CFTC/Data/Notional/Currency',      'productAssertion',  'code'],
+        ['tradeDate',    '/CFTC/Data/Header/ExecutionTs',     'contextAssertion', 'date'],
+        ['maturityDate', '/CFTC/Data/Header/ExpirationDate',  'contextAssertion', 'date'],
+        ['counterparty', '/CFTC/Data/Counterparty/Name',      'contextAssertion', 'text'],
+        ['platform',     '/CFTC/Data/Execution/Platform',     'platformAssertion', 'text'],
+        ['venue',        '/CFTC/Data/Execution/Venue',        'platformAssertion', 'text'],
+        ['price',        '/CFTC/Data/Pricing/Price',          'productAssertion',  'num'],
+        ['quantity',     '/CFTC/Data/Pricing/Quantity',       'productAssertion',  'num'],
+      ],
+    };
+
+    /* ---------- 示例数据生成器（真实数据可替换此部分） ---------- */
+    function mulberry32(a) {
+      return function () {
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        let t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    function genValue(kind, rng) {
+      if (kind === 'id') return 'TX-2024-' + String(100000 + Math.floor(rng() * 900000));
+      if (kind === 'num') return (100000 + rng() * 9900000).toFixed(2);
+      if (kind === 'date') {
+        const d = new Date(Date.UTC(2024, 0, 1) + Math.floor(rng() * 364) * 86400000);
+        return d.toISOString().slice(0, 10);
+      }
+      if (kind === 'code') return ['USD', 'CNY', 'HKD', 'JPY', 'EUR'][Math.floor(rng() * 5)];
+      if (kind === 'product') return ['IRS', 'CDS', 'FXS', 'SWAP', 'FORWARD'][Math.floor(rng() * 5)];
+      if (kind === 'text') return ['ABC Bank', 'Citi Group', 'HSBC', 'Nomura', 'Goldman Sachs'][Math.floor(rng() * 5)];
+      return 'VAL-' + Math.floor(rng() * 9999);
+    }
+
+    function mutateValue(v, kind, rng) {
+      if (kind === 'num') {
+        const n = parseFloat(v);
+        const delta = (rng() < 0.5 ? -1 : 1) * (0.01 + Math.floor(rng() * 99));
+        return (n + delta).toFixed(2);
+      }
+      if (kind === 'date') {
+        const d = new Date(v);
+        d.setUTCDate(d.getUTCDate() + 1 + Math.floor(rng() * 9));
+        return d.toISOString().slice(0, 10);
+      }
+      if (kind === 'code') { const codes = ['USD', 'CNY', 'HKD', 'JPY', 'EUR']; return codes.find(c => c !== v) || 'GBP'; }
+      if (kind === 'product') { const ps = ['IRS', 'CDS', 'FXS', 'SWAP', 'FORWARD']; return ps.find(p => p !== v) || 'OPTION'; }
+      if (kind === 'id') return v.slice(0, -1) + String(Math.floor(rng() * 10));
+      const texts = ['XYZ Bank', 'Deutsche Bank', 'Mizuho', 'BNP Paribas', 'Barclays'];
+      return texts.find(t => t !== v) || 'Other Bank';
+    }
+
+    function noteFor(kind) {
+      if (kind === 'num') return '数值差异';
+      if (kind === 'date') return '日期差异';
+      if (kind === 'code' || kind === 'product') return '码值差异';
+      return '值不一致';
+    }
+
+    const WARN_TEXTS = [
+      '配置映射缺失：CSV 字段未找到对应 XPath，已跳过',
+      '字段格式与映射配置不一致，使用默认校验规则',
+      '日期格式异常，已自动规范化处理',
+      '空值处理：期望值为空，按容错策略判定通过',
+      '关键字段重复，仅保留首条记录',
+    ];
+    const ERR_TEXTS = [
+      'XPath 解析失败：节点不存在',
+      '类型转换异常：无法转换为数值',
+      '映射配置错误：XPath 语法非法',
+      '运行时异常：字段比较过程被中断',
+      '日志缓冲达到上限，部分日志被丢弃',
+    ];
+
+    function buildMessages(level, rng) {
+      const count = 2 + Math.floor(rng() * 4);
+      const pool = level === 'warning' ? WARN_TEXTS : ERR_TEXTS;
+      const keys = Object.keys(TYPE_META);
+      const msgs = [];
+      for (let i = 0; i < count; i++) {
+        msgs.push({
+          type: keys[Math.floor(rng() * keys.length)],
+          level: level,
+          text: pool[Math.floor(rng() * pool.length)],
+        });
+      }
+      return msgs;
+    }
+
+    function buildUncompared(channels, rng) {
+      const list = [];
+      channels.forEach(ch => {
+        const defs = FIELD_DEFS[ch.name];
+        const n = Math.floor(rng() * 2);
+        for (let i = 0; i < n; i++) {
+          const d = defs[Math.floor(rng() * defs.length)];
+          list.push({ channel: ch.name, xpath: d[1], note: '未在映射配置中匹配到对应 CSV 字段' });
+        }
+      });
+      return list;
+    }
+
+    function buildLogs(tradeId, channels) {
+      const t = '2024-08-14 10:23:0';
+      const lines = [
+        t + '0.123 INFO  开始比较 item=' + tradeId,
+        t + '0.140 INFO  加载映射配置 mapping.xlsx（' + channels.length + ' 个报告渠道）',
+      ];
+      channels.forEach((ch, i) => lines.push(t + (1 + i) + '.150 INFO  处理报告渠道 ' + ch.name + ' (' + ch.desc + ')'));
+      lines.push(t + '5.201 WARN  检测到警告信息，详见“警告”页签');
+      lines.push(t + '5.210 ERROR 检测到错误信息，详见“错误”页签');
+      lines.push(t + '9.999 INFO  比较完成，结果已生成');
+      return lines;
+    }
+
+    function buildDataset() {
+      const rng = mulberry32(20240814);
+      const items = [];
+      for (let i = 0; i < 3; i++) {
+        const tradeId = 'T-20240814-' + String(i + 1).padStart(4, '0');
+        const channels = CHANNELS.map(ch => {
+          const sources = [1, 2].map(sn => {
+            const fields = FIELD_DEFS[ch.name].map(([f, x, t, k]) => {
+              const eo = genValue(k, rng);
+              const failed = rng() < 0.18;
+              const ao = failed ? mutateValue(eo, k, rng) : eo;
+              return {
+                f: f, x: x, t: t, k: k,
+                eo: eo, ao: ao,
+                result: failed ? 'FAILED' : 'PASSED',
+                note: failed ? noteFor(k) : '',
+              };
+            });
+            return { name: '来源渠道 ' + (sn === 1 ? 'A' : 'B'), fields: fields };
+          });
+          return { name: ch.name, desc: ch.desc, sources: sources };
+        });
+        items.push({
+          tradeId: tradeId,
+          channels: channels,
+          warnings: buildMessages('warning', rng),
+          errors: buildMessages('error', rng),
+          uncompared: buildUncompared(channels, rng),
+          logs: buildLogs(tradeId, channels),
+        });
+      }
+      return items;
+    }
+
+    /* ---------- 应用状态与渲染 ---------- */
+    const DATA = { items: buildDataset() };
+    const state = {
+      itemId: DATA.items[0].tradeId,
+      tab: 'fields',
+      channel: 'ALL',
+      status: 'ALL',
+      type: 'ALL',
+      search: '',
+      page: 1,
+      pageSize: 20,
+    };
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function currentItem() {
+      return DATA.items.find(it => it.tradeId === state.itemId) || DATA.items[0];
+    }
+
+    function flatFields(item) {
+      const rows = [];
+      item.channels.forEach(ch => {
+        ch.sources.forEach(s => {
+          s.fields.forEach(f => rows.push({
+            channel: ch.name, source: s.name,
+            f: f.f, x: f.x, t: f.t, eo: f.eo, ao: f.ao, result: f.result, note: f.note,
+          }));
+        });
+      });
+      return rows;
+    }
+
+    function itemStats(item) {
+      let total = 0, passed = 0, failed = 0;
+      item.channels.forEach(ch => ch.sources.forEach(s => s.fields.forEach(f => {
+        total++;
+        f.result === 'PASSED' ? passed++ : failed++;
+      })));
+      return {
+        total: total, passed: passed, failed: failed,
+        rate: total ? Math.round(passed / total * 100) : 0,
+        warnings: item.warnings.length,
+        errors: item.errors.length,
+        uncompared: item.uncompared.length,
+        logs: item.logs.length,
+      };
+    }
+
+    function filteredFields(item) {
+      let rows = flatFields(item);
+      if (state.channel !== 'ALL') rows = rows.filter(r => r.channel === state.channel);
+      if (state.status !== 'ALL') rows = rows.filter(r => r.result === state.status);
+      if (state.type !== 'ALL') rows = rows.filter(r => r.t === state.type);
+      if (state.search.trim()) {
+        const q = state.search.trim().toLowerCase();
+        rows = rows.filter(r => (r.f + ' ' + r.x + ' ' + r.eo + ' ' + r.ao).toLowerCase().includes(q));
+      }
+      return rows;
+    }
+
+    function typeChip(t) {
+      const m = TYPE_META[t] || { label: t, cls: '' };
+      return '<span class="chip ' + m.cls + '">' + esc(m.label) + '</span>';
+    }
+
+    function renderSidebar() {
+      const rows = DATA.items.map(it => {
+        const s = itemStats(it);
+        const cls = it.tradeId === state.itemId ? 'item active' : 'item';
+        return '<div class="' + cls + '" data-id="' + it.tradeId + '">' +
+          '<div class="item-id">' + esc(it.tradeId) + '</div>' +
+          '<div class="item-sub">' + s.total + ' 字段 · ' + s.failed + ' 失败 · ' + s.rate + '% 通过</div>' +
+          '<div class="bar"><div class="bar-fill" style="width:' + s.rate + '%"></div></div>' +
+          '</div>';
+      }).join('');
+      document.getElementById('sidebar').innerHTML =
+        '<div class="sidebar-head">比较 item 列表<span class="count">' + DATA.items.length + '</span></div>' + rows;
+    }
+
+    function renderSummary() {
+      const s = itemStats(currentItem());
+      const cards = [
+        ['字段总数', s.total, ''],
+        ['通过 (PASSED)', s.passed, 'ok'],
+        ['失败 (FAILED)', s.failed, 'bad'],
+        ['通过率', s.rate + '%', ''],
+        ['警告', s.warnings, 'warn'],
+        ['错误', s.errors, 'bad'],
+      ];
+      document.getElementById('summary').innerHTML = cards.map(c =>
+        '<div class="card"><div class="card-label">' + c[0] + '</div>' +
+        '<div class="card-value ' + c[2] + '">' + c[1] + '</div></div>'
+      ).join('');
+    }
+
+    function renderMeta() {
+      const it = currentItem();
+      document.getElementById('itemMeta').textContent = it.tradeId;
+      document.getElementById('channelMeta').textContent = '报告渠道：' +
+        it.channels.map(c => c.name + '（' + c.desc + '）').join('　');
+    }
+
+    function renderTabs() {
+      const it = currentItem();
+      const s = itemStats(it);
+      const tabs = [
+        ['fields', '字段比较', s.total],
+        ['warnings', '警告', s.warnings],
+        ['errors', '错误', s.errors],
+        ['uncompared', '未比较 XPath', it.uncompared.length],
+        ['logs', '完整日志', it.logs.length],
+      ];
+      document.getElementById('tabs').innerHTML = tabs.map(([k, label, n]) => {
+        const cls = state.tab === k ? 'tab active' : 'tab';
+        return '<button class="' + cls + '" data-tab="' + k + '">' + label +
+          '<span class="tab-count">' + n + '</span></button>';
+      }).join('');
+
+      const statusSel = document.getElementById('statusFilter');
+      const typeSel = document.getElementById('typeFilter');
+      statusSel.disabled = state.tab !== 'fields';
+      typeSel.disabled = (state.tab !== 'fields' && state.tab !== 'warnings' && state.tab !== 'errors');
+    }
+
+    function renderChannelTabs() {
+      const it = currentItem();
+      const all = flatFields(it);
+      const counts = { ALL: all.length };
+      it.channels.forEach(ch => counts[ch.name] = all.filter(r => r.channel === ch.name).length);
+      const chs = [['ALL', '全部']].concat(it.channels.map(ch => [ch.name, ch.name]));
+      const html = chs.map(([k, label]) => {
+        const cls = state.channel === k ? 'ctab active' : 'ctab';
+        return '<button class="' + cls + '" data-channel="' + k + '">' + esc(label) +
+          '<span class="ctab-count">' + counts[k] + '</span></button>';
+      }).join('');
+      const wrap = document.getElementById('channelTabs');
+      wrap.style.display = state.tab === 'fields' ? 'flex' : 'none';
+      wrap.innerHTML = html;
+    }
+
+    function renderPagination(total, pages) {
+      if (total === 0) return '';
+      const p = state.page;
+      const from = Math.max(1, p - 2), to = Math.min(pages, p + 2);
+      let parts = ['<button class="pg" data-page="' + (p - 1) + '"' + (p === 1 ? ' disabled' : '') + '>‹</button>'];
+      for (let i = from; i <= to; i++) {
+        parts.push('<button class="pg' + (i === p ? ' cur' : '') + '" data-page="' + i + '">' + i + '</button>');
+      }
+      parts.push('<button class="pg" data-page="' + (p + 1) + '"' + (p === pages ? ' disabled' : '') + '>›</button>');
+      return '<div class="pagination">' + parts.join('') +
+        '<span class="pg-info">第 ' + p + ' / ' + pages + ' 页</span>' +
+        '<select id="pageSize">' +
+        [10, 20, 50].map(n => '<option' + (state.pageSize === n ? ' selected' : '') + '>' + n + '</option>').join('') +
+        '</select></div>';
+    }
+
+    function renderFields() {
+      const rows = filteredFields(currentItem());
+      const total = rows.length;
+      const pages = Math.max(1, Math.ceil(total / state.pageSize));
+      if (state.page > pages) state.page = pages;
+      const start = (state.page - 1) * state.pageSize;
+      const pageRows = rows.slice(start, start + state.pageSize);
+
+      const trs = pageRows.map(r => {
+        const pass = r.result === 'PASSED';
+        return '<tr class="' + (pass ? '' : 'row-fail') + '">' +
+          '<td><span class="chip channel-chip">' + esc(r.channel) + '</span></td>' +
+          '<td>' + esc(r.source) + '</td>' +
+          '<td class="mono">' + esc(r.f) + '</td>' +
+          '<td class="mono xpath" title="' + esc(r.x) + '">' + esc(r.x) + '</td>' +
+          '<td>' + typeChip(r.t) + '</td>' +
+          '<td class="mono" title="期望值（报送 XML）">' + esc(r.eo) + '</td>' +
+          '<td class="mono" title="实际值（来源 CSV）">' + esc(r.ao) + '</td>' +
+          '<td><span class="badge ' + (pass ? 'pass' : 'fail') + '">' + r.result + '</span></td>' +
+          '<td class="note">' + esc(r.note || '—') + '</td>' +
+          '</tr>';
+      }).join('');
+
+      document.getElementById('content').innerHTML =
+        '<div class="table-wrap"><table>' +
+        '<thead><tr>' +
+        '<th>报告渠道</th><th>来源渠道</th><th>字段</th><th>XPath</th><th>类型</th>' +
+        '<th>期望值 (EO)</th><th>实际值 (AO)</th><th>结果</th><th>说明</th>' +
+        '</tr></thead>' +
+        '<tbody>' + (trs || '<tr><td colspan="9" class="empty">无匹配记录</td></tr>') + '</tbody>' +
+        '</table></div>' +
+        renderPagination(total, pages) +
+        '<div class="meta-note">共 ' + total + ' 条字段比较记录（已应用当前过滤条件）</div>';
+    }
+
+    function renderMessages(level) {
+      const it = currentItem();
+      let list = level === 'warning' ? it.warnings.slice() : it.errors.slice();
+      if (state.type !== 'ALL') list = list.filter(m => m.type === state.type);
+      if (state.search.trim()) {
+        const q = state.search.trim().toLowerCase();
+        list = list.filter(m => (m.text + ' ' + m.type).toLowerCase().includes(q));
+      }
+      const isWarn = level === 'warning';
+      const rows = list.map(m =>
+        '<tr>' +
+        '<td>' + typeChip(m.type) + '</td>' +
+        '<td><span class="badge ' + (isWarn ? 'warn' : 'fail') + '">' + (isWarn ? 'WARN' : 'ERROR') + '</span></td>' +
+        '<td>' + esc(m.text) + '</td>' +
+        '</tr>'
+      ).join('');
+      document.getElementById('content').innerHTML =
+        '<div class="table-wrap"><table>' +
+        '<thead><tr><th>类型</th><th>级别</th><th>信息</th></tr></thead>' +
+        '<tbody>' + (rows || '<tr><td colspan="3" class="empty">无记录</td></tr>') + '</tbody>' +
+        '</table></div>' +
+        '<div class="meta-note">共 ' + list.length + ' 条' + (isWarn ? '警告' : '错误') + '信息</div>';
+    }
+
+    function renderUncompared() {
+      const it = currentItem();
+      let list = it.uncompared.slice();
+      if (state.search.trim()) {
+        const q = state.search.trim().toLowerCase();
+        list = list.filter(u => (u.xpath + ' ' + u.channel).toLowerCase().includes(q));
+      }
+      const rows = list.map(u =>
+        '<tr>' +
+        '<td><span class="chip channel-chip">' + esc(u.channel) + '</span></td>' +
+        '<td class="mono">' + esc(u.xpath) + '</td>' +
+        '<td class="note">' + esc(u.note) + '</td>' +
+        '</tr>'
+      ).join('');
+      document.getElementById('content').innerHTML =
+        '<div class="table-wrap"><table>' +
+        '<thead><tr><th>报告渠道</th><th>XPath</th><th>说明</th></tr></thead>' +
+        '<tbody>' + (rows || '<tr><td colspan="3" class="empty">无未比较的 XPath</td></tr>') + '</tbody>' +
+        '</table></div>' +
+        '<div class="meta-note">共 ' + list.length + ' 个 XPath 未参与比较</div>';
+    }
+
+    function renderLogs() {
+      const it = currentItem();
+      let lines = it.logs.slice();
+      if (state.search.trim()) {
+        const q = state.search.trim().toLowerCase();
+        lines = lines.filter(l => l.toLowerCase().includes(q));
+      }
+      const html = lines.map(l => '<div class="log-line">' + esc(l) + '</div>').join('');
+      document.getElementById('content').innerHTML =
+        '<div class="log-box">' + (html || '<div>无日志</div>') + '</div>' +
+        '<div class="meta-note">共 ' + lines.length + ' 行日志</div>';
+    }
+
+    function renderContent() {
+      if (state.tab === 'fields') renderFields();
+      else if (state.tab === 'warnings') renderMessages('warning');
+      else if (state.tab === 'errors') renderMessages('error');
+      else if (state.tab === 'uncompared') renderUncompared();
+      else if (state.tab === 'logs') renderLogs();
+    }
+
+    function render() {
+      renderSidebar();
+      renderSummary();
+      renderMeta();
+      renderTabs();
+      renderChannelTabs();
+      renderContent();
+    }
+
+    /* ---------- 事件绑定 ---------- */
+    function bindEvents() {
+      document.getElementById('search').addEventListener('input', function (e) {
+        state.search = e.target.value; state.page = 1; renderContent();
+      });
+      document.getElementById('statusFilter').addEventListener('change', function (e) {
+        state.status = e.target.value; state.page = 1; renderContent();
+      });
+      document.getElementById('typeFilter').addEventListener('change', function (e) {
+        state.type = e.target.value; state.page = 1; renderContent();
+      });
+
+      document.getElementById('sidebar').addEventListener('click', function (e) {
+        const el = e.target.closest('[data-id]');
+        if (!el) return;
+        state.itemId = el.getAttribute('data-id');
+        state.page = 1;
+        state.channel = 'ALL'; state.status = 'ALL'; state.type = 'ALL'; state.search = '';
+        document.getElementById('search').value = '';
+        document.getElementById('statusFilter').value = 'ALL';
+        document.getElementById('typeFilter').value = 'ALL';
+        render();
+      });
+
+      document.getElementById('tabs').addEventListener('click', function (e) {
+        const el = e.target.closest('[data-tab]');
+        if (!el) return;
+        state.tab = el.getAttribute('data-tab'); state.page = 1;
+        renderTabs(); renderChannelTabs(); renderContent();
+      });
+
+      document.getElementById('channelTabs').addEventListener('click', function (e) {
+        const el = e.target.closest('[data-channel]');
+        if (!el) return;
+        state.channel = el.getAttribute('data-channel'); state.page = 1;
+        renderChannelTabs(); renderContent();
+      });
+
+      document.getElementById('content').addEventListener('click', function (e) {
+        const pg = e.target.closest('[data-page]');
+        if (!pg || pg.disabled) return;
+        state.page = parseInt(pg.getAttribute('data-page'), 10);
+        renderContent();
+      });
+
+      document.getElementById('content').addEventListener('change', function (e) {
+        if (e.target && e.target.id === 'pageSize') {
+          state.pageSize = parseInt(e.target.value, 10);
+          state.page = 1;
+          renderContent();
+        }
+      });
+    }
+
+    bindEvents();
+    render();
+  </script>
+</body>
+</html>

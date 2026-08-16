@@ -1,0 +1,24 @@
+{
+  "schemaVersion" : 1,
+  "generatedAt" : "2026-08-16T19:08:14.442850700Z",
+  "basedir" : "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/generated/batches",
+  "count" : 1,
+  "batches" : [ {
+    "batchId" : "batch-20260816-0400",
+    "batchName" : "nightly-20260816",
+    "date" : "2026-08-16",
+    "executedAt" : "2026-08-16T04:00:00+08:00",
+    "formatVersion" : 2,
+    "dataUrl" : "batches/2026-08-16/batch-20260816-0400/deepseek-validation-data.json",
+    "ignoreUrl" : "ignore-config-by-platform.json",
+    "path" : "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/generated/batches/2026-08-16/batch-20260816-0400",
+    "commandLine" : [ "java", "-jar", "ccp-report.jar", "--job=nightly", "--date=2026-08-16", "--channels=HKTR,JSFA,CFTC" ],
+    "argv" : [ "--job=nightly", "--date=2026-08-16", "--channels=HKTR,JSFA,CFTC" ],
+    "cwd" : "E:\\repos\\otcc-testing\\app\\ccp-report-validation-result-viewer",
+    "description" : "夜间全量批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：当日全部交易\n- 模式：全量比对 + 汇总报表",
+    "summary" : {
+      "items" : 3,
+      "channels" : 3
+    }
+  } ]
+}

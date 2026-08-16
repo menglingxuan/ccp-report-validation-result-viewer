@@ -1,0 +1,15 @@
+{
+  "batchId" : "batch-basic-0001",
+  "batchName" : "basic-20260817",
+  "date" : "2026-08-17",
+  "executedAt" : "2026-08-17T00:00:00+08:00",
+  "formatVersion" : 2,
+  "cwd" : "E:\\repos\\otcc-testing\\app\\ccp-report-validation-result-viewer",
+  "commandLine" : [ "java", "-jar", "ccp-report.jar", "--job=basic", "--date=2026-08-17", "--channels=HKTR,JSFA,CFTC" ],
+  "argv" : [ "--job=basic", "--date=2026-08-17", "--channels=HKTR,JSFA,CFTC" ],
+  "summary" : {
+    "items" : 1,
+    "channels" : 3
+  },
+  "description" : "基础批处理示例：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：单个 item\n- 模式：全字段填充"
+}
