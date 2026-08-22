@@ -18,7 +18,14 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-batch'
+    runtimeOnly 'com.h2database:h2'
+
+    // Jackson (version managed by spring-boot-dependencies BOM)
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    // Command-line argument parsing
+    implementation 'info.picocli:picocli:4.7.6'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

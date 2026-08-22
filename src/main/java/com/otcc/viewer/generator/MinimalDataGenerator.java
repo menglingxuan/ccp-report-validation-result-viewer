@@ -43,6 +43,12 @@ public final class MinimalDataGenerator {
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
     public static ValidationDataset generate() {
+        return generate(REPORT_DATE);
+    }
+
+    /** Generates the minimal dataset for the given report date (or the default when {@code null}). */
+    public static ValidationDataset generate(String reportDate) {
+        String date = reportDate == null ? REPORT_DATE : reportDate;
         Field field = Field.builder()
                 .id("HKTR-1-0")
                 .f("tradeId")
@@ -84,8 +90,8 @@ public final class MinimalDataGenerator {
 
         ValidationItem item = ValidationItem.builder()
                 .tradeId("ME-0001")
-                .reportDate(REPORT_DATE)
-                .generatedAt(REPORT_DATE + "T00:00:00+08:00")
+                .reportDate(date)
+                .generatedAt(date + "T00:00:00+08:00")
                 .platform("OTC-PLATFORM-A")
                 .product("IRS")
                 .productCategory("IR")

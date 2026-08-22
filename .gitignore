@@ -34,3 +34,6 @@ build/
 
 ### VS Code ###
 .vscode/
+logs/cli/ccp-report.2026-08-18.log
+logs/cli/ccp-report.log
+generated/

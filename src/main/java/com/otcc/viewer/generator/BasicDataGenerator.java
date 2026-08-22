@@ -69,19 +69,25 @@ public final class BasicDataGenerator {
             "CFTC", new String[]{"trade_id", "notional_amount"});
 
     public static ValidationDataset generate() {
+        return generate(REPORT_DATE);
+    }
+
+    /** Generates the basic dataset for the given report date (or the default when {@code null}). */
+    public static ValidationDataset generate(String reportDate) {
+        String date = reportDate == null ? REPORT_DATE : reportDate;
         String platform = "OTC-PLATFORM-A";
         String product = "IRS";
         String tradeId = "BASIC-0001";
 
         List<Channel> channels = List.of(
-                buildChannel("HKTR", tradeId, platform, product),
-                buildChannel("JSFA", tradeId, platform, product),
-                buildChannel("CFTC", tradeId, platform, product));
+                buildChannel("HKTR", tradeId, platform, product, date),
+                buildChannel("JSFA", tradeId, platform, product, date),
+                buildChannel("CFTC", tradeId, platform, product, date));
 
         ValidationItem item = ValidationItem.builder()
                 .tradeId(tradeId)
-                .reportDate(REPORT_DATE)
-                .generatedAt(REPORT_DATE + "T00:00:00+08:00")
+                .reportDate(date)
+                .generatedAt(date + "T00:00:00+08:00")
                 .platform(platform)
                 .product(product)
                 .productCategory("IR")
@@ -91,13 +97,13 @@ public final class BasicDataGenerator {
                 .enabledChannels(List.of("HKTR", "JSFA", "CFTC"))
                 .channels(channels)
                 .skippedItems(List.of(SkippedItem.builder()
-                        .itemId("T-20260817-0001")
+                        .itemId("T-" + date.replace("-", "") + "-0001")
                         .channel("JSFA")
                         .reason("在 JSFA 渠道中未找到该 item 的对应记录，已跳过该渠道的比较。")
                         .build()))
                 .overviewLogs(List.of(
-                        "2026-08-17 00:00:00.100 INFO  开始比较 item=" + tradeId + "，报告日期=" + REPORT_DATE,
-                        "2026-08-17 00:00:00.200 INFO  比较完成，结果已生成"))
+                        date + " 00:00:00.100 INFO  开始比较 item=" + tradeId + "，报告日期=" + date,
+                        date + " 00:00:00.200 INFO  比较完成，结果已生成"))
                 .build();
 
         return ValidationDataset.builder()
@@ -106,7 +112,7 @@ public final class BasicDataGenerator {
                 .build();
     }
 
-    private static Channel buildChannel(String name, String tradeId, String platform, String product) {
+    private static Channel buildChannel(String name, String tradeId, String platform, String product, String date) {
         boolean csv = "csv".equals(CHANNEL_FORMAT.get(name));
         String ext = csv ? ".csv" : ".xml";
         String eoName = name.toLowerCase() + "_srcA_" + tradeId + ".csv";
@@ -150,8 +156,8 @@ public final class BasicDataGenerator {
                         .platform(platform).product(product).ctx(ctx)
                         .build()) : List.of())
                 .logs(List.of(
-                        "2026-08-17 00:00:00.200 INFO  [" + name + "] 读取报送文件 " + aoName,
-                        "2026-08-17 00:00:00.300 INFO  [" + name + "] 完成字段比较，渠道结果已生成"))
+                        date + " 00:00:00.200 INFO  [" + name + "] 读取报送文件 " + aoName,
+                        date + " 00:00:00.300 INFO  [" + name + "] 完成字段比较，渠道结果已生成"))
                 .build();
     }
 

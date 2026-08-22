@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- 日志文件统一放在 logs/cli/ 下 -->
+    <property name="LOG_DIR" value="logs/cli"/>
+    <property name="LOG_FILE" value="${LOG_DIR}/ccp-report.log"/>
+
+    <!-- 详细格式：dev / test 控制台与日志文件使用 -->
+    <property name="DETAIL_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{40} - %msg%n"/>
+
+    <!-- 友好格式：prod 控制台使用，只保留时间 / 级别 / 消息 -->
+    <property name="FRIENDLY_PATTERN"
+              value="%d{HH:mm:ss} %-5level - %msg%n"/>
+
+    <!-- dev / test 控制台：完整堆栈式日志 -->
+    <springProfile name="dev,test">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>${DETAIL_PATTERN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <!-- prod 控制台：面向用户的清晰友好日志 -->
+    <springProfile name="prod">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>${FRIENDLY_PATTERN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+
+        <!-- prod 框架日志专用控制台：仅 WARN 及以上输出到终端 -->
+        <appender name="CONSOLE_WARN" class="ch.qos.logback.core.ConsoleAppender">
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>WARN</level>
+            </filter>
+            <encoder>
+                <pattern>${FRIENDLY_PATTERN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <!-- 日志文件：所有 profile 均记录完整详细信息 -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_FILE}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/ccp-report.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${DETAIL_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- dev / test：全部 INFO 输出到控制台与文件 -->
+    <springProfile name="dev,test">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- prod：文件记录完整日志；控制台仅输出应用自身友好日志与框架告警 -->
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="FILE"/>
+        </root>
+
+        <!-- 应用日志：INFO 输出到终端（友好格式）与文件 -->
+        <logger name="com.otcc.viewer" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </logger>
+
+        <!-- Spring Boot 启动信息仅写入文件，不进入终端（避免内部噪音） -->
+        <logger name="com.otcc.viewer.CcpReportValidationResultViewerApplication" level="INFO" additivity="false">
+            <appender-ref ref="FILE"/>
+        </logger>
+
+        <!-- 框架日志：终端仅显示 WARN 及以上，完整信息写入文件 -->
+        <logger name="org.springframework" level="INFO">
+            <appender-ref ref="CONSOLE_WARN"/>
+        </logger>
+    </springProfile>
+
+</configuration>
