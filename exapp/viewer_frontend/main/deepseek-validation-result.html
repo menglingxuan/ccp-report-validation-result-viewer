@@ -177,7 +177,7 @@
     .bp-row { display: flex; align-items: center; gap: 6px; }
     .bp-row input[type="text"] { flex: 1 1 auto; min-width: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; background: var(--surface); color: var(--text); }
     .bp-row input[type="text"]:focus { border-color: var(--accent); outline: none; }
-    .bp-row select { padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; background: var(--surface); color: var(--text); }
+    .bp-row select { flex: 1 1 auto; min-width: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; background: var(--surface); color: var(--text); }
     .bp-cal { border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; border-radius: 8px; padding: 6px 8px; font-size: 13px; }
     .bp-cal:hover { color: var(--accent); border-color: var(--accent); }
     .bp-date-hint { color: var(--muted); font-size: 11px; }
@@ -247,8 +247,10 @@
     .batch-badge {
       border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.12);
       color: #fff; border-radius: 999px; padding: 4px 12px; font-size: 12px; cursor: pointer;
-      max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      display: inline-flex; align-items: center; gap: 6px;
+      max-width: 220px; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .batch-badge .batch-badge-text {
+      min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .batch-badge:hover { background: rgba(255,255,255,.22); }
 
@@ -285,7 +287,7 @@
     /* 批次信息弹窗 */
     .bi-kv { display: grid; grid-template-columns: 120px 1fr; gap: 6px 12px; margin-bottom: 14px; font-size: 13px; }
     .bi-kv .k { color: var(--muted); }
-    .bi-kv .v { word-break: break-all; font-family: var(--mono); font-size: 12px; }
+    .bi-kv .v { min-width: 0; word-break: break-all; font-family: var(--mono); font-size: 12px; }
     .bi-dir { display: flex; align-items: center; gap: 6px; }
     .bi-dir .bi-link { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
     .bi-dir .bi-link:hover { color: var(--accent); text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 2px; }
@@ -533,7 +535,7 @@
       box-shadow: 0 20px 50px rgba(0,0,0,.25);
     }
     .modal-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-    .modal-head h3 { margin: 0; font-size: 16px; }
+    .modal-head h3 { margin: 0; font-size: 16px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .modal-close { border: none; background: none; font-size: 24px; cursor: pointer; color: var(--muted); line-height: 1; }
     .modal-close:hover { color: var(--text); }
     .modal-body { padding: 16px 18px; overflow: auto; }
@@ -1692,7 +1694,9 @@
       compatOnly: false,
       cmd: '',
       desc: '',
+      env: '',
       searchCollapsed: true,
+      filtersCollapsed: true,
       listMode: 'lazy',
       listH: null,
       detailMode: 'quick',
@@ -2100,6 +2104,7 @@
           const bd = String(b.date || String(b.executedAt || '').slice(0, 10));
           if (bd !== d) return false;
         }
+        if (BATCH_STATE.env && String(b.reportEnv || '') !== BATCH_STATE.env) return false;
         return true;
       });
       list.sort(function (a, b) { return BATCH_STATE.sortDir * batchSortVal(a).localeCompare(batchSortVal(b)); });
@@ -2192,6 +2197,13 @@
         BATCHES_INDEX.batches.forEach(function (b) { dates[String(b.date || '')] = true; });
         return Object.keys(dates).length + ' ' + t('batchDateHint');
       })();
+      const envs = [];
+      BATCHES_INDEX.batches.forEach(function (b) {
+        const e = String(b.reportEnv || '').trim();
+        if (e && envs.indexOf(e) === -1) envs.push(e);
+      });
+      const envOpts = '<option value="">' + t('batchEnvAll') + '</option>' +
+        envs.map(function (e) { return '<option value="' + esc(e) + '"' + (BATCH_STATE.env === e ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('');
       panel.innerHTML =
         '<div class="bp-head"><span class="bp-title">' + t('batchTitle') + '</span>' +
         '<span class="bp-count" id="batchCount"' + (BATCHES_INDEX.generatedAt ? ' title="' + esc(t('batchScannedAt') + ' ' + batchScanTimeText()) + '"' : '') + '>' + BATCHES_INDEX.batches.length + '</span>' +
@@ -2204,14 +2216,19 @@
           '<div class="bp-search"><input type="search" id="batchSearch" placeholder="' + t('batchSearch') + '" value="' + esc(BATCH_STATE.search) + '"><button class="bp-clear" id="batchSearchClear" title="' + t('batchNone') + '">✕</button></div>' +
           '<div class="bp-search"><input type="search" id="batchCmd" placeholder="' + t('batchCmdSearch') + '" value="' + esc(BATCH_STATE.cmd) + '"><button class="bp-clear" id="batchCmdClear" title="' + t('batchNone') + '">✕</button></div>' +
           '<div class="bp-search"><input type="search" id="batchDesc" placeholder="' + t('batchDescSearch') + '" value="' + esc(BATCH_STATE.desc) + '"><button class="bp-clear" id="batchDescClear" title="' + t('batchNone') + '">✕</button></div>') +
+        '<button class="bp-search-toggle" id="batchFiltersToggle" title="' + t('batchFiltersLabel') + '">' + t('batchFiltersLabel') + ' ' + (BATCH_STATE.filtersCollapsed ? '▸' : '▾') + '</button>' +
+        (BATCH_STATE.filtersCollapsed ? '' :
+          '<div class="bp-row">' +
+          '<input type="text" id="batchDate" placeholder="' + t('batchDate') + '" value="' + esc(BATCH_STATE.date) + '" maxlength="10" inputmode="numeric">' +
+          '<button class="bp-cal" id="batchDateCal" title="' + t('batchDate') + '" aria-label="' + t('batchDate') + '">📅</button>' +
+          '<button class="bp-clear" id="batchDateClear" title="' + t('batchDateClearLabel') + '">✕</button>' +
+          '</div>' +
+          '<div class="bp-row"><select id="batchEnv" title="' + t('batchEnv') + '">' + envOpts + '</select></div>' +
+          '<div class="bp-date-hint" id="batchDateHint">' + dateHint + '</div>') +
         '<div class="bp-row">' +
-        '<input type="text" id="batchDate" placeholder="' + t('batchDate') + '" value="' + esc(BATCH_STATE.date) + '" maxlength="10" inputmode="numeric">' +
-        '<button class="bp-cal" id="batchDateCal" title="' + t('batchDate') + '" aria-label="' + t('batchDate') + '">📅</button>' +
-        '<button class="bp-clear" id="batchDateClear" title="' + t('batchDateClearLabel') + '">✕</button>' +
         '<button class="bp-cal" id="batchSort" title="' + t('batchSortLabel') + '：' + (BATCH_STATE.sortDir === 1 ? t('batchSortAsc') : t('batchSortDesc')) + '" aria-label="' + t('batchSortLabel') + '">' + (BATCH_STATE.sortDir === 1 ? '↑' : '↓') + '</button>' +
         '<button class="bp-cal" id="batchRefresh" title="' + t('batchRefresh') + '" aria-label="' + t('batchRefresh') + '">' + (BATCH_STATE.scanning ? '<span class="spin">⟳</span>' : '⟳') + '</button>' +
         '</div>' +
-        '<div class="bp-date-hint" id="batchDateHint">' + dateHint + '</div>' +
         '</div>' +
         '<div class="bp-notice" id="batchNotice"' + (BATCH_STATE.notice ? '' : ' hidden') + '>' + esc(BATCH_STATE.notice || '') + '</div>' +
         '<div class="bp-resize top" id="batchResizeTop" title="' + t('batchResizeHint') + '" aria-label="' + t('batchResizeHint') + '">⠿</div>' +
@@ -2424,7 +2441,7 @@
       if (!el) return;
       if (APP_FEATURES.recentBatches && BATCH_STATE.active) {
         el.hidden = false;
-        el.textContent = (BATCH_STATE.forced ? '⚠ ' : '') + t('batchCurrentLabel') + (BATCH_STATE.active.batchName || BATCH_STATE.active.batchId);
+        el.innerHTML = '<span class="batch-badge-text">' + esc((BATCH_STATE.forced ? '⚠ ' : '') + t('batchCurrentLabel') + (BATCH_STATE.active.batchName || BATCH_STATE.active.batchId)) + '</span>';
         el.title = t('batchInfo') + ' · ' + t('batchActive');
       } else el.hidden = true;
     }
@@ -2537,7 +2554,7 @@
       const compat = batchCompatible(b);
       const dir = b.path || BATCHES_INDEX.basedir || '';
       const rows = [
-        [t('batchName'), b.batchName || b.batchId, false],
+        [t('batchEnv'), b.reportEnv || t('batchEnvUnknown'), false],
         [t('batchDateLabel'), b.date || '', false],
         [t('batchExecutedAt'), formatBatchTime(b.executedAt), false],
         [t('batchBasedir'), dir, true],
@@ -2566,7 +2583,7 @@
       const backdrop = document.createElement('div');
       backdrop.className = 'modal-backdrop';
       backdrop.innerHTML =
-        '<div class="modal"><div class="modal-head"><h3>' + t('batchInfoTitle') + '</h3><button class="modal-close" aria-label="' + t('closeLabel') + '">✕</button></div>' +
+        '<div class="modal"><div class="modal-head"><h3 title="' + esc(b.batchName || b.batchId) + '">' + t('batchInfoTitle') + '：' + esc(b.batchName || b.batchId) + '</h3><button class="modal-close" aria-label="' + t('closeLabel') + '">✕</button></div>' +
         '<div class="modal-body"><div class="bi-kv">' + batchDetailKVHTML(b) + '</div>' + batchDetailCmdHTML(b) + batchDetailDescHTML(b) + '</div></div>';
       backdrop.addEventListener('click', function (e) {
         if (e.target === backdrop || e.target.closest('.modal-close')) backdrop.remove();
@@ -2574,8 +2591,7 @@
       document.body.appendChild(backdrop);
     }
     let BATCH_QD = null;
-    function showBatchQuickDetail(anchor, b) {
-      hideBatchQuickDetail();
+    function buildBatchQuickDetail(b) {
       const compat = batchCompatible(b);
       const card = document.createElement('div');
       card.className = 'batch-qd';
@@ -2588,15 +2604,31 @@
         '<div class="bi-kv">' + batchDetailKVHTML(b) + '</div>' +
         batchDetailCmdHTML(b) +
         batchDetailDescHTML(b);
-      document.body.appendChild(card);
-      const r = anchor.getBoundingClientRect();
+      return card;
+    }
+    function placeBatchQuickDetail(card, left, top) {
       const cw = card.offsetWidth, ch = card.offsetHeight;
-      let left = BATCH_STATE.side === 'right' ? (r.left - cw - 12) : (r.right + 12);
-      let top = r.top;
       left = Math.max(8, Math.min(window.innerWidth - cw - 8, left));
       top = Math.max(8, Math.min(window.innerHeight - ch - 8, top));
       card.style.left = left + 'px';
       card.style.top = top + 'px';
+    }
+    function showBatchQuickDetail(anchor, b) {
+      hideBatchQuickDetail();
+      const card = buildBatchQuickDetail(b);
+      document.body.appendChild(card);
+      const r = anchor.getBoundingClientRect();
+      const left = BATCH_STATE.side === 'right' ? (r.left - card.offsetWidth - 12) : (r.right + 12);
+      placeBatchQuickDetail(card, left, r.top);
+      BATCH_QD = card;
+    }
+    function showBatchQuickDetailBelow(anchor, b) {
+      hideBatchQuickDetail();
+      const card = buildBatchQuickDetail(b);
+      document.body.appendChild(card);
+      const r = anchor.getBoundingClientRect();
+      const left = r.left + r.width / 2 - card.offsetWidth / 2;
+      placeBatchQuickDetail(card, left, r.bottom + 8);
       BATCH_QD = card;
     }
     function hideBatchQuickDetail() {
@@ -3267,9 +3299,12 @@
     }
 
     function renderTaskNote() {
+      const desc = (BATCH_STATE.active && typeof BATCH_STATE.active.description === 'string' && BATCH_STATE.active.description.trim())
+        ? BATCH_STATE.active.description
+        : TASK_NOTE;
       document.getElementById('taskNote').innerHTML =
         '<div class="task-note-title">' + t('taskNoteTitle') + '</div>' +
-        '<div class="task-note-text">' + esc(TASK_NOTE).replace(/\n/g, '<br>') + '</div>';
+        '<div class="task-note-text">' + esc(desc).replace(/\n/g, '<br>') + '</div>';
     }
 
     function renderTabs() {
@@ -4915,6 +4950,8 @@
         if (clearDesc) { BATCH_STATE.desc = ''; BATCH_STATE.page = 1; renderBatchPanel(); return; }
         const searchToggle = e.target.closest('#batchSearchToggle');
         if (searchToggle) { BATCH_STATE.searchCollapsed = !BATCH_STATE.searchCollapsed; renderBatchPanel(); return; }
+        const filtersToggle = e.target.closest('#batchFiltersToggle');
+        if (filtersToggle) { BATCH_STATE.filtersCollapsed = !BATCH_STATE.filtersCollapsed; renderBatchPanel(); return; }
         const clearDate = e.target.closest('#batchDateClear');
         if (clearDate) { BATCH_STATE.date = ''; BATCH_STATE.page = 1; renderBatchPanel(); return; }
         const dateCal = e.target.closest('#batchDateCal');
@@ -4984,6 +5021,13 @@
           BATCH_LIST_TIMER = setTimeout(renderBatchList, 150);
         }
       });
+      document.getElementById('batchPanel').addEventListener('change', function (e) {
+        if (e.target && e.target.id === 'batchEnv') {
+          BATCH_STATE.env = e.target.value;
+          BATCH_STATE.page = 1;
+          renderBatchList();
+        }
+      });
       document.getElementById('batchPanel').addEventListener('keydown', function (e) {
         const items = Array.prototype.slice.call(document.querySelectorAll('#batchList .batch-item'));
         const idx = items.indexOf(document.activeElement);
@@ -5031,7 +5075,9 @@
         const top = e.target.closest('#batchResizeTop');
         if (top) startBatchResize(e, true);
       });
-      document.getElementById('batchBadge').addEventListener('click', function () { toggleBatchPanel(true); });
+      document.getElementById('batchBadge').addEventListener('click', function (e) {
+        if (BATCH_STATE.active) showBatchQuickDetailBelow(e.currentTarget, BATCH_STATE.active);
+      });
       document.getElementById('batchBackDefault').addEventListener('click', function () { loadDefaultReport(); });
 
       document.getElementById('sideResize').addEventListener('mousedown', function (e) {
@@ -5402,7 +5448,7 @@
 
       document.addEventListener('click', function (e) {
         if (CTX_DEF_POPUP && !e.target.closest('.ctx-def-popup') && !e.target.closest('.ctx-tag')) closeCtxDefPopup();
-        if (BATCH_QD && !e.target.closest('#batchPanel') && !e.target.closest('.batch-qd')) hideBatchQuickDetail();
+        if (BATCH_QD && !e.target.closest('#batchPanel') && !e.target.closest('.batch-qd') && !e.target.closest('#batchBadge')) hideBatchQuickDetail();
         const cp = e.target.closest('[data-copy]');
         if (cp) {
           copyText(cp.getAttribute('data-copy'));

@@ -14,6 +14,7 @@
 //   commandLine[], argv[], cwd, description, summary{}, reportEnv, 以及任意 extra 字段
 // 运行环境（reportEnv）解析：batch-meta.json 的 reportEnv 优先；
 //   若 batch-meta.json 缺失或未提供 reportEnv，则回退到 deepseek-validation-data.json 顶层的 reportEnv；
+//   若批次目录内无数据文件，则按 dataUrl 解析并读取所引用数据文件的 reportEnv；
 //   均未提供时该批次不写 reportEnv。
 // dataUrl / ignoreUrl 未提供时：若目录内存在 deepseek-validation-data.json 则自动使用它；
 //   提供的 dataUrl 按「相对 batches-index.json 所在目录（即 web 根目录）」解释。
@@ -78,8 +79,13 @@ function scan() {
     const meta = readJSON(metaPath) || {};
     if (!hasData && !meta.dataUrl) continue;
 
-    // 运行环境：batch-meta.json 的 reportEnv 优先，回退到数据 JSON 顶层 reportEnv
-    const data = hasData ? (readJSON(dataPath) || {}) : {};
+    // 运行环境：batch-meta.json 的 reportEnv 优先，回退到数据 JSON 顶层 reportEnv；
+    // 若目录内无数据文件，则按 dataUrl 解析并读取所引用数据文件的 reportEnv
+    let data = hasData ? (readJSON(dataPath) || {}) : {};
+    if (!hasData && typeof meta.dataUrl === 'string' && meta.dataUrl) {
+      const refPath = path.resolve(path.dirname(OUT), meta.dataUrl);
+      if (fs.existsSync(refPath)) data = readJSON(refPath) || {};
+    }
     const reportEnv = (typeof meta.reportEnv === 'string' && meta.reportEnv)
       ? meta.reportEnv
       : ((typeof data.reportEnv === 'string' && data.reportEnv) ? data.reportEnv : null);
