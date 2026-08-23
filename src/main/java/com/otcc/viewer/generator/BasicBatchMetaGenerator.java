@@ -60,6 +60,7 @@ public final class BasicBatchMetaGenerator {
                 .argv(List.of("--job=basic", "--date=" + date, "--channels=HKTR,JSFA,CFTC"))
                 .summary(summary)
                 .description("基础批处理示例：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：单个 item\n- 模式：全字段填充")
+                .reportEnv("OTCXXX")
                 .build();
     }
 

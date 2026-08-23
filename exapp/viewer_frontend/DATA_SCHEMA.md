@@ -1,6 +1,6 @@
 # 数据说明（DATA SCHEMA）
 
-> 文件：`src/main/deepseek-validation-data.json`
+> 文件：`main/deepseek-validation-data.json`
 > 顶层：`{ "items": [...], "ctxDefs": {...}, "reportEnv": "..." }`
 
 本文档描述数据 JSON 的结构，便于外部工具生成或替换真实数据。查看器对缺失字段有兼容回退。
@@ -110,3 +110,40 @@
 | `itemId` | 字符串 | 未比较 item id（skippedItems） |
 | `channel` | 字符串 | 渠道 |
 | `reason` | 字符串 | 未比较原因 |
+
+---
+
+## 批次元数据（`batch-meta.json`）
+
+> 文件：`main/batches/<date>/<batch-id>/batch-meta.json`
+
+批次目录的可选元数据；`scan-batches.js` 扫描时优先读取，缺失时回退到数据文件推断。
+
+| 键 | 类型 | 说明 |
+|---|---|---|
+| `batchId` | 字符串 | 批次唯一标识（缺省用目录名） |
+| `batchName` | 字符串 | 批次显示名 |
+| `date` | 字符串 | 批次日期（`YYYY-mm-dd`） |
+| `executedAt` | 字符串 | 执行时间（ISO） |
+| `formatVersion` | 整数 | 数据格式版本（当前 2） |
+| `dataUrl` | 字符串 | 数据文件相对路径（相对 web 根目录） |
+| `ignoreUrl` | 字符串 | 忽略配置相对路径 |
+| `commandLine` / `argv` | 字符串数组 | 命令行参数 |
+| `cwd` | 字符串 | 工作目录 |
+| `description` | 字符串 | 批次描述（多行；前端「任务说明」回退来源） |
+| `summary` | 对象 | `{ items, channels }` 摘要 |
+| `reportEnv` | 字符串 | 运行环境标识（如 `OTCXXX`；优先于数据文件顶层） |
+
+## 批次索引（`batches-index.json`）
+
+> 文件：`main/batches-index.json`（`scan-batches.js` 生成）
+
+| 键 | 类型 | 说明 |
+|---|---|---|
+| `schemaVersion` | 整数 | 索引结构版本 |
+| `generatedAt` | 字符串 | 扫描时间（ISO） |
+| `basedir` | 字符串 | 批次根目录 |
+| `count` | 整数 | 批次数量 |
+| `batches[]` | 数组 | 批次条目（字段同 `batch-meta.json`，另含 `path`、解析后的 `dataUrl`/`ignoreUrl`） |
+
+`batches[].reportEnv` 供前端「报告环境」筛选与环境徽章使用；`description` 供任务说明展示。

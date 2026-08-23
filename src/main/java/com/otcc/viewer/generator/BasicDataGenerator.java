@@ -109,6 +109,7 @@ public final class BasicDataGenerator {
         return ValidationDataset.builder()
                 .items(List.of(item))
                 .ctxDefs(generateCtxDefs())
+                .reportEnv("OTCXXX")
                 .build();
     }
 

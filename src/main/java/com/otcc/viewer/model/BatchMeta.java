@@ -27,4 +27,5 @@ public class BatchMeta {
     private List<String> argv;
     private Map<String, Object> summary;
     private String description;
+    private String reportEnv;
 }

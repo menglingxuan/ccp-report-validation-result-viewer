@@ -150,6 +150,7 @@ public final class ValidationJsonGenerator {
         return ValidationDataset.builder()
                 .items(items)
                 .ctxDefs(generateCtxDefs())
+                .reportEnv("OTCXXX")
                 .build();
     }
 
@@ -552,6 +553,7 @@ public final class ValidationJsonGenerator {
                         .data("deepseek-validation-data.json")
                         .ignore("ignore-config-by-platform.json")
                         .batches("batches-index.json")
+                        .scan("http://127.0.0.1:8123/scan")
                         .build())
                 .ui(ValidationConfig.Ui.builder()
                         .lang("zh-CN").theme("light").sidebarMode("combined")
@@ -612,6 +614,7 @@ public final class ValidationJsonGenerator {
                 .argv(List.of("--job=nightly", "--date=2026-08-16", "--channels=HKTR,JSFA,CFTC"))
                 .summary(summary)
                 .description("夜间全量批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：当日全部交易\n- 模式：全量比对 + 汇总报表")
+                .reportEnv("OTCXXX")
                 .build();
     }
 
@@ -630,6 +633,7 @@ public final class ValidationJsonGenerator {
                 .cwd(meta.getCwd())
                 .description(meta.getDescription())
                 .summary(meta.getSummary())
+                .reportEnv(meta.getReportEnv())
                 .build();
         return BatchIndex.builder()
                 .schemaVersion(1)

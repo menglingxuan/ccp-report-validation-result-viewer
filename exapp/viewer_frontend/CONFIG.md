@@ -1,7 +1,7 @@
 # 配置说明（CONFIG）
 
-> 文件：`src/main/deepseek-validation-config.json`
-> 结构校验：`src/main/config.schema.json`（JSON Schema，编辑器可自动补全/校验）
+> 文件：`main/deepseek-validation-config.json`
+> 结构校验：`main/config.schema.json`（JSON Schema，编辑器可自动补全/校验）
 
 所有配置项均可省略；省略时使用内置默认值。JSON 不支持注释，完整备注见本文件与 Schema。
 
@@ -39,8 +39,10 @@
 | `data` | 比对结果数据 JSON 的相对路径 | `deepseek-validation-data.json` |
 | `ignore` | 忽略配置 JSON 的相对路径 | `ignore-config-by-platform.json` |
 | `batches` | 批次索引 JSON（最近批次面板数据源）的相对路径 | `batches-index.json` |
+| `scan` | 批次自动扫描 HTTP 接口地址（可选；不配置则跳过扫描接口，直接重新读取索引） | `http://127.0.0.1:8123/scan` |
 
 > 说明：数据文件与忽略规则文件**相互独立**，仅在此处用路径引用，不并入本配置文件。
+> `urls.scan` 指向 `scan-server.js`（见 `SCAN_SERVER.md`）：点击批次面板/dock 的「重新扫描」时先调用该接口执行 `scan-batches.js`，再重新读取 `batches-index.json`。
 
 ---
 

@@ -22,7 +22,8 @@
       "properties": {
         "data": { "type": "string", "description": "比对结果数据 JSON 的相对路径。", "default": "deepseek-validation-data.json" },
         "ignore": { "type": "string", "description": "忽略配置 JSON 的相对路径。", "default": "ignore-config-by-platform.json" },
-        "batches": { "type": "string", "description": "批次索引 JSON（最近批次面板数据源）的相对路径。", "default": "batches-index.json" }
+        "batches": { "type": "string", "description": "批次索引 JSON（最近批次面板数据源）的相对路径。", "default": "batches-index.json" },
+        "scan": { "type": "string", "description": "批次自动扫描 HTTP 接口地址（可选；不配置则跳过扫描接口，直接重新读取索引）。", "default": "http://127.0.0.1:8123/scan" }
       }
     },
     "ui": {

@@ -30,4 +30,5 @@ public class BatchEntry {
     private String cwd;
     private String description;
     private Map<String, Object> summary;
+    private String reportEnv;
 }

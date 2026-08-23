@@ -108,6 +108,7 @@ public final class MinimalDataGenerator {
         return ValidationDataset.builder()
                 .items(List.of(item))
                 .ctxDefs(new LinkedHashMap<>())
+                .reportEnv("OTCXXX")
                 .build();
     }
 

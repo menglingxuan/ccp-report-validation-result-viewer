@@ -35,6 +35,7 @@ public class ValidationConfig {
         private String data;
         private String ignore;
         private String batches;
+        private String scan;
     }
 
     @Data
