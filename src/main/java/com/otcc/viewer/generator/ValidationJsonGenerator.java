@@ -253,6 +253,7 @@ public final class ValidationJsonGenerator {
         List<String> ctx = pickCtx(chName, rng);
         String result = failed ? "FAILED" : "PASSED";
         String note = failed ? noteFor(k) : "";
+        String resultNote = failed ? ("比对未通过：" + note) : "比对通过";
 
         boolean eoConverted = rng.nextDouble() < convProb(k);
         String eoUnconverted = eoConverted ? genUnconverted(eo, k) : null;
@@ -281,7 +282,7 @@ public final class ValidationJsonGenerator {
         return Field.builder()
                 .id(chName + "-" + sn + "-" + idx)
                 .f(f).x(x).aoCsv(aoCsv).t(t).k(k).ctx(ctx)
-                .eo(eo).ao(ao).result(result).note(note)
+                .eo(eo).ao(ao).result(result).note(note).resultNote(resultNote)
                 .eoConverted(eoConverted).eoUnconverted(eoUnconverted)
                 .extraResults(extraResults)
                 .conversionRule(conversionRule).validationRule(validationRule)

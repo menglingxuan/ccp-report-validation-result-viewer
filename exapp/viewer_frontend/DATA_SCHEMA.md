@@ -75,7 +75,8 @@
 | `eo` | 字符串 | 期望值（真实 EO） |
 | `ao` | 字符串 | 实际值（真实 AO；xml 渠道即 XPath 值） |
 | `result` | 字符串 | `PASSED` 或 `FAILED` |
-| `note` | 字符串 | 说明/原因 |
+| `note` | 字符串 | 说明/原因（列表「说明」列） |
+| `resultNote` | 字符串 | 结果说明（详情页「结果」字段，与 `note` 独立） |
 | `eoConverted` | 布尔 | 是否发生 EO 转换 |
 | `eoUnconverted` | 字符串\|null | 未转换原始值 |
 | `extraResults` | 数组 | **额外结果（type 2）**：`[{ "label": "...", "value": "..." }]`，显示在 AO 下方 |

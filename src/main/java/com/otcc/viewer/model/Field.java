@@ -36,6 +36,8 @@ public class Field {
     /** PASSED or FAILED */
     private String result;
     private String note;
+    /** result-specific note shown in the detail modal's result row (independent of {@code note}) */
+    private String resultNote;
 
     private Boolean eoConverted;
     private String eoUnconverted;

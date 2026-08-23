@@ -186,10 +186,11 @@ public final class BasicDataGenerator {
                 "[INFO] " + (csv ? "CSV字段" : "XPath") + "=" + target + "，命中Ctx=" + String.join(",", ctx),
                 "[INFO] EO=" + eo + "，AO=" + ao + " → " + result + (note.isEmpty() ? "" : "（" + note + "）"));
 
+        String resultNote = "PASSED".equals(result) ? "比对通过" : ("比对未通过：" + note);
         return Field.builder()
                 .id(chName + "-" + sn + "-" + idx)
                 .f(f).x(x).aoCsv(aoCsv).t(t).k(k).ctx(ctx)
-                .eo(eo).ao(ao).result(result).note(note)
+                .eo(eo).ao(ao).result(result).note(note).resultNote(resultNote)
                 .eoConverted(true)
                 .eoUnconverted(eoUnconverted)
                 .extraResults(List.of(ExtraResult.builder()

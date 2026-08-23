@@ -1512,6 +1512,7 @@
           const result = failed ? 'FAILED' : 'PASSED';
           let note = failed ? noteFor(k) : '';
           if (note && rng() < 0.3) note += '\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。';
+          const resultNote = failed ? ('比对未通过：' + note) : '比对通过';
           // EO 转换信息（Excel 转换规则）与 AO 终值校验规则
           const convProb = { num: 0.6, date: 0.5, code: 0.5, text: 0.45, product: 0.3, id: 0.2, multi: 0.15 }[k] || 0.3;
           const eoConverted = rng() < convProb;
@@ -1528,7 +1529,7 @@
             id: ch.name + '-' + sn + '-' + idx,
             f: f, x: x, aoCsv: aoCsv, t: t, k: k, ctx: ctx,
             eo: eo, ao: ao,
-            result: result, note: note,
+            result: result, note: note, resultNote: resultNote,
             eoConverted: eoConverted, eoUnconverted: eoUnconverted,
             extraResults: extraResults,
             conversionRule: conversionRule, validationRule: validationRule,
@@ -4121,7 +4122,7 @@
         '<span class="k">' + t('modalType') + '</span><span class="v">' + valueTypeChip(f.k) + '</span>' +
         '<span class="k">' + t('modalCtx') + '</span><span class="v">' + (ctxTags || '—') + '</span>' +
         '<span class="k">' + t('modalResult') + '</span><span class="v"><span class="badge ' + (pass ? 'pass' : 'fail') + '">' + f.result + '</span>' +
-        (f.note ? '　' + esc(f.note) : '') + '</span>' +
+        (f.resultNote ? '　' + esc(f.resultNote) : '') + '</span>' +
         '</div>' +
         '<div class="result-pair">' + eoBox + aoBox + '</div>' +
         extraHtml +

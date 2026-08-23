@@ -61,6 +61,7 @@ public final class MinimalDataGenerator {
                 .ao("TX-ME-0001")
                 .result("PASSED")
                 .note("")
+                .resultNote("比对通过")
                 .prints(List.of())
                 .build();
 
