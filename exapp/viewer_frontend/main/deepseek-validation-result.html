@@ -1233,8 +1233,8 @@
       'OTC-PLATFORM-C': ['CD', 'FX'],
     };
 
-    // 整份报告的运行环境（所有 item 同属该环境）
-    const ENV = 'OTCXXX';
+    // 运行环境默认值（当批次索引与数据 JSON 均未提供 reportEnv 时使用）
+    const DEFAULT_ENV = 'UNKNOWN';
     // 本次比较任务的说明文本（多行）
     const TASK_NOTE = '本次比较任务说明：\n1. 校验多渠道来源数据与监管报送数据的一致性。\n2. 验证配置驱动映射（Excel）与命中上下文逻辑。\n3. 回归测试多行字段与特殊字符的展示效果。';
 
@@ -1902,17 +1902,37 @@
       return t(map[name] || name);
     }
     function sourceName(name) {
-      return name === '来源渠道 B' ? t('sourceB') : t('sourceA');
+      return name;
+    }
+    function sourceNames() {
+      const names = [];
+      DATA.items.forEach(function (it) {
+        it.channels.forEach(function (ch) {
+          ch.sources.forEach(function (s) {
+            if (s.name && names.indexOf(s.name) === -1) names.push(s.name);
+          });
+        });
+      });
+      return names;
     }
     function applyTheme(id) {
       THEME = id || 'light';
       THEMES.forEach(function (th) { document.body.classList.remove('theme-' + th[0]); });
       if (THEME !== 'light') document.body.classList.add('theme-' + THEME);
     }
+    function currentEnv() {
+      if (BATCH_STATE.active && typeof BATCH_STATE.active.reportEnv === 'string' && BATCH_STATE.active.reportEnv) return BATCH_STATE.active.reportEnv;
+      if (DATA && typeof DATA.reportEnv === 'string' && DATA.reportEnv) return DATA.reportEnv;
+      return DEFAULT_ENV;
+    }
+    function updateEnvBadge() {
+      const el = document.getElementById('envBadge');
+      if (el) el.textContent = t('env') + currentEnv();
+    }
     function applyStaticText() {
       document.getElementById('appTitle').textContent = t('appTitle');
       document.getElementById('appSub').textContent = t('appSub');
-      document.getElementById('envBadge').textContent = t('env') + ENV;
+      updateEnvBadge();
       document.getElementById('search').placeholder = t('toolbarSearch');
       document.getElementById('itemSearch').placeholder = t('sidebarSearch');
       document.getElementById('reportDateFilter').placeholder = t('sidebarDate');
@@ -3415,14 +3435,13 @@
       else if (col === 'type') arr = state.tab === 'errors' ? ['ALL'].concat(Object.keys(ERROR_TYPE_META)) : ['ALL', 'platformAssertion', 'productAssertion', 'contextAssertion'];
       else if (col === 'result') arr = ['ALL', 'PASSED', 'FAILED'];
       else if (col === 'channel') arr = ['ALL', 'HKTR', 'JSFA', 'CFTC'];
-      else if (col === 'source') arr = ['ALL', '来源渠道 A', '来源渠道 B'];
+      else if (col === 'source') arr = ['ALL'].concat(sourceNames());
       else if (col === 'level') arr = ['ALL', 'WARN', 'INFO', 'NOTICE', 'DEBUG', 'ERROR', 'FATAL', 'SEVERE'];
       else arr = ['ALL'];
       return arr.map(function (v) {
         let l = v;
         if (v === 'ALL') l = t('all');
-        else if (v === '来源渠道 A') l = t('sourceA');
-        else if (v === '来源渠道 B') l = t('sourceB');
+        else if (col === 'source') l = sourceName(v);
         else if (col === 't') l = valueTypeLabel(v);
         else if (col === 'type') l = state.tab === 'errors' ? errorTypeLabel(v) : typeLabel(v);
         return [v, l];
@@ -3975,6 +3994,7 @@
 
     function render() {
       closePopover();
+      updateEnvBadge();
       if (!isTabEnabled(state.tab)) state.tab = 'fields';
       renderSidebar();
       renderSidebarChips();
@@ -4315,8 +4335,7 @@
       if (val === 'NONE') return t('compareNone');
       if (val === 'diff') return t('compareDiff');
       if (val === 'same') return t('compareSame');
-      if (val === '来源渠道 A') return t('sourceA');
-      if (val === '来源渠道 B') return t('sourceB');
+      if (key === 'source') return sourceName(val);
       return val;
     }
     function openCompareFilter(btn) {
@@ -4326,7 +4345,7 @@
       let control;
       if (kind === 'select') {
         let opts;
-        if (key === 'source') opts = ['ALL', '来源渠道 A', '来源渠道 B'];
+        if (key === 'source') opts = ['ALL'].concat(sourceNames());
         else if (key === 'aResult' || key === 'bResult') opts = ['ALL', 'PASSED', 'FAILED', 'NONE'];
         else if (key === 'diff') opts = ['ALL', 'diff', 'same'];
         else opts = ['ALL'];

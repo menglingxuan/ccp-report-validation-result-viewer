@@ -1,7 +1,7 @@
 # 数据说明（DATA SCHEMA）
 
 > 文件：`src/main/deepseek-validation-data.json`
-> 顶层：`{ "items": [...], "ctxDefs": {...} }`
+> 顶层：`{ "items": [...], "ctxDefs": {...}, "reportEnv": "..." }`
 
 本文档描述数据 JSON 的结构，便于外部工具生成或替换真实数据。查看器对缺失字段有兼容回退。
 
@@ -13,6 +13,7 @@
 |---|---|---|
 | `items` | 数组 | 比较 item 列表 |
 | `ctxDefs` | 对象 | 命中上下文（ctx）的定义，key 为 ctx 名，值为 `{ def, hit }` 等 |
+| `reportEnv` | 字符串 | 运行环境标识（可选；缺失时查看器回退为内置默认值） |
 
 ---
 
