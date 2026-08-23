@@ -293,7 +293,8 @@
     "batchSearchLabel": "搜索",
     "batchHelp": "帮助",
     "batchScannedAt": "扫描于",
-    "batchNoCompat": "无兼容批次"
+    "batchNoCompat": "无兼容批次",
+    "batchScanError": "自动扫描失败："
   },
   "zh-HK": {
     "appTitle": "金融監管報告比較結果",
@@ -589,7 +590,8 @@
     "batchSearchLabel": "搜索",
     "batchHelp": "幫助",
     "batchScannedAt": "掃描於",
-    "batchNoCompat": "無相容批次"
+    "batchNoCompat": "無相容批次",
+    "batchScanError": "自動掃描失敗："
   },
   "en": {
     "appTitle": "Regulatory Report Comparison Results",
@@ -885,6 +887,7 @@
     "batchSearchLabel": "Search",
     "batchHelp": "Help",
     "batchScannedAt": "Scanned at",
-    "batchNoCompat": "No compatible batches"
+    "batchNoCompat": "No compatible batches",
+    "batchScanError": "Auto scan failed: "
   }
 }

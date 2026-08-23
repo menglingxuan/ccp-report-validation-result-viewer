@@ -184,7 +184,10 @@
     .bp-cal { border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; border-radius: 8px; padding: 6px 8px; font-size: 13px; }
     .bp-cal:hover { color: var(--accent); border-color: var(--accent); }
     .bp-date-hint { color: var(--muted); font-size: 11px; }
-    .bp-notice { margin: 10px 12px 0; padding: 8px 10px; border-radius: 8px; font-size: 12px; background: var(--fail-bg); color: var(--fail); }
+    .bp-notice { margin: 10px 12px 0; padding: 8px 10px; border-radius: 8px; font-size: 12px; background: var(--fail-bg); color: var(--fail); display: flex; align-items: flex-start; gap: 8px; }
+    .bp-notice .bp-notice-text { flex: 1 1 auto; min-width: 0; word-break: break-word; }
+    .bp-notice .bp-notice-close { flex: 0 0 auto; border: none; background: none; color: var(--fail); cursor: pointer; font-size: 13px; line-height: 1; padding: 0 2px; }
+    .bp-notice .bp-notice-close:hover { color: var(--text); }
     .bp-list { flex: 1 1 auto; overflow: auto; min-height: 0; max-height: var(--bp-list-h, 480px); }
     .bp-pager { padding: 8px 12px; border-top: 1px solid var(--border); display: flex; justify-content: center; align-items: center; gap: 4px; }
     .bp-pager:empty { display: none; }
@@ -271,7 +274,7 @@
     .batch-force-banner button:hover { background: var(--warn); color: var(--bg); }
 
     /* 批次浮层显隐（hidden 属性需显式覆盖 display） */
-    .batch-dock[hidden], .batch-panel[hidden], .batch-badge[hidden], .batch-force-banner[hidden] { display: none; }
+    .batch-dock[hidden], .batch-panel[hidden], .batch-badge[hidden], .batch-force-banner[hidden], .bp-notice[hidden] { display: none; }
     .bd-grip { width: 30px; height: 14px; cursor: grab; color: var(--muted); font-size: 9px; letter-spacing: 1px; line-height: 1; text-align: center; user-select: none; }
     .bd-grip:hover { color: var(--accent); }
     body.dock-dragging { cursor: grabbing; user-select: none; }
@@ -279,12 +282,13 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .batch-ring::before {
       content: ''; position: absolute; inset: 0; border-radius: inherit;
-      border: 2px solid var(--accent); pointer-events: none;
+      border: 2px solid var(--ring-color, var(--accent)); pointer-events: none;
       animation: batchRingPulse 1.6s ease-out forwards;
     }
+    .batch-ring.batch-ring-fail { --ring-color: var(--fail); }
     @keyframes batchRingPulse {
-      0% { opacity: 1; box-shadow: 0 0 0 2px var(--accent), 0 0 14px 2px var(--accent); }
-      45% { opacity: 1; box-shadow: 0 0 0 2px var(--accent), 0 0 14px 2px var(--accent); }
+      0% { opacity: 1; box-shadow: 0 0 0 2px var(--ring-color, var(--accent)), 0 0 14px 2px var(--ring-color, var(--accent)); }
+      45% { opacity: 1; box-shadow: 0 0 0 2px var(--ring-color, var(--accent)), 0 0 14px 2px var(--ring-color, var(--accent)); }
       100% { opacity: 0; box-shadow: 0 0 0 10px transparent, 0 0 0 0 transparent; }
     }
 
@@ -1675,6 +1679,7 @@
 
     /* ---------- 最近批次（多批次扫描） ---------- */
     let BATCHES_INDEX_URL = 'batches-index.json';
+    let SCAN_API_URL = '';
     const SUPPORTED_FORMAT_VERSIONS = [2];
     const VIEWER_VERSION = '5.0.0';
     const BATCH_STORAGE_KEY = 'deepseekValidationBatch.v1';
@@ -1745,6 +1750,7 @@
           if (typeof cfg.urls.data === 'string' && cfg.urls.data) DATA_URL = cfg.urls.data;
           if (typeof cfg.urls.ignore === 'string' && cfg.urls.ignore) IGNORE_CONFIG_URL = cfg.urls.ignore;
           if (typeof cfg.urls.batches === 'string' && cfg.urls.batches) BATCHES_INDEX_URL = cfg.urls.batches;
+          if (typeof cfg.urls.scan === 'string' && cfg.urls.scan) SCAN_API_URL = cfg.urls.scan;
         }
 
         const ui = cfg.ui && typeof cfg.ui === 'object' ? cfg.ui : {};
@@ -2236,7 +2242,10 @@
           '<div class="bp-date-hint" id="batchDateHint">' + dateHint + '</div>' +
           '<div class="bp-row"><select id="batchEnv" title="' + t('batchEnv') + '">' + envOpts + '</select></div>') +
         '</div>' +
-        '<div class="bp-notice" id="batchNotice"' + (BATCH_STATE.notice ? '' : ' hidden') + '>' + esc(BATCH_STATE.notice || '') + '</div>' +
+        '<div class="bp-notice" id="batchNotice"' + (BATCH_STATE.notice ? '' : ' hidden') + '>' +
+        '<span class="bp-notice-text">' + esc(BATCH_STATE.notice || '') + '</span>' +
+        '<button class="bp-notice-close" id="batchNoticeClose" title="' + t('closeLabel') + '" aria-label="' + t('closeLabel') + '">✕</button>' +
+        '</div>' +
         '<div class="bp-resize top" id="batchResizeTop" title="' + t('batchResizeHint') + '" aria-label="' + t('batchResizeHint') + '">⠿</div>' +
         '<div class="bp-list" id="batchList"></div>' +
         '<div class="bp-pager" id="batchPager"></div>' +
@@ -2335,7 +2344,11 @@
     function setBatchNotice(msg) {
       BATCH_STATE.notice = msg || '';
       const el = document.getElementById('batchNotice');
-      if (el) { el.textContent = msg || ''; el.hidden = !msg; }
+      if (el) {
+        el.hidden = !msg;
+        const txt = el.querySelector('.bp-notice-text');
+        if (txt) txt.textContent = msg || '';
+      }
     }
     function saveBatchActive() {
       try {
@@ -2379,14 +2392,15 @@
       });
     }
     let BATCH_RING_TIMER = null;
-    function flashBatchRing() {
+    function flashBatchRing(fail) {
       const target = BATCH_STATE.expanded ? document.getElementById('batchPanel') : document.getElementById('batchDock');
       if (!target) return;
-      target.classList.remove('batch-ring');
+      target.classList.remove('batch-ring', 'batch-ring-fail');
       void target.offsetWidth;
       target.classList.add('batch-ring');
+      if (fail) target.classList.add('batch-ring-fail');
       clearTimeout(BATCH_RING_TIMER);
-      BATCH_RING_TIMER = setTimeout(function () { target.classList.remove('batch-ring'); }, 1650);
+      BATCH_RING_TIMER = setTimeout(function () { target.classList.remove('batch-ring', 'batch-ring-fail'); }, 1650);
     }
     function positionBatchPanel() {
       const dock = document.getElementById('batchDock');
@@ -2541,13 +2555,30 @@
       const listEl = document.getElementById('batchList');
       if (listEl) listEl.innerHTML = batchListSkeletonHTML();
       const t0 = Date.now();
+      // 先调用扫描接口（自动执行 scan-batches.js），完成后再重新读取批次索引
+      let scanFailed = false;
+      if (SCAN_API_URL) {
+        try {
+          const res = await fetch(SCAN_API_URL, { method: 'POST', cache: 'no-store' });
+          const j = await res.json().catch(function () { return null; });
+          if (!res.ok || !j || j.ok !== true) {
+            scanFailed = true;
+            setBatchNotice(t('batchScanError') + ' ' + (j && j.error ? j.error : ('HTTP ' + res.status)));
+          } else {
+            setBatchNotice('');
+          }
+        } catch (e) {
+          scanFailed = true;
+          setBatchNotice(t('batchScanError') + ' ' + (e && e.message ? e.message : e));
+        }
+      }
       await loadBatchesIndex();
       const wait = Math.max(0, 280 - (Date.now() - t0));
       if (wait) await new Promise(function (r) { setTimeout(r, wait); });
       setBatchScanning(false);
       renderBatchDock();
       renderBatchPanel();
-      flashBatchRing();
+      flashBatchRing(scanFailed);
       if (BATCH_STATE.active && !BATCHES_INDEX.batches.some(function (x) { return x.batchId === BATCH_STATE.active.batchId; })) {
         BATCH_STATE.active = null; BATCH_STATE.forced = false; saveBatchActive();
         renderBatchBadge(); renderForceBanner();
@@ -4939,6 +4970,8 @@
         if (e.target.closest('.bd-chip')) hideBdCard();
       });
       document.getElementById('batchPanel').addEventListener('click', function (e) {
+        const noticeClose = e.target.closest('#batchNoticeClose');
+        if (noticeClose) { setBatchNotice(''); return; }
         const itemFirst = e.target.closest('[data-batch]');
         if (!itemFirst) hideBatchQuickDetail();
         const sideFlip = e.target.closest('#batchSideFlip');

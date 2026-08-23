@@ -4,7 +4,8 @@
     "urls":  {
                  "data":  "deepseek-validation-data.json",
                  "ignore":  "ignore-config-by-platform.json",
-                 "batches":  "batches-index.json"
+                 "batches":  "batches-index.json",
+                 "scan":  "http://127.0.0.1:8123/scan"
              },
     "ui":  {
                "lang":  "zh-CN",
