@@ -170,6 +170,9 @@
     .bp-search { display: flex; align-items: center; gap: 6px; }
     .bp-search-toggle { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 2px 4px; align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; }
     .bp-search-toggle:hover { color: var(--accent); }
+    .bp-toggle-row { display: flex; align-items: center; gap: 8px; }
+    .bp-toggle-row .bp-search-toggle { align-self: center; }
+    .bp-toggle-spacer { flex: 1 1 auto; }
     .bp-search input { flex: 1 1 auto; min-width: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; background: var(--surface); color: var(--text); }
     .bp-search input:focus { border-color: var(--accent); outline: none; }
     .bp-clear { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 4px; }
@@ -205,6 +208,7 @@
     .bi-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
     .b-badge { font-size: 10px; padding: 1px 7px; border-radius: 999px; font-weight: 600; }
     .b-badge.bv { background: var(--chip-code-bg); color: var(--chip-code-fg); }
+    .b-badge.benv { background: var(--indigo-bg); color: var(--indigo-fg); }
     .b-badge.ok { background: var(--pass-bg); color: var(--pass); }
     .b-badge.bad { background: var(--warn-bg); color: var(--warn); }
     .b-badge.bsum { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
@@ -2156,6 +2160,7 @@
         '<div class="bi-badges">' +
         '<span class="b-badge bv">v' + esc(String(b.formatVersion)) + '</span>' +
         (compat ? '<span class="b-badge ok">✓ ' + t('batchCompat') + '</span>' : '<span class="b-badge bad">⚠ ' + t('batchIncompat') + '</span>') +
+        (b.reportEnv ? '<span class="b-badge benv">' + esc(b.reportEnv) + '</span>' : '') +
         (sum ? '<span class="b-badge bsum">' + esc(sum) + '</span>' : '') +
         '</div></div>';
     }
@@ -2211,24 +2216,25 @@
         '<button class="bp-collapse" id="batchSideFlip" title="' + t('batchSideFlip') + '" aria-label="' + t('batchSideFlip') + '">⇄</button>' +
         '<button class="bp-collapse" id="batchClose" title="' + t('batchClose') + '" aria-label="' + t('batchClose') + '">' + (BATCH_STATE.side === 'right' ? '⟩' : '⟨') + '</button></div>' +
         '<div class="bp-controls">' +
+        '<div class="bp-toggle-row">' +
         '<button class="bp-search-toggle" id="batchSearchToggle" title="' + t('batchSearchLabel') + '">' + t('batchSearchLabel') + ' ' + (BATCH_STATE.searchCollapsed ? '▸' : '▾') + '</button>' +
+        '<button class="bp-search-toggle" id="batchFiltersToggle" title="' + t('batchFiltersLabel') + '">' + t('batchFiltersLabel') + ' ' + (BATCH_STATE.filtersCollapsed ? '▸' : '▾') + '</button>' +
+        '<span class="bp-toggle-spacer"></span>' +
+        '<button class="bp-cal" id="batchSort" title="' + t('batchSortLabel') + '：' + (BATCH_STATE.sortDir === 1 ? t('batchSortAsc') : t('batchSortDesc')) + '" aria-label="' + t('batchSortLabel') + '">' + (BATCH_STATE.sortDir === 1 ? '↑' : '↓') + '</button>' +
+        '<button class="bp-cal" id="batchRefresh" title="' + t('batchRefresh') + '" aria-label="' + t('batchRefresh') + '">' + (BATCH_STATE.scanning ? '<span class="spin">⟳</span>' : '⟳') + '</button>' +
+        '</div>' +
         (BATCH_STATE.searchCollapsed ? '' :
           '<div class="bp-search"><input type="search" id="batchSearch" placeholder="' + t('batchSearch') + '" value="' + esc(BATCH_STATE.search) + '"><button class="bp-clear" id="batchSearchClear" title="' + t('batchNone') + '">✕</button></div>' +
           '<div class="bp-search"><input type="search" id="batchCmd" placeholder="' + t('batchCmdSearch') + '" value="' + esc(BATCH_STATE.cmd) + '"><button class="bp-clear" id="batchCmdClear" title="' + t('batchNone') + '">✕</button></div>' +
           '<div class="bp-search"><input type="search" id="batchDesc" placeholder="' + t('batchDescSearch') + '" value="' + esc(BATCH_STATE.desc) + '"><button class="bp-clear" id="batchDescClear" title="' + t('batchNone') + '">✕</button></div>') +
-        '<button class="bp-search-toggle" id="batchFiltersToggle" title="' + t('batchFiltersLabel') + '">' + t('batchFiltersLabel') + ' ' + (BATCH_STATE.filtersCollapsed ? '▸' : '▾') + '</button>' +
         (BATCH_STATE.filtersCollapsed ? '' :
           '<div class="bp-row">' +
           '<input type="text" id="batchDate" placeholder="' + t('batchDate') + '" value="' + esc(BATCH_STATE.date) + '" maxlength="10" inputmode="numeric">' +
           '<button class="bp-cal" id="batchDateCal" title="' + t('batchDate') + '" aria-label="' + t('batchDate') + '">📅</button>' +
           '<button class="bp-clear" id="batchDateClear" title="' + t('batchDateClearLabel') + '">✕</button>' +
           '</div>' +
-          '<div class="bp-row"><select id="batchEnv" title="' + t('batchEnv') + '">' + envOpts + '</select></div>' +
-          '<div class="bp-date-hint" id="batchDateHint">' + dateHint + '</div>') +
-        '<div class="bp-row">' +
-        '<button class="bp-cal" id="batchSort" title="' + t('batchSortLabel') + '：' + (BATCH_STATE.sortDir === 1 ? t('batchSortAsc') : t('batchSortDesc')) + '" aria-label="' + t('batchSortLabel') + '">' + (BATCH_STATE.sortDir === 1 ? '↑' : '↓') + '</button>' +
-        '<button class="bp-cal" id="batchRefresh" title="' + t('batchRefresh') + '" aria-label="' + t('batchRefresh') + '">' + (BATCH_STATE.scanning ? '<span class="spin">⟳</span>' : '⟳') + '</button>' +
-        '</div>' +
+          '<div class="bp-date-hint" id="batchDateHint">' + dateHint + '</div>' +
+          '<div class="bp-row"><select id="batchEnv" title="' + t('batchEnv') + '">' + envOpts + '</select></div>') +
         '</div>' +
         '<div class="bp-notice" id="batchNotice"' + (BATCH_STATE.notice ? '' : ' hidden') + '>' + esc(BATCH_STATE.notice || '') + '</div>' +
         '<div class="bp-resize top" id="batchResizeTop" title="' + t('batchResizeHint') + '" aria-label="' + t('batchResizeHint') + '">⠿</div>' +
@@ -2311,6 +2317,7 @@
         '<div class="bdc-time">' + esc(formatBatchTime(b.executedAt)) + '</div>' +
         '<div class="bdc-badges"><span class="b-badge bv">v' + esc(String(b.formatVersion)) + '</span>' +
         (batchCompatible(b) ? '<span class="b-badge ok">✓ ' + t('batchCompat') + '</span>' : '<span class="b-badge bad">⚠ ' + t('batchIncompat') + '</span>') +
+        (b.reportEnv ? '<span class="b-badge benv">' + esc(b.reportEnv) + '</span>' : '') +
         '</div>';
       document.body.appendChild(BD_CARD);
       const cr = chip.getBoundingClientRect();
