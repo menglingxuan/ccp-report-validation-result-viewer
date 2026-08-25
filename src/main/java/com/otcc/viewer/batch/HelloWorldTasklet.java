@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 /**
  * Minimal demonstration job tasklet: prints "Hello, World!".
  */
-@Slf4j
 @Component
+@Slf4j
 public class HelloWorldTasklet implements Tasklet {
 
     @Override

@@ -1,11 +1,11 @@
 package com.otcc.viewer.model;
 
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
 
 /**
  * {@code batches-index.json} model.
@@ -15,7 +15,6 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class BatchIndex {
-
     private Integer schemaVersion;
     private String generatedAt;
     private String basedir;

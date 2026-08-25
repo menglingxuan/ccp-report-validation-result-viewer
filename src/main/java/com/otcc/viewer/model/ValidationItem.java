@@ -1,11 +1,11 @@
 package com.otcc.viewer.model;
 
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
 
 /**
  * One compared item (identified by {@code tradeId}).
@@ -15,7 +15,6 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ValidationItem {
-
     private String tradeId;
     private String reportDate;
     private String generatedAt;
@@ -25,7 +24,6 @@ public class ValidationItem {
     private String counterpartyItemId;
     private String platformTradeId;
     private String platformDealId;
-
     private List<String> enabledChannels;
     private List<Channel> channels;
     private List<SkippedItem> skippedItems;

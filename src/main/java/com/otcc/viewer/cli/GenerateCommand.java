@@ -2,6 +2,7 @@ package com.otcc.viewer.cli;
 
 import com.otcc.viewer.batch.BatchJobResolver;
 import com.otcc.viewer.generator.SampleStyle;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.Job;
@@ -14,7 +15,6 @@ import org.springframework.stereotype.Component;
 import picocli.CommandLine.ArgGroup;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
-
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -31,58 +31,37 @@ import java.util.concurrent.Callable;
  *   <li>{@code DateRange} — co-occurring ({@code --date-from} and {@code --date-to} must be used together).</li>
  * </ul></p>
  */
-@Slf4j
 @Component
-@Command(name = "generate",
-        mixinStandardHelpOptions = true,
-        version = "ccp-report generate 0.1.0",
-        description = "Generate sample data by style, optionally restricted to a report date or date range.")
+@Command(name = "generate", mixinStandardHelpOptions = true, version = "ccp-report generate 0.1.0", description = "Generate sample data by style, optionally restricted to a report date or date range.")
+@Slf4j
+@RequiredArgsConstructor
 public class GenerateCommand implements Callable<Integer> {
-
     private static final String STYLE_JOB = "styleDataJob";
-
     private final JobLauncher jobLauncher;
     private final BatchJobResolver jobResolver;
-
-    @Option(names = {"-s", "--style"}, defaultValue = "minimal",
-            description = "Sample style: ${COMPLETION-CANDIDATES} (default: ${DEFAULT-VALUE}).")
+    @Option(names = {"-s", "--style"}, defaultValue = "minimal", description = "Sample style: ${COMPLETION-CANDIDATES} (default: ${DEFAULT-VALUE}).")
     private SampleStyle style;
-
-    @Option(names = {"-o", "--output-dir"}, defaultValue = "generated",
-            description = "Output directory for the generated JSON files (default: ${DEFAULT-VALUE}).")
+    @Option(names = {"-o", "--output-dir"}, defaultValue = "generated", description = "Output directory for the generated JSON files (default: ${DEFAULT-VALUE}).")
     private String outputDir;
-
-    @ArgGroup(exclusive = true, multiplicity = "0..1",
-            heading = "%nDate selection (mutually exclusive):%n")
+    @ArgGroup(exclusive = true, multiplicity = "0..1", heading = "%nDate selection (mutually exclusive):%n")
     private DateSelection dateSelection;
-
-    @ArgGroup(exclusive = false, multiplicity = "0..1",
-            heading = "%nDate range (options must be used together):%n")
+    @ArgGroup(exclusive = false, multiplicity = "0..1", heading = "%nDate range (options must be used together):%n")
     private DateRange dateRange;
 
-    static class DateSelection {
-        @Option(names = "--report-date",
-                description = "Generate only this report date (yyyy-MM-dd).")
-        String reportDate;
 
-        @Option(names = "--all-dates",
-                description = "Generate the default report date (no date filter).")
+    static class DateSelection {
+        @Option(names = "--report-date", description = "Generate only this report date (yyyy-MM-dd).")
+        String reportDate;
+        @Option(names = "--all-dates", description = "Generate the default report date (no date filter).")
         boolean allDates;
     }
 
+
     static class DateRange {
-        @Option(names = "--date-from", required = true,
-                description = "Start date of the range, inclusive (yyyy-MM-dd).")
+        @Option(names = "--date-from", required = true, description = "Start date of the range, inclusive (yyyy-MM-dd).")
         String from;
-
-        @Option(names = "--date-to", required = true,
-                description = "End date of the range, inclusive (yyyy-MM-dd).")
+        @Option(names = "--date-to", required = true, description = "End date of the range, inclusive (yyyy-MM-dd).")
         String to;
-    }
-
-    public GenerateCommand(JobLauncher jobLauncher, BatchJobResolver jobResolver) {
-        this.jobLauncher = jobLauncher;
-        this.jobResolver = jobResolver;
     }
 
     @Override
@@ -96,8 +75,7 @@ public class GenerateCommand implements Callable<Integer> {
 
     private List<String> resolveDates() {
         if (dateRange != null && dateSelection != null) {
-            throw new IllegalArgumentException(
-                    "--report-date/--all-dates cannot be combined with --date-from/--date-to.");
+            throw new IllegalArgumentException("--report-date/--all-dates cannot be combined with --date-from/--date-to.");
         }
         if (dateRange != null) {
             return rangeDates(dateRange.from, dateRange.to);
@@ -127,22 +105,16 @@ public class GenerateCommand implements Callable<Integer> {
     }
 
     private void launch(Job job, String reportDate) throws Exception {
-        JobParametersBuilder builder = new JobParametersBuilder()
-                .addString("style", style.name())
-                .addString("outputDir", outputDir);
+        JobParametersBuilder builder = new JobParametersBuilder().addString("style", style.name()).addString("outputDir", outputDir);
         if (reportDate != null) {
             builder.addString("reportDate", reportDate);
         }
         JobParameters parameters = builder.toJobParameters();
-
         JobParametersIncrementer incrementer = job.getJobParametersIncrementer();
         if (incrementer != null) {
             parameters = incrementer.getNext(parameters);
         }
-
-        log.info("启动 {} 任务: style={}, reportDate={}, outputDir={}",
-                STYLE_JOB, style, reportDate == null ? "默认" : reportDate, outputDir);
-
+        log.info("启动 {} 任务: style={}, reportDate={}, outputDir={}", STYLE_JOB, style, reportDate == null ? "默认" : reportDate, outputDir);
         JobExecution execution = jobLauncher.run(job, parameters);
         if (execution.getStatus() != BatchStatus.COMPLETED) {
             throw new IllegalStateException("Job " + STYLE_JOB + " failed with status " + execution.getStatus());

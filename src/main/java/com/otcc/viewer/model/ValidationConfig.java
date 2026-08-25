@@ -1,13 +1,12 @@
 package com.otcc.viewer.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
+import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * {@code deepseek-validation-config.json} model, mirroring {@code config.schema.json}.
@@ -17,7 +16,6 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ValidationConfig {
-
     private Integer configVersion;
     private String runType;
     private Urls urls;
@@ -26,6 +24,7 @@ public class ValidationConfig {
     private Limits limits;
     private BatchesConfig batches;
     private ColumnsConfig columns;
+
 
     @Data
     @Builder
@@ -37,6 +36,7 @@ public class ValidationConfig {
         private String batches;
         private String scan;
     }
+
 
     @Data
     @Builder
@@ -51,6 +51,7 @@ public class ValidationConfig {
         private String batchDockSide;
         private String progressBarStyle;
     }
+
 
     @Data
     @Builder
@@ -77,6 +78,7 @@ public class ValidationConfig {
         private Boolean recentBatches;
     }
 
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -89,6 +91,7 @@ public class ValidationConfig {
         private Integer globalSearchLimit;
     }
 
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -100,6 +103,7 @@ public class ValidationConfig {
         private String detailMode;
         private Integer panelWidth;
     }
+
 
     @Data
     @Builder

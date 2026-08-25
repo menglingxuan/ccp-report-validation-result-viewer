@@ -13,7 +13,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SkippedItem {
-
     private String itemId;
     private String channel;
     private String reason;

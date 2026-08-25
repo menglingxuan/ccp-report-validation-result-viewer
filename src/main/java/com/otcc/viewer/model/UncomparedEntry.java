@@ -9,13 +9,12 @@ import lombok.NoArgsConstructor;
 /**
  * An uncompared record: xml channels carry {@code xpath}, csv channels carry {@code csvField}.
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public class UncomparedEntry {
-
     private String channel;
     private String xpath;
     private String csvField;

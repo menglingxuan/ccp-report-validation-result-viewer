@@ -1,12 +1,12 @@
 package com.otcc.viewer.model;
 
+import java.util.List;
+import java.util.Map;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * One batch entry inside {@code batches-index.json}.
@@ -16,7 +16,6 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class BatchEntry {
-
     private String batchId;
     private String batchName;
     private String date;

@@ -1,5 +1,6 @@
 HELP.md
 target/
+logs/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
@@ -37,3 +38,6 @@ build/
 logs/cli/ccp-report.2026-08-18.log
 logs/cli/ccp-report.log
 generated/
+
+### Java ###
+bin/

@@ -13,7 +13,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class IgnoreWarning {
-
     private String kind;
     private String channel;
     private String field;

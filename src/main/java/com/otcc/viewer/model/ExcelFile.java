@@ -13,7 +13,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ExcelFile {
-
     private String file;
     private String sheet;
     private String path;
