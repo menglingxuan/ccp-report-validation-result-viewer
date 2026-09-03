@@ -1,0 +1,20 @@
+{
+  "batchId": "batch-20260816-2000",
+  "batchName": "eod-20260816",
+  "date": "2026-08-16",
+  "executedAt": "2026-08-16T20:00:00+08:00",
+  "formatVersion": 2,
+  "dataUrl": "deepseek-validation-data.json",
+  "ignoreUrl": "ignore-config-by-platform.json",
+  "commandLine": [
+    "java",
+    "-jar",
+    "ccp-report.jar",
+    "--date=2026-08-16"
+  ],
+  "summary": {
+    "items": 18,
+    "channels": 3
+  },
+  "description": "日终批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：当日全部数据\n- 模式：终值校验"
+}

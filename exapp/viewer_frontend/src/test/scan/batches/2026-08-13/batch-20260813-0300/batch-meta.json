@@ -1,0 +1,20 @@
+{
+  "batchId": "batch-20260813-0300",
+  "batchName": "nightly-20260813",
+  "date": "2026-08-13",
+  "executedAt": "2026-08-13T03:00:00+08:00",
+  "formatVersion": 2,
+  "dataUrl": "deepseek-validation-data.json",
+  "ignoreUrl": "ignore-config-by-platform.json",
+  "commandLine": [
+    "java",
+    "-jar",
+    "ccp-report.jar",
+    "--date=2026-08-13"
+  ],
+  "summary": {
+    "items": 18,
+    "channels": 3
+  },
+  "description": "夜间全量批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：当日全部交易\n- 模式：全量比对 + 汇总报表"
+}
