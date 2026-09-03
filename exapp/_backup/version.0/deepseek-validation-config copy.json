@@ -1,8 +1,0 @@
-{
-  "runType": "dev",
-  "features": {
-    "uncomparedXpath": true,
-    "uncomparedItems": true,
-    "logs": true
-  }
-}
