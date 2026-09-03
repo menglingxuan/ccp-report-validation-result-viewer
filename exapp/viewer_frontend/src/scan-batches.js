@@ -1,4 +1,4 @@
-// 扫描 basedir 下所有批次目录，生成 batches-index.json（供 deepseek-validation-result.html 的「最近批次」面板使用）
+// 扫描 basedir 下所有批次目录，生成 batches-index.json（供 report-validation-result.html 的「最近批次」面板使用）
 // 用法：
 //   node scan-batches.js [basedir] [--out <输出路径>] [--ignore <正则> ...] [--env <环境>]
 // 默认 basedir = src/test/batches，输出 = src/engine/batches-index.json
@@ -8,15 +8,15 @@
 //   --ignore <regex>  排除匹配的目录（可重复；按相对 basedir 的 web 路径匹配，不区分大小写）
 //   --env <env>       仅扫描运行环境（reportEnv）等于指定值的批次；缺省扫描全部发现的批次
 //
-// 批次目录判定：目录内存在 batch-meta.json 或 deepseek-validation-data.json。
+// 批次目录判定：目录内存在 batch-meta.json 或 report-validation-data.json。
 // batch-meta.json 可选字段：
 //   batchId, batchName, date, executedAt, formatVersion, dataUrl, ignoreUrl,
 //   commandLine[], argv[], cwd, description, summary{}, reportEnv, 以及任意 extra 字段
 // 运行环境（reportEnv）解析：batch-meta.json 的 reportEnv 优先；
-//   若 batch-meta.json 缺失或未提供 reportEnv，则回退到 deepseek-validation-data.json 顶层的 reportEnv；
+//   若 batch-meta.json 缺失或未提供 reportEnv，则回退到 report-validation-data.json 顶层的 reportEnv；
 //   若批次目录内无数据文件，则按 dataUrl 解析并读取所引用数据文件的 reportEnv；
 //   均未提供时该批次不写 reportEnv。
-// dataUrl / ignoreUrl 未提供时：若目录内存在 deepseek-validation-data.json 则自动使用它；
+// dataUrl / ignoreUrl 未提供时：若目录内存在 report-validation-data.json 则自动使用它；
 //   提供的 dataUrl 按「相对 batches-index.json 所在目录（即 web 根目录）」解释。
 
 const fs = require('fs');
@@ -74,7 +74,7 @@ function scan() {
     dirCount++;
     if (ignored(dir)) { skipped++; continue; }
     const metaPath = path.join(dir, 'batch-meta.json');
-    const dataPath = path.join(dir, 'deepseek-validation-data.json');
+    const dataPath = path.join(dir, 'report-validation-data.json');
     const hasData = fs.existsSync(dataPath);
     const meta = readJSON(metaPath) || {};
     if (!hasData && !meta.dataUrl) continue;

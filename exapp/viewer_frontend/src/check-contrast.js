@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const html = fs.readFileSync(path.join(__dirname, 'src', 'engine', 'deepseek-validation-result.html'), 'utf8');
+const html = fs.readFileSync(path.join(__dirname, 'src', 'engine', 'report-validation-result.html'), 'utf8');
 
 function parseVars(block) {
   const out = {};

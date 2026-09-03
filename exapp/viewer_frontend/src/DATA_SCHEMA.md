@@ -1,6 +1,6 @@
 # 数据说明（DATA SCHEMA）
 
-> 文件：`engine/deepseek-validation-data.json`
+> 文件：`engine/report-validation-data.json`
 > 顶层：`{ "items": [...], "ctxDefs": {...}, "reportEnv": "..." }`
 
 本文档描述数据 JSON 的结构，便于外部工具生成或替换真实数据。查看器对缺失字段有兼容回退。

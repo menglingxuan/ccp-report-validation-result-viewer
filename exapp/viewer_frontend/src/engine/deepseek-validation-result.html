@@ -1656,9 +1656,9 @@
     }
 
     /* ---------- 数据源与配置（外部 JSON 输入） ---------- */
-    let DATA_URL = 'deepseek-validation-data.json';
+    let DATA_URL = 'report-validation-data.json';
     let IGNORE_CONFIG_URL = 'ignore-config-by-platform.json';
-    const CONFIG_URL = 'deepseek-validation-config.json';
+    const CONFIG_URL = 'report-validation-config.json';
     let APP_LIMITS = { pageSize: 20, pageSizeOptions: [10, 20, 50], sidebarPageSize: 8, msgPageSize: 20, globalSearchLimit: 200 };
     let APP_REPORT_CAT_DEFAULT = null;
     let APP_PROGRESS_STYLE = 'status';
@@ -1682,7 +1682,7 @@
     let SCAN_API_URL = '';
     const SUPPORTED_FORMAT_VERSIONS = [2];
     const VIEWER_VERSION = '5.0.0';
-    const BATCH_STORAGE_KEY = 'deepseekValidationBatch.v1';
+    const BATCH_STORAGE_KEY = 'reportValidationBatch.v1';
     let BATCHES_INDEX = { batches: [] };
     let BATCH_STATE = {
       loaded: false,
@@ -1889,7 +1889,7 @@
     let LANG = 'zh-CN';
     let THEME = 'light';
     let SIDEBAR_WIDTH = 280;
-    const PREF_STORAGE_KEY = 'deepseekValidationPrefs.v1';
+    const PREF_STORAGE_KEY = 'reportValidationPrefs.v1';
     function loadPrefs() {
       try {
         const p = JSON.parse(localStorage.getItem(PREF_STORAGE_KEY) || '{}');
@@ -1991,7 +1991,7 @@
     function setLang(lang) { LANG = lang; applyStaticText(); render(); renderBatchDock(); renderBatchPanel(); renderBatchBadge(); renderForceBanner(); savePrefs(); }
 
     /* ---------- 警告忽略配置（动态存储，后续可改为 JSON 字段加载） ---------- */
-    const IGNORE_STORAGE_KEY = 'deepseekValidationIgnoreConfig.v1';
+    const IGNORE_STORAGE_KEY = 'reportValidationIgnoreConfig.v1';
     let IGNORE_CONFIG = {};
     function groupedToFlat(grouped) {
       const flat = {};

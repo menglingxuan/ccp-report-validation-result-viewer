@@ -20,7 +20,7 @@
         ],
         "items": [
           "用法：node scan-batches.js [basedir]（默认 basedir = src/test/batches）",
-          "批次目录判定：目录内含 batch-meta.json 或 deepseek-validation-data.json",
+          "批次目录判定：目录内含 batch-meta.json 或 report-validation-data.json",
           "batch-meta.json 可声明：batchId / batchName / date / executedAt / formatVersion / dataUrl / ignoreUrl / commandLine / argv / cwd / description / summary",
           "扫描完成后，最近批次面板即可列出全部批次"
         ],
@@ -79,7 +79,7 @@
       {
         "h": "七、配置说明",
         "p": [
-          "主配置文件 deepseek-validation-config.json 控制数据源、功能开关、界面默认值与批次行为。"
+          "主配置文件 report-validation-config.json 控制数据源、功能开关、界面默认值与批次行为。"
         ],
         "items": [
           "configVersion：配置结构版本号（当前 2）",
@@ -137,7 +137,7 @@
         ],
         "items": [
           "用法：node scan-batches.js [basedir]（預設 basedir = src/test/batches）",
-          "批次目錄判定：目錄內含 batch-meta.json 或 deepseek-validation-data.json",
+          "批次目錄判定：目錄內含 batch-meta.json 或 report-validation-data.json",
           "batch-meta.json 可宣告：batchId / batchName / date / executedAt / formatVersion / dataUrl / ignoreUrl / commandLine / argv / cwd / description / summary",
           "掃描完成後，最近批次面板即可列出全部批次"
         ],
@@ -196,7 +196,7 @@
       {
         "h": "七、配置說明",
         "p": [
-          "主配置文件 deepseek-validation-config.json 控制數據源、功能開關、介面預設值與批次行為。"
+          "主配置文件 report-validation-config.json 控制數據源、功能開關、介面預設值與批次行為。"
         ],
         "items": [
           "configVersion：配置結構版本號（當前 2）",
@@ -254,7 +254,7 @@
         ],
         "items": [
           "Usage: node scan-batches.js [basedir] (default basedir = src/test/batches)",
-          "A batch directory must contain batch-meta.json or deepseek-validation-data.json",
+          "A batch directory must contain batch-meta.json or report-validation-data.json",
           "batch-meta.json may declare: batchId / batchName / date / executedAt / formatVersion / dataUrl / ignoreUrl / commandLine / argv / cwd / description / summary",
           "After scanning, all batches appear in the Recent Batches panel"
         ],
@@ -313,7 +313,7 @@
       {
         "h": "7. Configuration",
         "p": [
-          "The main config deepseek-validation-config.json controls data sources, feature flags, UI defaults, and batch behavior."
+          "The main config report-validation-config.json controls data sources, feature flags, UI defaults, and batch behavior."
         ],
         "items": [
           "configVersion: config schema version (currently 2)",

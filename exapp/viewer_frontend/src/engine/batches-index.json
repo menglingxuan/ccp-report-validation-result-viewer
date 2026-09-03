@@ -10,7 +10,7 @@
       "date": "2026-08-16",
       "executedAt": "2026-08-16T20:00:00+08:00",
       "formatVersion": 2,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": "ignore-config-by-platform.json",
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-16/batch-20260816-2000",
       "commandLine": [
@@ -32,7 +32,7 @@
       "date": "2026-08-16",
       "executedAt": "2026-08-16T14:00:00+08:00",
       "formatVersion": 2,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": "ignore-config-by-platform.json",
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-16/batch-20260816-1400",
       "commandLine": [
@@ -54,7 +54,7 @@
       "date": "2026-08-16",
       "executedAt": "2026-08-16T09:30:00+08:00",
       "formatVersion": 2,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": "ignore-config-by-platform.json",
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-16/batch-20260816-0930",
       "commandLine": [
@@ -78,7 +78,7 @@
       "date": "2026-08-16",
       "executedAt": "2026-08-16T04:00:00+08:00",
       "formatVersion": 2,
-      "dataUrl": "batches/2026-08-16/batch-20260816-0400/deepseek-validation-data.json",
+      "dataUrl": "batches/2026-08-16/batch-20260816-0400/report-validation-data.json",
       "ignoreUrl": null,
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-16/batch-20260816-0400",
       "commandLine": [
@@ -108,7 +108,7 @@
       "date": "2026-08-15",
       "executedAt": "2026-08-15T18:00:00+08:00",
       "formatVersion": 1,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": null,
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-15/batch-20260815-1800",
       "commandLine": [
@@ -131,7 +131,7 @@
       "date": "2026-08-15",
       "executedAt": "2026-08-15T12:00:00+08:00",
       "formatVersion": 2,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": "ignore-config-by-platform.json",
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-15/batch-20260815-1200",
       "commandLine": [
@@ -153,7 +153,7 @@
       "date": "2026-08-15",
       "executedAt": "2026-08-15T09:00:00+08:00",
       "formatVersion": 2,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": "ignore-config-by-platform.json",
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-15/batch-20260815-0900",
       "commandLine": [
@@ -177,7 +177,7 @@
       "date": "2026-08-14",
       "executedAt": "2026-08-14T22:30:00+08:00",
       "formatVersion": 1,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": null,
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-14/batch-20260814-2230",
       "commandLine": [
@@ -200,7 +200,7 @@
       "date": "2026-08-14",
       "executedAt": "2026-08-14T15:00:00+08:00",
       "formatVersion": 1,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": "ignore-config-by-platform.json",
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-14/batch-20260814-1500",
       "commandLine": [
@@ -222,7 +222,7 @@
       "date": "2026-08-14",
       "executedAt": "2026-08-14T08:00:00+08:00",
       "formatVersion": 2,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": "ignore-config-by-platform.json",
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-14/batch-20260814-0800",
       "commandLine": [
@@ -244,7 +244,7 @@
       "date": "2026-08-14",
       "executedAt": "2026-08-14T01:30:00+08:00",
       "formatVersion": 2,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": null,
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-14/batch-20260814-0130",
       "commandLine": [
@@ -268,7 +268,7 @@
       "date": "2026-08-13",
       "executedAt": "2026-08-13T19:00:00+08:00",
       "formatVersion": 1,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": "ignore-config-by-platform.json",
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-13/batch-20260813-1900",
       "commandLine": [
@@ -290,7 +290,7 @@
       "date": "2026-08-13",
       "executedAt": "2026-08-13T11:00:00+08:00",
       "formatVersion": 2,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": "ignore-config-by-platform.json",
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-13/batch-20260813-1100",
       "commandLine": [
@@ -312,7 +312,7 @@
       "date": "2026-08-13",
       "executedAt": "2026-08-13T03:00:00+08:00",
       "formatVersion": 2,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": "ignore-config-by-platform.json",
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-13/batch-20260813-0300",
       "commandLine": [
@@ -334,7 +334,7 @@
       "date": "2026-08-12",
       "executedAt": "2026-08-12T16:00:00+08:00",
       "formatVersion": 2,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": "ignore-config-by-platform.json",
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-12/batch-20260812-1600",
       "commandLine": [
@@ -356,7 +356,7 @@
       "date": "2026-08-12",
       "executedAt": "2026-08-12T06:00:00+08:00",
       "formatVersion": 2,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": "ignore-config-by-platform.json",
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-12/batch-20260812-0600",
       "commandLine": [
@@ -378,7 +378,7 @@
       "date": "2026-08-11",
       "executedAt": "2026-08-11T21:00:00+08:00",
       "formatVersion": 1,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": "ignore-config-by-platform.json",
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-11/batch-20260811-2100",
       "commandLine": [
@@ -400,7 +400,7 @@
       "date": "2026-08-11",
       "executedAt": "2026-08-11T09:00:00+08:00",
       "formatVersion": 2,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": "ignore-config-by-platform.json",
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-11/batch-20260811-0900",
       "commandLine": [
@@ -422,7 +422,7 @@
       "date": "2026-08-10",
       "executedAt": "2026-08-10T12:00:00+08:00",
       "formatVersion": 2,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": "ignore-config-by-platform.json",
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-10/batch-20260810-1200",
       "commandLine": [
@@ -444,7 +444,7 @@
       "date": "2026-08-10",
       "executedAt": "2026-08-10T08:00:00+08:00",
       "formatVersion": 2,
-      "dataUrl": "deepseek-validation-data.json",
+      "dataUrl": "report-validation-data.json",
       "ignoreUrl": "ignore-config-by-platform.json",
       "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/test/batches/2026-08-10/batch-20260810-0800",
       "commandLine": [

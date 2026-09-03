@@ -1,11 +1,11 @@
-// 纯函数回归自测：从 deepseek-validation-result.html 中加载脚本（vm），
+// 纯函数回归自测：从 report-validation-result.html 中加载脚本（vm），
 // 直接对 filteredFields / getMsgRows / msgIgnoreKey / groupedToFlat / diffSegments 等做断言。
 // 用法: node test-pure-logic.js
 const fs = require('fs');
 const vm = require('vm');
 const path = require('path');
 
-const htmlPath = path.join(__dirname, 'src', 'engine', 'deepseek-validation-result.html');
+const htmlPath = path.join(__dirname, 'src', 'engine', 'report-validation-result.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
 const m = html.match(/<script>([\s\S]*?)<\/script>/);
 if (!m) throw new Error('未找到 <script> 块');

@@ -2,7 +2,7 @@
     "configVersion":  2,
     "runType":  "dev",
     "urls":  {
-                 "data":  "deepseek-validation-data.json",
+                 "data":  "report-validation-data.json",
                  "ignore":  "ignore-config-by-platform.json",
                  "batches":  "batches-index.json",
                  "scan":  "http://127.0.0.1:8123/scan"

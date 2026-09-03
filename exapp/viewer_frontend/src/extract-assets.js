@@ -1,11 +1,11 @@
-// 从 deepseek-validation-result.html 抽离 I18N → i18n.json、主题配色 → themes.css，并回写 HTML。
+// 从 report-validation-result.html 抽离 I18N → i18n.json、主题配色 → themes.css，并回写 HTML。
 // 用法: node extract-assets.js
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
 const dir = path.join(__dirname, 'src', 'engine');
-const htmlPath = path.join(dir, 'deepseek-validation-result.html');
+const htmlPath = path.join(dir, 'report-validation-result.html');
 let html = fs.readFileSync(htmlPath, 'utf8');
 
 // ---- 1. 计算所有边界（基于原始 html） ----

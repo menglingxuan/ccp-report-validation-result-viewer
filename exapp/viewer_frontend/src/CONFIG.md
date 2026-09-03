@@ -1,6 +1,6 @@
 # 配置说明（CONFIG）
 
-> 文件：`engine/deepseek-validation-config.json`
+> 文件：`engine/report-validation-config.json`
 > 结构校验：`engine/config.schema.json`（JSON Schema，编辑器可自动补全/校验）
 
 所有配置项均可省略；省略时使用内置默认值。JSON 不支持注释，完整备注见本文件与 Schema。
@@ -36,7 +36,7 @@
 
 | 键 | 含义 | 默认 |
 |---|---|---|
-| `data` | 比对结果数据 JSON 的相对路径 | `deepseek-validation-data.json` |
+| `data` | 比对结果数据 JSON 的相对路径 | `report-validation-data.json` |
 | `ignore` | 忽略配置 JSON 的相对路径 | `ignore-config-by-platform.json` |
 | `batches` | 批次索引 JSON（最近批次面板数据源）的相对路径 | `batches-index.json` |
 | `scan` | 批次自动扫描 HTTP 接口地址（可选；不配置则跳过扫描接口，直接重新读取索引） | `http://127.0.0.1:8123/scan` |

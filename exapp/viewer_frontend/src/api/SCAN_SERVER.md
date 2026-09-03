@@ -11,7 +11,7 @@
 | `scan-server.config.json` | 服务配置（含 scan-batches.js 的选项） |
 | `scan-batches.js` | 既有批次扫描脚本 |
 | `engine/batches-index.json` | 扫描输出（前端读取） |
-| `engine/deepseek-validation-config.json` | 前端配置，`urls.scan` 指向本接口 |
+| `engine/report-validation-config.json` | 前端配置，`urls.scan` 指向本接口 |
 
 ## 服务配置
 
@@ -114,7 +114,7 @@ pm2 save
 
 ## 前端如何接入
 
-`engine/deepseek-validation-config.json` 中 `urls.scan` 已配置为 `http://127.0.0.1:8123/scan`。
+`engine/report-validation-config.json` 中 `urls.scan` 已配置为 `http://127.0.0.1:8123/scan`。
 前端 `reloadBatchesIndex()` 会：
 
 1. `POST` 到 `urls.scan`，等待接口内部完成扫描；
