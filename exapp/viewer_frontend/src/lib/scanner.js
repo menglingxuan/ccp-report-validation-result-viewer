@@ -18,11 +18,11 @@ function toWeb(p) {
   return p.split(path.sep).join('/');
 }
 
-function walkDirs(dir, acc) {
+async function walkDirs(dir, acc, onDir) {
   acc = acc || [];
   let entries;
   try {
-    entries = fs.readdirSync(dir, { withFileTypes: true });
+    entries = await fs.promises.readdir(dir, { withFileTypes: true });
   } catch (e) {
     return acc;
   }
@@ -30,7 +30,8 @@ function walkDirs(dir, acc) {
     if (!ent.isDirectory()) continue;
     const p = path.join(dir, ent.name);
     acc.push(p);
-    walkDirs(p, acc);
+    if (onDir) onDir(p);
+    await walkDirs(p, acc, onDir);
   }
   return acc;
 }
@@ -55,13 +56,14 @@ function readDataInfo(dataPath, indexDir) {
 }
 
 /**
- * 扫描批次目录。
- * @param {{basedir: string, out: string, ignore?: string[], env?: string|null}} opts
- * @returns {{ok: boolean, error?: string, count: number, batches: object[], out: string, skipped: number}}
+ * 扫描批次目录（异步，支持 onProgress 回调）。
+ * @param {{basedir: string, out: string, ignore?: string[], env?: string|null, onProgress?: function}} opts
+ * @returns {Promise<{ok: boolean, error?: string, count: number, batches: object[], out: string, skipped: number}>}
  */
-export function scan(opts) {
+export async function scan(opts) {
   const basedir = opts.basedir;
   const out = opts.out;
+  const onProgress = typeof opts.onProgress === 'function' ? opts.onProgress : null;
   const ignoreRes = (opts.ignore || []).map(function (s) {
     try {
       return new RegExp(s, 'i');
@@ -85,8 +87,21 @@ export function scan(opts) {
   const batches = [];
   let dirCount = 0;
   let skipped = 0;
-  for (const dir of walkDirs(basedir)) {
+  let lastEmit = 0;
+  const emitProgress = function () {
+    if (onProgress) {
+      const now = Date.now();
+      if (now - lastEmit >= 50 || dirCount === 1) {
+        lastEmit = now;
+        onProgress({ dirCount: dirCount, batchCount: batches.length, skipped: skipped });
+      }
+    }
+  };
+  const dirs = await walkDirs(basedir, null, function () {
     dirCount++;
+    emitProgress();
+  });
+  for (const dir of dirs) {
     if (ignored(dir)) { skipped++; continue; }
     const metaPath = path.join(dir, 'batch-meta.json');
     const dataPath = path.join(dir, 'report-validation-data.json');
@@ -156,7 +171,7 @@ export function scan(opts) {
   return { ok: true, count: batches.length, batches: batches, out, skipped: skipped, dirCount: dirCount };
 }
 
-export function main() {
+export async function main() {
   const argv = process.argv.slice(2);
   const opts = {
     basedir: path.join(SRC_ROOT, 'public', 'batches'),
@@ -173,7 +188,7 @@ export function main() {
     else if (!a.startsWith('--')) opts.basedir = path.resolve(a);
   }
 
-  const result = scan(opts);
+  const result = await scan(opts);
   if (!result.ok) {
     console.error(result.error);
     process.exit(1);

@@ -8,6 +8,13 @@
      * 报告渠道级别: files / warnings[] / errors[] / uncompared[] / logs[]
      * ============================================================ */
 
+    import {
+      parseSearchQuery, searchValue, fieldHay, makeMatcher, matchRow,
+      specialValueMatch, sortValue, flatFields, diffSegments,
+      groupedToFlat, normalizeIgnoreConfig, msgIgnoreKey,
+      computeHealthPure, globalSearchPure,
+    } from './core.js';
+
     const TYPE_META = {
       platformAssertion: { label: '平台断言', cls: 'tp-platform' },
       productAssertion:  { label: '产品断言', cls: 'tp-product' },
@@ -207,9 +214,60 @@
       return json;
     }
     async function fetchJSON(url) {
-      const res = await fetch(url, { cache: 'no-store' });
+      return fetchJSONCached(url);
+    }
+    /* ---------- IndexedDB + ETag 缓存（no-cache 重校验，保证数据绝不陈旧） ----------
+     * 服务端对静态/数据文件返回强 ETag 与 Cache-Control: no-cache；
+     * 此处用 If-None-Match 条件请求：304 时用本地缓存体，200 时更新缓存体。
+     * 缓存仅按 URL 存储，跨用户由服务端数据源保证一致；任何缓存写入都伴随新 ETag。 */
+    let IDB = null;
+    function openIdb() {
+      return new Promise(function (resolve) {
+        if (IDB) return resolve(IDB);
+        if (typeof indexedDB === 'undefined') return resolve(null);
+        try {
+          const req = indexedDB.open('reportViewerCache', 1);
+          req.onupgradeneeded = function () {
+            const db = req.result;
+            if (!db.objectStoreNames.contains('files')) db.createObjectStore('files');
+          };
+          req.onsuccess = function () { IDB = req.result; resolve(IDB); };
+          req.onerror = function () { IDB = null; resolve(null); };
+        } catch (e) { resolve(null); }
+      });
+    }
+    function idbGet(db, key) {
+      return new Promise(function (resolve) {
+        try {
+          const tx = db.transaction('files', 'readonly');
+          const req = tx.objectStore('files').get(key);
+          req.onsuccess = function () { resolve(req.result || null); };
+          req.onerror = function () { resolve(null); };
+        } catch (e) { resolve(null); }
+      });
+    }
+    function idbPut(db, key, val) {
+      return new Promise(function (resolve) {
+        try {
+          const tx = db.transaction('files', 'readwrite');
+          tx.objectStore('files').put(val, key);
+          tx.oncomplete = function () { resolve(true); };
+          tx.onerror = function () { resolve(false); };
+        } catch (e) { resolve(false); }
+      });
+    }
+    async function fetchJSONCached(url) {
+      const db = await openIdb();
+      const cached = db ? await idbGet(db, url) : null;
+      const headers = {};
+      if (cached && cached.etag) headers['If-None-Match'] = cached.etag;
+      const res = await fetch(url, { cache: 'no-store', headers: headers });
+      if (res.status === 304 && cached) return JSON.parse(cached.body);
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
+      const body = await res.text();
+      const etag = res.headers.get('etag');
+      if (db && etag) await idbPut(db, url, { etag: etag, body: body });
+      return JSON.parse(body);
     }
     // 默认数据源可配置（urls.defaultDataMode）：
     //   "init"          -> 读取 urls.initData（空占位数据）
@@ -459,30 +517,6 @@
     /* ---------- 警告忽略配置（动态存储，后续可改为 JSON 字段加载） ---------- */
     const IGNORE_STORAGE_KEY = 'reportValidationIgnoreConfig.v1';
     let IGNORE_CONFIG = {};
-    function groupedToFlat(grouped) {
-      const flat = {};
-      Object.keys(grouped || {}).forEach(function (platform) {
-        const g = grouped[platform];
-        if (!g || typeof g !== 'object') return;
-        (g.warnings || []).forEach(function (w) {
-          const key = JSON.stringify(['warn', w.channel || '', w.field || '', w.type || '', w.level || '', platform, w.product || '']);
-          flat[key] = true;
-        });
-        (g.uncomparedXpaths || []).forEach(function (u) {
-          const key = JSON.stringify(['xpath', u.xpath || '', u.channel || '', platform, u.product || '', u.ctx || '']);
-          flat[key] = true;
-        });
-      });
-      return flat;
-    }
-    function normalizeIgnoreConfig(cfg) {
-      if (cfg && typeof cfg === 'object' && !Array.isArray(cfg)) {
-        const keys = Object.keys(cfg);
-        const isFlat = keys.every(function (k) { try { return Array.isArray(JSON.parse(k)); } catch (e) { return false; } });
-        return isFlat ? cfg : groupedToFlat(cfg);
-      }
-      return null;
-    }
     async function loadIgnoreConfig() {
       try {
         const res = await fetch(IGNORE_CONFIG_URL, { cache: 'no-store' });
@@ -542,9 +576,7 @@
       BATCHES_INDEX = { batches: [] };
       BATCH_STATE.loaded = false;
       try {
-        const res = await fetch(BATCHES_INDEX_URL, { cache: 'no-store' });
-        if (!res.ok) return;
-        const idx = await res.json();
+        const idx = await fetchJSONCached(BATCHES_INDEX_URL);
         if (idx && Array.isArray(idx.batches)) BATCHES_INDEX = idx;
       } catch (e) {}
       BATCH_STATE.loaded = true;
@@ -776,11 +808,26 @@
     let FAVORITES = {};
     let FAV_COLLAPSED = {};
     let FAV_SEARCH = '';
-    function loadFavorites() {
+    async function loadFavorites() {
+      // 优先读取服务端共享收藏（多用户一致）；失败则回退 localStorage。
+      try {
+        const res = await fetch('/api/favorites', { cache: 'no-store' });
+        if (res.ok) {
+          const j = await res.json();
+          if (j && j.ok === true && j.favorites && typeof j.favorites === 'object' && !Array.isArray(j.favorites)) {
+            FAVORITES = j.favorites;
+            try { localStorage.setItem(FAV_STORAGE_KEY, JSON.stringify(FAVORITES)); } catch (e) {}
+            return;
+          }
+        }
+      } catch (e) {}
       try { FAVORITES = JSON.parse(localStorage.getItem(FAV_STORAGE_KEY) || '{}'); } catch (e) { FAVORITES = {}; }
       if (!FAVORITES || typeof FAVORITES !== 'object' || Array.isArray(FAVORITES)) FAVORITES = {};
     }
-    function saveFavorites() { try { localStorage.setItem(FAV_STORAGE_KEY, JSON.stringify(FAVORITES)); } catch (e) {} }
+    function saveFavorites() {
+      try { localStorage.setItem(FAV_STORAGE_KEY, JSON.stringify(FAVORITES)); } catch (e) {}
+      fetch('/api/favorites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ favorites: FAVORITES }) }).catch(function () {});
+    }
     function favPkgList() { return Object.keys(FAVORITES).sort(); }
     function isValidPkg(pkg) { return /^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/.test(String(pkg || '').trim()); }
     // 收藏标记回写批次元数据（服务端持久化，扫描后仍在索引中体现）。
@@ -1107,6 +1154,15 @@
         btn.innerHTML = v ? '<span class="spin">⟳</span>' : '⟳';
       });
     }
+    let BATCH_PROGRESS = { phase: 'idle', dirCount: 0, batchCount: 0, skipped: 0 };
+    function setScanProgress(p) {
+      BATCH_PROGRESS = p || { phase: 'idle', dirCount: 0, batchCount: 0, skipped: 0 };
+      document.querySelectorAll('#batchRefreshDock, #batchRefresh').forEach(function (btn) {
+        if (!btn || !BATCH_STATE.scanning) return;
+        const n = BATCH_PROGRESS.batchCount || 0;
+        btn.innerHTML = '<span class="spin">⟳</span> <span class="scan-prog">' + n + '</span>';
+      });
+    }
     let BATCH_RING_TIMER = null;
     function flashBatchRing(fail) {
       const target = BATCH_STATE.expanded ? document.getElementById('batchPanel') : document.getElementById('batchDock');
@@ -1282,9 +1338,18 @@
       const listEl = document.getElementById('batchList');
       if (listEl) listEl.innerHTML = batchListSkeletonHTML();
       const t0 = Date.now();
-      // 先调用扫描接口（自动执行 scan-batches.js），完成后再重新读取批次索引
+      // 先调用扫描接口（自动执行 scan-batches.js），完成后再重新读取批次索引。
+      // 同时订阅 /scan/progress SSE，实时展示扫描进度。
       let scanFailed = false;
+      let es = null;
       if (SCAN_API_URL) {
+        const progressUrl = SCAN_API_URL.replace(/\/scan\/?$/, '/scan/progress');
+        try {
+          es = new EventSource(progressUrl);
+          es.onmessage = function (ev) {
+            try { setScanProgress(JSON.parse(ev.data)); } catch (e) {}
+          };
+        } catch (e) { es = null; }
         try {
           const res = await fetch(SCAN_API_URL, { method: 'POST', cache: 'no-store' });
           const j = await res.json().catch(function () { return null; });
@@ -1298,7 +1363,9 @@
           scanFailed = true;
           setBatchNotice(t('batchScanError') + ' ' + (e && e.message ? e.message : e));
         }
+        if (es) { try { es.close(); } catch (e) {} es = null; }
       }
+      setScanProgress({ phase: 'done', dirCount: 0, batchCount: 0, skipped: 0 });
       const prevIds = {};
       BATCHES_INDEX.batches.forEach(function (b) { prevIds[b.batchId] = true; });
       await loadBatchesIndex();
@@ -1406,12 +1473,6 @@
       if (BATCH_QD) { BATCH_QD.remove(); BATCH_QD = null; }
     }
 
-    function msgIgnoreKey(tab, m) {
-      if (tab === 'warnings') return JSON.stringify(['warn', m.channel, m.field || '', m.type, m.level, m.platform || '', m.product || '']);
-      if (tab === 'uncompared') return JSON.stringify(['xpath', m.xpath, m.channel, m.platform || '', m.product || '', m.ctx || '']);
-      if (tab === 'uncomparedCsv') return JSON.stringify(['csv', m.csvField, m.channel, m.platform || '', m.product || '', m.ctx || '']);
-      return null;
-    }
     function msgIsIgnored(tab, m) {
       const k = msgIgnoreKey(tab, m);
       return k ? !!IGNORE_CONFIG[k] : false;
@@ -1540,20 +1601,6 @@
       return it.channels.filter(function (c) { return c.name === state.channel; });
     }
 
-    function flatFields(item) {
-      const rows = [];
-      item.channels.forEach(ch => {
-        ch.sources.forEach(s => {
-          s.fields.forEach(f => rows.push({
-            channel: ch.name, source: s.name,
-            id: f.id, f: f.f, x: f.x, aoCsv: f.aoCsv, t: f.t, k: f.k, ctx: f.ctx,
-            eo: f.eo, ao: f.ao, result: f.result, note: f.note, prints: f.prints,
-          }));
-        });
-      });
-      return rows;
-    }
-
     function currentChannelFormat() {
       if (state.channel !== 'ALL') {
         const it = currentItem();
@@ -1625,66 +1672,6 @@
         logs: scopeLogs().length,
         skipped: scopeSkippedItems().length,
       };
-    }
-
-    function sortValue(r, key) {
-      switch (key) {
-        case 'f': return r.f;
-        case 'x': return r.x;
-        case 'aoCsv': return r.aoCsv;
-        case 't': return r.k;
-        case 'result': return r.result;
-        case 'ctx': return (r.ctx || []).join(',');
-        case 'eo': return r.eo;
-        case 'ao': return r.ao;
-        case 'channel': return r.channel;
-        case 'source': return r.source;
-        case 'note': return r.note;
-        default: return '';
-      }
-    }
-
-    function specialValueMatch(v, kind) {
-      const s = String(v);
-      if (kind === 'empty') return s === '';
-      if (kind === 'blank') return /^\s+$/.test(s);
-      if (kind === 'special') return /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200B\u200C\u200D\uFEFF]/.test(s);
-      return true;
-    }
-
-    const SEARCH_KEYS = { field: 'f', xpath: 'x', csv: 'aoCsv', eo: 'eo', ao: 'ao', ctx: 'ctx', desc: 'note' };
-    function parseSearchQuery(q) {
-      let s = (q || '').trim();
-      let key = null, regex = false;
-      for (;;) {
-        const m = /^\s*([A-Za-z]+):/.exec(s);
-        if (!m) break;
-        const k = m[1].toLowerCase();
-        if (k === 'regex') { regex = true; s = s.slice(m[0].length); }
-        else if (SEARCH_KEYS[k]) { key = SEARCH_KEYS[k]; s = s.slice(m[0].length); }
-        else break;
-      }
-      return { key: key, regex: regex, text: s.trim() };
-    }
-    function searchValue(obj, key) {
-      const v = obj[key];
-      if (key === 'ctx') return (v || []).join(' ');
-      return String(v == null ? '' : v);
-    }
-    function fieldHay(r) {
-      return r.f + ' ' + r.x + ' ' + r.aoCsv + ' ' + r.eo + ' ' + r.ao + ' ' + (r.note || '') + ' ' + (r.ctx || []).join(' ');
-    }
-    function makeMatcher(pq) {
-      const text = pq.text;
-      if (!text) return null;
-      if (pq.regex) {
-        try { const re = new RegExp(text, 'i'); return function (hay) { return re.test(hay); }; } catch (e) {}
-      }
-      const lower = text.toLowerCase();
-      return function (hay) { return hay.toLowerCase().includes(lower); };
-    }
-    function matchRow(r, pq, matcher) {
-      return matcher(pq.key ? searchValue(r, pq.key) : fieldHay(r));
     }
 
     function filteredFields(item) {
@@ -2486,7 +2473,7 @@
       const visible = COLUMNS.filter(isFieldColVisible);
       const trs = pageRows.map(r => {
         const pass = r.result === 'PASSED';
-        return '<tr class="' + (pass ? '' : 'row-fail') + '">' +
+        return '<tr class="' + (pass ? '' : 'row-fail') + '" tabindex="0" data-fid="' + esc(r.id) + '">' +
           visible.map(c => fieldCellHTML(r, c.key)).join('') + '</tr>';
       }).join('');
       return trs || '<tr><td colspan="' + visible.length + '" class="empty">无匹配记录</td></tr>';
@@ -2696,7 +2683,7 @@
       const pageRows = list.slice(start, start + state.msgPageSize);
       const rows = pageRows.map(function (m) {
         const ignoredRow = msgIsIgnored(tab, m);
-        return '<tr class="' + (ignoredRow ? 'row-ignored' : '') + '">' +
+        return '<tr class="' + (ignoredRow ? 'row-ignored' : '') + '" tabindex="0">' +
           cols.map(function (c) { return msgCellHTML(tab, m, c); }).join('') + '</tr>';
       }).join('');
       let pagerHtml = '';
@@ -3056,6 +3043,17 @@
       if (state.search) parts.push('q=' + encodeURIComponent(state.search));
       if (state.tab === 'fields' && state.colFilter.result && state.colFilter.result !== 'ALL') parts.push('result=' + encodeURIComponent(state.colFilter.result));
       if (state.page > 1) parts.push('page=' + state.page);
+      if (state.sort.key) parts.push('sort=' + encodeURIComponent(state.sort.key) + (state.sort.dir < 0 ? ':d' : ''));
+      // 列可见性：仅编码与默认值不同的键，减小 URL 体积。
+      const cols = Object.keys(state.columns).filter(function (k) { return state.columns[k] !== DEFAULT_COLUMNS[k]; });
+      if (cols.length) parts.push('cols=' + encodeURIComponent(cols.map(function (k) { return k + '=' + (state.columns[k] ? '1' : '0'); }).join(',')));
+      // 列过滤器：仅编码非默认值。
+      const filters = {};
+      Object.keys(state.colFilter).forEach(function (k) {
+        const v = state.colFilter[k];
+        if (v && v !== 'ALL') filters[k] = v;
+      });
+      if (Object.keys(filters).length) parts.push('filters=' + encodeURIComponent(JSON.stringify(filters)));
       return '#' + parts.join('&');
     }
     function syncHash() {
@@ -3075,46 +3073,32 @@
         if (p.q !== undefined) state.search = p.q;
         if (p.result === 'PASSED' || p.result === 'FAILED') state.colFilter.result = p.result;
         if (p.page) state.page = parseInt(p.page, 10) || 1;
+        if (p.sort) {
+          const m = /^([^:]+)(?::([ad]))?$/.exec(p.sort);
+          if (m && COLUMNS.some(function (c) { return c.key === m[1]; })) state.sort = { key: m[1], dir: m[2] === 'd' ? -1 : 1 };
+        }
+        if (p.cols) {
+          p.cols.split(',').forEach(function (kv) {
+            const i = kv.indexOf('=');
+            if (i === -1) return;
+            const k = kv.slice(0, i);
+            if (COLUMNS.some(function (c) { return c.key === k; })) state.columns[k] = kv.slice(i + 1) === '1';
+          });
+        }
+        if (p.filters) {
+          try {
+            const f = JSON.parse(p.filters);
+            if (f && typeof f === 'object') Object.keys(f).forEach(function (k) {
+              if (COLUMNS.some(function (c) { return c.key === k; })) state.colFilter[k] = String(f[k]);
+            });
+          } catch (e) {}
+        }
       } finally { HASH_SYNC.applying = false; }
       const searchEl = document.getElementById('search');
       if (searchEl) searchEl.value = state.search || '';
     }
 
-    /* ---------- 字段差异高亮（FAILED 字段逐字符 diff） ---------- */
-    function diffSegments(a, b) {
-      a = String(a == null ? '' : a); b = String(b == null ? '' : b);
-      if (a === b) return { a: [{ t: 0, s: a }], b: [{ t: 0, s: b }] };
-      const MAX = 600;
-      if (a.length > MAX || b.length > MAX || a.length * b.length > 200000) {
-        return { a: [{ t: 1, s: a }], b: [{ t: 2, s: b }] };
-      }
-      const n = a.length, m = b.length;
-      const W = m + 1;
-      const dp = new Uint32Array((n + 1) * W);
-      for (let i = n - 1; i >= 0; i--) {
-        for (let j = m - 1; j >= 0; j--) {
-          dp[i * W + j] = a[i] === b[j] ? dp[(i + 1) * W + (j + 1)] + 1 : Math.max(dp[(i + 1) * W + j], dp[i * W + (j + 1)]);
-        }
-      }
-      const as = [], bs = [];
-      let i = 0, j = 0;
-      while (i < n && j < m) {
-        if (a[i] === b[j]) { as.push({ t: 0, s: a[i] }); bs.push({ t: 0, s: b[j] }); i++; j++; }
-        else if (dp[(i + 1) * W + j] >= dp[i * W + (j + 1)]) { as.push({ t: 1, s: a[i] }); i++; }
-        else { bs.push({ t: 2, s: b[j] }); j++; }
-      }
-      while (i < n) { as.push({ t: 1, s: a[i] }); i++; }
-      while (j < m) { bs.push({ t: 2, s: b[j] }); j++; }
-      function merge(seg) {
-        const out = [];
-        seg.forEach(function (x) {
-          const last = out[out.length - 1];
-          if (last && last.t === x.t) last.s += x.s; else out.push({ t: x.t, s: x.s });
-        });
-        return out;
-      }
-      return { a: merge(as), b: merge(bs) };
-    }
+    /* ---------- 字段差异高亮（FAILED 字段逐字符 diff，核心算法见 core.js） ---------- */
     function diffHTML(segments) {
       return segments.map(function (seg) {
         const s = esc(seg.s);
@@ -3358,28 +3342,58 @@
       });
     }
 
-    /* ---------- 健康总览（跨全部 item，支持按报告日期） ---------- */
-    function healthItemsFor(date) {
-      if (!date || date === 'ALL') return DATA.items.slice();
-      return DATA.items.filter(function (it) { return it.reportDate === date; });
+    /* ---------- 健康总览（跨全部 item，支持按报告日期；纯计算在 core.js / Worker） ---------- */
+    function computeHealthSync(date, channel) {
+      return computeHealthPure(DATA.items, date, channel, IGNORE_CONFIG);
     }
-    function computeHealth(date, channel) {
-      let total = 0, passed = 0, failed = 0, warnings = 0, errors = 0;
-      const errAgg = {}, warnAgg = {};
-      const items = healthItemsFor(date);
-      const perItem = items.map(function (it) {
-        let pTotal = 0, pPassed = 0, pFailed = 0, pWarn = 0, pErr = 0;
-        it.channels.forEach(function (ch) {
-          if (channel && channel !== 'ALL' && ch.name !== channel) return;
-          ch.sources.forEach(function (s) { s.fields.forEach(function (fd) { pTotal++; fd.result === 'PASSED' ? pPassed++ : pFailed++; }); });
-          ch.errors.forEach(function (e) { pErr++; const k = (e.type || '?') + '|' + ch.name; errAgg[k] = (errAgg[k] || 0) + 1; });
-          ch.warnings.forEach(function (w) { if (!msgIsIgnored('warnings', w)) { pWarn++; const k = (w.type || '?') + '|' + ch.name; warnAgg[k] = (warnAgg[k] || 0) + 1; } });
+    function computeHealth(date, channel) { return computeHealthSync(date, channel); }
+
+    let WORKER = null;
+    let WORKER_CALL_ID = 0;
+    const WORKER_PENDING = new Map();
+    function getWorker() {
+      if (WORKER) return WORKER;
+      try {
+        WORKER = new Worker('./worker.js', { type: 'module' });
+        WORKER.onmessage = function (e) {
+          const d = e.data || {};
+          const cb = WORKER_PENDING.get(d.id);
+          if (!cb) return;
+          WORKER_PENDING.delete(d.id);
+          if (d.ok) cb.resolve(d.result); else cb.reject(new Error(d.error || 'worker error'));
+        };
+        WORKER.onerror = function (err) {
+          try { WORKER.terminate(); } catch (e) {}
+          WORKER = null;
+          WORKER_PENDING.forEach(function (cb) { cb.reject(new Error(err && err.message ? err.message : 'worker error')); });
+          WORKER_PENDING.clear();
+        };
+      } catch (e) { WORKER = null; }
+      return WORKER;
+    }
+    function workerCall(type, payload, timeoutMs) {
+      const w = getWorker();
+      if (!w) return Promise.reject(new Error('worker unavailable'));
+      const id = ++WORKER_CALL_ID;
+      return new Promise(function (resolve, reject) {
+        const timer = setTimeout(function () {
+          WORKER_PENDING.delete(id);
+          reject(new Error('worker timeout'));
+        }, timeoutMs || 4000);
+        WORKER_PENDING.set(id, {
+          resolve: function (v) { clearTimeout(timer); resolve(v); },
+          reject: function (e) { clearTimeout(timer); reject(e); },
         });
-        total += pTotal; passed += pPassed; failed += pFailed; warnings += pWarn; errors += pErr;
-        return { id: it.tradeId, failed: pFailed, total: pTotal, rate: pTotal ? Math.round(pPassed / pTotal * 100) : 0, warnings: pWarn, errors: pErr };
+        w.postMessage({ id: id, type: type, payload: payload });
       });
-      const rate = total ? Math.round(passed / total * 100) : 0;
-      return { items: items, perItem: perItem, total: total, passed: passed, failed: failed, warnings: warnings, errors: errors, rate: rate, errAgg: errAgg, warnAgg: warnAgg };
+    }
+    async function computeHealthWorker(date, channel) {
+      if (isMultiMode()) await ensureAllLoaded();
+      try {
+        return await workerCall('health', { items: DATA.items, date: date, channel: channel, ignoreConfig: IGNORE_CONFIG });
+      } catch (e) {
+        return computeHealthSync(date, channel);
+      }
     }
     let HEALTH_DATE = 'ALL';
     let HEALTH_CHANNEL = 'ALL';
@@ -3485,11 +3499,16 @@
       }
       return html;
     }
-    function renderHealthBody(date, channel) {
+    let HEALTH_RENDER_SEQ = 0;
+    async function renderHealthBody(date, channel) {
       HEALTH_DATE = date;
       HEALTH_CHANNEL = channel;
-      const h = computeHealth(date, channel);
-      document.getElementById('healthBody').innerHTML =
+      const seq = ++HEALTH_RENDER_SEQ;
+      const h = await computeHealthWorker(date, channel);
+      if (seq !== HEALTH_RENDER_SEQ) return; // 丢弃过期渲染结果，保证显示与选择一致。
+      const box = document.getElementById('healthBody');
+      if (!box) return;
+      box.innerHTML =
         '<div class="health-grid">' +
         '<div class="health-card"><div class="h-label">' + t('healthItems') + '</div><div class="h-value">' + h.items.length + '</div></div>' +
         '<div class="health-card"><div class="h-label">' + t('fieldsTotal') + '</div><div class="h-value">' + h.total + '</div></div>' +
@@ -3605,25 +3624,14 @@
       document.body.appendChild(backdrop);
     }
 
-    /* ---------- 全局搜索（跨 item） ---------- */
-    function globalSearchResults(q) {
-      const pq = parseSearchQuery(q);
-      const matcher = makeMatcher(pq);
-      const results = [];
-      if (!matcher) return results;
-      DATA.items.forEach(function (it) {
-        it.channels.forEach(function (ch) {
-          if (it.enabledChannels.indexOf(ch.name) === -1) return;
-          ch.sources.forEach(function (s) {
-            s.fields.forEach(function (f) {
-              if (matchRow(f, pq, matcher)) {
-                results.push({ itemId: it.tradeId, channel: ch.name, source: s.name, fieldId: f.id, f: f.f, snippet: f.eo + ' → ' + f.ao });
-              }
-            });
-          });
-        });
-      });
-      return results.slice(0, APP_LIMITS.globalSearchLimit);
+    /* ---------- 全局搜索（跨 item，重计算在 Worker） ---------- */
+    async function globalSearchResults(q) {
+      if (isMultiMode()) await ensureAllLoaded();
+      try {
+        return await workerCall('globalSearch', { items: DATA.items, q: q, limit: APP_LIMITS.globalSearchLimit });
+      } catch (e) {
+        return globalSearchPure(DATA.items, q, APP_LIMITS.globalSearchLimit);
+      }
     }
     function openGlobalSearch() {
       const backdrop = document.createElement('div');
@@ -3651,8 +3659,7 @@
         const q = input.value.trim();
         const box = backdrop.querySelector('#globalSearchResults');
         if (!q) { box.innerHTML = ''; return; }
-        if (isMultiMode()) await ensureAllLoaded();
-        const results = globalSearchResults(q);
+        const results = await globalSearchResults(q);
         box.innerHTML = results.length
           ? results.map(function (r) {
               return '<div class="gs-row" data-goto="' + esc(r.itemId) + '" data-field-id="' + esc(r.fieldId) + '">' +
@@ -4332,6 +4339,35 @@
         if (e.key === 'k' || e.key === 'K') { e.preventDefault(); moveItem(-1); return; }
       });
 
+      // 表格行键盘导航：↑/↓ 移动焦点，Enter 打开字段详情，Space 切换忽略。
+      document.addEventListener('keydown', function (e) {
+        const t = e.target;
+        if (!t || t.tagName !== 'TR' || t.getAttribute('tabindex') !== '0') return;
+        const tbody = t.parentElement;
+        if (!tbody || tbody.tagName !== 'TBODY') return;
+        const rows = Array.prototype.filter.call(tbody.children, function (tr) { return tr.getAttribute && tr.getAttribute('tabindex') === '0'; });
+        if (!rows.length) return;
+        const idx = rows.indexOf(t);
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          const next = e.key === 'ArrowDown' ? Math.min(idx + 1, rows.length - 1) : Math.max(idx - 1, 0);
+          if (rows[next] && rows[next] !== t) rows[next].focus();
+          return;
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const fid = t.getAttribute('data-fid');
+          if (fid) { openModal(fid, true); return; }
+          const ign = t.querySelector('.ignore-btn');
+          if (ign) ign.click();
+          return;
+        }
+        if (e.key === ' ' || e.key === 'Spacebar') {
+          const ign = t.querySelector('.ignore-btn');
+          if (ign) { e.preventDefault(); ign.click(); }
+        }
+      });
+
       document.addEventListener('click', function (e) {
         if (CTX_DEF_POPUP && !e.target.closest('.ctx-def-popup') && !e.target.closest('.ctx-tag')) closeCtxDefPopup();
         if (BATCH_QD && !e.target.closest('#batchPanel') && !e.target.closest('.batch-qd') && !e.target.closest('#batchBadge')) hideBatchQuickDetail();
@@ -4374,7 +4410,7 @@
       await loadI18n();
       await loadBatchHelp();
       loadPrefs();
-      loadFavorites();
+      await loadFavorites();
       applyTheme(THEME);
       applySidebarWidth();
       applyBatchSide();

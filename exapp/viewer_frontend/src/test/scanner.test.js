@@ -9,10 +9,10 @@ import { loadConfig } from '../lib/config.js';
 
 const cfg = loadConfig();
 
-test('扫描批次目录并生成索引', () => {
+test('扫描批次目录并生成索引', async () => {
   const out = path.join(os.tmpdir(), 'batches-index-test-' + Date.now() + '.json');
   try {
-    const r = scan({ basedir: cfg.scan.basedirAbs, out, ignore: [], env: null });
+    const r = await scan({ basedir: cfg.scan.basedirAbs, out, ignore: [], env: null });
     assert.equal(r.ok, true, r.error);
     assert.ok(r.count > 0, '应至少发现一个批次');
     assert.ok(fs.existsSync(out));
@@ -29,10 +29,10 @@ test('扫描批次目录并生成索引', () => {
   }
 });
 
-test('env 过滤只返回指定环境', () => {
+test('env 过滤只返回指定环境', async () => {
   const out = path.join(os.tmpdir(), 'batches-index-env-test-' + Date.now() + '.json');
   try {
-    const r = scan({ basedir: cfg.scan.basedirAbs, out, ignore: [], env: 'OTCXXX' });
+    const r = await scan({ basedir: cfg.scan.basedirAbs, out, ignore: [], env: 'OTCXXX' });
     assert.equal(r.ok, true, r.error);
     r.batches.forEach((b) => assert.equal(b.reportEnv, 'OTCXXX'));
   } finally {
@@ -40,7 +40,7 @@ test('env 过滤只返回指定环境', () => {
   }
 });
 
-test('标记 deleted 的批次被扫描器跳过（软删除）', () => {
+test('标记 deleted 的批次被扫描器跳过（软删除）', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'scan-del-'));
   const out = path.join(tmp, 'batches-index.json');
   try {
@@ -49,7 +49,7 @@ test('标记 deleted 的批次被扫描器跳过（软删除）', () => {
     fs.writeFileSync(path.join(dir, 'batch-meta.json'), JSON.stringify({ batchId: 'b1', batchName: 'deleted-batch', date: '2026-08-16', executedAt: '2026-08-16T00:00:00+08:00', deleted: true, summary: { items: 1 } }), 'utf8');
     fs.writeFileSync(path.join(dir, 'report-validation-data.json'), JSON.stringify({ mode: 'single', reportEnv: 'OTCXXX', items: [{ tradeId: 'T-1', reportDate: '2026-08-16', channels: [] }] }), 'utf8');
 
-    const r = scan({ basedir: tmp, out, ignore: [], env: null });
+    const r = await scan({ basedir: tmp, out, ignore: [], env: null });
     assert.equal(r.ok, true, r.error);
     assert.equal(r.count, 0, '已删除批次不应出现在索引中');
   } finally {

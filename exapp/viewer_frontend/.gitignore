@@ -1,0 +1,4 @@
+# 运行时生成的用户数据（收藏夹服务端持久化），不纳入版本控制。
+src/favorites.json
+node_modules/
+*.log

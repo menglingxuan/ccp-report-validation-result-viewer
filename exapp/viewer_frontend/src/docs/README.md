@@ -34,6 +34,15 @@
 - **可配置帮助入口**：docker 帮助文档 URL 由 `config.json` 的 `urls.help` 配置；帮助图标显隐由 `features.batchHelp`（true/false）控制。
 - **配置切换**：`--config dev|test|prod`（或 `REPORT_VIEWER_CONFIG`）分别加载 `config-dev.json` / `config-test.json` / `config-prod.json`。
 - **统一配置入口**：`config.json`（服务端 + 浏览器共用）。
+- **数据准确性优先的缓存策略**：静态/数据文件统一返回强 `ETag` + `Cache-Control: no-cache`（每次加载强制重校验，304 不返回陈旧数据）；API 响应 `no-store`。前端用 **IndexedDB + ETag 条件请求**（`If-None-Match`）缓存数据文件，任何内容变更都会因 ETag 变化而重新拉取，**杜绝窜数据/错位**。
+- **Gzip 压缩**：可压缩资源（HTML/CSS/JS/JSON/SVG/TXT）按需 gzip，`Vary: Accept-Encoding`。
+- **扫描进度 SSE**：`GET /scan/progress`（`text/event-stream`）实时推送目录/批次/跳过计数；前端在「刷新批次」时订阅并在按钮上显示进度。
+- **收藏夹服务端持久化**：`GET/POST /api/favorites` 共享收藏树（多用户一致，非管理员账号可写 `favorites.json`），localStorage 仅作离线回退。
+- **计算 Worker**：健康总览与全局搜索等重计算移到 Web Worker（`worker.js`，复用 `core.js` 纯函数），失败自动回退主线程同步计算。
+- **纯函数核心拆分**：`public/core.js` 承载无副作用纯函数（搜索/排序/过滤/差异 diff/忽略 key/健康统计/全局搜索），主线程与 Worker 共用，并由 Node 测试直接导入回归。
+- **深链接增强**：URL hash 除 `item/ch/tab/q/result/page` 外，新增 `sort`、`cols`（列可见性）、`filters`（列过滤器 JSON），可完整还原视图状态。
+- **键盘导航**：字段表与消息表行可聚焦（↑/↓ 移动、`Enter` 打开字段详情、`Space` 切换忽略）。
+- **数据校验**：`lib/validate.js` 校验数据文件顶层结构（单文件/多文件），服务启动时对默认数据文件告警。
 - **独立打包部署**：`npm pack` / `npx report-viewer` 即可运行。
 
 ## 环境要求
@@ -84,7 +93,9 @@ report-viewer                  # 任意目录启动（内置默认数据）
 | `GET` | `/` | 查看器首页 |
 | `GET` | `/config.json` | 统一配置 |
 | `POST` / `GET` | `/scan` | 触发一次完整批次扫描（同步返回结果） |
+| `GET` | `/scan/progress` | 扫描进度 SSE（`text/event-stream`） |
 | `POST` | `/api/batch` | 批次标记写回（body：`{ "batchId": "...", "deleted": true }` 或 `{ "batchId": "...", "favorite": true }`） |
+| `GET` / `POST` | `/api/favorites` | 收藏夹读取 / 整树保存（body：`{ "favorites": {...} }`） |
 | `GET` | `/status` / `/health` | 服务状态与当前配置 |
 
 ## 项目结构
@@ -96,11 +107,14 @@ src/
 ├── package.json
 ├── lib/
 │   ├── config.js              # 配置加载器（config.json + 环境变量）
-│   ├── scanner.js             # 批次扫描器（单/多文件数据均可）
+│   ├── scanner.js             # 批次扫描器（异步，带 onProgress 进度回调）
+│   ├── validate.js            # 数据校验器（validateDataset / validateFile）
 │   └── sample-data.js         # 样例数据生成器（buildDataset / splitToFiles）
 ├── public/                    # Web 根目录（静态资源与数据）
 │   ├── index.html             # 查看器页面（UI 结构与样式）
-│   ├── app.js                 # 查看器逻辑（ES 模块）
+│   ├── app.js                 # 查看器逻辑（ES 模块，UI 与状态）
+│   ├── core.js                # 纯函数核心（无副作用，主线程/Worker/测试共用）
+│   ├── worker.js              # 计算 Worker（健康总览 / 全局搜索）
 │   ├── themes.css / i18n.json / batch-help.json
 │   ├── report-validation-data.json            # 主数据文件（单文件或多文件清单）
 │   ├── report-validation-data-default.json    # 默认模板数据
@@ -112,6 +126,7 @@ src/
 ├── test/
 │   ├── pure-logic.test.js     # 纯函数回归测试
 │   ├── scanner.test.js        # 扫描器测试
+│   ├── validate.test.js       # 数据校验器测试
 │   └── server.test.js         # 服务集成测试
 └── docs/
     ├── README.md

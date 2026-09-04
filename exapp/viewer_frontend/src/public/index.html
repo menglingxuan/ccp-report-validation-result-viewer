@@ -332,6 +332,7 @@
     .bd-grip:hover { color: var(--accent); }
     body.dock-dragging { cursor: grabbing; user-select: none; }
     .spin { display: inline-block; animation: spin .8s linear infinite; }
+    .scan-prog { font-variant-numeric: tabular-nums; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .batch-ring::before {
       content: ''; position: absolute; inset: 0; border-radius: inherit;
@@ -476,6 +477,8 @@
     th { background: var(--surface-2); color: var(--muted); font-weight: 600; font-size: 12px; white-space: nowrap; }
     tr.row-fail td { background: var(--row-fail-bg); }
     .table-wrap tbody tr:hover td { background: var(--hover); }
+    tr[tabindex="0"]:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+    tr[tabindex="0"]:focus td { background: var(--accent-bg); }
     .health-table tbody tr:hover td { background: var(--hover); }
     table th.col-hover, table td.col-hover { background: var(--accent-bg) !important; }
     .mono { font-family: var(--mono); font-size: 12px; }
