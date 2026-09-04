@@ -1,0 +1,27 @@
+{
+  "name": "ccp-report-validation-result-viewer",
+  "version": "6.0.0",
+  "private": true,
+  "description": "金融监管报告比较结果查看器：单一 HTTP 服务（静态站点 + 批次扫描 API）",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "report-viewer": "server.js"
+  },
+  "files": [
+    "server.js",
+    "lib/",
+    "public/",
+    "config*.json"
+  ],
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "scan": "node lib/scanner.js",
+    "generate": "node tools/generate-sample-data.js",
+    "test": "node --test"
+  },
+  "license": "MIT"
+}
