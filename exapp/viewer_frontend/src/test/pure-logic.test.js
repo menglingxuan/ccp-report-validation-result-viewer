@@ -83,3 +83,29 @@ test('每个 item 都有独立的 ctxDefs（需求 9）', () => {
     '不同 item 的 ctx hits 定义应不同',
   );
 });
+
+test('ctx type 数组：包含判断与多类型归类', () => {
+  const multi = {
+    tradeId: 'M-1',
+    reportDate: '2026-09-05',
+    ctxDefs: {
+      'a.ctx.shared': { type: [1, 3], def: '共享', hits: 'h' },
+      'a.ctx.conv': { type: [2], def: '转换', hits: 'h' },
+      'a.ctx.legacy': { type: 1, def: '旧格式', hits: 'h' },
+      'a.ctx.bad': { type: 9, def: '非法', hits: 'h' },
+    },
+    channels: [],
+  };
+  T.setData({ items: [multi] });
+  T.setState({ itemId: 'M-1' });
+
+  assert.deepEqual(app.ctxTypes('a.ctx.shared'), [1, 3]);
+  assert.deepEqual(app.ctxTypes('a.ctx.conv'), [2]);
+  assert.deepEqual(app.ctxTypes('a.ctx.legacy'), [1], '旧数据单值 number 归一化为数组');
+  assert.deepEqual(app.ctxTypes('a.ctx.bad'), [], '非法 type 归一化为空数组');
+
+  const field = { ctx: ['a.ctx.shared', 'a.ctx.conv', 'a.ctx.legacy'] };
+  assert.deepEqual(app.ctxKeysOfType(field, 1), ['a.ctx.shared', 'a.ctx.legacy']);
+  assert.deepEqual(app.ctxKeysOfType(field, 2), ['a.ctx.conv']);
+  assert.deepEqual(app.ctxKeysOfType(field, 3), ['a.ctx.shared']);
+});

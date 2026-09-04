@@ -14,122 +14,170 @@
       "platformDealId": "PD-20240814-1001",
       "ctxDefs": {
         "hktr.ctx.default": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "HKTR 默认上下文（标准报送场景）",
           "hits": "命中 3 个映射条目（EO 2 / AO 1）"
         },
         "hktr.ctx.v2": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "HKTR v2 上下文（2024 新版映射）",
           "hits": "命中 2 个映射条目（EO 1 / AO 1）"
         },
         "hktr.ctx.v3": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "HKTR v3 上下文（最新版映射）",
           "hits": "命中 1 个映射条目（EO 1 / AO 0）"
         },
         "hktr.ctx.extended.production.region.east.v2024.latest": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "HKTR 扩展上下文（生产·东部区域·2024 最新）",
           "hits": "命中 4 个映射条目（EO 2 / AO 2）"
         },
         "hktr.ctx.conv.default": {
-          "type": 2,
+          "type": [
+            2
+          ],
           "def": "HKTR 值转换默认上下文（EO 归一化）",
           "hits": "命中 2 个转换规则（@trim / @toUpper 等）"
         },
         "hktr.ctx.conv.v2": {
-          "type": 2,
+          "type": [
+            2
+          ],
           "def": "HKTR 值转换 v2 上下文",
           "hits": "命中 1 个转换规则"
         },
         "hktr.ctx.val.default": {
-          "type": 3,
+          "type": [
+            3
+          ],
           "def": "HKTR 终值校验默认上下文",
           "hits": "命中 3 个校验规则（枚举/正则/非空）"
         },
         "hktr.ctx.val.v2": {
-          "type": 3,
+          "type": [
+            3
+          ],
           "def": "HKTR 终值校验 v2 上下文",
           "hits": "命中 2 个校验规则"
         },
         "jsfa.ctx.default": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "JSFA 默认上下文（标准报送场景）",
           "hits": "命中 3 个映射条目（EO 2 / AO 1）"
         },
         "jsfa.ctx.v2": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "JSFA v2 上下文（2024 新版映射）",
           "hits": "命中 2 个映射条目（EO 1 / AO 1）"
         },
         "jsfa.ctx.v3": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "JSFA v3 上下文（最新版映射）",
           "hits": "命中 1 个映射条目（EO 1 / AO 0）"
         },
         "jsfa.ctx.extended.production.region.east.v2024.latest": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "JSFA 扩展上下文（生产·东部区域·2024 最新）",
           "hits": "命中 4 个映射条目（EO 2 / AO 2）"
         },
         "jsfa.ctx.conv.default": {
-          "type": 2,
+          "type": [
+            2
+          ],
           "def": "JSFA 值转换默认上下文（EO 归一化）",
           "hits": "命中 2 个转换规则（@trim / @toUpper 等）"
         },
         "jsfa.ctx.conv.v2": {
-          "type": 2,
+          "type": [
+            2
+          ],
           "def": "JSFA 值转换 v2 上下文",
           "hits": "命中 1 个转换规则"
         },
         "jsfa.ctx.val.default": {
-          "type": 3,
+          "type": [
+            3
+          ],
           "def": "JSFA 终值校验默认上下文",
           "hits": "命中 3 个校验规则（枚举/正则/非空）"
         },
         "jsfa.ctx.val.v2": {
-          "type": 3,
+          "type": [
+            3
+          ],
           "def": "JSFA 终值校验 v2 上下文",
           "hits": "命中 2 个校验规则"
         },
         "cftc.ctx.default": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "CFTC 默认上下文（标准报送场景）",
           "hits": "命中 3 个映射条目（EO 2 / AO 1）"
         },
         "cftc.ctx.v2": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "CFTC v2 上下文（2024 新版映射）",
           "hits": "命中 2 个映射条目（EO 1 / AO 1）"
         },
         "cftc.ctx.v3": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "CFTC v3 上下文（最新版映射）",
           "hits": "命中 1 个映射条目（EO 1 / AO 0）"
         },
         "cftc.ctx.extended.production.region.east.v2024.latest": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "CFTC 扩展上下文（生产·东部区域·2024 最新）",
           "hits": "命中 4 个映射条目（EO 2 / AO 2）"
         },
         "cftc.ctx.conv.default": {
-          "type": 2,
+          "type": [
+            2
+          ],
           "def": "CFTC 值转换默认上下文（EO 归一化）",
           "hits": "命中 2 个转换规则（@trim / @toUpper 等）"
         },
         "cftc.ctx.conv.v2": {
-          "type": 2,
+          "type": [
+            2
+          ],
           "def": "CFTC 值转换 v2 上下文",
           "hits": "命中 1 个转换规则"
         },
         "cftc.ctx.val.default": {
-          "type": 3,
+          "type": [
+            3
+          ],
           "def": "CFTC 终值校验默认上下文",
           "hits": "命中 3 个校验规则（枚举/正则/非空）"
         },
         "cftc.ctx.val.v2": {
-          "type": 3,
+          "type": [
+            3
+          ],
           "def": "CFTC 终值校验 v2 上下文",
           "hits": "命中 2 个校验规则"
         }
@@ -3660,122 +3708,170 @@
       "platformDealId": "PD-20240814-1002",
       "ctxDefs": {
         "hktr.ctx.default": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "HKTR 默认上下文（标准报送场景）",
           "hits": "命中 4 个映射条目（EO 2 / AO 1）"
         },
         "hktr.ctx.v2": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "HKTR v2 上下文（2024 新版映射）",
           "hits": "命中 3 个映射条目（EO 1 / AO 1）"
         },
         "hktr.ctx.v3": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "HKTR v3 上下文（最新版映射）",
           "hits": "命中 2 个映射条目（EO 1 / AO 0）"
         },
         "hktr.ctx.extended.production.region.east.v2024.latest": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "HKTR 扩展上下文（生产·东部区域·2024 最新）",
           "hits": "命中 5 个映射条目（EO 2 / AO 2）"
         },
         "hktr.ctx.conv.default": {
-          "type": 2,
+          "type": [
+            2
+          ],
           "def": "HKTR 值转换默认上下文（EO 归一化）",
           "hits": "命中 3 个转换规则（@trim / @toUpper 等）"
         },
         "hktr.ctx.conv.v2": {
-          "type": 2,
+          "type": [
+            2
+          ],
           "def": "HKTR 值转换 v2 上下文",
           "hits": "命中 2 个转换规则"
         },
         "hktr.ctx.val.default": {
-          "type": 3,
+          "type": [
+            3
+          ],
           "def": "HKTR 终值校验默认上下文",
           "hits": "命中 4 个校验规则（枚举/正则/非空）"
         },
         "hktr.ctx.val.v2": {
-          "type": 3,
+          "type": [
+            3
+          ],
           "def": "HKTR 终值校验 v2 上下文",
           "hits": "命中 3 个校验规则"
         },
         "jsfa.ctx.default": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "JSFA 默认上下文（标准报送场景）",
           "hits": "命中 4 个映射条目（EO 2 / AO 1）"
         },
         "jsfa.ctx.v2": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "JSFA v2 上下文（2024 新版映射）",
           "hits": "命中 3 个映射条目（EO 1 / AO 1）"
         },
         "jsfa.ctx.v3": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "JSFA v3 上下文（最新版映射）",
           "hits": "命中 2 个映射条目（EO 1 / AO 0）"
         },
         "jsfa.ctx.extended.production.region.east.v2024.latest": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "JSFA 扩展上下文（生产·东部区域·2024 最新）",
           "hits": "命中 5 个映射条目（EO 2 / AO 2）"
         },
         "jsfa.ctx.conv.default": {
-          "type": 2,
+          "type": [
+            2
+          ],
           "def": "JSFA 值转换默认上下文（EO 归一化）",
           "hits": "命中 3 个转换规则（@trim / @toUpper 等）"
         },
         "jsfa.ctx.conv.v2": {
-          "type": 2,
+          "type": [
+            2
+          ],
           "def": "JSFA 值转换 v2 上下文",
           "hits": "命中 2 个转换规则"
         },
         "jsfa.ctx.val.default": {
-          "type": 3,
+          "type": [
+            3
+          ],
           "def": "JSFA 终值校验默认上下文",
           "hits": "命中 4 个校验规则（枚举/正则/非空）"
         },
         "jsfa.ctx.val.v2": {
-          "type": 3,
+          "type": [
+            3
+          ],
           "def": "JSFA 终值校验 v2 上下文",
           "hits": "命中 3 个校验规则"
         },
         "cftc.ctx.default": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "CFTC 默认上下文（标准报送场景）",
           "hits": "命中 4 个映射条目（EO 2 / AO 1）"
         },
         "cftc.ctx.v2": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "CFTC v2 上下文（2024 新版映射）",
           "hits": "命中 3 个映射条目（EO 1 / AO 1）"
         },
         "cftc.ctx.v3": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "CFTC v3 上下文（最新版映射）",
           "hits": "命中 2 个映射条目（EO 1 / AO 0）"
         },
         "cftc.ctx.extended.production.region.east.v2024.latest": {
-          "type": 1,
+          "type": [
+            1
+          ],
           "def": "CFTC 扩展上下文（生产·东部区域·2024 最新）",
           "hits": "命中 5 个映射条目（EO 2 / AO 2）"
         },
         "cftc.ctx.conv.default": {
-          "type": 2,
+          "type": [
+            2
+          ],
           "def": "CFTC 值转换默认上下文（EO 归一化）",
           "hits": "命中 3 个转换规则（@trim / @toUpper 等）"
         },
         "cftc.ctx.conv.v2": {
-          "type": 2,
+          "type": [
+            2
+          ],
           "def": "CFTC 值转换 v2 上下文",
           "hits": "命中 2 个转换规则"
         },
         "cftc.ctx.val.default": {
-          "type": 3,
+          "type": [
+            3
+          ],
           "def": "CFTC 终值校验默认上下文",
           "hits": "命中 4 个校验规则（枚举/正则/非空）"
         },
         "cftc.ctx.val.v2": {
-          "type": 3,
+          "type": [
+            3
+          ],
           "def": "CFTC 终值校验 v2 上下文",
           "hits": "命中 3 个校验规则"
         }

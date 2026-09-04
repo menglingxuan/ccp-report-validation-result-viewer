@@ -88,21 +88,22 @@
 
 ```json
 "ctxDefs": {
-  "hktr.ctx.default": { "type": 1, "def": "HKTR 默认上下文（标准报送场景）", "hits": "命中 3 个映射条目（EO 2 / AO 1）" },
-  "hktr.ctx.conv.default": { "type": 2, "def": "…", "hits": "…" },
-  "hktr.ctx.val.default": { "type": 3, "def": "…", "hits": "…" }
+  "hktr.ctx.default": { "type": [1], "def": "HKTR 默认上下文（标准报送场景）", "hits": "命中 3 个映射条目（EO 2 / AO 1）" },
+  "hktr.ctx.conv.default": { "type": [2], "def": "…", "hits": "…" },
+  "hktr.ctx.val.default": { "type": [3], "def": "…", "hits": "…" }
 }
 ```
 
 | 键 | 类型 | 说明 |
 |---|---|---|
-| `type` | 整数 | CtxKey 类型：`1` 字段映射规则 / `2` 值转换规则 / `3` 终值校验规则 |
+| `type` | 整数数组 | CtxKey 类型数组：`1` 字段映射规则 / `2` 值转换规则 / `3` 终值校验规则；同一 ctx key 可配置在多种规则中，故为数组（兼容旧数据的单值整数） |
 | `def` | 字符串 | 上下文定义 |
 | `hits` | 字符串 | 命中说明 |
 
 > 说明：`ctxDefs` 已从顶层迁移到 **每个 item 内部**（每个 item 的 def/hits 定义并不相同），
-> 并为每个 CtxKey 增加 `type` 字段。主列表「命中Ctx」列展示所有 type 的 CtxKey；
-> 字段详情页各规则 section 分别读取自身 type 对应的 CtxKey。
+> 并为每个 CtxKey 增加 `type` 字段（数组）。主列表「命中Ctx」列展示所有 CtxKey（统一主题配色标签）；
+> 字段详情页各规则 section 通过判断 `type` 是否包含对应值来归类 CtxKey；
+> 点击 Ctx 标签弹出的命中详情会展示该 CtxKey 的**全部 type** 徽章。
 
 ## 空占位数据（`report-validation-data-init.json`）
 

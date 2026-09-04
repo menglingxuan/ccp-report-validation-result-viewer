@@ -48,6 +48,15 @@ export function validateDataset(json) {
     }
     if (item.ctxDefs !== undefined && (typeof item.ctxDefs !== 'object' || item.ctxDefs === null)) {
       errors.push(label + ' ctxDefs 必须是对象');
+    } else if (item.ctxDefs) {
+      Object.keys(item.ctxDefs).forEach(function (key) {
+        const def = item.ctxDefs[key];
+        if (!def || typeof def !== 'object') { errors.push(label + ' ctxDefs.' + key + ' 必须是对象'); return; }
+        const tp = def.type;
+        const valid = (n) => n === 1 || n === 2 || n === 3;
+        const okT = (Array.isArray(tp) && tp.length > 0 && tp.every(valid)) || valid(tp);
+        if (!okT) errors.push(label + ' ctxDefs.' + key + ' 的 type 必须是 1/2/3 或由它们组成的数组');
+      });
     }
     if (item.enabledChannels !== undefined && !Array.isArray(item.enabledChannels)) {
       errors.push(label + ' enabledChannels 必须是数组');

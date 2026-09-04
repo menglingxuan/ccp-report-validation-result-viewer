@@ -615,7 +615,7 @@
     .print-box .pb-head { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
     @media (max-width: 640px) { .result-pair { grid-template-columns: 1fr; } }
 
-    /* 命中Ctx 标签（主列表与详情页均可点击查看定义/命中情况，按 type 着色：1 绿 / 2 青 / 3 紫） */
+    /* 命中Ctx 标签（主列表与详情页均可点击查看定义/命中情况，默认统一使用主题配色） */
     .ctx-tag {
       display: inline-flex; align-items: center; gap: 3px;
       background: var(--chip-ctx-bg); color: var(--chip-ctx-fg);
@@ -624,10 +624,6 @@
       margin: 1px 4px 1px 0; white-space: normal; word-break: break-all; max-width: 260px;
     }
     .ctx-tag:hover { border-color: var(--chip-ctx-fg); filter: brightness(.96); }
-    .ctx-tag.ctx-type-2 { background: var(--chip-code-bg); color: var(--chip-code-fg); }
-    .ctx-tag.ctx-type-2:hover { border-color: var(--chip-code-fg); }
-    .ctx-tag.ctx-type-3 { background: var(--chip-product-bg); color: var(--chip-product-fg); }
-    .ctx-tag.ctx-type-3:hover { border-color: var(--chip-product-fg); }
     .ctx-def-popup {
       position: fixed; z-index: 60; max-width: 440px;
       background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
@@ -851,6 +847,7 @@
     .vt-product { background: var(--chip-ctx-bg); color: var(--chip-ctx-fg); }
     .vt-text { background: var(--hover); color: var(--muted); }
     .vt-multi { background: var(--row-fail-bg); color: var(--fail); }
+    .vt-plain { color: var(--muted); font-size: 12px; }
 
     /* 错误类型芯片（错误页签·类型列） */
     .er-xpath { background: var(--chip-platform-bg); color: var(--chip-platform-fg); }

@@ -2447,7 +2447,7 @@
         case 'f': return '<td class="mono"><a class="val-link" data-detail="' + esc(r.id) + '" title="查看比较详情">' + esc(r.f) + '</a></td>';
         case 'x': return '<td>' + valueCellHTML(r.x) + '</td>';
         case 'aoCsv': return '<td class="mono">' + (r.aoCsv ? esc(r.aoCsv) : '—') + '</td>';
-        case 't': return '<td>' + valueTypeChip(r.k) + '</td>';
+        case 't': return '<td><span class="vt-plain">' + esc(valueTypeLabel(r.k)) + '</span></td>';
         case 'ctx': return '<td data-col="ctx" style="width:' + state.ctxColWidth + 'px; min-width:' + state.ctxColWidth + 'px;"><div class="ctx-tags">' + (ctxTagsHTML(r.ctx) || '') + '</div></td>';
         case 'eo': return '<td data-col="eo" style="width:' + state.eoColWidth + 'px; min-width:' + state.eoColWidth + 'px;">' + valueCellHTML(r.eo) + '</td>';
         case 'ao': return '<td data-col="ao" style="width:' + state.aoColWidth + 'px; min-width:' + state.aoColWidth + 'px;">' + valueCellHTML(r.ao) + '</td>';
@@ -2849,26 +2849,28 @@
       LAST_FOCUS = null;
     }
 
-    // CtxKey 类型：1 字段映射规则 / 2 值转换规则 / 3 终值校验规则。
+    // CtxKey 类型（数组）：1 字段映射规则 / 2 值转换规则 / 3 终值校验规则。
+    // 同一个 ctx key 的定义与求值可被多种规则共享，因此 type 为数组；
+    // 兼容旧数据的单值 number（归一化为单元素数组）。
     const CTX_TYPE_META = {
       1: { label: 'ctxTypeMapping' },
       2: { label: 'ctxTypeConversion' },
       3: { label: 'ctxTypeValidation' },
     };
-    function ctxType(key) {
+    function ctxTypes(key) {
       const it = currentItem();
       const def = (it && it.ctxDefs ? it.ctxDefs : {})[key] || {};
       const tp = def.type;
-      return (tp === 1 || tp === 2 || tp === 3) ? tp : 0;
+      if (Array.isArray(tp)) return tp.filter(function (t) { return t === 1 || t === 2 || t === 3; });
+      if (tp === 1 || tp === 2 || tp === 3) return [tp];
+      return [];
     }
     function ctxKeysOfType(field, type) {
-      return (field && field.ctx ? field.ctx : []).filter(function (k) { return ctxType(k) === type; });
+      return (field && field.ctx ? field.ctx : []).filter(function (k) { return ctxTypes(k).indexOf(type) !== -1; });
     }
     function ctxTagsHTML(ctxArr) {
       return (ctxArr || []).map(function (c) {
-        const tp = ctxType(c);
-        const cls = tp ? ' ctx-type-' + tp : '';
-        return '<span class="ctx-tag' + cls + '" data-ctx="' + esc(c) + '" data-type="' + tp + '">' + esc(c) + '</span>';
+        return '<span class="ctx-tag" data-ctx="' + esc(c) + '">' + esc(c) + '</span>';
       }).join('');
     }
 
@@ -2892,13 +2894,15 @@
       closeCtxDefPopup();
       const it = currentItem();
       const def = (it && it.ctxDefs ? it.ctxDefs : {})[ctxKey] || {};
-      const tp = (def.type === 1 || def.type === 2 || def.type === 3) ? def.type : 0;
-      const typeBadge = tp ? '<span class="ctx-type-badge t' + tp + '">' + t(CTX_TYPE_META[tp].label) + '</span>' : '';
+      // 命中详情显示所有 type（一个 ctx key 可能同时用于多种规则）。
+      const typeBadges = ctxTypes(ctxKey).map(function (tp) {
+        return '<span class="ctx-type-badge t' + tp + '">' + t(CTX_TYPE_META[tp].label) + '</span>';
+      }).join(' ');
       const pop = document.createElement('div');
       pop.className = 'ctx-def-popup';
       pop.innerHTML =
         '<div class="ctx-def-key">' + esc(ctxKey) + '</div>' +
-        (typeBadge ? '<div class="ctx-def-type">' + typeBadge + '</div>' : '') +
+        (typeBadges ? '<div class="ctx-def-type">' + typeBadges + '</div>' : '') +
         '<div class="ctx-def-row"><span class="ctx-def-label">' + t('ctxDefLabel') + '</span><span class="ctx-def-value">' + esc(def.def || '—') + '</span></div>' +
         '<div class="ctx-def-row"><span class="ctx-def-label">' + t('ctxHitLabel') + '</span><span class="ctx-def-value">' + esc(def.hits || '—') + '</span></div>';
       document.body.appendChild(pop);
@@ -3588,6 +3592,9 @@
         ['G', t('helpGlobal')],
         ['H', t('helpHealth')],
         ['J / K', t('helpNav')],
+        ['↑ / ↓', t('helpRowNav')],
+        ['Enter', t('helpRowOpen')],
+        ['Space', t('helpRowIgnore')],
         ['Esc', t('helpEsc')],
       ];
       const syntax = [
@@ -4456,6 +4463,7 @@
       groupedToFlat, msgIgnoreKey, msgIsIgnored,
       filteredFields, getMsgRows, diffSegments,
       parseSearchQuery, makeMatcher, matchRow,
+      ctxTypes, ctxKeysOfType,
     };
     export const __test = {
       setState(s) { state = s; },

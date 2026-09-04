@@ -406,23 +406,23 @@ import path from 'node:path';
     }
 
     // 每个 item 的 ctx 定义（def/hits/type）与 item 绑定，而非全局共享。
-    // type：1 字段映射规则 / 2 值转换规则 / 3 终值校验规则。
+    // type 为数组：1 字段映射规则 / 2 值转换规则 / 3 终值校验规则（一个 ctx key 可配置在多种规则中）。
     function buildCtxDefs(itemIndex) {
       const seed = itemIndex || 0;
       const defs = {};
       CHANNELS.forEach(function (ch) {
         const p = ch.name.toLowerCase();
         // type 1：字段映射规则
-        defs[p + '.ctx.default'] = { type: 1, def: ch.name + ' 默认上下文（标准报送场景）', hits: '命中 ' + (3 + seed % 3) + ' 个映射条目（EO 2 / AO 1）' };
-        defs[p + '.ctx.v2'] = { type: 1, def: ch.name + ' v2 上下文（2024 新版映射）', hits: '命中 ' + (2 + seed % 2) + ' 个映射条目（EO 1 / AO 1）' };
-        defs[p + '.ctx.v3'] = { type: 1, def: ch.name + ' v3 上下文（最新版映射）', hits: '命中 ' + (1 + seed % 2) + ' 个映射条目（EO 1 / AO 0）' };
-        defs[p + '.ctx.extended.production.region.east.v2024.latest'] = { type: 1, def: ch.name + ' 扩展上下文（生产·东部区域·2024 最新）', hits: '命中 ' + (4 + seed % 2) + ' 个映射条目（EO 2 / AO 2）' };
+        defs[p + '.ctx.default'] = { type: [1], def: ch.name + ' 默认上下文（标准报送场景）', hits: '命中 ' + (3 + seed % 3) + ' 个映射条目（EO 2 / AO 1）' };
+        defs[p + '.ctx.v2'] = { type: [1], def: ch.name + ' v2 上下文（2024 新版映射）', hits: '命中 ' + (2 + seed % 2) + ' 个映射条目（EO 1 / AO 1）' };
+        defs[p + '.ctx.v3'] = { type: [1], def: ch.name + ' v3 上下文（最新版映射）', hits: '命中 ' + (1 + seed % 2) + ' 个映射条目（EO 1 / AO 0）' };
+        defs[p + '.ctx.extended.production.region.east.v2024.latest'] = { type: [1], def: ch.name + ' 扩展上下文（生产·东部区域·2024 最新）', hits: '命中 ' + (4 + seed % 2) + ' 个映射条目（EO 2 / AO 2）' };
         // type 2：值转换规则
-        defs[p + '.ctx.conv.default'] = { type: 2, def: ch.name + ' 值转换默认上下文（EO 归一化）', hits: '命中 ' + (2 + seed % 2) + ' 个转换规则（@trim / @toUpper 等）' };
-        defs[p + '.ctx.conv.v2'] = { type: 2, def: ch.name + ' 值转换 v2 上下文', hits: '命中 ' + (1 + seed % 2) + ' 个转换规则' };
+        defs[p + '.ctx.conv.default'] = { type: [2], def: ch.name + ' 值转换默认上下文（EO 归一化）', hits: '命中 ' + (2 + seed % 2) + ' 个转换规则（@trim / @toUpper 等）' };
+        defs[p + '.ctx.conv.v2'] = { type: [2], def: ch.name + ' 值转换 v2 上下文', hits: '命中 ' + (1 + seed % 2) + ' 个转换规则' };
         // type 3：终值校验规则
-        defs[p + '.ctx.val.default'] = { type: 3, def: ch.name + ' 终值校验默认上下文', hits: '命中 ' + (3 + seed % 3) + ' 个校验规则（枚举/正则/非空）' };
-        defs[p + '.ctx.val.v2'] = { type: 3, def: ch.name + ' 终值校验 v2 上下文', hits: '命中 ' + (2 + seed % 2) + ' 个校验规则' };
+        defs[p + '.ctx.val.default'] = { type: [3], def: ch.name + ' 终值校验默认上下文', hits: '命中 ' + (3 + seed % 3) + ' 个校验规则（枚举/正则/非空）' };
+        defs[p + '.ctx.val.v2'] = { type: [3], def: ch.name + ' 终值校验 v2 上下文', hits: '命中 ' + (2 + seed % 2) + ' 个校验规则' };
       });
       return defs;
     }

@@ -14,9 +14,9 @@
   - 多文件：`report-validation-data.json` 为清单（manifest），每个 item 一个独立文件，支持**动态加载**、跨文件**搜索/筛选/统计**。
   - 所有近期功能（typed Ctx 标签/弹框、批次删除/收藏、新增徽章、可配置默认数据源、空数据占位等）均同时适配单文件与多文件模式。
 - **每个 item 独立 ctx 定义**：`def` / `hits` / `type` 内联到每个 item（`item.ctxDefs`），不再全局共享。
-  - `type`：`1` 字段映射规则 / `2` 值转换规则 / `3` 终值校验规则。
-  - 主列表「命中Ctx」列展示所有 type 的 CtxKey，并按 type 着色（1 绿 / 2 青 / 3 紫）；字段详情页各规则 section 分别读取自身 type 的 CtxKey。
-  - 「命中Ctx」标签单击即弹出定义/命中详情（主列表与详情页均可，弹框跟随标签，长文本/多行可滚动）。
+  - `type` 为**数组**：`[1]` 字段映射规则 / `[2]` 值转换规则 / `[3]` 终值校验规则；同一 ctx key 可配置在多种规则中（兼容旧数据的单值整数）。
+  - 主列表「命中Ctx」列展示所有 type 的 CtxKey，统一使用主题配色标签（不再按 type 多色着色）；字段详情页各规则 section 通过 `type` 是否包含对应值来归类 CtxKey。
+  - 「命中Ctx」标签单击即弹出定义/命中详情（主列表与详情页均可，弹框跟随标签，长文本/多行可滚动），命中详情内展示该 CtxKey 的**全部 type** 徽章。
 - **默认数据源可配置**：`urls.defaultDataMode` 取值 `init`（加载 `report-validation-data-init.json`）、`default`（加载 `report-validation-data-default.json`）或某个已扫描批次名（加载该批次数据）；其他值等同 `default`。
   - 加载 init 空占位数据时，「运行环境」显示为空。
 - **空占位数据**：`report-validation-data-init.json`（0 个 item）可临时改名为 default 文件，查看器展示友好空状态。
