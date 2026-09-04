@@ -149,7 +149,7 @@ src/
 
 - `report-validation-data.json` 顶层 `"mode"` 为 `"single"` 或 `"multi"`。
 - 多文件模式：清单中的每个 item 带 `file` 与预计算 `summary`，查看器动态加载 item 文件；搜索/筛选/统计仍作用于全部 item 的合并数据。
-- 每个 item 内联 `ctxDefs`（`def` / `hits`）。
+- 每个 item 内联 `ctxDefs`（`def` / `hits` / `type`）。
 
 ## 生成样例数据
 

@@ -26,6 +26,7 @@ REPORT_VIEWER_CONFIG=prod node server.js
 
 | 键 | 类型 | 说明 |
 |---|---|---|
+| `configVersion` | 整数 | 配置结构版本号（当前 `2`） |
 | `server` | 对象 | HTTP 服务配置（仅服务端使用） |
 | `scan` | 对象 | 批次扫描配置（服务端使用） |
 | `runType` | 字符串 | 运行环境（`dev` / `test` / `prod`） |

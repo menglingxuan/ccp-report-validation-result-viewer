@@ -10,6 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validateDataset } from './validate.js';
 
 const LIB_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SRC_ROOT = path.dirname(LIB_DIR);
@@ -111,12 +112,20 @@ export async function scan(opts) {
     if (!hasData && !meta.dataUrl) continue;
 
     // 运行环境：batch-meta.json 的 reportEnv 优先，回退到数据文件（单/多文件清单）顶层 reportEnv。
+    // 同时校验数据文件结构，提前暴露坏批次（不跳过，仅标记并告警）。
     let dataInfo = { reportEnv: null, itemCount: 0, mode: 'single' };
+    let validationErrors = null;
     if (hasData) {
       dataInfo = readDataInfo(dataPath, path.dirname(out));
+      const v = validateDataset(readJSON(dataPath));
+      if (!v.ok) validationErrors = v.errors;
     } else if (typeof meta.dataUrl === 'string' && meta.dataUrl) {
       const refPath = path.resolve(path.dirname(out), meta.dataUrl);
-      if (fs.existsSync(refPath)) dataInfo = readDataInfo(refPath, path.dirname(out));
+      if (fs.existsSync(refPath)) {
+        dataInfo = readDataInfo(refPath, path.dirname(out));
+        const v = validateDataset(readJSON(refPath));
+        if (!v.ok) validationErrors = v.errors;
+      }
     }
     const reportEnv = (typeof meta.reportEnv === 'string' && meta.reportEnv)
       ? meta.reportEnv
@@ -154,6 +163,12 @@ export async function scan(opts) {
     if (reportEnv) entry.reportEnv = reportEnv;
     if (meta.extra && typeof meta.extra === 'object') Object.assign(entry, meta.extra);
 
+    if (validationErrors) {
+      entry.validationErrors = validationErrors;
+      console.warn('[scanner] 批次数据校验失败：' + batchId + '（' + path.basename(dir) + '）');
+      validationErrors.forEach(function (e) { console.warn('   - ' + e); });
+    }
+
     batches.push(entry);
   }
   batches.sort(function (a, b) { return String(b.executedAt).localeCompare(String(a.executedAt)); });
@@ -165,8 +180,16 @@ export async function scan(opts) {
     count: batches.length,
     batches: batches,
   };
+  // 原子写入：先写临时文件再 rename，避免与其它实例/并发读方看到半截索引。
   fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, JSON.stringify(index, null, 2), 'utf8');
+  const tmp = path.join(path.dirname(out), '.tmp-index-' + process.pid + '-' + Date.now());
+  fs.writeFileSync(tmp, JSON.stringify(index, null, 2), 'utf8');
+  try {
+    fs.renameSync(tmp, out);
+  } catch (e) {
+    try { fs.unlinkSync(tmp); } catch (e2) {}
+    fs.writeFileSync(out, JSON.stringify(index, null, 2), 'utf8');
+  }
 
   return { ok: true, count: batches.length, batches: batches, out, skipped: skipped, dirCount: dirCount };
 }

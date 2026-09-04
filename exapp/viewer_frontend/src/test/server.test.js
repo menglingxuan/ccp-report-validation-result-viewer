@@ -4,14 +4,16 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import fs from 'node:fs';
+import os from 'node:os';
 
 const SRC = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PORT = 20000 + Math.floor(Math.random() * 10000);
 
-function startServer() {
+function startServer(extraEnv) {
   const child = spawn(process.execPath, ['server.js'], {
     cwd: SRC,
-    env: Object.assign({}, process.env, { REPORT_VIEWER_PORT: String(PORT) }),
+    env: Object.assign({}, process.env, { REPORT_VIEWER_PORT: String(PORT) }, extraEnv || {}),
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let out = '';
@@ -30,7 +32,12 @@ function startServer() {
 }
 
 test('服务器：静态站点、配置与扫描 API', async () => {
-  const child = await startServer();
+  // 隔离扫描目录：避免测试污染 tracked 的 public/batches 与 batches-index.json。
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'viewer-srv-'));
+  const child = await startServer({
+    REPORT_VIEWER_BASEDIR: tmp,
+    REPORT_VIEWER_OUT: path.join(tmp, 'batches-index.json'),
+  });
   try {
     const base = `http://127.0.0.1:${PORT}`;
 
@@ -55,5 +62,6 @@ test('服务器：静态站点、配置与扫描 API', async () => {
     assert.ok(scanBody.count >= 0);
   } finally {
     child.kill();
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
   }
 });

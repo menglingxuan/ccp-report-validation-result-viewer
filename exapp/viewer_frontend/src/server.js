@@ -11,6 +11,8 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
+import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, resolveConfigFile } from './lib/config.js';
@@ -24,8 +26,36 @@ if (cfgIdx !== -1 && process.argv[cfgIdx + 1]) process.env.REPORT_VIEWER_CONFIG 
 const CFG = loadConfig();
 const ACTIVE_CONFIG_FILE = resolveConfigFile();
 
-// 收藏夹服务端持久化（多用户共享，非管理员账号也可写：存放于 src 根目录）。
-const FAVORITES_FILE = path.join(DIR, 'favorites.json');
+// 收藏夹服务端持久化（多用户共享，非管理员账号也可写）。
+// 优先存放于 src 根目录；若应用目录只读（如安装到 Program Files），回退到服务账号主目录。
+// 回退路径按实例目录哈希区分，避免同一账号下多实例共用同一收藏文件导致窜数据。
+function resolveFavoritesFile() {
+  const primary = path.join(DIR, 'favorites.json');
+  try {
+    fs.accessSync(DIR, fs.constants.W_OK);
+    return primary;
+  } catch (e) {
+    const instId = crypto.createHash('sha1').update(DIR).digest('hex').slice(0, 12);
+    const fallbackDir = path.join(os.homedir(), '.report-viewer');
+    try { fs.mkdirSync(fallbackDir, { recursive: true }); } catch (e2) {}
+    return path.join(fallbackDir, 'favorites-' + instId + '.json');
+  }
+}
+const FAVORITES_FILE = resolveFavoritesFile();
+
+// 原子写入：先写临时文件再 rename，避免多实例/并发写同一文件时读到半截内容。
+function writeFileAtomic(filePath, data) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const tmp = path.join(path.dirname(filePath), '.tmp-' + process.pid + '-' + Date.now() + '-' + Math.random().toString(16).slice(2, 8));
+  fs.writeFileSync(tmp, data, 'utf8');
+  try {
+    fs.renameSync(tmp, filePath);
+  } catch (e) {
+    try { fs.unlinkSync(tmp); } catch (e2) {}
+    // 个别文件系统 rename 覆盖失败时退回直接写入。
+    fs.writeFileSync(filePath, data, 'utf8');
+  }
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -59,46 +89,39 @@ function json(res, status, obj) {
 const COMPRESSIBLE = { '.html': 1, '.css': 1, '.js': 1, '.mjs': 1, '.json': 1, '.svg': 1, '.txt': 1 };
 
 function serveFile(req, res, absPath) {
-  fs.stat(absPath, function (err, st) {
-    if (err || !st.isFile()) {
+  fs.readFile(absPath, function (err, data) {
+    if (err) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('Not Found');
       return;
     }
     const ext = path.extname(absPath).toLowerCase();
-    // 强 ETag（mtime+size）；所有文件一律 no-cache —— 每次加载都必须重新校验，保证数据绝不陈旧。
-    const etag = '"' + st.size.toString(16) + '-' + Math.round(st.mtimeMs).toString(16) + '"';
+    // 强 ETag（内容哈希）：不同内容绝不会共享缓存；所有文件一律 no-cache 强制重校验，保证数据绝不陈旧。
+    const etag = '"' + crypto.createHash('sha256').update(data).digest('hex').slice(0, 16) + '"';
     const inm = req.headers['if-none-match'];
     if (inm && inm === etag) {
       res.writeHead(304, { 'ETag': etag, 'Cache-Control': 'no-cache' });
       res.end();
       return;
     }
-    fs.readFile(absPath, function (err2, data) {
-      if (err2) {
-        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-        res.end('Not Found');
-        return;
-      }
-      const headers = {
-        'Content-Type': MIME[ext] || 'application/octet-stream',
-        'ETag': etag,
-        'Cache-Control': 'no-cache',
-      };
-      const ae = String(req.headers['accept-encoding'] || '');
-      if (COMPRESSIBLE[ext] && ae.indexOf('gzip') !== -1 && data.length > 1024) {
-        const gz = zlib.gzipSync(data);
-        headers['Content-Encoding'] = 'gzip';
-        headers['Content-Length'] = gz.length;
-        headers['Vary'] = 'Accept-Encoding';
-        res.writeHead(200, headers);
-        res.end(gz);
-      } else {
-        headers['Content-Length'] = data.length;
-        res.writeHead(200, headers);
-        res.end(data);
-      }
-    });
+    const headers = {
+      'Content-Type': MIME[ext] || 'application/octet-stream',
+      'ETag': etag,
+      'Cache-Control': 'no-cache',
+    };
+    const ae = String(req.headers['accept-encoding'] || '');
+    if (COMPRESSIBLE[ext] && ae.indexOf('gzip') !== -1 && data.length > 1024) {
+      const gz = zlib.gzipSync(data);
+      headers['Content-Encoding'] = 'gzip';
+      headers['Content-Length'] = gz.length;
+      headers['Vary'] = 'Accept-Encoding';
+      res.writeHead(200, headers);
+      res.end(gz);
+    } else {
+      headers['Content-Length'] = data.length;
+      res.writeHead(200, headers);
+      res.end(data);
+    }
   });
 }
 
@@ -182,7 +205,7 @@ function readFavorites() {
   }
 }
 function writeFavorites(tree) {
-  fs.writeFileSync(FAVORITES_FILE, JSON.stringify(tree, null, 2), 'utf8');
+  writeFileAtomic(FAVORITES_FILE, JSON.stringify(tree, null, 2));
 }
 function handleFavoritesGet(res) {
   json(res, 200, { ok: true, favorites: readFavorites() });
@@ -230,8 +253,7 @@ function handleBatchAction(req, res) {
       meta.batchId = meta.batchId || batchId;
       if (hasDeleted) meta.deleted = data.deleted;
       if (hasFavorite) meta.favorite = data.favorite;
-      fs.mkdirSync(path.dirname(metaPath), { recursive: true });
-      fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), 'utf8');
+      writeFileAtomic(metaPath, JSON.stringify(meta, null, 2));
       json(res, 200, { ok: true, batchId: batchId, deleted: hasDeleted ? data.deleted : undefined, favorite: hasFavorite ? data.favorite : undefined });
     } catch (e) {
       json(res, 500, { ok: false, error: '操作失败：' + (e && e.message ? e.message : e) });

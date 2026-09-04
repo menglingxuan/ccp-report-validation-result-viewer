@@ -99,7 +99,7 @@
     },
     "features": {
       "type": "object",
-      "description": "功能开关（18 项，布尔）。含义详见 CONFIG.md。未显式配置时按 runType 取默认。",
+      "description": "功能开关（19 项，布尔）。含义详见 CONFIG.md。未显式配置时按 runType 取默认。",
       "properties": {
         "uncomparedXpath": { "type": "boolean" },
         "uncomparedItems": { "type": "boolean" },
