@@ -3618,7 +3618,7 @@
         '<div class="modal" style="max-width:600px"><div class="modal-head"><h3>' + t('helpTitle') + '</h3><button class="modal-close" aria-label="' + t('closeLabel') + '">✕</button></div>' +
         '<div class="modal-body">' +
         '<div class="help-section"><div class="help-section-title"><span class="help-badge help-badge-kbd">' + t('helpShortcutsTitle') + '</span></div>' +
-        '<div class="help-list">' + shortcuts.map(row).join('') + '</div></div>' +
+        '<div class="help-grid">' + shortcuts.map(row).join('') + '</div></div>' +
         '<div class="help-section"><div class="help-section-title"><span class="help-badge help-badge-syntax">' + t('helpSearchSyntaxTitle') + '</span></div>' +
         '<div class="help-note">' + t('helpSyntaxDefault') + '</div>' +
         '<div class="help-grid">' + syntax.map(row).join('') + '</div></div>' +
