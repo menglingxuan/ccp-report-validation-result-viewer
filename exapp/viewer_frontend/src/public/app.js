@@ -3,13 +3,12 @@
      * 数据模型说明
      * item (tradeId) -> 报告渠道 (HKTR/JSFA/CFTC)
      *   -> 来源渠道 (A/B, 各有一套字段映射)
-     *     -> 字段比较结果 { f, xpath, type, ctx, eo, ao, result, note, prints }
-     * item 级别: reportDate / generatedAt / overviewLogs
-     * 报告渠道级别: files / warnings[] / errors[] / uncompared[] / logs[]
+     *     -> 字段比较结果 { id, ctxs, cmpLeft, cmpRight, cvtLeft, cvtRight, vdt, result, remarks, resultText, resultDetails, prints }
+     * item 级别: fields[]（字段注册表，按 id 去重）/ ctxDefs / warnings[] / errors[] / uncompared[] / logs[]
      * ============================================================ */
 
     import {
-      parseSearchQuery, searchValue, fieldHay, makeMatcher, matchRow,
+      parseSearchQuery, makeMatcher, matchRow,
       specialValueMatch, sortValue, flatFields, diffSegments,
       groupedToFlat, normalizeIgnoreConfig, msgIgnoreKey,
       computeHealthPure, globalSearchPure,
@@ -61,7 +60,9 @@
     let APP_FEATURES = {
       uncomparedXpath: true, uncomparedItems: true, uncomparedCsv: true, logs: true,
       conversionRule: true, validationRule: true,
-      excelMapping: true, excelConversionRule: true, excelValidationRule: true,
+      excelMapping: true,
+      sourceFilter: true,
+      modalRules: true,
       columnHover: true,
       sidebarSearch: true, sidebarTradeId: true,
       compare: true, healthOverview: true, globalSearch: true,
@@ -131,8 +132,8 @@
           conversionRule: flag('conversionRule'),
           validationRule: flag('validationRule'),
           excelMapping: flag('excelMapping'),
-          excelConversionRule: flag('excelConversionRule'),
-          excelValidationRule: flag('excelValidationRule'),
+          sourceFilter: flag('sourceFilter'),
+          modalRules: flag('modalRules'),
           columnHover: flag('columnHover'),
           sidebarSearch: flag('sidebarSearch'),
           sidebarTradeId: flag('sidebarTradeId'),
@@ -197,8 +198,7 @@
     }
 
     function isTabEnabled(tab) {
-      if (tab === 'uncompared') return currentChannelFormat() === 'xml' && APP_FEATURES.uncomparedXpath;
-      if (tab === 'uncomparedCsv') return currentChannelFormat() === 'csv' && APP_FEATURES.uncomparedCsv;
+      if (tab === 'uncompared') return (APP_FEATURES.uncomparedXpath || APP_FEATURES.uncomparedCsv);
       if (tab === 'uncomparedItems') return APP_FEATURES.uncomparedItems;
       if (tab === 'logs') return APP_FEATURES.logs;
       if (tab === 'compare') return APP_FEATURES.compare;
@@ -357,6 +357,7 @@
         itemId: DATA.items.length ? DATA.items[0].tradeId : '',
         tab: 'fields',
         channel: 'ALL',
+        source: 'ALL',
         search: '',
         colFilter: { channel: 'ALL', source: 'ALL', f: '', x: '', aoCsv: '', t: 'ALL', ctx: '', eo: '', ao: '', result: 'ALL', note: '' },
         sort: { key: '', dir: 1 },
@@ -444,10 +445,21 @@
     function sourceNames() {
       const names = [];
       DATA.items.forEach(function (it) {
-        it.channels.forEach(function (ch) {
-          ch.sources.forEach(function (s) {
+        (it.channels || []).forEach(function (ch) {
+          (ch.sources || []).forEach(function (s) {
             if (s.name && names.indexOf(s.name) === -1) names.push(s.name);
           });
+        });
+      });
+      return names;
+    }
+    function currentSources() {
+      const it = currentItem();
+      if (!it) return [];
+      const names = [];
+      (it.channels || []).forEach(function (ch) {
+        (ch.sources || []).forEach(function (s) {
+          if (s.name && names.indexOf(s.name) === -1) names.push(s.name);
         });
       });
       return names;
@@ -1495,8 +1507,8 @@
         try { arr = JSON.parse(k); } catch (e) { return; }
         let platform, entry;
         if (arr[0] === 'warn') {
-          platform = arr[5] || 'UNKNOWN';
-          entry = { kind: 'warning', channel: arr[1], field: arr[2], type: arr[3], level: arr[4], product: arr[6] };
+          platform = arr[1] || 'UNKNOWN';
+          entry = { kind: 'warning', channel: arr[2], source: arr[3], scope: arr[4], type: arr[5], level: arr[6], field: arr[7] };
         } else if (arr[0] === 'xpath') {
           platform = arr[3] || 'UNKNOWN';
           entry = { kind: 'uncomparedXpath', xpath: arr[1], channel: arr[2], product: arr[4], ctx: arr[5] };
@@ -1544,6 +1556,7 @@
       state.itemId = id;
       state.page = 1;
       state.channel = 'ALL';
+      state.source = 'ALL';
       state.colFilter = { channel: 'ALL', source: 'ALL', f: '', x: '', aoCsv: '', t: 'ALL', ctx: '', eo: '', ao: '', result: 'ALL', note: '' };
       state.sort = { key: '', dir: 1 };
       state.msgSort = { key: '', dir: 1 };
@@ -1623,17 +1636,37 @@
         f.result === 'PASSED' ? passed++ : failed++;
       })));
       let warnings = 0, warningsIgnored = 0;
-      item.channels.forEach(c => c.warnings.forEach(w => { if (msgIsIgnored('warnings', w)) warningsIgnored++; else warnings++; }));
-      const errors = item.channels.reduce((n, c) => n + c.errors.length, 0);
-      const uncompared = item.channels.reduce((n, c) => n + c.uncompared.length, 0);
-      const logs = item.overviewLogs.length + item.channels.reduce((n, c) => n + c.logs.length, 0);
+      (item.warnings || []).forEach(w => { if (msgIsIgnored('warnings', enrichMsg(w))) warningsIgnored++; else warnings++; });
+      const errors = (item.errors || []).length;
+      const uncompared = (item.uncompared || []).length;
+      const logs = (item.logs || []).length;
       return { total: total, passed: passed, failed: failed, rate: total ? Math.round(passed / total * 100) : 0, warnings: warnings, warningsIgnored: warningsIgnored, errors: errors, uncompared: uncompared, logs: logs };
     }
 
-    function scopeWarnings() { const a = []; scopeChannels().forEach(c => c.warnings.forEach(w => a.push(w))); return a; }
-    function scopeErrors() { const a = []; scopeChannels().forEach(c => c.errors.forEach(w => a.push(w))); return a; }
-    function scopeUncompared() { const a = []; scopeChannels().forEach(c => c.uncompared.forEach(w => a.push(w))); return a; }
-    function scopeUncomparedCsv() { const a = []; scopeChannels().forEach(c => c.uncomparedCsv.forEach(w => a.push(w))); return a; }
+    // platform / product 跟随 item：计算忽略 key 时从当前 item 注入。
+    function sourceMatches(name) { return !state.source || state.source === 'ALL' || name === state.source; }
+    function enrichMsg(m) {
+      const it = currentItem();
+      return Object.assign({}, m, { platform: it ? it.platform : '', product: it ? it.product : '' });
+    }
+    function scopeWarnings() {
+      const it = currentItem();
+      if (!it) return [];
+      const names = scopeChannels().map(function (c) { return c.name; });
+      return (it.warnings || []).filter(function (w) { return names.indexOf(w.channel) !== -1 && sourceMatches(w.source); }).map(enrichMsg);
+    }
+    function scopeErrors() {
+      const it = currentItem();
+      if (!it) return [];
+      const names = scopeChannels().map(function (c) { return c.name; });
+      return (it.errors || []).filter(function (e) { return names.indexOf(e.channel) !== -1 && sourceMatches(e.source); });
+    }
+    function scopeUncompared() {
+      const it = currentItem();
+      if (!it) return [];
+      const names = scopeChannels().map(function (c) { return c.name; });
+      return (it.uncompared || []).filter(function (u) { return names.indexOf(u.channel) !== -1; }).map(enrichMsg);
+    }
     function scopeSkippedItems() {
       const it = currentItem();
       if (!it) return [];
@@ -1644,21 +1677,22 @@
     function scopeLogs() {
       const it = currentItem();
       if (!it) return [];
-      if (state.channel === 'ALL') {
-        const lines = it.overviewLogs.slice();
-        it.channels.forEach(c => c.logs.forEach(l => lines.push(l)));
-        return lines;
-      }
-      const c = it.channels.find(c => c.name === state.channel);
-      return c ? c.logs.slice() : [];
+      const logs = it.logs || [];
+      return logs.filter(function (l) {
+        const chOk = state.channel === 'ALL' || l.channel === state.channel;
+        return chOk && sourceMatches(l.source);
+      });
     }
 
     function scopeStats() {
       let total = 0, passed = 0, failed = 0;
-      scopeChannels().forEach(ch => ch.sources.forEach(s => s.fields.forEach(f => {
-        total++;
-        f.result === 'PASSED' ? passed++ : failed++;
-      })));
+      scopeChannels().forEach(ch => ch.sources.forEach(s => {
+        if (!sourceMatches(s.name)) return;
+        s.fields.forEach(f => {
+          total++;
+          f.result === 'PASSED' ? passed++ : failed++;
+        });
+      }));
       return {
         total: total, passed: passed, failed: failed,
         rate: total ? Math.round(passed / total * 100) : 0,
@@ -1667,8 +1701,6 @@
         errors: scopeErrors().length,
         uncompared: scopeUncompared().filter(u => !msgIsIgnored('uncompared', u)).length,
         uncomparedIgnored: scopeUncompared().filter(u => msgIsIgnored('uncompared', u)).length,
-        uncomparedCsv: scopeUncomparedCsv().filter(u => !msgIsIgnored('uncomparedCsv', u)).length,
-        uncomparedCsvIgnored: scopeUncomparedCsv().filter(u => msgIsIgnored('uncomparedCsv', u)).length,
         logs: scopeLogs().length,
         skipped: scopeSkippedItems().length,
       };
@@ -1677,6 +1709,7 @@
     function filteredFields(item) {
       let rows = flatFields(item);
       if (state.channel !== 'ALL') rows = rows.filter(r => r.channel === state.channel);
+      if (state.source && state.source !== 'ALL') rows = rows.filter(r => r.source === state.source);
       COLUMNS.forEach(c => {
         const v = state.colFilter[c.key];
         if (!v || v === 'ALL') return;
@@ -1727,22 +1760,30 @@
 
     const VALUE_TYPE_KEYS = { id: 'vtId', num: 'vtNum', date: 'vtDate', code: 'vtCode', product: 'vtProduct', text: 'vtText', multi: 'vtMulti' };
     function valueTypeLabel(k) { return t(VALUE_TYPE_KEYS[k] || k); }
-    function valueTypeChip(k) {
-      const cls = 'vt-' + (VALUE_TYPE_KEYS[k] ? k : 'text');
-      return '<span class="chip ' + cls + '">' + esc(valueTypeLabel(k)) + '</span>';
-    }
 
     function sortArrow(key) {
       if (state.sort.key !== key) return '⇅';
       return state.sort.dir === 1 ? '▲' : '▼';
     }
 
-    function findFieldById(item, id) {
-      for (const ch of item.channels) {
-        for (const s of ch.sources) {
-          for (const f of s.fields) if (f.id === id) return { channel: ch.name, source: s.name, field: f };
-        }
-      }
+    // 字段定位：item.fields 按 id（数字字符串）去重且属于 item；比较字段用 (channel, source, id) 三元组唯一定位。
+    function fieldLocKey(channel, source, id) { return channel + '\u0001' + source + '\u0001' + id; }
+    function parseFieldLoc(key) {
+      const p = String(key || '').split('\u0001');
+      return { channel: p[0] || '', source: p[1] || '', id: p[2] || '' };
+    }
+    function findField(item, channel, source, id) {
+      const ch = (item.channels || []).find(function (c) { return c.name === channel; });
+      if (!ch) return null;
+      const s = (ch.sources || []).find(function (x) { return x.name === source; });
+      if (!s) return null;
+      const f = (s.fields || []).find(function (x) { return x.id === id; });
+      return f ? { channel: ch.name, source: s.name, field: f } : null;
+    }
+    function fieldDef(id) {
+      const it = currentItem();
+      const arr = (it && it.fields) || [];
+      for (let i = 0; i < arr.length; i++) if (arr[i].id === id) return arr[i];
       return null;
     }
 
@@ -2082,9 +2123,7 @@
         ['warnings', t('tabWarnings'), s.warnings + '/' + s.warningsIgnored, null],
         ['errors', t('tabErrors'), s.errors, null],
       ];
-      const fmt = currentChannelFormat();
-      if (fmt === 'xml' && APP_FEATURES.uncomparedXpath) tabs.push(['uncompared', t('tabUncompared'), s.uncompared + '/' + s.uncomparedIgnored, t('tipUncompared')]);
-      if (fmt === 'csv' && APP_FEATURES.uncomparedCsv) tabs.push(['uncomparedCsv', t('tabUncomparedCsv'), s.uncomparedCsv + '/' + s.uncomparedCsvIgnored, t('tipUncomparedCsv')]);
+      if (APP_FEATURES.uncomparedXpath || APP_FEATURES.uncomparedCsv) tabs.push(['uncompared', t('tabUncompared'), s.uncompared + '/' + s.uncomparedIgnored, t('tipUncompared')]);
       if (APP_FEATURES.uncomparedItems) tabs.push(['uncomparedItems', t('tabUncomparedItems'), s.skipped, t('tipUncomparedItems')]);
       if (APP_FEATURES.logs) tabs.push(['logs', t('tabLogs'), s.logs, null]);
       if (APP_FEATURES.compare) tabs.push(['compare', t('tabCompare'), null, null]);
@@ -2097,24 +2136,29 @@
 
     function channelCount(chName, tab) {
       const it = currentItem();
-      if (chName === 'ALL') {
-        if (tab === 'fields') return flatFields(it).length;
-        if (tab === 'warnings') return it.channels.reduce((n, c) => n + c.warnings.filter(w => !msgIsIgnored('warnings', w)).length, 0);
-        if (tab === 'errors') return it.channels.reduce((n, c) => n + c.errors.length, 0);
-        if (tab === 'uncompared') return it.channels.reduce((n, c) => n + c.uncompared.filter(u => !msgIsIgnored('uncompared', u)).length, 0);
-        if (tab === 'uncomparedCsv') return it.channels.reduce((n, c) => n + c.uncomparedCsv.filter(u => !msgIsIgnored('uncomparedCsv', u)).length, 0);
-        if (tab === 'uncomparedItems') return it.skippedItems.length;
-        if (tab === 'logs') return it.overviewLogs.length + it.channels.reduce((n, c) => n + c.logs.length, 0);
-      }
-      const ch = it.channels.find(c => c.name === chName);
-      if (!ch) return 0;
-      if (tab === 'fields') return flatFields(it).filter(r => r.channel === chName).length;
-      if (tab === 'warnings') return ch.warnings.filter(w => !msgIsIgnored('warnings', w)).length;
-      if (tab === 'errors') return ch.errors.length;
-      if (tab === 'uncompared') return ch.uncompared.filter(u => !msgIsIgnored('uncompared', u)).length;
-      if (tab === 'uncomparedCsv') return ch.uncomparedCsv.filter(u => !msgIsIgnored('uncomparedCsv', u)).length;
-      if (tab === 'uncomparedItems') return it.skippedItems.filter(s => s.channel === chName).length;
-      if (tab === 'logs') return ch.logs.length;
+      if (!it) return 0;
+      const enabled = it.enabledChannels || [];
+      const activeNames = chName === 'ALL' ? enabled : [chName];
+      if (tab === 'fields') return flatFields(it).filter(r => activeNames.indexOf(r.channel) !== -1 && sourceMatches(r.source)).length;
+      if (tab === 'warnings') return (it.warnings || []).filter(w => activeNames.indexOf(w.channel) !== -1 && sourceMatches(w.source) && !msgIsIgnored('warnings', enrichMsg(w))).length;
+      if (tab === 'errors') return (it.errors || []).filter(e => activeNames.indexOf(e.channel) !== -1 && sourceMatches(e.source)).length;
+      if (tab === 'uncompared') return (it.uncompared || []).filter(u => activeNames.indexOf(u.channel) !== -1 && !msgIsIgnored('uncompared', enrichMsg(u))).length;
+      if (tab === 'uncomparedItems') return chName === 'ALL' ? it.skippedItems.length : it.skippedItems.filter(s => s.channel === chName).length;
+      if (tab === 'logs') return (it.logs || []).filter(l => (chName === 'ALL' || l.channel === chName) && sourceMatches(l.source)).length;
+      return 0;
+    }
+
+    function sourceCount(srcName, tab) {
+      const it = currentItem();
+      if (!it) return 0;
+      const enabled = it.enabledChannels || [];
+      const chNames = state.channel === 'ALL' ? enabled : [state.channel];
+      const srcMatch = function (s) { return srcName === 'ALL' || s === srcName; };
+      if (tab === 'fields') return flatFields(it).filter(r => chNames.indexOf(r.channel) !== -1 && srcMatch(r.source)).length;
+      if (tab === 'warnings') return (it.warnings || []).filter(w => chNames.indexOf(w.channel) !== -1 && srcMatch(w.source) && !msgIsIgnored('warnings', enrichMsg(w))).length;
+      if (tab === 'errors') return (it.errors || []).filter(e => chNames.indexOf(e.channel) !== -1 && srcMatch(e.source)).length;
+      if (tab === 'uncompared') return srcName === 'ALL' ? (it.uncompared || []).filter(u => chNames.indexOf(u.channel) !== -1 && !msgIsIgnored('uncompared', enrichMsg(u))).length : 0;
+      if (tab === 'logs') return (it.logs || []).filter(l => chNames.indexOf(l.channel) !== -1 && srcMatch(l.source)).length;
       return 0;
     }
 
@@ -2128,8 +2172,23 @@
         return '<button class="' + cls + '" data-channel="' + k + '" title="' + (disabled ? '该渠道未启用' : '') + '">' + esc(label) +
           '<span class="ctab-count">' + count + '</span></button>';
       }).join('');
+
+      // 来源渠道筛选（可配置；来源数量 > 1 时显示）：与报告渠道联合筛选，统计联动。
+      let sourceHtml = '';
+      const srcNames = currentSources();
+      if (APP_FEATURES.sourceFilter && srcNames.length > 1) {
+        const srcs = [['ALL', t('all')]].concat(srcNames.map(function (n) { return [n, sourceName(n)]; }));
+        sourceHtml = '<span class="source-sep"></span>' +
+          srcs.map(function ([k, label]) {
+            const cls = 'stab' + (state.source === k ? ' active' : '');
+            const count = sourceCount(k, state.tab);
+            return '<button class="' + cls + '" data-source="' + esc(k) + '" title="' + t('filterSourceTitle') + '">' + esc(label) +
+              '<span class="stab-count">' + count + '</span></button>';
+          }).join('');
+      }
+
       const colBtn = state.tab === 'fields' ? '<button class="col-toggle" id="colToggle">' + t('colSelector') + ' ▾</button>' : '';
-      document.getElementById('channelTabs').innerHTML = html + colBtn;
+      document.getElementById('channelTabs').innerHTML = html + sourceHtml + colBtn;
     }
 
     function activeFilters() {
@@ -2278,7 +2337,11 @@
       const col = btn.getAttribute('data-hf');
       const kind = btn.getAttribute('data-kind');
       const def = COLUMNS.find(function (c) { return c.key === col; });
-      openFilterPopover(btn, state.colFilter, col, kind, def ? t(def.label) : t('toolbarSearch'), function () { refreshFieldsBody(); renderFilterChips(); });
+      openFilterPopover(btn, state.colFilter, col, kind, def ? t(def.label) : t('toolbarSearch'), function () {
+        if (col === 'channel') { state.channel = state.colFilter.channel; renderChannelTabs(); }
+        else if (col === 'source') { state.source = state.colFilter.source; renderChannelTabs(); }
+        refreshFieldsBody(); renderFilterChips();
+      });
     }
 
     function openMsgFilterPopover(btn) {
@@ -2426,13 +2489,6 @@
       return '<details class="val-details"><summary>' + esc(preview(s)) + '</summary><pre>' + esc(s) + '</pre></details>';
     }
 
-    function textCellHTML(v) {
-      const s = String(v);
-      const long = s.length > 40 || /\r?\n/.test(s);
-      if (!long) return '<span class="text-full">' + esc(s) + '</span>';
-      return '<details class="text-details"><summary>' + esc(preview(s)) + '</summary><pre>' + esc(s) + '</pre></details>';
-    }
-
     function hoverCellHTML(v) {
       const s = String(v);
       const long = s.length > 40 || /\r?\n/.test(s);
@@ -2444,7 +2500,7 @@
       switch (key) {
         case 'channel': return '<td><span class="chip channel-chip">' + esc(r.channel) + '</span></td>';
         case 'source': return '<td>' + esc(sourceName(r.source)) + '</td>';
-        case 'f': return '<td class="mono"><a class="val-link" data-detail="' + esc(r.id) + '" title="查看比较详情">' + esc(r.f) + '</a></td>';
+        case 'f': return '<td class="mono"><a class="val-link" data-detail="' + esc(fieldLocKey(r.channel, r.source, r.id)) + '" title="查看比较详情">' + esc(r.f) + '</a></td>';
         case 'x': return '<td>' + valueCellHTML(r.x) + '</td>';
         case 'aoCsv': return '<td class="mono">' + (r.aoCsv ? esc(r.aoCsv) : '—') + '</td>';
         case 't': return '<td><span class="vt-plain">' + esc(valueTypeLabel(r.k)) + '</span></td>';
@@ -2473,7 +2529,7 @@
       const visible = COLUMNS.filter(isFieldColVisible);
       const trs = pageRows.map(r => {
         const pass = r.result === 'PASSED';
-        return '<tr class="' + (pass ? '' : 'row-fail') + '" tabindex="0" data-fid="' + esc(r.id) + '">' +
+        return '<tr class="' + (pass ? '' : 'row-fail') + '" tabindex="0" data-fid="' + esc(fieldLocKey(r.channel, r.source, r.id)) + '">' +
           visible.map(c => fieldCellHTML(r, c.key)).join('') + '</tr>';
       }).join('');
       return trs || '<tr><td colspan="' + visible.length + '" class="empty">无匹配记录</td></tr>';
@@ -2544,10 +2600,11 @@
         '<div id="fFooter">' + fieldsFooterHTML(p.total, p.pages) + '</div>';
     }
 
-    /* ---- 消息类列表通用引擎（警告/错误/未比较XPath/未比较Item） ---- */
+    /* ---- 消息类列表通用引擎（警告/错误/未比较/未比较Item） ---- */
     const MSG_COLUMNS = {
       warnings: [
         { key: 'channel', label: 'colChannel', sortable: true, filter: 'select' },
+        { key: 'source',  label: 'colSource',  sortable: true, filter: 'select' },
         { key: 'type',    label: 'colType',    sortable: true, filter: 'select' },
         { key: 'level',   label: 'colLevel',   sortable: true, filter: null },
         { key: 'text',    label: 'colText',    sortable: true, filter: 'text', title: '搜索信息' },
@@ -2556,6 +2613,7 @@
       ],
       errors: [
         { key: 'channel', label: 'colChannel', sortable: true, filter: 'select' },
+        { key: 'source',  label: 'colSource',  sortable: true, filter: 'select' },
         { key: 'type',    label: 'colType',    sortable: true, filter: 'select' },
         { key: 'level',   label: 'colLevel',   sortable: true, filter: null },
         { key: 'text',    label: 'colText',    sortable: true, filter: 'text', title: '搜索信息' },
@@ -2563,15 +2621,10 @@
       ],
       uncompared: [
         { key: 'channel', label: 'colChannel', sortable: true, filter: 'select' },
-        { key: 'xpath',   label: 'colXPath',   sortable: true, filter: 'text', title: '搜索 XPath' },
+        { key: 'type',    label: 'colType',    sortable: true, filter: 'select' },
+        { key: 'value',   label: 'colElement', sortable: true, filter: 'text', title: '搜索元素' },
         { key: 'note',    label: 'colNote',    sortable: true, filter: 'text', title: '搜索说明' },
         { key: 'ignored', label: 'colIgnored', sortable: true, filter: null, bulk: true },
-      ],
-      uncomparedCsv: [
-        { key: 'channel',  label: 'colChannel', sortable: true, filter: 'select' },
-        { key: 'csvField', label: 'colAoCsv',   sortable: true, filter: 'text', title: '搜索 CSV 字段' },
-        { key: 'note',     label: 'colNote',    sortable: true, filter: 'text', title: '搜索说明' },
-        { key: 'ignored',  label: 'colIgnored', sortable: true, filter: null, bulk: true },
       ],
       uncomparedItems: [
         { key: 'itemId',  label: 'colItemId',  sortable: true, filter: 'text', title: '搜索 Item ID' },
@@ -2583,14 +2636,13 @@
     function msgValue(tab, m, key) {
       switch (key) {
         case 'channel': return m.channel || '';
-        case 'type': return m.type || '';
+        case 'source': return m.source || '';
+        case 'type': return m.type == null ? '' : String(m.type);
         case 'level': return m.level || '';
         case 'text': return m.text || '';
         case 'field': return m.field || '';
         case 'ignored': return msgIsIgnored(tab, m) ? '1' : '0';
-        case 'xpath': return m.xpath || '';
-        case 'csvField': return m.csvField || '';
-        case 'ctx': return m.ctx || '';
+        case 'value': return m.value || '';
         case 'note': return m.note || '';
         case 'itemId': return m.itemId || '';
         case 'reason': return m.reason || '';
@@ -2603,7 +2655,6 @@
       if (tab === 'warnings') list = scopeWarnings();
       else if (tab === 'errors') list = scopeErrors();
       else if (tab === 'uncompared') list = scopeUncompared();
-      else if (tab === 'uncomparedCsv') list = scopeUncomparedCsv();
       else list = scopeSkippedItems();
       if (state.search.trim()) {
         const q = state.search.trim().toLowerCase();
@@ -2632,7 +2683,11 @@
       return state.msgSort.dir === 1 ? '▲' : '▼';
     }
 
-    function scopeLabel() { return state.channel === 'ALL' ? t('scopeItem') : state.channel + ' ' + t('scopeChannel'); }
+    function scopeLabel() {
+      const ch = state.channel === 'ALL' ? t('scopeItem') : state.channel + ' ' + t('scopeChannel');
+      const src = state.source === 'ALL' ? '' : ' · ' + t('colSource') + ' ' + sourceName(state.source);
+      return ch + src;
+    }
 
     function msgHeaderHTML(tab) {
       const cells = MSG_COLUMNS[tab].map(function (c) {
@@ -2648,11 +2703,17 @@
       return '<thead><tr>' + cells + '</tr></thead>';
     }
 
+    function uncomparedTypeChip(tp) {
+      return tp === 2 ? '<span class="chip vt-code">CSV</span>' : '<span class="chip channel-chip">XPath</span>';
+    }
     function msgCellHTML(tab, m, c) {
       switch (c.key) {
         case 'channel':
           return '<td>' + (m.channel === 'ALL' ? '<span class="chip channel-chip">ALL</span>' : '<span class="chip channel-chip">' + esc(m.channel) + '</span>') + '</td>';
-        case 'type': return '<td>' + (tab === 'errors' ? errorTypeChip(m.type) : typeChip(m.type)) + '</td>';
+        case 'source': return '<td>' + esc(m.source || '—') + '</td>';
+        case 'type':
+          if (tab === 'uncompared') return '<td>' + uncomparedTypeChip(m.type) + '</td>';
+          return '<td>' + (tab === 'errors' ? errorTypeChip(m.type) : typeChip(m.type)) + '</td>';
         case 'level': {
           const isWarn = tab === 'warnings';
           return '<td><span class="badge ' + (isWarn ? 'warn' : 'fail') + '">' + esc(m.level || '') + '</span></td>';
@@ -2664,9 +2725,7 @@
           const k = msgIgnoreKey(tab, m);
           return '<td><button class="ignore-btn' + (ignored ? ' ignored' : '') + '" data-ignore="' + esc(k) + '">' + (ignored ? t('unignore') : t('ignore')) + '</button></td>';
         }
-        case 'xpath': return '<td>' + valueCellHTML(m.xpath) + '</td>';
-        case 'csvField': return '<td>' + valueCellHTML(m.csvField) + '</td>';
-        case 'ctx': return '<td class="mono">' + esc(m.ctx || '—') + '</td>';
+        case 'value': return '<td>' + valueCellHTML(m.value) + '</td>';
         case 'note': return '<td>' + hoverCellHTML(m.note) + '</td>';
         case 'itemId': return '<td class="mono">' + esc(m.itemId) + '</td>';
         case 'reason': return '<td>' + hoverCellHTML(m.reason) + '</td>';
@@ -2698,7 +2757,7 @@
           '<select id="msgPageSize">' + APP_LIMITS.pageSizeOptions.map(function (n) { return '<option' + (state.msgPageSize === n ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></div>';
       }
       document.getElementById('content').innerHTML =
-        ((tab === 'warnings' || tab === 'uncompared' || tab === 'uncomparedCsv') ? '<div class="warn-toolbar"><button class="export-btn" id="importIgnoreBtn">' + t('importIgnore') + '</button><button class="export-btn" id="exportIgnoreBtn">' + t('export') + '</button></div>' : '') +
+        ((tab === 'warnings' || tab === 'uncompared') ? '<div class="warn-toolbar"><button class="export-btn" id="importIgnoreBtn">' + t('importIgnore') + '</button><button class="export-btn" id="exportIgnoreBtn">' + t('export') + '</button></div>' : '') +
         '<div class="table-wrap"><table>' + msgHeaderHTML(tab) +
         '<tbody>' + (rows || '<tr><td colspan="' + cols.length + '" class="empty">无记录</td></tr>') + '</tbody></table></div>' +
         pagerHtml +
@@ -2711,7 +2770,7 @@
       const keys = list.map(function (m) { return msgIgnoreKey(tab, m); }).filter(function (k) { return k; });
       const active = keys.filter(function (k) { return !IGNORE_CONFIG[k]; }).length;
       const ignored = keys.length - active;
-      const unit = tab === 'uncompared' ? t('bulkUnitXpath') : (tab === 'uncomparedCsv' ? t('bulkUnitCsv') : t('bulkUnitWarn'));
+      const unit = tab === 'uncompared' ? t('bulkUnitUncompared') : t('bulkUnitWarn');
       const backdrop = document.createElement('div');
       backdrop.className = 'modal-backdrop';
       backdrop.innerHTML =
@@ -2747,11 +2806,7 @@
     }
 
     function renderUncompared() {
-      renderMsgTable('uncompared', getMsgRows('uncompared').length + ' ' + t('metaUncomparedXpath') + scopeLabel() + t('metaClose'));
-    }
-
-    function renderUncomparedCsv() {
-      renderMsgTable('uncomparedCsv', getMsgRows('uncomparedCsv').length + ' ' + t('metaUncomparedCsv') + scopeLabel() + t('metaClose'));
+      renderMsgTable('uncompared', getMsgRows('uncompared').length + ' ' + t('metaUncompared') + scopeLabel() + t('metaClose'));
     }
 
     function renderUncomparedItems() {
@@ -2762,9 +2817,9 @@
       let lines = scopeLogs();
       if (state.search.trim()) {
         const q = state.search.trim().toLowerCase();
-        lines = lines.filter(l => l.toLowerCase().includes(q));
+        lines = lines.filter(l => String(l.text || '').toLowerCase().includes(q));
       }
-      const html = lines.map(l => '<div class="log-line">' + esc(l) + '</div>').join('');
+      const html = lines.map(l => '<div class="log-line">' + esc(l.text || '') + '</div>').join('');
       document.getElementById('content').innerHTML =
         '<div class="log-box">' + (html || '<div>无日志</div>') + '</div>' +
         '<div class="meta-note">' + lines.length + ' ' + t('metaLogs') + scopeLabel() + t('metaClose') + '</div>';
@@ -2790,7 +2845,6 @@
       else if (state.tab === 'warnings') renderMessages('warning');
       else if (state.tab === 'errors') renderMessages('error');
       else if (state.tab === 'uncompared') renderUncompared();
-      else if (state.tab === 'uncomparedCsv') renderUncomparedCsv();
       else if (state.tab === 'uncomparedItems') renderUncomparedItems();
       else if (state.tab === 'logs') renderLogs();
       else if (state.tab === 'compare') renderCompare();
@@ -2837,6 +2891,11 @@
 
     /* ---------- 详情弹窗 ---------- */
     let CTX_DEF_POPUP = null;
+    let RULE_POPUP = null;
+    const RULE_POPUPS = {};
+    function closeRulePopup() {
+      if (RULE_POPUP) { RULE_POPUP.remove(); RULE_POPUP = null; }
+    }
     let LAST_FOCUS = null;
     function closeCtxDefPopup() {
       if (CTX_DEF_POPUP) { CTX_DEF_POPUP.remove(); CTX_DEF_POPUP = null; }
@@ -2845,6 +2904,7 @@
       const b = document.querySelector('.modal-backdrop');
       if (b) b.remove();
       closeCtxDefPopup();
+      closeRulePopup();
       if (LAST_FOCUS && document.body.contains(LAST_FOCUS)) { try { LAST_FOCUS.focus(); } catch (e) {} }
       LAST_FOCUS = null;
     }
@@ -2866,7 +2926,7 @@
       return [];
     }
     function ctxKeysOfType(field, type) {
-      return (field && field.ctx ? field.ctx : []).filter(function (k) { return ctxTypes(k).indexOf(type) !== -1; });
+      return (field && field.ctxs ? field.ctxs : []).filter(function (k) { return ctxTypes(k).indexOf(type) !== -1; });
     }
     function ctxTagsHTML(ctxArr) {
       return (ctxArr || []).map(function (c) {
@@ -2875,23 +2935,22 @@
     }
 
     function ruleValueHTML(value) {
-      const s = String(value || '');
-      if (s.charAt(0) === '@') return '<span class="rule-tag">' + esc(s) + '</span>';
-      return '<div class="rule-mono">' + esc(s) + '</div>';
+      return '<span class="rule-value-text">' + esc(value == null ? '' : value) + '</span>';
     }
 
     function extraResultsHTML(f) {
-      let items = (Array.isArray(f.extraResults) && f.extraResults.length) ? f.extraResults : [];
-      if (!items.length && f.eoConverted && f.eoUnconverted != null) items = [{ label: t('modalEOUnconverted'), value: f.eoUnconverted }];
+      let items = (Array.isArray(f.resultDetails) && f.resultDetails.length) ? f.resultDetails : [];
+      if (!items.length && f.cvtLeft && f.cvtLeft.raw != null) items = [{ label: t('modalEOUnconverted'), value: f.cvtLeft.raw }];
       return items.map(function (r) {
         return '<div class="result-extra"><div class="ri-label">' + esc(r.label) + '</div><div class="ri-value">' + esc(r.value == null ? '' : r.value) + '</div></div>';
       }).join('');
     }
 
     function showCtxDefPopup(anchor, ctxKey) {
-      // 再次点击同一标签：关闭（切换）。
+      // 再次点击同一标签：关闭（切换）；点击其他标签：直接切换展开当前标签。
       if (CTX_DEF_POPUP && CTX_DEF_POPUP.__ctxKey === ctxKey) { closeCtxDefPopup(); return; }
       closeCtxDefPopup();
+      closeRulePopup();
       const it = currentItem();
       const def = (it && it.ctxDefs ? it.ctxDefs : {})[ctxKey] || {};
       // 命中详情显示所有 type（一个 ctx key 可能同时用于多种规则）。
@@ -2917,89 +2976,214 @@
       CTX_DEF_POPUP = pop;
     }
 
-    function openModal(id, fromGlobal) {
-      const found = findFieldById(currentItem(), id);
-      if (!found) return;
-      const f = found.field;
-      const chObj = currentItem().channels.find(function (c) { return c.name === found.channel; });
-      const chFormat = chObj && chObj.format === 'csv' ? 'csv' : 'xml';
-      const isCsv = chFormat === 'csv';
-      const pass = f.result === 'PASSED';
-      const ctxTags = ctxTagsHTML(f.ctx);
-      const eoBox = '<div class="result-cell"><div class="ri-label">' + t('modalEO') + '</div><div class="ri-value">' + (pass ? esc(f.eo) : diffPairHTML(f.eo, f.ao).eo) + '</div></div>';
-      const aoBox = '<div class="result-cell"><div class="ri-label">' + t('modalAO') + '</div><div class="ri-value">' + (pass ? esc(f.ao) : diffPairHTML(f.eo, f.ao).ao) + '</div></div>';
-      const extraHtml = extraResultsHTML(f);
-      const excelBtn = function (key) {
-        return '<button class="excel-btn" data-excel="' + key + '">' + t('excelConfigBtn') + '</button>';
-      };
-      const excelPanel = function (key, text) {
-        return '<div class="excel-detail" data-excel-panel="' + key + '" hidden>' +
-          '<div class="excel-detail-head">' + t('excelConfigBtn') + '</div>' +
-          '<pre>' + esc(text || '') + '</pre></div>';
-      };
-      const showConv = APP_FEATURES.conversionRule && f.conversionRule;
-      const showVal = APP_FEATURES.validationRule && f.validationRule;
-      const showMapBtn = APP_FEATURES.excelMapping;
-      const showConvBtn = APP_FEATURES.excelConversionRule;
-      const showValBtn = APP_FEATURES.excelValidationRule;
-      // 各规则 section 只读取自身 type 对应的 CtxKey。
-      const mapRuleHtml = showMapBtn
-        ? '<div class="rule-group"><div class="rule-group-title">' + t('modalExcelMapping') + excelBtn('mapping') + '</div>' +
-          '<div class="rule-ctx"><span class="rule-ctx-label">' + t('colCtx') + '</span>' + (ctxTagsHTML(ctxKeysOfType(f, 1)) || '—') + '</div>' +
-          excelPanel('mapping', f.excelMapping) +
-          '</div>'
-        : '';
-      const convRuleHtml = showConv
-        ? '<div class="rule-group"><div class="rule-group-title">' + t('modalConversionRule') + (showConvBtn ? excelBtn('conversion') : '') + '</div>' +
-          ruleValueHTML(f.conversionRule.value) +
-          '<div class="rule-ctx"><span class="rule-ctx-label">' + t('colCtx') + '</span>' + (ctxTagsHTML(ctxKeysOfType(f, 2)) || '—') + '</div>' +
-          (showConvBtn ? excelPanel('conversion', f.excelConversionRule) : '') +
-          '</div>'
-        : '';
-      const valRuleHtml = showVal
-        ? '<div class="rule-group"><div class="rule-group-title">' + t('modalValidationRule') + (showValBtn ? excelBtn('validation') : '') + '</div>' +
-          ruleValueHTML(f.validationRule.value) +
-          '<div class="rule-ctx"><span class="rule-ctx-label">' + t('colCtx') + '</span>' + (ctxTagsHTML(ctxKeysOfType(f, 3)) || '—') + '</div>' +
-          (showValBtn ? excelPanel('validation', f.excelValidationRule) : '') +
-          '</div>'
-        : '';
-      const xpathLabel = isCsv ? t('modalAoCsvField') : t('modalXPath');
-      const xpathValue = isCsv ? (f.aoCsv || '—') : f.x;
+    // 规则详情弹窗：点击规则标题，只读取对应对象的 elRaw 数据字段并展示（直接切换，再次点击同一标题才关闭）。
+    function showRulePopup(anchor, key) {
+      const cfg = RULE_POPUPS[key];
+      if (!cfg) return;
+      if (RULE_POPUP && RULE_POPUP.__key === key) { closeRulePopup(); return; }
+      closeRulePopup();
+      closeCtxDefPopup();
+      const pop = document.createElement('div');
+      pop.className = 'ctx-def-popup rule-popup';
+      const raw = (cfg.raw == null || cfg.raw === '') ? t('rcNone') : cfg.raw;
+      pop.innerHTML =
+        '<div class="ctx-def-key">' + esc(cfg.title) + '</div>' +
+        '<div class="rp-field"><div class="rp-field-label">' + t('rcRawConfig') + '</div>' +
+        '<pre class="rp-text">' + esc(raw) + '</pre></div>';
+      document.body.appendChild(pop);
+      const r = anchor.getBoundingClientRect();
+      const pw = pop.offsetWidth, ph = pop.offsetHeight;
+      let left = r.left, top = r.bottom + 6;
+      if (left + pw > window.innerWidth - 8) left = Math.max(8, window.innerWidth - pw - 8);
+      if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 6);
+      pop.style.left = left + 'px';
+      pop.style.top = top + 'px';
+      pop.__key = key;
+      RULE_POPUP = pop;
+    }
+
+    function ruleCtxHTML(ctxArr) {
+      // ctx：先显示 ctx 文本，再换行显示具体标签（可点击）。
+      const arr = ctxArr || [];
+      const data = arr.join(' ');
+      const tags = ctxTagsHTML(arr);
+      return '<div class="rc-row rc-ctx">' +
+        '<span class="rc-label">' + t('rcCtxLabel') + '</span>' +
+        '<div class="rc-ctx-body">' +
+        '<span class="rc-ctx-data">' + (data ? esc(data) : '—') + '</span>' +
+        (tags ? '<div class="rc-ctx-tags">' + tags + '</div>' : '') +
+        '</div>' +
+        '</div>';
+    }
+    function ruleNoneHTML() { return '<span class="rc-none">' + t('rcNone') + '</span>'; }
+    // 规则 section：标题可点击弹出该对象的 elRaw；正文先显示「值」，再显示 ctx。
+    function ruleSectionHTML(key, title, valueHTML, ctxHTML) {
+      return '<div class="rule-section">' +
+        '<button class="rule-section-title" data-rule-popup="' + key + '">' + esc(title) + '</button>' +
+        '<div class="rule-body">' +
+        '<div class="rc-row"><span class="rc-label">' + t('rcValueLabel') + '</span><div class="rc-value">' + valueHTML + '</div></div>' +
+        ctxHTML +
+        '</div>' +
+        '</div>';
+    }
+    // 规则对（EO / AO 两栏并排，与期望值/实际值两栏布局一致）。
+    function rulePairHTML(leftSection, rightSection) {
+      return '<div class="rule-pair">' + leftSection + rightSection + '</div>';
+    }
+
+    function openModal(channel, source, id, fromGlobal) {
       const backdrop = document.createElement('div');
       backdrop.className = 'modal-backdrop';
-      backdrop.innerHTML =
-        '<div class="modal">' +
-        '<div class="modal-head"><div class="modal-head-left"><h3>' + t('modalTitle') + '：' + esc(f.f) + '</h3><span class="modal-item-chip">' + esc(currentItem().tradeId) + '</span></div>' +
-        '<div class="modal-head-right">' + (fromGlobal ? '<button class="modal-goto" data-modal-jump="1">' + t('backToItem') + '</button>' : '') + '<button class="modal-close" title="' + t('closeLabel') + '">✕</button></div></div>' +
-        '<div class="modal-body">' +
-        '<div class="kv">' +
-        '<span class="k">' + t('modalChannel') + '</span><span class="v">' + esc(found.channel) + '</span>' +
-        '<span class="k">' + t('modalSource') + '</span><span class="v">' + esc(sourceName(found.source)) + '</span>' +
-        '<span class="k">' + t('modalField') + '</span><span class="v">' + esc(f.f) + '</span>' +
-        '<span class="k">' + xpathLabel + '</span><span class="v">' + esc(xpathValue) + '</span>' +
-        '<span class="k">' + t('modalType') + '</span><span class="v">' + valueTypeChip(f.k) + '</span>' +
-        '<span class="k">' + t('modalCtx') + '</span><span class="v">' + (ctxTags || '—') + '</span>' +
-        '<span class="k">' + t('modalResult') + '</span><span class="v"><span class="badge ' + (pass ? 'pass' : 'fail') + '">' + f.result + '</span>' +
-        (f.resultNote ? '　' + esc(f.resultNote) : '') + '</span>' +
-        '</div>' +
-        '<div class="result-pair">' + eoBox + aoBox + '</div>' +
-        extraHtml +
-        mapRuleHtml + convRuleHtml + valRuleHtml +
-        (APP_FEATURES.modalPrints ? '<div class="print-box"><div class="pb-head">' + t('modalPrints') + '</div>' +
-        '<div class="log-box">' + f.prints.map(p => '<div class="log-line">' + esc(p) + '</div>').join('') + '</div>' +
-        '</div>' : '') +
-        '</div></div>';
+      document.body.appendChild(backdrop);
+
+      const navState = { channel: channel, source: source, id: id, fromGlobal: !!fromGlobal };
+      const view = { navInfo: null, rulesExpanded: false };
+
+      // 依据 (channel, source, id) 构建弹窗内容；返回 html 与 navInfo。
+      function buildContent(ch, src, fid, isGlobal) {
+        const found = findField(currentItem(), ch, src, fid);
+        if (!found) return null;
+        const f = found.field;
+        const def = fieldDef(fid) || {};
+        let navInfo = null;
+        if (!isGlobal) {
+          const rows = filteredFields(currentItem());
+          const idx = rows.findIndex(function (r) { return r.channel === found.channel && r.source === found.source && r.id === fid; });
+          navInfo = {
+            prev: idx > 0 ? rows[idx - 1] : null,
+            next: idx >= 0 && idx < rows.length - 1 ? rows[idx + 1] : null,
+          };
+        }
+        const pass = f.result === 'PASSED';
+        const left = f.cmpLeft || {};
+        const right = f.cmpRight || {};
+        const cvtLeft = f.cvtLeft || null;
+        const cvtRight = f.cvtRight || null;
+        const vdt = f.vdt || null;
+        const eoBox = '<div class="result-cell"><div class="ri-label">' + t('modalEO') + '</div><div class="ri-value">' + (pass ? esc(left.value) : diffPairHTML(left.value, right.value).eo) + '</div></div>';
+        const aoBox = '<div class="result-cell"><div class="ri-label">' + t('modalAO') + '</div><div class="ri-value">' + (pass ? esc(right.value) : diffPairHTML(left.value, right.value).ao) + '</div></div>';
+        const extraHtml = extraResultsHTML(f);
+
+        RULE_POPUPS.mappingEO = { title: t('modalMappingRuleEO'), raw: left.elRaw };
+        RULE_POPUPS.mappingAO = { title: t('modalMappingRuleAO'), raw: right.elRaw };
+        RULE_POPUPS.convEO = { title: t('modalConversionRuleEO'), raw: cvtLeft ? cvtLeft.elRaw : null };
+        RULE_POPUPS.convAO = { title: t('modalConversionRuleAO'), raw: cvtRight ? cvtRight.elRaw : null };
+        RULE_POPUPS.validation = { title: t('modalValidationRule'), raw: vdt ? vdt.elRaw : null };
+
+        const noneHtml = ruleNoneHTML();
+        const mapRuleHtml = APP_FEATURES.excelMapping
+          ? rulePairHTML(
+              ruleSectionHTML('mappingEO', t('modalMappingRuleEO'), ruleValueHTML(left.el || '—'), ruleCtxHTML(left.ctxs)),
+              ruleSectionHTML('mappingAO', t('modalMappingRuleAO'), ruleValueHTML(right.el || '—'), ruleCtxHTML(right.ctxs)))
+          : '';
+        const convRuleHtml = APP_FEATURES.conversionRule
+          ? rulePairHTML(
+              ruleSectionHTML('convEO', t('modalConversionRuleEO'), cvtLeft ? ruleValueHTML(cvtLeft.el || '—') : noneHtml, ruleCtxHTML(cvtLeft ? cvtLeft.ctxs : null)),
+              ruleSectionHTML('convAO', t('modalConversionRuleAO'), cvtRight ? ruleValueHTML(cvtRight.el || '—') : noneHtml, ruleCtxHTML(cvtRight ? cvtRight.ctxs : null)))
+          : '';
+        const valRuleHtml = APP_FEATURES.validationRule
+          ? ruleSectionHTML('validation', t('modalValidationRule'), vdt ? ruleValueHTML(vdt.el || '—') : noneHtml, ruleCtxHTML(vdt ? vdt.ctxs : null))
+          : '';
+
+        const xpathLabel = right.srcType === 2 ? t('modalAoCsvField') : t('modalXPath');
+        const xpathValue = right.el || '—';
+        const navBtns = (!isGlobal && navInfo)
+          ? '<button class="modal-nav" data-modal-nav="prev" title="' + t('modalPrevField') + '"' + (navInfo.prev ? '' : ' disabled') + '>←</button>' +
+            '<button class="modal-nav" data-modal-nav="next" title="' + t('modalNextField') + '"' + (navInfo.next ? '' : ' disabled') + '>→</button>'
+          : '';
+
+        const html =
+          '<div class="modal">' +
+          '<div class="modal-head"><div class="modal-head-left"><h3>' + t('modalTitle') + '：' + esc(def.name) + '</h3><span class="modal-item-chip">' + esc(currentItem().tradeId) + '</span></div>' +
+          '<div class="modal-head-right">' + (isGlobal ? '<button class="modal-goto" data-modal-jump="1">' + t('backToItem') + '</button>' : '') + navBtns + '<button class="modal-close" title="' + t('closeLabel') + '">✕</button></div></div>' +
+          '<div class="modal-body">' +
+          '<div class="kv">' +
+          '<span class="k">' + t('modalChannel') + '</span><span class="v">' + esc(found.channel) + '</span>' +
+          '<span class="k">' + t('modalSource') + '</span><span class="v">' + esc(sourceName(found.source)) + '</span>' +
+          '<span class="k">' + t('modalField') + '</span><span class="v">' + esc(def.name) + '</span>' +
+          '<span class="k">' + xpathLabel + '</span><span class="v">' + esc(xpathValue) + '</span>' +
+          '<span class="k">' + t('modalUserTag') + '</span><span class="v">' + esc(def.userTag || '—') + '</span>' +
+          '<span class="k">' + t('modalResult') + '</span><span class="v"><span class="badge ' + (pass ? 'pass' : 'fail') + '">' + f.result + '</span>' +
+          (f.resultText ? '　' + esc(f.resultText) : '') + '</span>' +
+          '</div>' +
+          '<div class="modal-part">' +
+          '<div class="result-pair">' + eoBox + aoBox + '</div>' +
+          extraHtml +
+          '</div>' +
+          (APP_FEATURES.modalRules && (mapRuleHtml || convRuleHtml || valRuleHtml)
+            ? '<div class="modal-part modal-rules">' +
+              '<button class="modal-part-head" data-rules-toggle="1">' +
+              '<span>' + t('modalRulesTitle') + '</span>' +
+              '<span class="rules-arrow">▸</span>' +
+              '</button>' +
+              '<div class="modal-part-body" hidden>' + mapRuleHtml + convRuleHtml + valRuleHtml + '</div>' +
+              '</div>'
+            : '') +
+          (APP_FEATURES.modalPrints ? '<div class="print-box"><div class="pb-head">' + t('modalPrints') + '</div>' +
+          '<div class="log-box">' + f.prints.map(p => '<div class="log-line">' + esc(p) + '</div>').join('') + '</div>' +
+          '</div>' : '') +
+          '</div></div>';
+        return { html: html, navInfo: navInfo };
+      }
+
+      function focusableEls() {
+        return backdrop.querySelectorAll('button:not([disabled]), input:not([disabled]), select, textarea, a[href], [tabindex]:not([tabindex="-1"])');
+      }
+
+      function render(animate, focusDir) {
+        const b = buildContent(navState.channel, navState.source, navState.id, navState.fromGlobal);
+        if (!b) { backdrop.remove(); return; }
+        view.navInfo = b.navInfo;
+        view.rulesExpanded = false;
+        backdrop.innerHTML = b.html;
+        const modal = backdrop.querySelector('.modal');
+        if (modal && animate) {
+          modal.classList.remove('content-swap');
+          void modal.offsetWidth;
+          modal.classList.add('content-swap');
+        }
+        const mb = backdrop.querySelector('.modal-body');
+        if (mb) mb.scrollTop = 0;
+        let focused = false;
+        if (focusDir) {
+          const navBtn = backdrop.querySelector('[data-modal-nav="' + focusDir + '"]:not([disabled])');
+          if (navBtn) { navBtn.focus(); focused = true; }
+        }
+        if (!focused) {
+          const list = focusableEls();
+          if (list.length) list[0].focus();
+        }
+      }
+
+      function navigateTo(target, dir) {
+        if (!target) return;
+        closeCtxDefPopup();
+        closeRulePopup();
+        navState.channel = target.channel;
+        navState.source = target.source;
+        navState.id = target.id;
+        navState.fromGlobal = false;
+        render(true, dir);
+      }
+
       backdrop.addEventListener('click', function (e) {
         const tag = e.target.closest('.ctx-tag');
         if (tag) { showCtxDefPopup(tag, tag.getAttribute('data-ctx')); return; }
-        const exBtn = e.target.closest('.excel-btn');
-        if (exBtn) {
-          const key = exBtn.getAttribute('data-excel');
-          const panel = backdrop.querySelector('[data-excel-panel="' + key + '"]');
-          if (panel) {
-            panel.hidden = !panel.hidden;
-            exBtn.classList.toggle('active', !panel.hidden);
-          }
+        const rp = e.target.closest('[data-rule-popup]');
+        if (rp) { showRulePopup(rp, rp.getAttribute('data-rule-popup')); return; }
+        const rt = e.target.closest('[data-rules-toggle]');
+        if (rt) {
+          view.rulesExpanded = !view.rulesExpanded;
+          const body = backdrop.querySelector('.modal-part-body');
+          if (body) body.hidden = !view.rulesExpanded;
+          const arrow = rt.querySelector('.rules-arrow');
+          if (arrow) arrow.textContent = view.rulesExpanded ? '▾' : '▸';
+          return;
+        }
+        const nav = e.target.closest('[data-modal-nav]');
+        if (nav && !nav.disabled) {
+          const dir = nav.getAttribute('data-modal-nav');
+          navigateTo(dir === 'prev' ? view.navInfo.prev : view.navInfo.next, dir);
           return;
         }
         if (e.target.closest('[data-modal-jump]')) {
@@ -3014,18 +3198,29 @@
         }
         if (e.target === backdrop || e.target.closest('.modal-close')) closeModal();
       });
-      LAST_FOCUS = document.activeElement;
-      document.body.appendChild(backdrop);
-      const focusables = backdrop.querySelectorAll('button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])');
-      if (focusables.length) focusables[0].focus();
+
       backdrop.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+          const dir = e.key === 'ArrowLeft' ? 'prev' : 'next';
+          const target = view.navInfo && view.navInfo[dir];
+          if (target) { e.preventDefault(); navigateTo(target, dir); }
+          return;
+        }
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          // 上下方向键不触发任何聚焦/滚动行为，保持静止。
+          e.preventDefault();
+          return;
+        }
         if (e.key !== 'Tab') return;
-        const list = backdrop.querySelectorAll('button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])');
+        const list = focusableEls();
         if (!list.length) return;
         const first = list[0], last = list[list.length - 1];
         if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
       });
+
+      LAST_FOCUS = document.activeElement;
+      render(false);
     }
 
     /* ---------- URL 深链接（hash） ---------- */
@@ -3152,14 +3347,15 @@
       let chNameA = state.compare.channelA, chNameB = state.compare.channelB, itemB = it;
       if (mode === 'item') { itemB = DATA.items.find(function (x) { return x.tradeId === state.compare.itemB; }) || it; chNameB = chNameA; }
       const chA = it.channels.find(function (c) { return c.name === chNameA; });
-      const chB = itemB.channels.find(function (c) { return c.name === chNameB; });
+      const chB = (itemB.channels || []).find(function (c) { return c.name === chNameB; });
       if (!chA || !chB) return [];
       const rows = [];
       chA.sources.forEach(function (sA) {
         sA.fields.forEach(function (fA) {
+          const defA = fieldDef(fA.id) || {};
           const sB = chB.sources.find(function (s) { return s.name === sA.name; });
-          const fB = sB ? sB.fields.find(function (f) { return f.f === fA.f; }) : null;
-          rows.push({ f: fA.f, source: sA.name, a: fA, b: fB });
+          const fB = sB ? sB.fields.find(function (f) { const d = fieldDef(f.id) || {}; return d.name === defA.name; }) : null;
+          rows.push({ f: defA.name, source: sA.name, a: fA, b: fB });
         });
       });
       return rows;
@@ -3168,11 +3364,11 @@
       if (!f) return '<span class="cmp-val">' + t('compareNone') + '</span>';
       const pass = f.result === 'PASSED';
       return '<span class="badge ' + (pass ? 'pass' : 'fail') + '" title="' + f.result + '">' + (pass ? '✓' : '✕') + '</span> ' +
-        '<span class="cmp-val">' + esc(preview(f.eo)) + ' → ' + esc(preview(f.ao)) + '</span>';
+        '<span class="cmp-val">' + esc(preview((f.cmpLeft || {}).value)) + ' → ' + esc(preview((f.cmpRight || {}).value)) + '</span>';
     }
     function compareDiffOf(r) {
       if (!r.b) return 'diff';
-      return (r.a.result === r.b.result && r.a.eo === r.b.eo && r.a.ao === r.b.ao) ? 'same' : 'diff';
+      return (r.a.result === r.b.result && (r.a.cmpLeft || {}).value === (r.b.cmpLeft || {}).value && (r.a.cmpRight || {}).value === (r.b.cmpRight || {}).value) ? 'same' : 'diff';
     }
     function compareSortValue(r, key) {
       if (key === 'f') return r.f;
@@ -3266,7 +3462,7 @@
       const trs = pageRows.map(function (r) {
         const diff = compareDiffOf(r) === 'diff';
         return '<tr class="' + (diff ? 'row-fail' : '') + '">' +
-          '<td class="mono"><a class="val-link" data-detail="' + esc(r.a.id) + '">' + esc(r.f) + '</a></td>' +
+          '<td class="mono"><a class="val-link" data-detail="' + esc(fieldLocKey(state.compare.channelA, r.source, r.a.id)) + '">' + esc(r.f) + '</a></td>' +
           '<td>' + esc(sourceName(r.source)) + '</td>' +
           '<td>' + compareCell(r.a) + '</td>' +
           '<td>' + compareCell(r.b) + '</td>' +
@@ -3350,7 +3546,6 @@
     function computeHealthSync(date, channel) {
       return computeHealthPure(DATA.items, date, channel, IGNORE_CONFIG);
     }
-    function computeHealth(date, channel) { return computeHealthSync(date, channel); }
 
     let WORKER = null;
     let WORKER_CALL_ID = 0;
@@ -3655,9 +3850,11 @@
         if (!row) return;
         const itemId = row.getAttribute('data-goto');
         const fieldId = row.getAttribute('data-field-id');
+        const ch = row.getAttribute('data-channel');
+        const src = row.getAttribute('data-source');
         backdrop.remove();
         selectItem(itemId);
-        if (fieldId) setTimeout(function () { openModal(fieldId, true); }, 60);
+        if (fieldId) setTimeout(function () { openModal(ch, src, fieldId, true); }, 60);
       });
       document.body.appendChild(backdrop);
       const input = backdrop.querySelector('#globalSearchInput');
@@ -3669,7 +3866,7 @@
         const results = await globalSearchResults(q);
         box.innerHTML = results.length
           ? results.map(function (r) {
-              return '<div class="gs-row" data-goto="' + esc(r.itemId) + '" data-field-id="' + esc(r.fieldId) + '">' +
+              return '<div class="gs-row" data-goto="' + esc(r.itemId) + '" data-field-id="' + esc(r.fieldId) + '" data-channel="' + esc(r.channel) + '" data-source="' + esc(r.source) + '">' +
                 '<span class="gs-item mono">' + esc(r.itemId) + '</span>' +
                 '<span class="chip channel-chip">' + esc(r.channel) + '</span>' +
                 '<span class="mono">' + esc(r.f) + '</span>' +
@@ -4199,10 +4396,18 @@
       document.getElementById('channelTabs').addEventListener('click', function (e) {
         const colToggle = e.target.closest('.col-toggle');
         if (colToggle) { openColumnMenu(colToggle); return; }
+        const srcEl = e.target.closest('[data-source]');
+        if (srcEl) {
+          state.source = srcEl.getAttribute('data-source'); state.page = 1;
+          state.colFilter.source = state.source;
+          render();
+          return;
+        }
         const el = e.target.closest('[data-channel]');
         if (!el) return;
         state.channel = el.getAttribute('data-channel'); state.page = 1;
-        state.colFilter = { channel: 'ALL', source: 'ALL', f: '', x: '', aoCsv: '', t: 'ALL', ctx: '', eo: '', ao: '', result: 'ALL', note: '' };
+        state.source = 'ALL';
+        state.colFilter = { channel: state.channel, source: 'ALL', f: '', x: '', aoCsv: '', t: 'ALL', ctx: '', eo: '', ao: '', result: 'ALL', note: '' };
         render();
       });
 
@@ -4228,7 +4433,7 @@
           return;
         }
         const detail = e.target.closest('[data-detail]');
-        if (detail) { openModal(detail.getAttribute('data-detail')); return; }
+        if (detail) { const loc = parseFieldLoc(detail.getAttribute('data-detail')); openModal(loc.channel, loc.source, loc.id); return; }
         const ign = e.target.closest('.ignore-btn');
         if (ign) { toggleIgnoreByKey(ign.getAttribute('data-ignore')); return; }
         const exp = e.target.closest('#exportIgnoreBtn');
@@ -4331,6 +4536,7 @@
         const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
         if (e.key === 'Escape') {
           if (CTX_DEF_POPUP) { closeCtxDefPopup(); return; }
+          if (RULE_POPUP) { closeRulePopup(); return; }
           if (document.querySelector('.modal-backdrop')) { closeModal(); return; }
           if (POPOVER.el) { closePopover(); return; }
           return;
@@ -4364,7 +4570,7 @@
         if (e.key === 'Enter') {
           e.preventDefault();
           const fid = t.getAttribute('data-fid');
-          if (fid) { openModal(fid, true); return; }
+          if (fid) { const loc = parseFieldLoc(fid); openModal(loc.channel, loc.source, loc.id); return; }
           const ign = t.querySelector('.ignore-btn');
           if (ign) ign.click();
           return;
@@ -4377,6 +4583,7 @@
 
       document.addEventListener('click', function (e) {
         if (CTX_DEF_POPUP && !e.target.closest('.ctx-def-popup') && !e.target.closest('.ctx-tag')) closeCtxDefPopup();
+        if (RULE_POPUP && !e.target.closest('.rule-popup') && !e.target.closest('[data-rule-popup]')) closeRulePopup();
         if (BATCH_QD && !e.target.closest('#batchPanel') && !e.target.closest('.batch-qd') && !e.target.closest('#batchBadge')) hideBatchQuickDetail();
         const cp = e.target.closest('[data-copy]');
         if (cp) {
@@ -4389,7 +4596,7 @@
       });
 
       // 列表/页面滚动时关闭 Ctx 详情弹框（捕获阶段，覆盖嵌套滚动容器）。
-      document.addEventListener('scroll', function () { if (CTX_DEF_POPUP) closeCtxDefPopup(); }, true);
+      document.addEventListener('scroll', function () { if (CTX_DEF_POPUP) closeCtxDefPopup(); if (RULE_POPUP) closeRulePopup(); }, true);
     }
 
     function applyFeatureVisibility() {

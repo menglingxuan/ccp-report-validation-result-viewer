@@ -36,11 +36,6 @@ import path from 'node:path';
       'OTC-PLATFORM-C': ['CD', 'FX'],
     };
 
-    // 运行环境默认值（当批次索引与数据 JSON 均未提供 reportEnv 时使用）
-    const DEFAULT_ENV = 'UNKNOWN';
-    // 本次比较任务的说明文本（多行）
-    const TASK_NOTE = '本次比较任务说明：\n1. 校验多渠道来源数据与监管报送数据的一致性。\n2. 验证配置驱动映射（Excel）与命中上下文逻辑。\n3. 回归测试多行字段与特殊字符的展示效果。';
-
     // 每个报告渠道的字段定义: [字段, XPath或AO CSV字段, 断言类型, 值类型]
     const FIELD_DEFS = {
       HKTR: [
@@ -221,7 +216,10 @@ import path from 'node:path';
       '日志缓冲达到上限，部分日志被丢弃',
     ];
 
-    function buildMessages(level, rng, channelName, fieldsDef, platform, product) {
+    // warnings / errors 迁移到 item 级别：
+    //   - 移除 platform / product（跟随 item）
+    //   - 新增 scope（field / channel）与 source（来源渠道，随机分配 A/B，部分为空模拟来源缺失）
+    function buildMessages(level, rng, channelName, fieldsDef) {
       const count = 2 + Math.floor(rng() * 4);
       const pool = level === 'warning' ? WARN_TEXTS : ERR_TEXTS;
       const typeKeys = level === 'error' ? Object.keys(ERROR_TYPE_META) : Object.keys(TYPE_META);
@@ -232,43 +230,36 @@ import path from 'node:path';
         const text = rng() < 0.2
           ? base + '\n详情：该字段的映射配置可能缺失或与当前 context 不匹配。\n建议检查映射表对应 sheet 的配置，确认 XPath 与命中的 context 是否正确，并核对字段类型。'
           : base;
+        const field = rng() < 0.8 ? fieldsDef[Math.floor(rng() * fieldsDef.length)][0] : '';
+        // 部分消息来源渠道为空（模拟来源信息缺失的样例数据）。
+        const source = rng() < 0.25 ? '' : (rng() < 0.5 ? '来源渠道 A' : '来源渠道 B');
         msgs.push({
+          scope: field ? 'field' : 'channel',
+          source: source,
           channel: channelName,
-          platform: platform,
-          product: product,
           type: typeKeys[Math.floor(rng() * typeKeys.length)],
           level: levelPool[Math.floor(rng() * levelPool.length)],
           text: text,
-          field: rng() < 0.8 ? fieldsDef[Math.floor(rng() * fieldsDef.length)][0] : '',
+          field: field,
         });
       }
       return msgs;
     }
 
-    function buildChannelUncompared(channelName, rng, fieldsDef, platform, product) {
+    // uncompared 与 uncomparedCsv 合并为 uncompared：
+    //   - 新增 type：1 = xpath（XML 渠道）/ 2 = csv（CSV 渠道）
+    //   - 元素统一存 value；移除 platform / product / ctx
+    function buildUncompared(channelName, rng, fieldsDef, type) {
       const list = [];
       const n = Math.floor(rng() * 2);
-      const ctxPool = [channelName.toLowerCase() + '.ctx.default', channelName.toLowerCase() + '.ctx.v2', channelName.toLowerCase() + '.ctx.v3'];
       for (let i = 0; i < n; i++) {
         const d = fieldsDef[Math.floor(rng() * fieldsDef.length)];
         const note = rng() < 0.35
-          ? '未在映射配置中匹配到对应 CSV 字段\n详情：Excel 映射配置中未找到与该 XPath 对应的条目，可能因 context 定义变化导致。\n请检查映射表并确认该 XPath 是否仍需要参与比较。'
-          : '未在映射配置中匹配到对应 CSV 字段';
-        list.push({ channel: channelName, xpath: d[1], note: note, platform: platform, product: product, ctx: ctxPool[Math.floor(rng() * ctxPool.length)] });
-      }
-      return list;
-    }
-
-    function buildChannelUncomparedCsv(channelName, rng, fieldsDef, platform, product) {
-      const list = [];
-      const n = Math.floor(rng() * 2);
-      const ctxPool = [channelName.toLowerCase() + '.ctx.default', channelName.toLowerCase() + '.ctx.v2', channelName.toLowerCase() + '.ctx.v3'];
-      for (let i = 0; i < n; i++) {
-        const d = fieldsDef[Math.floor(rng() * fieldsDef.length)];
-        const note = rng() < 0.35
-          ? '未在映射配置中匹配到对应来源字段\n详情：Excel 映射配置中未找到与该 AO CSV 字段对应的条目，可能因 context 定义变化导致。\n请检查映射表并确认该 CSV 字段是否仍需要参与比较。'
-          : '未在映射配置中匹配到对应来源字段';
-        list.push({ channel: channelName, csvField: d[1], note: note, platform: platform, product: product, ctx: ctxPool[Math.floor(rng() * ctxPool.length)] });
+          ? (type === 1
+            ? '未在映射配置中匹配到对应 CSV 字段\n详情：Excel 映射配置中未找到与该 XPath 对应的条目，可能因 context 定义变化导致。\n请检查映射表并确认该 XPath 是否仍需要参与比较。'
+            : '未在映射配置中匹配到对应来源字段\n详情：Excel 映射配置中未找到与该 AO CSV 字段对应的条目，可能因 context 定义变化导致。\n请检查映射表并确认该 CSV 字段是否仍需要参与比较。')
+          : (type === 1 ? '未在映射配置中匹配到对应 CSV 字段' : '未在映射配置中匹配到对应来源字段');
+        list.push({ type: type, channel: channelName, value: d[1], note: note });
       }
       return list;
     }
@@ -276,9 +267,9 @@ import path from 'node:path';
     function buildChannelLogs(ch, tradeId) {
       const t = '2024-08-14 10:23:0';
       return [
-        t + '0.200 INFO  [' + ch.name + '] 读取报送文件 ' + ch.files.ao.map(fileEntryName).join(', '),
-        t + '0.300 INFO  [' + ch.name + '] 应用映射配置 ' + ch.files.excel.file + ' [sheet: ' + ch.files.excel.sheet + ']',
-        t + '0.400 INFO  [' + ch.name + '] 完成字段比较，渠道结果已生成',
+        { scope: 'channel', channel: ch.name, source: null, text: t + '0.200 INFO  [' + ch.name + '] 读取报送文件 ' + ch.files.ao.map(fileEntryName).join(', ') },
+        { scope: 'channel', channel: ch.name, source: null, text: t + '0.300 INFO  [' + ch.name + '] 应用映射配置 ' + ch.files.excel.file + ' [sheet: ' + ch.files.excel.sheet + ']' },
+        { scope: 'channel', channel: ch.name, source: null, text: t + '0.400 INFO  [' + ch.name + '] 完成字段比较，渠道结果已生成' },
       ];
     }
 
@@ -290,8 +281,41 @@ import path from 'node:path';
       ];
     }
 
-    function buildChannelData(ch, tradeId, reportDate, rng, failRate, platform, product) {
-      const fieldsDef = FIELD_DEFS[ch.name];
+    // 每个 item 的字段定义（不同 item 可有不同字段集合）：
+    //   i%4==0 完整字段
+    //   i%4==1 缺 venue（该 item 无成交场所）
+    //   i%4==2 缺 venue、quantity（无成交场所与数量）
+    //   i%4==3 缺 price、remarks（无价格与备注）
+    function fieldDefsForItem(itemIndex, ch) {
+      const base = FIELD_DEFS[ch.name] || [];
+      const m = itemIndex % 4;
+      const drop = m === 1 ? ['venue']
+        : m === 2 ? ['venue', 'quantity']
+        : m === 3 ? ['price', 'remarks']
+        : [];
+      return base.filter(function (def) { return drop.indexOf(def[0]) === -1; });
+    }
+
+    // item 级字段注册表：按 id（数字字符串）去重，每个 item 各自构建（不同 item 可有不同字段定义）。
+    // id 按字段首次出现顺序编号："1"、"2"、…；name 为字段名。
+    function buildFieldRegistry(itemIndex) {
+      const seen = {};
+      const registry = [];
+      CHANNELS.forEach(function (ch) {
+        fieldDefsForItem(itemIndex, ch).forEach(function (def) {
+          const name = def[0];
+          if (!seen[name]) {
+            seen[name] = true;
+            registry.push({ id: String(registry.length + 1), name: name, userTag: def[2], type: def[3] });
+          }
+        });
+      });
+      const nameToId = {};
+      registry.forEach(function (d) { nameToId[d.name] = d.id; });
+      return { registry: registry, nameToId: nameToId };
+    }
+
+    function buildChannelData(ch, tradeId, reportDate, rng, failRate, nameToId, fieldsDef, sourceCount) {
       const base = ch.name.toLowerCase();
       const mapPool = [
         base + '.ctx.default',
@@ -302,10 +326,12 @@ import path from 'node:path';
       const convPool = [base + '.ctx.conv.default', base + '.ctx.conv.v2'];
       const valPool = [base + '.ctx.val.default', base + '.ctx.val.v2'];
       const isCsv = ch.format === 'csv';
-      const sources = [1, 2].map(sn => {
+      // 来源渠道数量：默认为 2（A/B），部分 item 仅有 1 个来源渠道（sourceCount=1）。
+      const sourceIndexes = sourceCount === 1 ? [1] : [1, 2];
+      const sources = sourceIndexes.map(sn => {
         const fields = fieldsDef.map(([f, rawTarget, t, k], idx) => {
-          const x = isCsv ? '' : rawTarget;
-          const aoCsv = isCsv ? rawTarget : '';
+          const el = rawTarget;
+          const srcType = isCsv ? 2 : 1; // 1=xpath（XML），2=csv
           const eo = genValue(k, rng);
           const failed = rng() < failRate;
           const ao = failed ? mutateValue(eo, k, rng) : eo;
@@ -325,23 +351,39 @@ import path from 'node:path';
           const eoConverted = rng() < convProb;
           const eoUnconverted = eoConverted ? genUnconverted(eo, k) : null;
           const conversionRule = eoConverted ? { ctx: pickCtx(convPool, rng), value: convRuleFor(k, rng) } : null;
+          // AO 侧值转换规则（cvtRight 样例数据）。
+          const aoConverted = rng() < 0.4;
+          const aoConversionRule = aoConverted ? { ctx: pickCtx(convPool, rng), value: convRuleFor(k, rng) } : null;
           const validationRule = rng() < 0.75 ? { ctx: pickCtx(valPool, rng), value: valRuleFor(k, rng) } : null;
           const isExcelSample = tradeId === 'T-20240814-1001' && ch.name === 'HKTR' && idx === 0;
-          const excelMapping = genExcelMapping(isCsv ? aoCsv : x, ctx, isExcelSample);
+          const excelMapping = genExcelMapping(el, ctx, isExcelSample);
           const excelConversionRule = genExcelRuleText(conversionRule ? conversionRule.value : null, ctx, isExcelSample);
           const excelValidationRule = genExcelRuleText(validationRule ? validationRule.value : null, ctx, isExcelSample);
-          const extraResults = [];
-          if (eoConverted && eoUnconverted != null) extraResults.push({ label: '期望值 (EO, Unconverted)', value: eoUnconverted });
+          // EO 侧元素与映射：EO 来源为 CSV，列名由字段派生（供「EO 字段映射规则」左栏展示）。
+          const eoCol = 'src_' + f;
+          const eoMapping = genExcelMapping(eoCol, ctx, isExcelSample);
+          const resultDetails = [];
+          if (eoConverted && eoUnconverted != null) resultDetails.push({ label: '期望值 (EO, Unconverted)', value: eoUnconverted });
+
+          // 各侧 CtxKey 分组：映射（type1）/ 转换（type2）/ 校验（type3）。
+          const mapCtxs = ctx.filter(function (c) { return c.indexOf('.conv.') === -1 && c.indexOf('.val.') === -1; });
+          const convCtxs = conversionRule ? conversionRule.ctx : [];
+          const aoConvCtxs = aoConversionRule ? aoConversionRule.ctx : [];
+          const valCtxs = validationRule ? validationRule.ctx : [];
+
           return {
-            id: ch.name + '-' + sn + '-' + idx,
-            f: f, x: x, aoCsv: aoCsv, t: t, k: k, ctx: ctx,
-            eo: eo, ao: ao,
-            result: result, note: note, resultNote: resultNote,
-            eoConverted: eoConverted, eoUnconverted: eoUnconverted,
-            extraResults: extraResults,
-            conversionRule: conversionRule, validationRule: validationRule,
-            excelMapping: excelMapping, excelConversionRule: excelConversionRule, excelValidationRule: excelValidationRule,
-            prints: buildPrints(f, isCsv ? aoCsv : x, ctx, ch.name, '来源渠道 ' + (sn === 1 ? 'A' : 'B'), eo, ao, result, note, isCsv ? 'CSV字段' : 'XPath'),
+            id: nameToId[f],
+            ctxs: ctx,
+            cmpLeft: { value: eo, ctx: mapCtxs[0] || null, ctxs: mapCtxs, elRaw: eoMapping, el: eoCol, srcType: 2 },
+            cmpRight: { value: ao, ctx: mapCtxs[0] || null, ctxs: mapCtxs, elRaw: excelMapping, el: el, srcType: srcType },
+            cvtLeft: conversionRule ? { ctx: convCtxs[0] || null, ctxs: convCtxs, el: conversionRule.value, elRaw: excelConversionRule, raw: eoUnconverted } : null,
+            cvtRight: aoConversionRule ? { ctx: aoConvCtxs[0] || null, ctxs: aoConvCtxs, el: aoConversionRule.value, elRaw: genExcelRuleText(aoConversionRule.value, ctx, isExcelSample), raw: null } : null,
+            vdt: validationRule ? { ctx: valCtxs[0] || null, ctxs: valCtxs, el: validationRule.value, elRaw: excelValidationRule } : null,
+            result: result,
+            remarks: note,
+            resultText: resultNote,
+            resultDetails: resultDetails,
+            prints: buildPrints(f, el, ctx, ch.name, '来源渠道 ' + (sn === 1 ? 'A' : 'B'), eo, ao, result, note, isCsv ? 'CSV字段' : 'XPath'),
           };
         });
         return { name: '来源渠道 ' + (sn === 1 ? 'A' : 'B'), fields: fields };
@@ -353,23 +395,20 @@ import path from 'node:path';
       const aoNameA = ch.name.toUpperCase() + '_' + tradeId + '_001' + aoExt;
       const aoNameB = ch.name.toUpperCase() + '_' + tradeId + '_002' + aoExt;
       const files = {
-        eo: [
-          { name: eoNameA, path: 'data/eo/' + eoNameA },
-          { name: eoNameB, path: 'data/eo/' + eoNameB },
-        ],
-        ao: [
-          { name: aoNameA, path: 'data/ao/' + aoNameA },
-          { name: aoNameB, path: 'data/ao/' + aoNameB },
-        ],
+        eo: sourceCount === 1
+          ? [{ name: eoNameA, path: 'data/eo/' + eoNameA }]
+          : [{ name: eoNameA, path: 'data/eo/' + eoNameA }, { name: eoNameB, path: 'data/eo/' + eoNameB }],
+        ao: sourceCount === 1
+          ? [{ name: aoNameA, path: 'data/ao/' + aoNameA }]
+          : [{ name: aoNameA, path: 'data/ao/' + aoNameA }, { name: aoNameB, path: 'data/ao/' + aoNameB }],
         excel: { file: 'mapping.xlsx', sheet: ch.name, path: 'data/excel/mapping.xlsx' },
       };
 
       return {
-        name: ch.name, desc: ch.desc, format: ch.format, files: files, sources: sources,
-        warnings: buildMessages('warning', rng, ch.name, fieldsDef, platform, product),
-        errors: buildMessages('error', rng, ch.name, fieldsDef, platform, product),
-        uncompared: isCsv ? [] : buildChannelUncompared(ch.name, rng, fieldsDef, platform, product),
-        uncomparedCsv: isCsv ? buildChannelUncomparedCsv(ch.name, rng, fieldsDef, platform, product) : [],
+        channel: { name: ch.name, desc: ch.desc, format: ch.format, files: files, sources: sources },
+        warnings: buildMessages('warning', rng, ch.name, fieldsDef),
+        errors: buildMessages('error', rng, ch.name, fieldsDef),
+        uncompared: buildUncompared(ch.name, rng, fieldsDef, isCsv ? 2 : 1),
         logs: buildChannelLogs({ name: ch.name, files: files }, tradeId),
       };
     }
@@ -391,17 +430,22 @@ import path from 'node:path';
       return list;
     }
 
-    function buildOverviewLogs(tradeId, reportDate, channels) {
+    // item 级 logs：对象式 { scope, channel, source, text }。
+    //   - overview（开始/加载/初始化/完成）→ scope=item
+    //   - 逐渠道执行步骤与各渠道日志 → scope=channel
+    function buildOverviewLogs(tradeId, reportDate, channels, channelLogs) {
       const lines = [];
-      lines.push('2024-08-14 10:23:00.100 INFO  开始比较 item=' + tradeId + '，报告日期=' + reportDate);
-      lines.push('2024-08-14 10:23:00.120 INFO  加载映射配置 mapping.xlsx（' + channels.length + ' 个报告渠道）');
-      lines.push('2024-08-14 10:23:00.140 INFO  初始化逐渠道执行器（HKTR / JSFA / CFTC）');
+      lines.push({ scope: 'item', channel: null, source: null, text: '2024-08-14 10:23:00.100 INFO  开始比较 item=' + tradeId + '，报告日期=' + reportDate });
+      lines.push({ scope: 'item', channel: null, source: null, text: '2024-08-14 10:23:00.120 INFO  加载映射配置 mapping.xlsx（' + channels.length + ' 个报告渠道）' });
+      lines.push({ scope: 'item', channel: null, source: null, text: '2024-08-14 10:23:00.140 INFO  初始化逐渠道执行器（HKTR / JSFA / CFTC）' });
       for (let i = 0; i < 60; i++) {
         const ms = String(100 + i * 7).padStart(3, '0').slice(-3);
         const ch = channels[i % channels.length];
-        lines.push('2024-08-14 10:23:' + String(i).padStart(2, '0') + '.' + ms + ' INFO  [' + ch.name + '] 执行字段比较步骤 ' + (i + 1) + '：读取 ' + fileEntryName(ch.files.eo[0]) + ' 与 ' + fileEntryName(ch.files.ao[0]) + '，逐字段校验映射关系。');
+        lines.push({ scope: 'channel', channel: ch.name, source: null, text: '2024-08-14 10:23:' + String(i).padStart(2, '0') + '.' + ms + ' INFO  [' + ch.name + '] 执行字段比较步骤 ' + (i + 1) + '：读取 ' + fileEntryName(ch.files.eo[0]) + ' 与 ' + fileEntryName(ch.files.ao[0]) + '，逐字段校验映射关系。' });
       }
-      lines.push('2024-08-14 10:24:00.000 INFO  比较完成，结果已生成');
+      lines.push({ scope: 'item', channel: null, source: null, text: '2024-08-14 10:24:00.000 INFO  比较完成，结果已生成' });
+      // 追加各渠道自身的日志（scope=channel）
+      channelLogs.forEach(function (l) { lines.push(l); });
       return lines;
     }
 
@@ -442,7 +486,27 @@ import path from 'node:path';
         const subProducts = PRODUCT_CATEGORIES[productCategory].sub;
         const product = subProducts[Math.floor(rng() * subProducts.length)];
         const counterpartyItemId = (Math.floor(i / 2) === 5) ? '' : (i % 2 === 0 ? 'T-20240814-' + String(1002 + i) : 'T-20240814-' + String(1000 + i));
-        const channels = CHANNELS.map(ch => buildChannelData(ch, tradeId, reportDate, rng, failRate, platform, product));
+
+        // 字段注册表按 item 构建（每个 item 可有不同的字段定义）。
+        const fr = buildFieldRegistry(i);
+        // 最后一个 item 仅含 1 个来源渠道（演示单一来源渠道场景）。
+        const sourceCount = i === 17 ? 1 : 2;
+
+        const channels = [];
+        const warnings = [];
+        const errors = [];
+        const uncompared = [];
+        const channelLogs = [];
+        CHANNELS.forEach(function (ch) {
+          const fieldsDef = fieldDefsForItem(i, ch);
+          const built = buildChannelData(ch, tradeId, reportDate, rng, failRate, fr.nameToId, fieldsDef, sourceCount);
+          channels.push(built.channel);
+          warnings.push.apply(warnings, built.warnings);
+          errors.push.apply(errors, built.errors);
+          uncompared.push.apply(uncompared, built.uncompared);
+          channelLogs.push.apply(channelLogs, built.logs);
+        });
+
         items.push({
           tradeId: tradeId,
           reportDate: reportDate,
@@ -454,10 +518,14 @@ import path from 'node:path';
           platformTradeId: 'PT-' + tradeId.slice(2),
           platformDealId: 'PD-' + tradeId.slice(2),
           ctxDefs: buildCtxDefs(i),
+          fields: fr.registry.slice(),
           channels: channels,
           enabledChannels: (i % 3 === 0) ? ['HKTR', 'JSFA', 'CFTC'] : (i % 3 === 1 ? ['HKTR', 'JSFA'] : ['HKTR', 'CFTC']),
           skippedItems: buildSkippedItems(reportDate, rng),
-          overviewLogs: buildOverviewLogs(tradeId, reportDate, channels),
+          warnings: warnings,
+          errors: errors,
+          uncompared: uncompared,
+          logs: buildOverviewLogs(tradeId, reportDate, channels, channelLogs),
         });
       }
       return { mode: 'single', items: items, reportEnv: 'OTCXXX' };
@@ -480,10 +548,10 @@ import path from 'node:path';
           });
         });
       });
-      const warnings = (item.channels || []).reduce(function (n, c) { return n + (c.warnings || []).length; }, 0);
-      const errors = (item.channels || []).reduce(function (n, c) { return n + (c.errors || []).length; }, 0);
-      const uncompared = (item.channels || []).reduce(function (n, c) { return n + (c.uncompared || []).length; }, 0);
-      const logs = (item.overviewLogs || []).length + (item.channels || []).reduce(function (n, c) { return n + (c.logs || []).length; }, 0);
+      const warnings = (item.warnings || []).length;
+      const errors = (item.errors || []).length;
+      const uncompared = (item.uncompared || []).length;
+      const logs = (item.logs || []).length;
       return {
         total: total, passed: passed, failed: failed,
         rate: total ? Math.round(passed / total * 100) : 0,
@@ -519,4 +587,4 @@ import path from 'node:path';
       return manifest;
     }
 
-    export { buildDataset, buildCtxDefs, splitToFiles, itemStats };
+    export { buildDataset, splitToFiles };

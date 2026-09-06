@@ -29,14 +29,14 @@ test('groupedToFlat 生成警告与 XPath 的扁平 key', () => {
       uncomparedXpaths: [{ xpath: '/HKTR/foo', channel: 'HKTR', product: 'IRS', ctx: 'h.ctx' }],
     },
   });
-  assert.ok(flat[JSON.stringify(['warn', 'HKTR', 'notional', 'platformAssertion', 'WARN', 'OTC-PLATFORM-A', 'IRS'])]);
+  assert.ok(flat[JSON.stringify(['warn', 'OTC-PLATFORM-A', 'HKTR', '', 'field', 'platformAssertion', 'WARN', 'notional'])]);
   assert.ok(flat[JSON.stringify(['xpath', '/HKTR/foo', 'HKTR', 'OTC-PLATFORM-A', 'IRS', 'h.ctx'])]);
 });
 
 test('msgIgnoreKey / msgIsIgnored', () => {
-  const msg = { channel: 'HKTR', field: 'notional', type: 'platformAssertion', level: 'WARN', platform: 'OTC-PLATFORM-A', product: 'IRS' };
+  const msg = { channel: 'HKTR', source: '来源渠道 A', scope: 'field', field: 'notional', type: 'platformAssertion', level: 'WARN', platform: 'OTC-PLATFORM-A', product: 'IRS' };
   const key = app.msgIgnoreKey('warnings', msg);
-  assert.equal(key, JSON.stringify(['warn', 'HKTR', 'notional', 'platformAssertion', 'WARN', 'OTC-PLATFORM-A', 'IRS']));
+  assert.equal(key, JSON.stringify(['warn', 'OTC-PLATFORM-A', 'HKTR', '来源渠道 A', 'field', 'platformAssertion', 'WARN', 'notional']));
   T.setIgnoreConfig({});
   assert.equal(app.msgIsIgnored('warnings', msg), false);
   T.setIgnoreConfig({ [key]: true });
@@ -104,7 +104,7 @@ test('ctx type 数组：包含判断与多类型归类', () => {
   assert.deepEqual(app.ctxTypes('a.ctx.legacy'), [1], '旧数据单值 number 归一化为数组');
   assert.deepEqual(app.ctxTypes('a.ctx.bad'), [], '非法 type 归一化为空数组');
 
-  const field = { ctx: ['a.ctx.shared', 'a.ctx.conv', 'a.ctx.legacy'] };
+  const field = { ctxs: ['a.ctx.shared', 'a.ctx.conv', 'a.ctx.legacy'] };
   assert.deepEqual(app.ctxKeysOfType(field, 1), ['a.ctx.shared', 'a.ctx.legacy']);
   assert.deepEqual(app.ctxKeysOfType(field, 2), ['a.ctx.conv']);
   assert.deepEqual(app.ctxKeysOfType(field, 3), ['a.ctx.shared']);

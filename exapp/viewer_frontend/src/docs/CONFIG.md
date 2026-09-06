@@ -96,7 +96,7 @@ REPORT_VIEWER_CONFIG=prod node server.js
 ## 6. `features`（19 项，布尔）
 
 `uncomparedXpath` / `uncomparedCsv` / `uncomparedItems` / `logs` /
-`conversionRule` / `validationRule` / `excelMapping` / `excelConversionRule` / `excelValidationRule` /
+`conversionRule` / `validationRule` / `excelMapping` / `sourceFilter` / `modalRules` /
 `columnHover` / `sidebarSearch` / `sidebarTradeId` / `compare` /
 `healthOverview` / `globalSearch` / `keyboardShortcuts` / `modalPrints` / `recentBatches` /
 `batchHelp`（docker 帮助图标入口）

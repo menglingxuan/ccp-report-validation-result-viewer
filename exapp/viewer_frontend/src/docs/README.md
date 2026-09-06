@@ -12,7 +12,7 @@
 - **单文件 / 多文件数据模式**：
   - 单文件：一个 `report-validation-data.json` 包含全部 item。
   - 多文件：`report-validation-data.json` 为清单（manifest），每个 item 一个独立文件，支持**动态加载**、跨文件**搜索/筛选/统计**。
-  - 所有近期功能（typed Ctx 标签/弹框、批次删除/收藏、新增徽章、可配置默认数据源、空数据占位等）均同时适配单文件与多文件模式。
+  - 所有近期功能（typed Ctx 标签/弹框、批次删除/收藏、新增徽章、可配置默认数据源、空数据占位、来源渠道筛选、字段详情左右导航与规则折叠等）均同时适配单文件与多文件模式。
 - **每个 item 独立 ctx 定义**：`def` / `hits` / `type` 内联到每个 item（`item.ctxDefs`），不再全局共享。
   - `type` 为**数组**：`[1]` 字段映射规则 / `[2]` 值转换规则 / `[3]` 终值校验规则；同一 ctx key 可配置在多种规则中（兼容旧数据的单值整数）。
   - 主列表「命中Ctx」列展示所有 type 的 CtxKey，统一使用主题配色标签（不再按 type 多色着色）；字段详情页各规则 section 通过 `type` 是否包含对应值来归类 CtxKey。
@@ -42,7 +42,7 @@
 - **纯函数核心拆分**：`public/core.js` 承载无副作用纯函数（搜索/排序/过滤/差异 diff/忽略 key/健康统计/全局搜索），主线程与 Worker 共用，并由 Node 测试直接导入回归。
 - **深链接增强**：URL hash 除 `item/ch/tab/q/result/page` 外，新增 `sort`、`cols`（列可见性）、`filters`（列过滤器 JSON），可完整还原视图状态。
 - **键盘导航**：字段表与消息表行可聚焦（↑/↓ 移动、`Enter` 打开字段详情、`Space` 切换忽略）。
-- **数据校验**：`lib/validate.js` 校验数据文件顶层结构（单文件/多文件），服务启动时对默认数据文件告警。
+- **数据校验**：`lib/validate.js` 校验数据文件结构（顶层 / ctxDefs / 字段注册表 / 比较字段；可选规则对象 `cvtLeft`·`cvtRight`·`vdt` 允许为 `null`），服务启动时对默认数据文件告警。
 - **独立打包部署**：`npm pack` / `npx report-viewer` 即可运行。
 
 ## 环境要求
@@ -122,7 +122,8 @@ src/
 │   ├── batches-index.json                     # 批次索引（扫描输出）
 │   └── batches/               # 批次目录（扫描 basedir）
 ├── tools/
-│   └── generate-sample-data.js
+│   ├── generate-sample-data.js
+│   └── migrate-legacy-data.js   # 旧数据格式 -> 新数据格式迁移
 ├── test/
 │   ├── pure-logic.test.js     # 纯函数回归测试
 │   ├── scanner.test.js        # 扫描器测试
@@ -156,6 +157,7 @@ src/
 ```bash
 node tools/generate-sample-data.js            # 单文件模式
 node tools/generate-sample-data.js --split    # 多文件模式（清单 + data/items/*.json）
+node tools/migrate-legacy-data.js <旧文件>     # 旧数据格式迁移为新格式（原地或指定输出）
 ```
 
 ## License

@@ -7,7 +7,10 @@
 //   GET  /                 查看器首页（public/index.html）
 //   GET  /config.json      统一配置（供浏览器读取）
 //   POST /scan             触发一次完整批次扫描（GET 亦可用，便于浏览器直连）
+//   GET  /scan/progress    扫描进度（SSE）
 //   GET  /status | /health 服务状态与当前配置
+//   GET|POST /api/favorites 收藏夹读写
+//   POST /api/batch         批次软删除 / 收藏
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';

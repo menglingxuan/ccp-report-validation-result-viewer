@@ -61,6 +61,20 @@ export function validateDataset(json) {
     if (item.enabledChannels !== undefined && !Array.isArray(item.enabledChannels)) {
       errors.push(label + ' enabledChannels 必须是数组');
     }
+    if (item.fields !== undefined && !Array.isArray(item.fields)) {
+      errors.push(label + ' fields 必须是数组');
+    } else if (Array.isArray(item.fields)) {
+      item.fields.forEach(function (d, di) {
+        if (!d || typeof d !== 'object') { errors.push(label + '.fields[' + di + '] 必须是对象'); return; }
+        if (typeof d.id !== 'string' || !/^\d+$/.test(d.id)) errors.push(label + '.fields[' + di + '] 缺少数字字符串 id');
+        if (typeof d.name !== 'string') errors.push(label + '.fields[' + di + '] 缺少 name');
+        if (typeof d.userTag !== 'string') errors.push(label + '.fields[' + di + '] 缺少 userTag');
+        if (typeof d.type !== 'string') errors.push(label + '.fields[' + di + '] 缺少 type');
+      });
+    }
+    ['warnings', 'errors', 'uncompared', 'logs'].forEach(function (k) {
+      if (item[k] !== undefined && !Array.isArray(item[k])) errors.push(label + ' ' + k + ' 必须是数组');
+    });
     item.channels.forEach(function (ch, ci) {
       const clabel = label + '.channels[' + ci + ']';
       if (!ch || typeof ch !== 'object') {
@@ -69,6 +83,24 @@ export function validateDataset(json) {
       }
       if (typeof ch.name !== 'string' || !ch.name) errors.push(clabel + ' 缺少 name');
       if (!Array.isArray(ch.sources)) errors.push(clabel + ' 缺少 sources 数组');
+      if (Array.isArray(ch.sources)) {
+        ch.sources.forEach(function (s, si) {
+          const slabel = clabel + '.sources[' + si + ']';
+          if (!s || typeof s !== 'object') { errors.push(slabel + ' 必须是对象'); return; }
+          if (!Array.isArray(s.fields)) { errors.push(slabel + ' 缺少 fields 数组'); return; }
+          s.fields.forEach(function (f, fi) {
+            const flabel = slabel + '.fields[' + fi + ']';
+            if (!f || typeof f !== 'object') { errors.push(flabel + ' 必须是对象'); return; }
+            if (typeof f.id !== 'string' || !/^\d+$/.test(f.id)) errors.push(flabel + ' 缺少数字字符串 id');
+            // cvtLeft / cvtRight / vdt 为可选配置，允许为 null。
+            ['cvtLeft', 'cvtRight', 'vdt'].forEach(function (rk) {
+              if (f[rk] !== undefined && f[rk] !== null && (typeof f[rk] !== 'object' || Array.isArray(f[rk]))) {
+                errors.push(flabel + ' ' + rk + ' 必须为对象或 null');
+              }
+            });
+          });
+        });
+      }
     });
   });
 

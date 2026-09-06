@@ -38,6 +38,8 @@
     "logs": true,
     "conversionRule": true,
     "validationRule": true,
+    "sourceFilter": true,
+    "modalRules": true,
     "compare": true,
     "healthOverview": true,
     "globalSearch": true,

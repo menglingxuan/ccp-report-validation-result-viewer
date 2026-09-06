@@ -79,10 +79,13 @@
 | `platform` / `product` / `productCategory` | 字符串 | 平台 / 产品 / 产品类别 |
 | `counterpartyItemId` / `platformTradeId` / `platformDealId` | 字符串\|空 | 对手方 / 平台标识 |
 | `ctxDefs` | 对象 | **命中上下文定义（每个 item 独立）** |
-| `enabledChannels` | 字符串数组 | 启用渠道名 |
+| `fields` | 数组 | **字段定义注册表（按字段名去重）** |
 | `channels` | 数组 | 各渠道比较结果 |
+| `enabledChannels` | 字符串数组 | 启用渠道名 |
 | `skippedItems` | 数组 | 未比较 item 记录 |
-| `overviewLogs` | 字符串数组 | 汇总日志 |
+| `warnings` / `errors` | 数组 | item 级警告 / 错误（含 scope / source；source 可能为空） |
+| `uncompared` | 数组 | item 级未比较条目（合并 XPath 与 CSV，含 type） |
+| `logs` | 数组 | item 级日志（对象式 `{scope, channel, source, text}`） |
 
 ### `item.ctxDefs`
 
@@ -100,10 +103,24 @@
 | `def` | 字符串 | 上下文定义 |
 | `hits` | 字符串 | 命中说明 |
 
-> 说明：`ctxDefs` 已从顶层迁移到 **每个 item 内部**（每个 item 的 def/hits 定义并不相同），
-> 并为每个 CtxKey 增加 `type` 字段（数组）。主列表「命中Ctx」列展示所有 CtxKey（统一主题配色标签）；
-> 字段详情页各规则 section 通过判断 `type` 是否包含对应值来归类 CtxKey；
-> 点击 Ctx 标签弹出的命中详情会展示该 CtxKey 的**全部 type** 徽章。
+### `item.fields`（字段定义注册表）
+
+```json
+"fields": [
+  { "id": "1", "name": "tradeId", "userTag": "contextAssertion", "type": "id" },
+  { "id": "4", "name": "notional", "userTag": "productAssertion", "type": "num" }
+]
+```
+
+| 键 | 类型 | 说明 |
+|---|---|---|
+| `id` | 数字字符串 | 字段标识（如 `"1"`、`"2"`…，按字段名去重后按出现顺序编号，用于关联比较字段） |
+| `name` | 字符串 | 字段名（原 `f`） |
+| `userTag` | 字符串 | 断言类型（原 `t`：platformAssertion / productAssertion / contextAssertion） |
+| `type` | 字符串 | 值类型（原 `k`：id/num/date/code/product/text/multi） |
+
+> 说明：`fields` 按 id（数字字符串）去重，且属于 item（每个 item 可有不同的字段定义）；同一字段名在多个渠道/来源中共享同一定义与同一个数字字符串 `id`。
+> 比较字段通过 `id` 关联注册表，查看器用 (channel, source, id) 三元组唯一定位某个比较字段。
 
 ## 空占位数据（`report-validation-data-init.json`）
 
@@ -123,27 +140,26 @@
 | `desc` | 字符串 | 渠道描述 |
 | `format` | 字符串 | `xml` 或 `csv` |
 | `files` | 对象 | 输入/配置文件（`eo` / `ao` / `excel`） |
-| `sources` | 数组 | 来源渠道（A/B） |
-| `warnings` / `errors` | 数组 | 警告 / 错误消息 |
-| `uncompared` / `uncomparedCsv` | 数组 | 未比较 XPath / CSV 字段 |
-| `logs` | 字符串数组 | 渠道日志 |
+| `sources` | 数组 | 来源渠道（A/B），其 `fields[]` 为比较结果 |
 
 ## 5. field（`channel.sources[].fields[]`）
 
 | 键 | 类型 | 说明 |
 |---|---|---|
-| `id` / `f` / `x` / `aoCsv` | 字符串 | 字段标识 / 报告字段名 / XPath / CSV 字段 |
-| `t` | 字符串 | 断言类型（platformAssertion / productAssertion / contextAssertion） |
-| `k` | 字符串 | 值类型（num/date/id/code/text/product/multi…） |
-| `ctx` | 字符串数组 | 命中上下文 |
-| `eo` / `ao` | 字符串 | 期望值 / 实际值 |
+| `id` | 数字字符串 | 关联 `item.fields` 的字段标识 |
+| `ctxs` | 字符串数组 | 命中上下文（原 `ctx`） |
+| `cmpLeft` | 对象 | 左侧（EO/来源）：`{ value, ctx, ctxs, elRaw, el, srcType }`；`el` 为 EO 来源元素（CSV 列），`elRaw` 为 EO 字段映射原始配置 |
+| `cmpRight` | 对象 | 右侧（AO/报送）：`{ value, ctx, ctxs, elRaw, el, srcType }`；`el` 即原 `x`（srcType=1）或 `aoCsv`（srcType=2），`elRaw` 即原 `excelMapping` |
+| `cvtLeft` | 对象\|null | EO 值转换规则：`{ ctx, ctxs, el, elRaw, raw }`；`el` 即原 `conversionRule.value`，`ctxs` 即原 `conversionRule.ctx`，`elRaw` 即原 `excelConversionRule`，`raw` 即原 `eoUnconverted`；未配置时为 `null` |
+| `cvtRight` | 对象\|null | AO 值转换规则（结构同 `cvtLeft`）；未配置时为 `null` |
+| `vdt` | 对象\|null | AO 终值校验规则：`{ ctx, ctxs, el, elRaw }`；`el` 即原 `validationRule.value`，`ctxs` 即原 `validationRule.ctx`，`elRaw` 即原 `excelValidationRule`；未配置时为 `null` |
 | `result` | 字符串 | `PASSED` 或 `FAILED` |
-| `note` / `resultNote` | 字符串 | 说明 / 结果说明 |
-| `eoConverted` / `eoUnconverted` | 布尔 / 字符串\|null | EO 转换标记与原始值 |
-| `extraResults` | 数组 | 额外结果 `[{label, value}]` |
-| `conversionRule` / `validationRule` | 对象\|null | 转换 / 校验规则 `{ctx, value}` |
-| `excelMapping` / `excelConversionRule` / `excelValidationRule` | 字符串 | Excel 配置文本 |
+| `remarks` | 字符串 | 说明（原 `note`） |
+| `resultText` | 字符串 | 结果说明（原 `resultNote`） |
+| `resultDetails` | 数组 | 额外结果 `[{label, value}]`（原 `extraResults`） |
 | `prints` | 字符串数组 | 相关打印信息 |
+
+> 已移除字段：`eoConverted`（不再需要）。`f` / `t` / `k` 迁移到 `item.fields`；`x` / `aoCsv` / `ctx` / `eo` / `ao` / `eoUnconverted` / `conversionRule` / `validationRule` / `excelMapping` / `excelConversionRule` / `excelValidationRule` 迁移到上述对象。
 
 ## 6. 批次元数据（`batch-meta.json`）与索引（`batches-index.json`）
 
@@ -152,4 +168,4 @@
 - 优先读取 `batch-meta.json` 的 `reportEnv` / `dataUrl` / `summary`。
 - 否则回退到数据文件（单文件或多文件清单）的顶层 `reportEnv`，item 数量取 `items.length`。
 
-索引 `batches-index.json` 的 `batches[]` 除原有字段外，增加 `dataMode`（`"single"` / `"multi"`），供查看器按需加载。
+索引 `batches-index.json` 的 `batches[]` 除原有字段外，增加 `dataMode`（`"single"` / `"multi"`），供查看器按需加载。旧格式数据可用 `node tools/migrate-legacy-data.js <文件>` 迁移。

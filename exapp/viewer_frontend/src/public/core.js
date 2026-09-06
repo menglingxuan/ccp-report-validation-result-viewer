@@ -3,7 +3,7 @@
  * 所有函数均为纯计算：相同输入 -> 相同输出，不读写全局状态。
  * ============================================================ */
 
-export const SEARCH_KEYS = { field: 'f', xpath: 'x', csv: 'aoCsv', eo: 'eo', ao: 'ao', ctx: 'ctx', desc: 'note' };
+const SEARCH_KEYS = { field: 'f', xpath: 'x', csv: 'aoCsv', eo: 'eo', ao: 'ao', ctx: 'ctx', desc: 'note' };
 
 export function parseSearchQuery(q) {
   let s = (q || '').trim();
@@ -19,13 +19,13 @@ export function parseSearchQuery(q) {
   return { key: key, regex: regex, text: s.trim() };
 }
 
-export function searchValue(obj, key) {
+function searchValue(obj, key) {
   const v = obj[key];
   if (key === 'ctx') return (v || []).join(' ');
   return String(v == null ? '' : v);
 }
 
-export function fieldHay(r) {
+function fieldHay(r) {
   return r.f + ' ' + r.x + ' ' + r.aoCsv + ' ' + r.eo + ' ' + r.ao + ' ' + (r.note || '') + ' ' + (r.ctx || []).join(' ');
 }
 
@@ -69,14 +69,22 @@ export function sortValue(r, key) {
 }
 
 export function flatFields(item) {
+  const defs = {};
+  (item.fields || []).forEach(function (d) { defs[d.id] = d; });
   const rows = [];
   item.channels.forEach(ch => {
     ch.sources.forEach(s => {
-      s.fields.forEach(f => rows.push({
-        channel: ch.name, source: s.name,
-        id: f.id, f: f.f, x: f.x, aoCsv: f.aoCsv, t: f.t, k: f.k, ctx: f.ctx,
-        eo: f.eo, ao: f.ao, result: f.result, note: f.note, prints: f.prints,
-      }));
+      s.fields.forEach(f => {
+        const def = defs[f.id] || {};
+        const right = f.cmpRight || {};
+        const left = f.cmpLeft || {};
+        rows.push({
+          channel: ch.name, source: s.name,
+          id: f.id, f: def.name, x: right.srcType === 1 ? (right.el || '') : '', aoCsv: right.srcType === 2 ? (right.el || '') : '',
+          t: def.userTag, k: def.type, ctx: f.ctxs,
+          eo: left.value, ao: right.value, result: f.result, note: f.remarks, prints: f.prints,
+        });
+      });
     });
   });
   return rows;
@@ -89,7 +97,7 @@ export function groupedToFlat(grouped) {
     const g = grouped[platform];
     if (!g || typeof g !== 'object') return;
     (g.warnings || []).forEach(function (w) {
-      const key = JSON.stringify(['warn', w.channel || '', w.field || '', w.type || '', w.level || '', platform, w.product || '']);
+      const key = JSON.stringify(['warn', platform, w.channel || '', w.source || '', w.scope || (w.field ? 'field' : 'channel'), w.type || '', w.level || '', w.field || '']);
       flat[key] = true;
     });
     (g.uncomparedXpaths || []).forEach(function (u) {
@@ -110,13 +118,15 @@ export function normalizeIgnoreConfig(cfg) {
 }
 
 export function msgIgnoreKey(tab, m) {
-  if (tab === 'warnings') return JSON.stringify(['warn', m.channel, m.field || '', m.type, m.level, m.platform || '', m.product || '']);
-  if (tab === 'uncompared') return JSON.stringify(['xpath', m.xpath, m.channel, m.platform || '', m.product || '', m.ctx || '']);
-  if (tab === 'uncomparedCsv') return JSON.stringify(['csv', m.csvField, m.channel, m.platform || '', m.product || '', m.ctx || '']);
+  if (tab === 'warnings') return JSON.stringify(['warn', m.platform || '', m.channel || '', m.source || '', m.scope || '', m.type, m.level, m.field || '']);
+  if (tab === 'uncompared') {
+    const isCsv = m.type === 2;
+    return JSON.stringify([isCsv ? 'csv' : 'xpath', m.value || '', m.channel, m.platform || '', m.product || '', '']);
+  }
   return null;
 }
 
-export function msgIsIgnoredPure(tab, m, ignoreConfig) {
+function msgIsIgnoredPure(tab, m, ignoreConfig) {
   const k = msgIgnoreKey(tab, m);
   return k ? !!(ignoreConfig && ignoreConfig[k]) : false;
 }
@@ -167,8 +177,16 @@ export function computeHealthPure(items, date, channel, ignoreConfig) {
     it.channels.forEach(function (ch) {
       if (channel && channel !== 'ALL' && ch.name !== channel) return;
       ch.sources.forEach(function (s) { s.fields.forEach(function (fd) { pTotal++; fd.result === 'PASSED' ? pPassed++ : pFailed++; }); });
-      ch.errors.forEach(function (e) { pErr++; const k = (e.type || '?') + '|' + ch.name; errAgg[k] = (errAgg[k] || 0) + 1; });
-      ch.warnings.forEach(function (w) { if (!msgIsIgnoredPure('warnings', w, ignoreConfig)) { pWarn++; const k = (w.type || '?') + '|' + ch.name; warnAgg[k] = (warnAgg[k] || 0) + 1; } });
+    });
+    (it.errors || []).forEach(function (e) {
+      if (channel && channel !== 'ALL' && e.channel !== channel) return;
+      pErr++; const k = (e.type || '?') + '|' + e.channel; errAgg[k] = (errAgg[k] || 0) + 1;
+    });
+    (it.warnings || []).forEach(function (w) {
+      if (channel && channel !== 'ALL' && w.channel !== channel) return;
+      // platform/product 跟随 item：计算忽略 key 时从 item 注入。
+      const wm = Object.assign({}, w, { platform: it.platform, product: it.product });
+      if (!msgIsIgnoredPure('warnings', wm, ignoreConfig)) { pWarn++; const k = (w.type || '?') + '|' + w.channel; warnAgg[k] = (warnAgg[k] || 0) + 1; }
     });
     total += pTotal; passed += pPassed; failed += pFailed; warnings += pWarn; errors += pErr;
     return { id: it.tradeId, failed: pFailed, total: pTotal, rate: pTotal ? Math.round(pPassed / pTotal * 100) : 0, warnings: pWarn, errors: pErr };
@@ -185,15 +203,11 @@ export function globalSearchPure(items, q, limit) {
   if (!matcher) return results;
   items.forEach(function (it) {
     const enabled = Array.isArray(it.enabledChannels) ? it.enabledChannels : (it.channels || []).map(function (c) { return c.name; });
-    it.channels.forEach(function (ch) {
-      if (enabled.indexOf(ch.name) === -1) return;
-      ch.sources.forEach(function (s) {
-        s.fields.forEach(function (f) {
-          if (matchRow(f, pq, matcher)) {
-            results.push({ itemId: it.tradeId, channel: ch.name, source: s.name, fieldId: f.id, f: f.f, snippet: f.eo + ' → ' + f.ao });
-          }
-        });
-      });
+    flatFields(it).forEach(function (r) {
+      if (enabled.indexOf(r.channel) === -1) return;
+      if (matchRow(r, pq, matcher)) {
+        results.push({ itemId: it.tradeId, channel: r.channel, source: r.source, fieldId: r.id, f: r.f, snippet: r.eo + ' → ' + r.ao });
+      }
     });
   });
   return results.slice(0, limit || 200);
