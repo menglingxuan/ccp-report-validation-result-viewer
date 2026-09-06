@@ -27,4 +27,8 @@ public class BatchMeta {
     private Map<String, Object> summary;
     private String description;
     private String reportEnv;
+    /** Relative data-file path (single file or multi-file manifest). */
+    private String dataUrl;
+    /** {@code "single"} or {@code "multi"}. */
+    private String dataMode;
 }

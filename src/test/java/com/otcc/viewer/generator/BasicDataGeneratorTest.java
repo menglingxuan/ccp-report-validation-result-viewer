@@ -2,8 +2,8 @@ package com.otcc.viewer.generator;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.otcc.viewer.model.Channel;
-import com.otcc.viewer.model.CtxRule;
 import com.otcc.viewer.model.Field;
+import com.otcc.viewer.model.Source;
 import com.otcc.viewer.model.ValidationDataset;
 import com.otcc.viewer.model.ValidationItem;
 import org.junit.jupiter.api.Test;
@@ -11,7 +11,6 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -30,6 +29,7 @@ class BasicDataGeneratorTest {
     void generatesExactlyOneItemAndOneReportDate() {
         ValidationDataset ds = BasicDataGenerator.generate();
 
+        assertEquals("single", ds.getMode());
         assertNotNull(ds.getItems());
         assertEquals(1, ds.getItems().size());
 
@@ -51,11 +51,15 @@ class BasicDataGeneratorTest {
         assertFalse(item.getChannels().isEmpty(), "channels filled");
         assertEquals(3, item.getChannels().size(), "HKTR / JSFA / CFTC");
         assertFalse(item.getSkippedItems().isEmpty(), "skippedItems filled");
-        assertFalse(item.getOverviewLogs().isEmpty(), "overviewLogs filled");
+        assertFalse(item.getLogs().isEmpty(), "logs filled");
+        assertFalse(item.getWarnings().isEmpty(), "warnings filled");
+        assertFalse(item.getErrors().isEmpty(), "errors filled");
+        assertFalse(item.getUncompared().isEmpty(), "uncompared filled");
+        assertFalse(item.getFields().isEmpty(), "fields registry filled");
+        assertFalse(item.getCtxDefs().isEmpty(), "ctxDefs filled");
 
         for (Channel ch : item.getChannels()) {
             String label = "channel " + ch.getName();
-            boolean csv = "csv".equals(ch.getFormat());
 
             assertFalse(ch.getFiles().getEo().isEmpty(), label + " files.eo filled");
             assertFalse(ch.getFiles().getAo().isEmpty(), label + " files.ao filled");
@@ -64,45 +68,23 @@ class BasicDataGeneratorTest {
                     label + " files.excel.file filled");
             assertTrue(ch.getFiles().getExcel().getSheet() != null && !ch.getFiles().getExcel().getSheet().isBlank(),
                     label + " files.excel.sheet filled");
-            assertTrue(ch.getFiles().getExcel().getPath() != null && !ch.getFiles().getExcel().getPath().isBlank(),
-                    label + " files.excel.path filled");
 
             assertEquals(2, ch.getSources().size(), label + " sources A/B");
-            assertFalse(ch.getWarnings().isEmpty(), label + " warnings filled");
-            assertFalse(ch.getErrors().isEmpty(), label + " errors filled");
-            assertFalse(ch.getLogs().isEmpty(), label + " logs filled");
-
-            if (csv) {
-                assertFalse(ch.getUncomparedCsv().isEmpty(), label + " uncomparedCsv filled");
-                assertTrue(ch.getUncompared().isEmpty(), label + " uncompared empty for csv");
-            } else {
-                assertFalse(ch.getUncompared().isEmpty(), label + " uncompared filled");
-                assertTrue(ch.getUncomparedCsv().isEmpty(), label + " uncomparedCsv empty for xml");
-            }
-
-            for (var src : ch.getSources()) {
+            for (Source src : ch.getSources()) {
                 assertFalse(src.getFields().isEmpty(), label + " fields filled");
                 for (Field f : src.getFields()) {
-                    String fl = label + " field " + f.getF();
-                    assertTrue(Boolean.TRUE.equals(f.getEoConverted()), fl + " eoConverted true");
-                    assertTrue(f.getEoUnconverted() != null && !f.getEoUnconverted().isBlank(),
-                            fl + " eoUnconverted filled");
-                    assertFalse(f.getExtraResults().isEmpty(), fl + " extraResults filled");
-                    assertFalse(f.getCtx().isEmpty(), fl + " ctx filled");
+                    String fl = label + " field " + f.getId();
+                    assertFalse(f.getCtxs().isEmpty(), fl + " ctxs filled");
                     assertFalse(f.getPrints().isEmpty(), fl + " prints filled");
-                    assertRule(fl, f.getConversionRule());
-                    assertRule(fl, f.getValidationRule());
-                    assertTrue(f.getExcelMapping() != null && !f.getExcelMapping().isBlank(),
-                            fl + " excelMapping filled");
-                    assertTrue(f.getExcelConversionRule() != null && !f.getExcelConversionRule().isBlank(),
-                            fl + " excelConversionRule filled");
-                    assertTrue(f.getExcelValidationRule() != null && !f.getExcelValidationRule().isBlank(),
-                            fl + " excelValidationRule filled");
+                    assertNotNull(f.getCmpLeft(), fl + " cmpLeft present");
+                    assertNotNull(f.getCmpRight(), fl + " cmpRight present");
+                    assertNotNull(f.getCvtLeft(), fl + " cvtLeft present");
+                    assertNotNull(f.getCvtRight(), fl + " cvtRight present");
+                    assertNotNull(f.getVdt(), fl + " vdt present");
+                    assertFalse(f.getResultDetails().isEmpty(), fl + " resultDetails filled");
                 }
             }
         }
-
-        assertFalse(BasicDataGenerator.generate().getCtxDefs().isEmpty(), "ctxDefs filled");
     }
 
     @Test
@@ -124,11 +106,5 @@ class BasicDataGeneratorTest {
         assertEquals(BasicDataGenerator.REPORT_DATE,
                 root.path("items").get(0).path("reportDate").asText());
         assertEquals(3, root.path("items").get(0).path("channels").size());
-    }
-
-    private static void assertRule(String label, CtxRule rule) {
-        assertNotNull(rule, label + " rule present");
-        assertTrue(rule.getValue() != null && !rule.getValue().isBlank(), label + " rule.value filled");
-        assertFalse(rule.getCtx().isEmpty(), label + " rule.ctx filled");
     }
 }

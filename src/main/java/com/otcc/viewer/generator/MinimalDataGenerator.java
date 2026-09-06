@@ -6,8 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.otcc.viewer.model.Channel;
 import com.otcc.viewer.model.ChannelFiles;
+import com.otcc.viewer.model.CmpSide;
 import com.otcc.viewer.model.ExcelFile;
 import com.otcc.viewer.model.Field;
+import com.otcc.viewer.model.FieldDef;
 import com.otcc.viewer.model.Source;
 import com.otcc.viewer.model.ValidationDataset;
 import com.otcc.viewer.model.ValidationItem;
@@ -21,7 +23,7 @@ import java.util.List;
 
 /**
  * Standalone minimal-data generator: produces exactly one report date and one item,
- * written to {@code deepseek-validator-data-me.json}.
+ * written to {@code report-validation-data-minimal.json}.
  *
  * <p>Independent of {@link ValidationJsonGenerator}; only relies on the shared
  * {@code com.otcc.viewer.model} classes and Jackson.</p>
@@ -31,7 +33,7 @@ public final class MinimalDataGenerator {
     private MinimalDataGenerator() {
     }
 
-    public static final String FILE_NAME = "deepseek-validator-data-me.json";
+    public static final String FILE_NAME = "report-validation-data-minimal.json";
 
     /** The single fixed report date carried by the generated item. */
     public static final String REPORT_DATE = "2026-08-17";
@@ -49,19 +51,21 @@ public final class MinimalDataGenerator {
     /** Generates the minimal dataset for the given report date (or the default when {@code null}). */
     public static ValidationDataset generate(String reportDate) {
         String date = reportDate == null ? REPORT_DATE : reportDate;
+        String target = "/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId";
+
         Field field = Field.builder()
-                .id("HKTR-1-0")
-                .f("tradeId")
-                .x("/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId")
-                .aoCsv("")
-                .t("contextAssertion")
-                .k("id")
-                .ctx(List.of())
-                .eo("TX-ME-0001")
-                .ao("TX-ME-0001")
+                .id("1")
+                .ctxs(List.of())
+                .cmpLeft(CmpSide.builder()
+                        .value("TX-ME-0001").ctx(null).ctxs(List.of())
+                        .elRaw("").el("src_tradeId").srcType(2).build())
+                .cmpRight(CmpSide.builder()
+                        .value("TX-ME-0001").ctx(null).ctxs(List.of())
+                        .elRaw("").el(target).srcType(1).build())
                 .result("PASSED")
-                .note("")
-                .resultNote("比对通过")
+                .remarks("")
+                .resultText("比对通过")
+                .resultDetails(List.of())
                 .prints(List.of())
                 .build();
 
@@ -82,11 +86,6 @@ public final class MinimalDataGenerator {
                 .format("xml")
                 .files(files)
                 .sources(List.of(source))
-                .warnings(List.of())
-                .errors(List.of())
-                .uncompared(List.of())
-                .uncomparedCsv(List.of())
-                .logs(List.of())
                 .build();
 
         ValidationItem item = ValidationItem.builder()
@@ -100,14 +99,19 @@ public final class MinimalDataGenerator {
                 .platformTradeId("PT-ME-0001")
                 .platformDealId("PD-ME-0001")
                 .enabledChannels(List.of("HKTR"))
+                .ctxDefs(new LinkedHashMap<>())
+                .fields(List.of(FieldDef.builder().id("1").name("tradeId").userTag("contextAssertion").type("id").build()))
                 .channels(List.of(channel))
                 .skippedItems(List.of())
-                .overviewLogs(List.of())
+                .warnings(List.of())
+                .errors(List.of())
+                .uncompared(List.of())
+                .logs(List.of())
                 .build();
 
         return ValidationDataset.builder()
+                .mode("single")
                 .items(List.of(item))
-                .ctxDefs(new LinkedHashMap<>())
                 .reportEnv("OTCXXX")
                 .build();
     }

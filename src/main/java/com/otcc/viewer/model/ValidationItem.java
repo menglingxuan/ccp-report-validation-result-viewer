@@ -1,6 +1,7 @@
 package com.otcc.viewer.model;
 
 import java.util.List;
+import java.util.Map;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,7 +26,18 @@ public class ValidationItem {
     private String platformTradeId;
     private String platformDealId;
     private List<String> enabledChannels;
+    /** Per-item hit-context definitions ({@code item.ctxDefs}). */
+    private Map<String, CtxDef> ctxDefs;
+    /** Field definition registry ({@code item.fields}), deduplicated by name. */
+    private List<FieldDef> fields;
     private List<Channel> channels;
     private List<SkippedItem> skippedItems;
-    private List<String> overviewLogs;
+    /** Item-level warnings (aggregated from channels). */
+    private List<Message> warnings;
+    /** Item-level errors (aggregated from channels). */
+    private List<Message> errors;
+    /** Item-level uncompared entries (xpath + csv merged). */
+    private List<UncomparedEntry> uncompared;
+    /** Item-level logs, object form ({@code item.logs}). */
+    private List<ItemLog> logs;
 }

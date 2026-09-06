@@ -23,9 +23,4 @@ public class Channel {
     private String format;
     private ChannelFiles files;
     private List<Source> sources;
-    private List<Message> warnings;
-    private List<Message> errors;
-    private List<UncomparedEntry> uncompared;
-    private List<UncomparedEntry> uncomparedCsv;
-    private List<String> logs;
 }

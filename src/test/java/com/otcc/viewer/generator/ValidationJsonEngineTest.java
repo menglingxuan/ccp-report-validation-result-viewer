@@ -9,7 +9,13 @@ import com.networknt.schema.ValidationMessage;
 import com.otcc.viewer.model.BatchIndex;
 import com.otcc.viewer.model.BatchMeta;
 import com.otcc.viewer.model.Channel;
+import com.otcc.viewer.model.CmpSide;
+import com.otcc.viewer.model.CtxDef;
 import com.otcc.viewer.model.Field;
+import com.otcc.viewer.model.FieldDef;
+import com.otcc.viewer.model.ItemLog;
+import com.otcc.viewer.model.ItemSummary;
+import com.otcc.viewer.model.ManifestItem;
 import com.otcc.viewer.model.Message;
 import com.otcc.viewer.model.PlatformIgnore;
 import com.otcc.viewer.model.SkippedItem;
@@ -20,6 +26,7 @@ import com.otcc.viewer.model.ValidationItem;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,12 +40,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Test engine: generates every JSON file the viewer needs, writes them under
- * {@code generated/}, then fully validates them (JSON Schema, structure, round-trip).
+ * {@code generated/}, then fully validates them (JSON Schema, structure, round-trip,
+ * single- and multi-file modes).
  */
 class ValidationJsonEngineTest {
 
     static final Path OUT_DIR = Path.of("generated");
-    static final Path SCHEMA_PATH = Path.of("exapp", "viewer_frontend", "main", "config.schema.json");
+    static final Path SCHEMA_PATH = Path.of("exapp", "viewer_frontend", "src", "public", "config.schema.json");
 
     static ValidationDataset dataset;
     static ValidationConfig config;
@@ -54,19 +62,23 @@ class ValidationJsonEngineTest {
 
     static final List<String> GENERATED_FILES = new ArrayList<>();
 
+    @TempDir
+    Path tmpDir;
+
     @BeforeAll
     static void setUp() throws Exception {
         ValidationJsonGenerator.writeAll(OUT_DIR);
         GENERATED_FILES.addAll(List.of(
-                "deepseek-validation-data.json",
-                "deepseek-validation-config.json",
+                "report-validation-data.json",
+                "report-validation-data-default.json",
+                "config.json",
                 "ignore-config-by-platform.json",
                 "batches-index.json",
                 "batches/2026-08-16/batch-20260816-0400/batch-meta.json",
-                "batches/2026-08-16/batch-20260816-0400/deepseek-validation-data.json"));
+                "batches/2026-08-16/batch-20260816-0400/report-validation-data.json"));
 
-        dataJson = readTree("deepseek-validation-data.json");
-        configJson = readTree("deepseek-validation-config.json");
+        dataJson = readTree("report-validation-data.json");
+        configJson = readTree("config.json");
         ignoreJson = readTree("ignore-config-by-platform.json");
         indexJson = readTree("batches-index.json");
         metaJson = readTree("batches/2026-08-16/batch-20260816-0400/batch-meta.json");
@@ -103,15 +115,9 @@ class ValidationJsonEngineTest {
     @Test
     void dataJsonStructureIsValid() {
         Check c = new Check();
+        c.check("single".equals(dataset.getMode()), "dataset.mode must be 'single'");
         c.check(dataset.getItems() != null && !dataset.getItems().isEmpty(), "items must be non-empty");
-        c.check(dataset.getCtxDefs() != null && !dataset.getCtxDefs().isEmpty(), "ctxDefs must be non-empty");
-
-        Set<String> ctxDefKeys = dataset.getCtxDefs().keySet();
-        for (Map.Entry<String, com.otcc.viewer.model.CtxDef> e : dataset.getCtxDefs().entrySet()) {
-            c.check(nonBlank(e.getKey()), "ctxDef key must be non-blank");
-            c.check(nonBlank(e.getValue().getDef()), "ctxDef[" + e.getKey() + "].def must be non-blank");
-            c.check(nonBlank(e.getValue().getHits()), "ctxDef[" + e.getKey() + "].hits must be non-blank");
-        }
+        c.check(nonBlank(dataset.getReportEnv()), "reportEnv non-blank");
 
         for (int i = 0; i < dataset.getItems().size(); i++) {
             ValidationItem item = dataset.getItems().get(i);
@@ -125,13 +131,20 @@ class ValidationJsonEngineTest {
             c.check(item.getPlatformTradeId() != null, it + ".platformTradeId present");
             c.check(item.getPlatformDealId() != null, it + ".platformDealId present");
 
+            // per-item field registry
+            Set<String> fieldIds = validateRegistry(c, item, it);
+
+            // per-item ctxDefs
+            validateCtxDefs(c, item, it);
+
+            // channels
             c.check(item.getChannels() != null && !item.getChannels().isEmpty(), it + ".channels non-empty");
             Set<String> channelNames = new HashSet<>();
             if (item.getChannels() != null) {
                 for (Channel ch : item.getChannels()) {
                     channelNames.add(ch.getName());
+                    validateChannel(c, ch, it + ".channels[" + ch.getName() + "]", fieldIds);
                 }
-                c.check(channelNames.size() == item.getChannels().size(), it + ".channels names must be unique");
             }
             c.check(item.getEnabledChannels() != null && !item.getEnabledChannels().isEmpty(), it + ".enabledChannels non-empty");
             if (item.getEnabledChannels() != null) {
@@ -139,19 +152,33 @@ class ValidationJsonEngineTest {
                     c.check(channelNames.contains(en), it + ".enabledChannels references existing channel: " + en);
                 }
             }
-            c.check(item.getOverviewLogs() != null && !item.getOverviewLogs().isEmpty(), it + ".overviewLogs non-empty");
+
+            // item-level messages / uncompared / logs
+            validateMessages(c, item.getWarnings(), it + ".warnings");
+            validateMessages(c, item.getErrors(), it + ".errors");
+            if (item.getUncompared() != null) {
+                for (UncomparedEntry u : item.getUncompared()) {
+                    c.check(u.getType() != null && (u.getType() == 1 || u.getType() == 2),
+                            it + ".uncompared.type in {1,2}: " + u.getType());
+                    c.check(nonBlank(u.getChannel()), it + ".uncompared.channel non-blank");
+                    c.check(nonBlank(u.getValue()), it + ".uncompared.value non-blank");
+                    c.check(nonBlank(u.getNote()), it + ".uncompared.note non-blank");
+                }
+            }
+            c.check(item.getLogs() != null && !item.getLogs().isEmpty(), it + ".logs non-empty");
+            if (item.getLogs() != null) {
+                for (ItemLog l : item.getLogs()) {
+                    c.check("item".equals(l.getScope()) || "channel".equals(l.getScope()), it + ".logs.scope in {item,channel}");
+                    c.check(nonBlank(l.getText()), it + ".logs.text non-blank");
+                }
+            }
+
             if (item.getSkippedItems() != null) {
                 for (SkippedItem s : item.getSkippedItems()) {
                     c.check(nonBlank(s.getItemId()), it + ".skippedItems.itemId non-blank");
                     c.check(nonBlank(s.getReason()), it + ".skippedItems.reason non-blank");
                     c.check("ALL".equals(s.getChannel()) || Set.of("HKTR", "JSFA", "CFTC").contains(s.getChannel()),
                             it + ".skippedItems.channel valid: " + s.getChannel());
-                }
-            }
-
-            if (item.getChannels() != null) {
-                for (int j = 0; j < item.getChannels().size(); j++) {
-                    validateChannel(c, item.getChannels().get(j), it + ".channels[" + j + "]", ctxDefKeys);
                 }
             }
         }
@@ -202,20 +229,56 @@ class ValidationJsonEngineTest {
             c.check(nonBlank(entry.getBatchId()), "batch entry batchId non-blank");
             c.check(nonBlank(entry.getDataUrl()), "batch entry dataUrl non-blank");
             c.check(nonBlank(entry.getIgnoreUrl()), "batch entry ignoreUrl non-blank");
+            c.check("single".equals(entry.getDataMode()), "batch entry dataMode == single");
             c.check(entry.getSummary() != null && entry.getSummary().containsKey("items"), "batch entry summary.items present");
 
             Path dataFile = OUT_DIR.resolve(entry.getDataUrl());
             c.check(Files.isRegularFile(dataFile), "batch dataUrl resolves to a file: " + entry.getDataUrl());
-
-            Object summaryItems = entry.getSummary() != null ? entry.getSummary().get("items") : null;
-            c.check(summaryItems != null && Integer.valueOf(String.valueOf(summaryItems)) == dataset.getItems().size(),
-                    "summary.items == dataset.items.size()");
         }
 
         Object metaItems = batchMeta.getSummary() != null ? batchMeta.getSummary().get("items") : null;
         c.check(metaItems != null && Integer.valueOf(String.valueOf(metaItems)) == dataset.getItems().size(),
                 "batchMeta.summary.items == dataset.items.size()");
         c.check(batchMeta.getSummary() != null && batchMeta.getSummary().containsKey("channels"), "batchMeta.summary.channels present");
+        c.check("single".equals(batchMeta.getDataMode()), "batchMeta.dataMode == single");
+        c.done();
+    }
+
+    @Test
+    void multiModeSplitsIntoManifestAndItemFiles() throws Exception {
+        Check c = new Check();
+        List<ManifestItem> manifestItems = ValidationJsonGenerator.splitToFiles(dataset, tmpDir);
+
+        Path manifestFile = tmpDir.resolve("report-validation-data.json");
+        c.check(Files.isRegularFile(manifestFile), "manifest file written");
+
+        JsonNode manifest = ValidationJsonGenerator.MAPPER.readTree(manifestFile.toFile());
+        c.check("multi".equals(manifest.path("mode").asText()), "manifest.mode == 'multi'");
+        c.check(manifest.path("items").size() == dataset.getItems().size(), "manifest.items count matches");
+        c.check(manifestItems.size() == dataset.getItems().size(), "splitToFiles returned one entry per item");
+
+        for (int i = 0; i < manifestItems.size(); i++) {
+            ManifestItem mi = manifestItems.get(i);
+            ValidationItem it = dataset.getItems().get(i);
+            c.check(it.getTradeId().equals(mi.getTradeId()), "manifest[" + i + "].tradeId matches");
+            c.check(nonBlank(mi.getFile()), "manifest[" + i + "].file non-blank");
+            c.check(mi.getFile().equals("data/items/" + it.getTradeId() + ".json"), "manifest[" + i + "].file path");
+
+            Path itemFile = tmpDir.resolve(mi.getFile());
+            c.check(Files.isRegularFile(itemFile), "item file exists: " + mi.getFile());
+
+            JsonNode itemJson = ValidationJsonGenerator.MAPPER.readTree(itemFile.toFile());
+            c.check(it.getTradeId().equals(itemJson.path("tradeId").asText()), "item file tradeId matches");
+            c.check(itemJson.has("ctxDefs") && itemJson.has("channels") && itemJson.has("fields"),
+                    "item file has ctxDefs/channels/fields");
+
+            ItemSummary s = mi.getSummary();
+            c.check(s != null, "manifest[" + i + "].summary present");
+            if (s != null) {
+                c.check(s.getTotal() >= 0 && s.getPassed() >= 0 && s.getFailed() >= 0, "manifest[" + i + "].summary counts non-negative");
+                c.check(s.getPassed() + s.getFailed() == s.getTotal(), "manifest[" + i + "].summary passed+failed == total");
+            }
+        }
         c.done();
     }
 
@@ -227,7 +290,40 @@ class ValidationJsonEngineTest {
         return ValidationJsonGenerator.MAPPER.readTree(OUT_DIR.resolve(rel).toFile());
     }
 
-    private static void validateChannel(Check c, Channel ch, String label, Set<String> ctxDefKeys) {
+    private static Set<String> validateRegistry(Check c, ValidationItem item, String it) {
+        Set<String> ids = new HashSet<>();
+        c.check(item.getFields() != null && !item.getFields().isEmpty(), it + ".fields non-empty");
+        if (item.getFields() != null) {
+            for (FieldDef fd : item.getFields()) {
+                c.check(nonBlank(fd.getId()), it + ".fields.id non-blank");
+                c.check(nonBlank(fd.getName()), it + ".fields.name non-blank");
+                c.check(nonBlank(fd.getUserTag()), it + ".fields.userTag non-blank");
+                c.check(nonBlank(fd.getType()), it + ".fields.type non-blank");
+                c.check(ids.add(fd.getId()), it + ".fields.id unique: " + fd.getId());
+            }
+        }
+        return ids;
+    }
+
+    private static void validateCtxDefs(Check c, ValidationItem item, String it) {
+        c.check(item.getCtxDefs() != null && !item.getCtxDefs().isEmpty(), it + ".ctxDefs non-empty");
+        if (item.getCtxDefs() != null) {
+            for (Map.Entry<String, CtxDef> e : item.getCtxDefs().entrySet()) {
+                CtxDef def = e.getValue();
+                c.check(nonBlank(e.getKey()), it + ".ctxDef key non-blank");
+                c.check(def.getType() != null && !def.getType().isEmpty(), it + ".ctxDef[" + e.getKey() + "].type non-empty");
+                if (def.getType() != null) {
+                    for (Integer t : def.getType()) {
+                        c.check(t != null && t >= 1 && t <= 3, it + ".ctxDef[" + e.getKey() + "].type in {1,2,3}");
+                    }
+                }
+                c.check(nonBlank(def.getDef()), it + ".ctxDef[" + e.getKey() + "].def non-blank");
+                c.check(nonBlank(def.getHits()), it + ".ctxDef[" + e.getKey() + "].hits non-blank");
+            }
+        }
+    }
+
+    private static void validateChannel(Check c, Channel ch, String label, Set<String> fieldIds) {
         c.check(nonBlank(ch.getName()), label + ".name non-blank");
         c.check(nonBlank(ch.getDesc()), label + ".desc non-blank");
         c.check("xml".equals(ch.getFormat()) || "csv".equals(ch.getFormat()), label + ".format in {xml,csv}");
@@ -237,11 +333,6 @@ class ValidationJsonEngineTest {
         if (ch.getFiles() != null) {
             c.check(ch.getFiles().getEo() != null && !ch.getFiles().getEo().isEmpty(), label + ".files.eo non-empty");
             c.check(ch.getFiles().getAo() != null && !ch.getFiles().getAo().isEmpty(), label + ".files.ao non-empty");
-            if (ch.getFiles().getEo() != null) {
-                for (var fe : ch.getFiles().getEo()) {
-                    c.check(nonBlank(fe.getName()), label + ".files.eo entry name non-blank");
-                }
-            }
             c.check(ch.getFiles().getExcel() != null, label + ".files.excel present");
             if (ch.getFiles().getExcel() != null) {
                 c.check(nonBlank(ch.getFiles().getExcel().getFile()), label + ".files.excel.file non-blank");
@@ -249,83 +340,57 @@ class ValidationJsonEngineTest {
             }
         }
 
-        c.check(ch.getSources() != null && ch.getSources().size() == 2, label + ".sources size == 2");
+        c.check(ch.getSources() != null && !ch.getSources().isEmpty(), label + ".sources non-empty");
         if (ch.getSources() != null) {
             for (var src : ch.getSources()) {
                 c.check(nonBlank(src.getName()), label + ".source.name non-blank");
                 c.check(src.getFields() != null && !src.getFields().isEmpty(), label + ".source.fields non-empty");
                 if (src.getFields() != null) {
                     for (Field f : src.getFields()) {
-                        validateField(c, f, label, csv, ctxDefKeys);
+                        validateField(c, f, label, csv, fieldIds);
                     }
                 }
             }
         }
-
-        validateMessages(c, ch.getWarnings(), label + ".warnings", ch.getName());
-        validateMessages(c, ch.getErrors(), label + ".errors", ch.getName());
-
-        if (ch.getUncompared() != null) {
-            for (UncomparedEntry u : ch.getUncompared()) {
-                c.check(nonBlank(u.getXpath()), label + ".uncompared.xpath non-blank");
-                c.check(u.getCsvField() == null, label + ".uncompared.csvField must be null for xml");
-            }
-        }
-        if (ch.getUncomparedCsv() != null) {
-            for (UncomparedEntry u : ch.getUncomparedCsv()) {
-                c.check(nonBlank(u.getCsvField()), label + ".uncomparedCsv.csvField non-blank");
-                c.check(u.getXpath() == null, label + ".uncomparedCsv.xpath must be null for csv");
-            }
-        }
-        c.check(ch.getLogs() != null && !ch.getLogs().isEmpty(), label + ".logs non-empty");
     }
 
-    private static void validateField(Check c, Field f, String label, boolean csv, Set<String> ctxDefKeys) {
+    private static void validateField(Check c, Field f, String label, boolean csv, Set<String> fieldIds) {
         c.check(nonBlank(f.getId()), label + ".field.id non-blank");
-        c.check(nonBlank(f.getF()), label + ".field.f non-blank");
-        c.check(nonBlank(f.getT()), label + ".field.t non-blank");
-        c.check(nonBlank(f.getK()), label + ".field.k non-blank");
-        c.check(nonBlank(f.getEo()), label + ".field.eo non-blank");
-        c.check(nonBlank(f.getAo()), label + ".field.ao non-blank");
+        c.check(fieldIds.contains(f.getId()), label + ".field.id references item.fields: " + f.getId());
+        c.check(f.getCtxs() != null && !f.getCtxs().isEmpty(), label + ".field.ctxs non-empty");
         c.check("PASSED".equals(f.getResult()) || "FAILED".equals(f.getResult()), label + ".field.result in {PASSED,FAILED}");
 
-        if (csv) {
-            c.check(nonBlank(f.getAoCsv()), label + ".field.aoCsv non-blank for csv");
-            c.check(f.getX() == null || f.getX().isEmpty(), label + ".field.x must be empty for csv");
-        } else {
-            c.check(nonBlank(f.getX()), label + ".field.x non-blank for xml");
-            c.check(f.getAoCsv() == null || f.getAoCsv().isEmpty(), label + ".field.aoCsv must be empty for xml");
+        CmpSide left = f.getCmpLeft();
+        CmpSide right = f.getCmpRight();
+        c.check(left != null, label + ".field.cmpLeft present");
+        c.check(right != null, label + ".field.cmpRight present");
+        if (left != null) {
+            c.check(left.getValue() != null, label + ".field.cmpLeft.value present (may be empty for text fields)");
+            c.check(left.getSrcType() != null && (left.getSrcType() == 1 || left.getSrcType() == 2),
+                    label + ".field.cmpLeft.srcType in {1,2}");
         }
-
-        c.check(f.getCtx() != null && !f.getCtx().isEmpty(), label + ".field.ctx non-empty");
-        if (f.getCtx() != null) {
-            for (String ctx : f.getCtx()) {
-                c.check(ctxDefKeys.contains(ctx), label + ".field.ctx defined in ctxDefs: " + ctx);
+        if (right != null) {
+            c.check(right.getValue() != null, label + ".field.cmpRight.value present (may be empty for text fields)");
+            c.check(right.getSrcType() != null && (right.getSrcType() == 1 || right.getSrcType() == 2),
+                    label + ".field.cmpRight.srcType in {1,2}");
+            if (csv) {
+                c.check(right.getSrcType() == 2, label + ".field.cmpRight.srcType == 2 for csv");
+            } else {
+                c.check(right.getSrcType() == 1, label + ".field.cmpRight.srcType == 1 for xml");
             }
         }
 
-        c.check(f.getEoConverted() != null, label + ".field.eoConverted present");
-        if (Boolean.TRUE.equals(f.getEoConverted())) {
-            c.check(nonBlank(f.getEoUnconverted()), label + ".field.eoUnconverted non-blank when converted");
-            c.check(f.getExtraResults() != null && !f.getExtraResults().isEmpty(), label + ".field.extraResults non-empty when converted");
-            c.check(f.getConversionRule() != null, label + ".field.conversionRule present when converted");
-        } else {
-            c.check(f.getEoUnconverted() == null, label + ".field.eoUnconverted must be null when not converted");
-            c.check(f.getConversionRule() == null, label + ".field.conversionRule must be null when not converted");
-        }
         c.check(f.getPrints() != null && !f.getPrints().isEmpty(), label + ".field.prints non-empty");
-        c.check(nonBlank(f.getExcelMapping()), label + ".field.excelMapping non-blank");
-        c.check(nonBlank(f.getExcelConversionRule()), label + ".field.excelConversionRule non-blank");
-        c.check(nonBlank(f.getExcelValidationRule()), label + ".field.excelValidationRule non-blank");
     }
 
-    private static void validateMessages(Check c, List<Message> msgs, String label, String channelName) {
+    private static void validateMessages(Check c, List<Message> msgs, String label) {
         c.check(msgs != null, label + " present");
         if (msgs == null) {
             return;
         }
         for (Message m : msgs) {
-            c.check(channelName.equals(m.getChannel()), label + ".channel matches: " + m.getChannel());
+            c.check("field".equals(m.getScope()) || "channel".equals(m.getScope()), label + ".scope in {field,channel}");
+            c.check(nonBlank(m.getChannel()), label + ".channel non-blank");
             c.check(nonBlank(m.getType()), label + ".type non-blank");
             c.check(nonBlank(m.getLevel()), label + ".level non-blank");
             c.check(nonBlank(m.getText()), label + ".text non-blank");

@@ -41,6 +41,8 @@ class BasicBatchMetaGeneratorTest {
         assertTrue(meta.getSummary().containsKey("channels"), "summary.channels present");
 
         assertTrue(meta.getDescription() != null && !meta.getDescription().isBlank(), "description filled");
+        assertTrue(meta.getDataUrl() != null && !meta.getDataUrl().isBlank(), "dataUrl filled");
+        assertEquals("single", meta.getDataMode(), "dataMode single");
     }
 
     @Test

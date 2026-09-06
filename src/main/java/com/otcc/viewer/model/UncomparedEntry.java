@@ -1,25 +1,22 @@
 package com.otcc.viewer.model;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * An uncompared record: xml channels carry {@code xpath}, csv channels carry {@code csvField}.
+ * An uncompared record: merged xpath / csv entries with a {@code type}.
  */
-@JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class UncomparedEntry {
+    /** 1 = xpath (xml channel), 2 = csv field (csv channel). */
+    private Integer type;
     private String channel;
-    private String xpath;
-    private String csvField;
+    /** The XPath or CSV field name. */
+    private String value;
     private String note;
-    private String platform;
-    private String product;
-    private String ctx;
 }

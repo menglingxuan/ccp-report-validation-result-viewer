@@ -32,6 +32,10 @@ public class ValidationConfig {
     @AllArgsConstructor
     public static class Urls {
         private String data;
+        private String defaultData;
+        private String initData;
+        private String defaultDataMode;
+        private String help;
         private String ignore;
         private String batches;
         private String scan;
@@ -65,8 +69,8 @@ public class ValidationConfig {
         private Boolean conversionRule;
         private Boolean validationRule;
         private Boolean excelMapping;
-        private Boolean excelConversionRule;
-        private Boolean excelValidationRule;
+        private Boolean sourceFilter;
+        private Boolean modalRules;
         private Boolean columnHover;
         private Boolean sidebarSearch;
         private Boolean sidebarTradeId;
@@ -76,6 +80,7 @@ public class ValidationConfig {
         private Boolean keyboardShortcuts;
         private Boolean modalPrints;
         private Boolean recentBatches;
+        private Boolean batchHelp;
     }
 
 

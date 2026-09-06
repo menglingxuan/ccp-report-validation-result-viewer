@@ -26,12 +26,14 @@ import java.util.concurrent.Callable;
 public class SampleDataCommand implements Callable<Integer> {
     private final JobLauncher jobLauncher;
     private final BatchJobResolver jobResolver;
-    @Option(names = {"-j", "--job"}, defaultValue = "sampleDataJob", description = "Job to run: ${COMPLETION-CANDIDATES} (default: ${DEFAULT-VALUE}).")
+    @Option(names = {"-j", "--job"}, defaultValue = "sampleDataJob", description = "Job to run: sampleDataJob | styleDataJob | validationJsonJob | helloWorldJob (default: ${DEFAULT-VALUE}).")
     private String jobName;
     @Option(names = {"-l", "--level"}, defaultValue = "minimal", description = "Sample data level: ${COMPLETION-CANDIDATES} (default: ${DEFAULT-VALUE}).")
     private SampleLevel level;
     @Option(names = {"-o", "--output-dir"}, defaultValue = "generated", description = "Output directory for the generated JSON files (default: ${DEFAULT-VALUE}).")
     private String outputDir;
+    @Option(names = {"-m", "--mode"}, defaultValue = "single", description = "Data output mode for validationJsonJob: single | multi (default: ${DEFAULT-VALUE}).")
+    private String mode;
     @Option(names = {"-r", "--run"}, negatable = true, fallbackValue = "true", defaultValue = "true", description = "Launch the batch job. Use --no-run to only parse/validate options (default: ${DEFAULT-VALUE}).")
     private boolean run;
 
@@ -42,8 +44,12 @@ public class SampleDataCommand implements Callable<Integer> {
             return 0;
         }
         Job job = jobResolver.resolve(jobName);
-        log.info("启动批处理任务: job={}, level={}, outputDir={}", jobName, level, outputDir);
-        JobParameters parameters = new JobParametersBuilder().addString("level", level.name()).addString("outputDir", outputDir).toJobParameters();
+        log.info("启动批处理任务: job={}, level={}, mode={}, outputDir={}", jobName, level, mode, outputDir);
+        JobParameters parameters = new JobParametersBuilder()
+                .addString("level", level.name())
+                .addString("mode", mode)
+                .addString("outputDir", outputDir)
+                .toJobParameters();
         JobParametersIncrementer incrementer = job.getJobParametersIncrementer();
         if (incrementer != null) {
             parameters = incrementer.getNext(parameters);

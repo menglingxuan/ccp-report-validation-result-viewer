@@ -61,6 +61,8 @@ public final class BasicBatchMetaGenerator {
                 .summary(summary)
                 .description("基础批处理示例：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：单个 item\n- 模式：全字段填充")
                 .reportEnv("OTCXXX")
+                .dataUrl("report-validation-data-basic.json")
+                .dataMode("single")
                 .build();
     }
 

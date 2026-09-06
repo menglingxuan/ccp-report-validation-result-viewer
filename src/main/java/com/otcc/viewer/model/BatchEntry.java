@@ -30,4 +30,6 @@ public class BatchEntry {
     private String description;
     private Map<String, Object> summary;
     private String reportEnv;
+    /** {@code "single"} or {@code "multi"}. */
+    private String dataMode;
 }

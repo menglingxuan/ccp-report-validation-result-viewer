@@ -82,4 +82,25 @@ public class SampleDataBatchConfiguration {
                 .tasklet(styleDataTasklet, transactionManager)
                 .build();
     }
+
+    /* ------------------------------------------------------------------ */
+    /*  Full dataset generation job (single | multi data mode)            */
+    /* ------------------------------------------------------------------ */
+
+    @Bean
+    public Job validationJsonJob(JobRepository jobRepository, Step validationJsonStep) {
+        return new JobBuilder("validationJsonJob", jobRepository)
+                .incrementer(new RunIdIncrementer())
+                .start(validationJsonStep)
+                .build();
+    }
+
+    @Bean
+    public Step validationJsonStep(JobRepository jobRepository,
+                                   PlatformTransactionManager transactionManager,
+                                   ValidationJsonTasklet validationJsonTasklet) {
+        return new StepBuilder("validationJsonStep", jobRepository)
+                .tasklet(validationJsonTasklet, transactionManager)
+                .build();
+    }
 }

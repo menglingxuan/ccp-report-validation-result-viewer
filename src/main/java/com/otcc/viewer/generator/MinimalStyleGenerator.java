@@ -9,7 +9,7 @@ import java.nio.file.Path;
 
 /**
  * Generates the {@code minimal} style: one report date, one item, minimal JSON.
- * Output file: {@code deepseek-validator-data-minimal.json}.
+ * Output file: {@code report-validation-data-minimal.json}.
  */
 @Component
 public class MinimalStyleGenerator implements SampleDataGenerator {

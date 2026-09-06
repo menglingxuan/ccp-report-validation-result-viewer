@@ -9,7 +9,7 @@ import java.nio.file.Path;
 
 /**
  * Generates the {@code basic} style: one report date, one item, fully populated.
- * Output files: {@code deepseek-validator-data-basic.json} and {@code batch-meta-basic.json}.
+ * Output files: {@code report-validation-data-basic.json} and {@code batch-meta-basic.json}.
  */
 @Component
 public class BasicStyleGenerator implements SampleDataGenerator {

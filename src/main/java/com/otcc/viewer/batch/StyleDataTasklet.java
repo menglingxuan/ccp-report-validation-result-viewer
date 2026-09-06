@@ -15,7 +15,7 @@ import java.nio.file.Path;
 /**
  * Style-based generation tasklet: selects a {@link SampleDataGenerator} by the
  * {@code style} job parameter and generates style-suffixed files
- * (for example {@code deepseek-validator-data-basic.json}).
+ * (for example {@code report-validation-data-basic.json}).
  *
  * <p>Optional job parameter {@code reportDate} restricts the generated content
  * to that report date.</p>

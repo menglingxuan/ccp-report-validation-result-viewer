@@ -9,54 +9,37 @@ import lombok.NoArgsConstructor;
 
 /**
  * A single field comparison result.
- * Nullable fields ({@code eoUnconverted}, {@code conversionRule}, {@code validationRule})
- * are intentionally serialized as JSON {@code null} to match the original generator.
+ *
+ * <p>Nullable rules ({@code cvtLeft}, {@code cvtRight}, {@code vdt}) are intentionally
+ * serialized as JSON {@code null} to match the generator reference.</p>
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Field {
+    /** Numeric-string id referencing {@code item.fields}. */
     private String id;
-    /**
-     * report field name
-     */
-    private String f;
-    /**
-     * CCP XPath (xml channel; empty for csv)
-     */
-    private String x;
-    /**
-     * AO CSV field name (csv channel; empty for xml)
-     */
-    private String aoCsv;
-    /**
-     * assertion type: platformAssertion / productAssertion / contextAssertion
-     */
-    private String t;
-    /**
-     * value kind: num / date / id / code / text / product / multi
-     */
-    private String k;
-    private List<String> ctx;
-    private String eo;
-    private String ao;
-    /**
-     * PASSED or FAILED
-     */
+    /** Hit contexts (mapping / conversion / validation mixed). */
+    private List<String> ctxs;
+    /** Left side (EO source). */
+    private CmpSide cmpLeft;
+    /** Right side (AO submitted). */
+    private CmpSide cmpRight;
+    /** EO value-conversion rule, or {@code null}. */
+    private ConversionRule cvtLeft;
+    /** AO value-conversion rule, or {@code null}. */
+    private ConversionRule cvtRight;
+    /** AO final-value validation rule, or {@code null}. */
+    private ValidationRule vdt;
+    /** {@code PASSED} or {@code FAILED}. */
     private String result;
-    private String note;
-    /**
-     * result-specific note shown in the detail modal's result row (independent of {@code note})
-     */
-    private String resultNote;
-    private Boolean eoConverted;
-    private String eoUnconverted;
-    private List<ExtraResult> extraResults;
-    private CtxRule conversionRule;
-    private CtxRule validationRule;
-    private String excelMapping;
-    private String excelConversionRule;
-    private String excelValidationRule;
+    /** Remark (e.g. {@code 数值差异}). */
+    private String remarks;
+    /** Result explanation. */
+    private String resultText;
+    /** Extra results {@code [{label, value}]}. */
+    private List<ExtraResult> resultDetails;
+    /** Related print lines. */
     private List<String> prints;
 }

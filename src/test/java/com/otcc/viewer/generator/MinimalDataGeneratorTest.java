@@ -27,6 +27,7 @@ class MinimalDataGeneratorTest {
     void generatesExactlyOneItemAndOneReportDate() {
         ValidationDataset ds = MinimalDataGenerator.generate();
 
+        assertEquals("single", ds.getMode());
         assertNotNull(ds.getItems());
         assertEquals(1, ds.getItems().size());
 
@@ -64,15 +65,10 @@ class MinimalDataGeneratorTest {
         JsonNode field = root.path("items").get(0).path("channels").get(0)
                 .path("sources").get(0).path("fields").get(0);
 
-        // Minimality: optional fields that are null must not appear in the JSON.
-        assertFalse(field.has("eoConverted"));
-        assertFalse(field.has("eoUnconverted"));
-        assertFalse(field.has("extraResults"));
-        assertFalse(field.has("conversionRule"));
-        assertFalse(field.has("validationRule"));
-        assertFalse(field.has("excelMapping"));
-        assertFalse(field.has("excelConversionRule"));
-        assertFalse(field.has("excelValidationRule"));
+        // Minimality: optional rules that are null must not appear in the JSON.
+        assertFalse(field.has("cvtLeft"));
+        assertFalse(field.has("cvtRight"));
+        assertFalse(field.has("vdt"));
 
         // Round-trip: deserialize and re-serialize must be lossless.
         ValidationDataset back = MinimalDataGenerator.MAPPER.treeToValue(root, ValidationDataset.class);
