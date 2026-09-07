@@ -12,7 +12,7 @@ const item = DATA.items[0];
 function fieldsState(over) {
   return Object.assign({
     channel: 'ALL', search: '',
-    colFilter: { channel: 'ALL', source: 'ALL', f: '', x: '', aoCsv: '', t: 'ALL', ctx: '', eo: '', ao: '', result: 'ALL', note: '' },
+    colFilter: { channel: 'ALL', source: 'ALL', field: '', userTag: 'ALL', eoEl: '', aoEl: '', eoCvtEl: '', aoCvtEl: '', vdtEl: '', type: 'ALL', ctxs: '', eoUnconverted: '', eo: '', aoUnconverted: '', ao: '', result: 'ALL', remarks: '' },
     sort: { key: '', dir: 1 },
     specialFilter: { eo: 'ALL', ao: 'ALL' },
   }, over || {});
@@ -27,10 +27,12 @@ test('groupedToFlat 生成警告与 XPath 的扁平 key', () => {
     'OTC-PLATFORM-A': {
       warnings: [{ channel: 'HKTR', field: 'notional', type: 'platformAssertion', level: 'WARN', product: 'IRS' }],
       uncomparedXpaths: [{ xpath: '/HKTR/foo', channel: 'HKTR', product: 'IRS', ctx: 'h.ctx' }],
+      uncomparedCsvs: [{ value: 'col9', channel: 'HKTR', product: 'IRS' }],
     },
   });
   assert.ok(flat[JSON.stringify(['warn', 'OTC-PLATFORM-A', 'HKTR', '', 'field', 'platformAssertion', 'WARN', 'notional'])]);
-  assert.ok(flat[JSON.stringify(['xpath', '/HKTR/foo', 'HKTR', 'OTC-PLATFORM-A', 'IRS', 'h.ctx'])]);
+  assert.ok(flat[JSON.stringify(['xpath', '/HKTR/foo', 'HKTR', 'OTC-PLATFORM-A', 'IRS', ''])]);
+  assert.ok(flat[JSON.stringify(['csv', 'col9', 'HKTR', 'OTC-PLATFORM-A', 'IRS', ''])]);
 });
 
 test('msgIgnoreKey / msgIsIgnored', () => {
@@ -82,30 +84,64 @@ test('每个 item 都有独立的 ctxDefs（需求 9）', () => {
     DATA.items[1].ctxDefs['hktr.ctx.default'].hits,
     '不同 item 的 ctx hits 定义应不同',
   );
+  // 新 ctxDefs 结构：id(int) / scopes(数组) / type(builtin|user)。
+  const d0 = DATA.items[0].ctxDefs['hktr.ctx.default'];
+  assert.ok(Number.isInteger(d0.id) && d0.id > 0, 'ctxDef 应有正整数 id');
+  assert.ok(Array.isArray(d0.scopes) && d0.scopes.length > 0, 'ctxDef 应有 scopes 数组');
+  assert.ok(d0.type === 'builtin' || d0.type === 'user', 'ctxDef.type 应为 builtin 或 user');
 });
 
-test('ctx type 数组：包含判断与多类型归类', () => {
+test('字段 ctx 引用为 id 且均定义于 ctxDefs；field 不再有 ctxs', () => {
+  const ids = new Set(Object.values(item.ctxDefs).map((d) => d.id));
+  item.channels.forEach((ch) => ch.sources.forEach((s) => s.fields.forEach((f) => {
+    assert.equal(f.ctxs, undefined, 'field 不应再有 ctxs');
+    ['cmpLeft', 'cmpRight', 'cvtLeft', 'cvtRight', 'vdt'].forEach((rk) => {
+      const r = f[rk];
+      if (!r) return;
+      (r.ctxs || []).forEach((cid) => assert.ok(ids.has(cid), rk + '.ctxs 引用未定义 id: ' + cid));
+    });
+  })));
+});
+
+test('字段注册表为 report channel 级别（不再挂在 item）', () => {
+  assert.equal(item.fields, undefined, 'item 不应再有 fields 注册表');
+  item.channels.forEach((ch) => {
+    assert.ok(Array.isArray(ch.fields) && ch.fields.length > 0, 'channel ' + ch.name + ' 应有 fields 注册表');
+  });
+  T.setState(fieldsState());
+  const rows = app.filteredFields(item);
+  assert.ok(rows.length > 0, 'flatFields 应产出比较行');
+  assert.ok(rows.every((r) => typeof r.field === 'string' && r.field), '每行都应有 field 名');
+});
+
+test('ctx 引用：id 引用 + 各规则 ctxs 并集 + key 解析', () => {
   const multi = {
     tradeId: 'M-1',
     reportDate: '2026-09-05',
     ctxDefs: {
-      'a.ctx.shared': { type: [1, 3], def: '共享', hits: 'h' },
-      'a.ctx.conv': { type: [2], def: '转换', hits: 'h' },
-      'a.ctx.legacy': { type: 1, def: '旧格式', hits: 'h' },
-      'a.ctx.bad': { type: 9, def: '非法', hits: 'h' },
+      'a.ctx.map': { id: 1, scopes: [1], type: 'builtin', def: '映射', hits: 'h' },
+      'a.ctx.conv': { id: 2, scopes: [2], type: 'user', def: '转换', hits: 'h' },
+      'a.ctx.val': { id: 3, scopes: [3], type: 'builtin', def: '校验', hits: 'h' },
     },
-    channels: [],
+    channels: [{
+      name: 'A', format: 'xml',
+      fields: [{ id: '1', name: 'f1', userTag: 'contextAssertion', type: 'text' }],
+      sources: [{ name: 'S', fields: [{
+        id: '1',
+        cmpLeft: { value: 'eo', ctx: 1, ctxs: [1], elRaw: '', el: 'src_f1', srcType: 2 },
+        cmpRight: { value: 'ao', ctx: 1, ctxs: [1], elRaw: '', el: '/x', srcType: 1 },
+        cvtLeft: { ctx: 2, ctxs: [2], el: '@trim', elRaw: '', raw: 'EO-RAW' },
+        cvtRight: null,
+        vdt: { ctx: 3, ctxs: [3], el: 'regex:^x$', elRaw: '' },
+        result: 'PASSED', remarks: '', resultText: '', resultDetails: [], prints: [],
+      }] }],
+    }],
   };
   T.setData({ items: [multi] });
-  T.setState({ itemId: 'M-1' });
+  T.setState(fieldsState({ itemId: 'M-1' }));
 
-  assert.deepEqual(app.ctxTypes('a.ctx.shared'), [1, 3]);
-  assert.deepEqual(app.ctxTypes('a.ctx.conv'), [2]);
-  assert.deepEqual(app.ctxTypes('a.ctx.legacy'), [1], '旧数据单值 number 归一化为数组');
-  assert.deepEqual(app.ctxTypes('a.ctx.bad'), [], '非法 type 归一化为空数组');
-
-  const field = { ctxs: ['a.ctx.shared', 'a.ctx.conv', 'a.ctx.legacy'] };
-  assert.deepEqual(app.ctxKeysOfType(field, 1), ['a.ctx.shared', 'a.ctx.legacy']);
-  assert.deepEqual(app.ctxKeysOfType(field, 2), ['a.ctx.conv']);
-  assert.deepEqual(app.ctxKeysOfType(field, 3), ['a.ctx.shared']);
+  const rows = app.filteredFields(multi);
+  assert.equal(rows.length, 1);
+  assert.deepEqual(rows[0].ctxs, [1, 2, 3], 'ctxs 为各规则 ctxs 的 id 并集');
+  assert.deepEqual(rows[0].ctxKeys, ['a.ctx.map', 'a.ctx.conv', 'a.ctx.val'], 'ctxKeys 解析为可读 key');
 });

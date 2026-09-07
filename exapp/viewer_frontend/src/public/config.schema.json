@@ -156,23 +156,66 @@
     },
     "columns": {
       "type": "object",
-      "description": "字段比较表默认列可见性。",
+      "description": "字段比较表列配置：默认可见性、显示名覆盖、列选择器可见性、XPath/CSV 标签开关。",
       "properties": {
         "default": {
           "type": "object",
-          "description": "列名 → 布尔（true 显示 / false 隐藏）。可用列名：channel, source, f, x, aoCsv, t, ctx, eo, ao, result, note。",
+          "description": "列名 → 布尔（true 显示 / false 隐藏）。可用列名：channel, source, field, userTag, eoEl, aoEl, eoCvtEl, aoCvtEl, vdtEl, type, ctxs, eoUnconverted, eo, aoUnconverted, ao, result, remarks。aoEl/eoEl 统一展示 CCP XPath（XML 渠道）与 AO CSV 字段（CSV 渠道）；eoCvtEl/aoCvtEl/vdtEl/eoUnconverted/aoUnconverted 为表达式与未转换值预览列。",
           "properties": {
             "channel": { "type": "boolean" },
             "source": { "type": "boolean" },
-            "f": { "type": "boolean" },
-            "x": { "type": "boolean" },
-            "aoCsv": { "type": "boolean" },
-            "t": { "type": "boolean" },
-            "ctx": { "type": "boolean" },
+            "field": { "type": "boolean" },
+            "userTag": { "type": "boolean" },
+            "eoEl": { "type": "boolean" },
+            "aoEl": { "type": "boolean" },
+            "eoCvtEl": { "type": "boolean" },
+            "aoCvtEl": { "type": "boolean" },
+            "vdtEl": { "type": "boolean" },
+            "type": { "type": "boolean" },
+            "ctxs": { "type": "boolean" },
+            "eoUnconverted": { "type": "boolean" },
             "eo": { "type": "boolean" },
+            "aoUnconverted": { "type": "boolean" },
             "ao": { "type": "boolean" },
             "result": { "type": "boolean" },
-            "note": { "type": "boolean" }
+            "remarks": { "type": "boolean" }
+          }
+        },
+        "labels": {
+          "type": "object",
+          "description": "列显示名覆盖（键为列名，值为字面量或 {语言: 显示名} 多语对象）。未配置时回退到 i18n 默认标签。",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "object", "additionalProperties": { "type": "string" } }
+            ]
+          }
+        },
+        "selector": {
+          "type": "object",
+          "description": "列是否出现在「列选择」菜单中（true 显示 / false 隐藏）。未配置的列默认出现。",
+          "additionalProperties": { "type": "boolean" }
+        },
+        "tag": {
+          "type": "boolean",
+          "description": "是否在 aoEl 单元格中显示 XPath/CSV 标签（默认 false）。",
+          "default": false
+        },
+        "userTag": {
+          "type": "object",
+          "description": "用户标签列显示配置：raw 为 true 时直接显示原值（普通文本）；否则按 labels 的「值 → 显示标签」映射显示为标签样式。",
+          "properties": {
+            "raw": { "type": "boolean", "default": false },
+            "labels": {
+              "type": "object",
+              "description": "值 → 显示标签 的映射，值为字面量或 {语言: 显示标签} 多语对象。未配置的键回退到 i18n 默认标签。",
+              "additionalProperties": {
+                "oneOf": [
+                  { "type": "string" },
+                  { "type": "object", "additionalProperties": { "type": "string" } }
+                ]
+              }
+            }
           }
         }
       }

@@ -80,6 +80,14 @@ export async function scan(opts) {
   }
 
   const relToIndex = function (abs) { return toWeb(path.relative(path.dirname(out), abs)); };
+  // batch-meta.json 的 dataUrl 相对批次目录解析，再统一转换为相对索引文件（web 根目录）的路径；
+  // 绝对 URL（http/https 等）保持原样，绝对文件系统路径直接转换为相对索引路径。
+  const resolveMetaDataUrl = function (dir, dataUrl) {
+    if (typeof dataUrl !== 'string' || !dataUrl) return null;
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(dataUrl)) return dataUrl;
+    const abs = path.isAbsolute(dataUrl) ? dataUrl : path.resolve(dir, dataUrl);
+    return relToIndex(abs);
+  };
   const ignored = function (dir) {
     const rel = toWeb(path.relative(basedir, dir));
     return ignoreRes.some(function (re) { return re.test(rel); });
@@ -119,8 +127,8 @@ export async function scan(opts) {
       dataInfo = readDataInfo(dataPath, path.dirname(out));
       const v = validateDataset(readJSON(dataPath));
       if (!v.ok) validationErrors = v.errors;
-    } else if (typeof meta.dataUrl === 'string' && meta.dataUrl) {
-      const refPath = path.resolve(path.dirname(out), meta.dataUrl);
+    } else if (typeof meta.dataUrl === 'string' && meta.dataUrl && !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(meta.dataUrl)) {
+      const refPath = path.isAbsolute(meta.dataUrl) ? meta.dataUrl : path.resolve(dir, meta.dataUrl);
       if (fs.existsSync(refPath)) {
         dataInfo = readDataInfo(refPath, path.dirname(out));
         const v = validateDataset(readJSON(refPath));
@@ -145,7 +153,7 @@ export async function scan(opts) {
       date: String(date),
       executedAt: String(executedAt),
       formatVersion: typeof meta.formatVersion === 'number' ? meta.formatVersion : 2,
-      dataUrl: meta.dataUrl || relToIndex(dataPath),
+      dataUrl: resolveMetaDataUrl(dir, meta.dataUrl) || relToIndex(dataPath),
       ignoreUrl: meta.ignoreUrl || null,
       path: toWeb(dir),
     };
@@ -156,7 +164,8 @@ export async function scan(opts) {
     if (typeof meta.cwd === 'string') entry.cwd = meta.cwd;
     if (typeof meta.description === 'string') entry.description = meta.description;
     if (meta.summary && typeof meta.summary === 'object') {
-      entry.summary = Object.assign({ items: dataInfo.itemCount || (meta.summary.items || 0) }, meta.summary);
+      // 以数据文件实际 item 数量为准，覆盖 batch-meta 中可能过期的 summary.items。
+      entry.summary = Object.assign({}, meta.summary, { items: dataInfo.itemCount || (meta.summary.items || 0) });
     } else if (dataInfo.itemCount) {
       entry.summary = { items: dataInfo.itemCount };
     }

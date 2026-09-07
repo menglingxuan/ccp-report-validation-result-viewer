@@ -1,0 +1,15 @@
+{
+  "reportEnv": "OTCXXX",
+  "batchId": "batch-20260816-1700",
+  "batchName": "split-20260816",
+  "date": "2026-08-16",
+  "executedAt": "2026-08-16T17:00:00+08:00",
+  "formatVersion": 2,
+  "dataUrl": "report-validation-data.json",
+  "ignoreUrl": "ignore-config-by-platform.json",
+  "summary": {
+    "items": 3,
+    "channels": 3
+  },
+  "description": "多文件模式演示批次：清单 + 每 item 一个独立文件"
+}

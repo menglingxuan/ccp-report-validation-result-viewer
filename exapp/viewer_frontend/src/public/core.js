@@ -3,7 +3,7 @@
  * 所有函数均为纯计算：相同输入 -> 相同输出，不读写全局状态。
  * ============================================================ */
 
-const SEARCH_KEYS = { field: 'f', xpath: 'x', csv: 'aoCsv', eo: 'eo', ao: 'ao', ctx: 'ctx', desc: 'note' };
+const SEARCH_KEYS = { field: 'field', xpath: 'aoEl', csv: 'aoEl', eo: 'eo', ao: 'ao', ctx: 'ctxs', desc: 'remarks' };
 
 export function parseSearchQuery(q) {
   let s = (q || '').trim();
@@ -21,12 +21,12 @@ export function parseSearchQuery(q) {
 
 function searchValue(obj, key) {
   const v = obj[key];
-  if (key === 'ctx') return (v || []).join(' ');
+  if (key === 'ctxs') return ((obj.ctxKeys || obj.ctxs) || []).join(' ');
   return String(v == null ? '' : v);
 }
 
 function fieldHay(r) {
-  return r.f + ' ' + r.x + ' ' + r.aoCsv + ' ' + r.eo + ' ' + r.ao + ' ' + (r.note || '') + ' ' + (r.ctx || []).join(' ');
+  return r.field + ' ' + r.userTag + ' ' + r.aoEl + ' ' + r.eoEl + ' ' + r.eoCvtEl + ' ' + r.aoCvtEl + ' ' + r.vdtEl + ' ' + r.eoUnconverted + ' ' + r.aoUnconverted + ' ' + r.eo + ' ' + r.ao + ' ' + (r.remarks || '') + ' ' + ((r.ctxKeys || r.ctxs) || []).join(' ');
 }
 
 export function makeMatcher(pq) {
@@ -53,36 +53,69 @@ export function specialValueMatch(v, kind) {
 
 export function sortValue(r, key) {
   switch (key) {
-    case 'f': return r.f;
-    case 'x': return r.x;
-    case 'aoCsv': return r.aoCsv;
-    case 't': return r.k;
+    case 'field': return r.field;
+    case 'userTag': return r.userTag;
+    case 'aoEl': return r.aoEl;
+    case 'eoEl': return r.eoEl;
+    case 'eoCvtEl': return r.eoCvtEl;
+    case 'aoCvtEl': return r.aoCvtEl;
+    case 'vdtEl': return r.vdtEl;
+    case 'eoUnconverted': return r.eoUnconverted;
+    case 'aoUnconverted': return r.aoUnconverted;
+    case 'type': return r.type;
     case 'result': return r.result;
-    case 'ctx': return (r.ctx || []).join(',');
+    case 'ctxs': return (r.ctxKeys || r.ctxs || []).join(',');
     case 'eo': return r.eo;
     case 'ao': return r.ao;
     case 'channel': return r.channel;
     case 'source': return r.source;
-    case 'note': return r.note;
+    case 'remarks': return r.remarks;
     default: return '';
   }
 }
 
 export function flatFields(item) {
-  const defs = {};
-  (item.fields || []).forEach(function (d) { defs[d.id] = d; });
   const rows = [];
-  item.channels.forEach(ch => {
-    ch.sources.forEach(s => {
-      s.fields.forEach(f => {
+  // ctxDefs id → key 反向映射（用于搜索 / 显示 / 排序时把 id 解析为可读 key）。
+  const keyById = {};
+  const ctxDefs = item.ctxDefs || {};
+  Object.keys(ctxDefs).forEach(function (k) { keyById[ctxDefs[k].id] = k; });
+  (item.channels || []).forEach(ch => {
+    // 字段注册表为 report channel 级别：每个渠道的字段定义不同。
+    const defs = {};
+    (ch.fields || []).forEach(function (d) { defs[d.id] = d; });
+    (ch.sources || []).forEach(s => {
+      (s.fields || []).forEach(f => {
         const def = defs[f.id] || {};
         const right = f.cmpRight || {};
         const left = f.cmpLeft || {};
+        const cvtL = f.cvtLeft || {};
+        const cvtR = f.cvtRight || {};
+        const vdt = f.vdt || {};
+        // 命中 ctx 合集：field.ctxs 已删除，由各规则 ctxs 取并集（id 引用）。
+        const ctxUnion = [];
+        const ctxKeys = [];
+        [left, right, cvtL, cvtR, vdt].forEach(function (o) {
+          (o.ctxs || []).forEach(function (id) {
+            if (ctxUnion.indexOf(id) === -1) {
+              ctxUnion.push(id);
+              ctxKeys.push(keyById[id] != null ? keyById[id] : String(id));
+            }
+          });
+        });
         rows.push({
           channel: ch.name, source: s.name,
-          id: f.id, f: def.name, x: right.srcType === 1 ? (right.el || '') : '', aoCsv: right.srcType === 2 ? (right.el || '') : '',
-          t: def.userTag, k: def.type, ctx: f.ctxs,
-          eo: left.value, ao: right.value, result: f.result, note: f.remarks, prints: f.prints,
+          id: f.id, field: def.name, userTag: def.userTag || '',
+          // 表达式 / 预览列：aoEl/eoEl 为左右侧定位（XPath 或 CSV 列），其余为各规则的原始表达式与未转换值。
+          aoEl: right.el || '', srcType: right.srcType || 1,
+          eoEl: left.el || '',
+          eoCvtEl: cvtL.el || '',
+          aoCvtEl: cvtR.el || '',
+          vdtEl: vdt.el || '',
+          eoUnconverted: cvtL.raw != null ? cvtL.raw : '',
+          aoUnconverted: cvtR.raw != null ? cvtR.raw : '',
+          type: def.type, ctxs: ctxUnion, ctxKeys: ctxKeys,
+          eo: left.value, ao: right.value, result: f.result, remarks: f.remarks, prints: f.prints,
         });
       });
     });
@@ -101,7 +134,12 @@ export function groupedToFlat(grouped) {
       flat[key] = true;
     });
     (g.uncomparedXpaths || []).forEach(function (u) {
-      const key = JSON.stringify(['xpath', u.xpath || '', u.channel || '', platform, u.product || '', u.ctx || '']);
+      // 未比较元素已不携带 ctx，ctx 槽位恒为空，避免与 msgIgnoreKey 生成的 key 失配。
+      const key = JSON.stringify(['xpath', u.xpath || '', u.channel || '', platform, u.product || '', '']);
+      flat[key] = true;
+    });
+    (g.uncomparedCsvs || []).forEach(function (u) {
+      const key = JSON.stringify(['csv', u.value || '', u.channel || '', platform, u.product || '', '']);
       flat[key] = true;
     });
   });
@@ -174,9 +212,9 @@ export function computeHealthPure(items, date, channel, ignoreConfig) {
   const list = (!date || date === 'ALL') ? items.slice() : items.filter(function (it) { return it.reportDate === date; });
   const perItem = list.map(function (it) {
     let pTotal = 0, pPassed = 0, pFailed = 0, pWarn = 0, pErr = 0;
-    it.channels.forEach(function (ch) {
+    (it.channels || []).forEach(function (ch) {
       if (channel && channel !== 'ALL' && ch.name !== channel) return;
-      ch.sources.forEach(function (s) { s.fields.forEach(function (fd) { pTotal++; fd.result === 'PASSED' ? pPassed++ : pFailed++; }); });
+      (ch.sources || []).forEach(function (s) { (s.fields || []).forEach(function (fd) { pTotal++; fd.result === 'PASSED' ? pPassed++ : pFailed++; }); });
     });
     (it.errors || []).forEach(function (e) {
       if (channel && channel !== 'ALL' && e.channel !== channel) return;
@@ -206,7 +244,7 @@ export function globalSearchPure(items, q, limit) {
     flatFields(it).forEach(function (r) {
       if (enabled.indexOf(r.channel) === -1) return;
       if (matchRow(r, pq, matcher)) {
-        results.push({ itemId: it.tradeId, channel: r.channel, source: r.source, fieldId: r.id, f: r.f, snippet: r.eo + ' → ' + r.ao });
+        results.push({ itemId: it.tradeId, channel: r.channel, source: r.source, fieldId: r.id, field: r.field, snippet: r.eo + ' → ' + r.ao });
       }
     });
   });

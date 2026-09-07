@@ -22,5 +22,7 @@ public class Channel {
      */
     private String format;
     private ChannelFiles files;
+    /** Field definition registry for this report channel ({@code channel.fields}). */
+    private List<FieldDef> fields;
     private List<Source> sources;
 }

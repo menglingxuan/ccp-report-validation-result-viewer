@@ -55,7 +55,6 @@ public final class MinimalDataGenerator {
 
         Field field = Field.builder()
                 .id("1")
-                .ctxs(List.of())
                 .cmpLeft(CmpSide.builder()
                         .value("TX-ME-0001").ctx(null).ctxs(List.of())
                         .elRaw("").el("src_tradeId").srcType(2).build())
@@ -85,6 +84,7 @@ public final class MinimalDataGenerator {
                 .desc("香港交易资料储存库")
                 .format("xml")
                 .files(files)
+                .fields(List.of(FieldDef.builder().id("1").name("tradeId").userTag("contextAssertion").type("id").build()))
                 .sources(List.of(source))
                 .build();
 
@@ -100,7 +100,6 @@ public final class MinimalDataGenerator {
                 .platformDealId("PD-ME-0001")
                 .enabledChannels(List.of("HKTR"))
                 .ctxDefs(new LinkedHashMap<>())
-                .fields(List.of(FieldDef.builder().id("1").name("tradeId").userTag("contextAssertion").type("id").build()))
                 .channels(List.of(channel))
                 .skippedItems(List.of())
                 .warnings(List.of())

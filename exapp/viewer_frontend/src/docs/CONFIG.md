@@ -121,8 +121,38 @@ REPORT_VIEWER_CONFIG=prod node server.js
 | `detailMode` | `quick` | `quick` / `modal` |
 | `panelWidth` | `320` | 批次面板宽度（px） |
 
-## 9. `columns.default`
+## 9. `columns`
 
-列名 → 布尔（`true` 显示 / `false` 隐藏）。可用列名：
+字段比较表列配置，包含 5 个子项：
 
-`channel`、`source`、`f`、`x`、`aoCsv`、`t`、`ctx`、`eo`、`ao`、`result`、`note`。
+- `default`：列名 → 布尔（`true` 显示 / `false` 隐藏），即各列的默认可见性。
+- `labels`：列显示名覆盖（键为列名，值为字面量或 `{语言: 显示名}` 多语对象），未配置时回退到 i18n 默认标签。
+- `selector`：列是否出现在「列选择」菜单中（`true` / `false`），未配置的列默认出现。
+- `tag`：是否在 `aoEl` 单元格显示 XPath/CSV 标签（默认 `false`）。
+- `userTag`：用户标签「值 → 显示」配置，含 `raw`（是否只显示原值，普通文本）与 `labels`（值 → 显示标签映射，值为字面量或 `{语言: 显示标签}` 多语对象，标签样式）。
+
+可用列名（对应新数据结构）：
+
+`channel`、`source`、`field`、`userTag`、`eoEl`、`aoEl`、`eoCvtEl`、`aoCvtEl`、`vdtEl`、`type`、`ctxs`、`eoUnconverted`、`eo`、`aoUnconverted`、`ao`、`result`、`remarks`。
+
+| 列名 | 默认标签 | 含义 | 数据来源 |
+| --- | --- | --- | --- |
+| `channel` | 报告渠道 | 报告渠道 | `channel.name` |
+| `source` | 来源渠道 | 来源渠道 | `source.name` |
+| `field` | 报告字段 | 字段名 | `channel.fields[].name` |
+| `userTag` | 用户标签 | 字段断言类型标签 | `channel.fields[].userTag` |
+| `eoEl` | 表达式 (CMP-L) | 左侧（EO/来源）定位表达式 | `cmpLeft.el` |
+| `aoEl` | 表达式 (CMP-R) | 右侧（AO/报送）定位表达式（XPath 或 CSV 列） | `cmpRight.el`（srcType=1 为 XPath，srcType=2 为 CSV） |
+| `eoCvtEl` | 表达式 (CVT-L) | EO 值转换规则表达式 | `cvtLeft.el` |
+| `aoCvtEl` | 表达式 (CVT-R) | AO 值转换规则表达式 | `cvtRight.el` |
+| `vdtEl` | 表达式 (VDT) | AO 终值校验规则表达式 | `vdt.el` |
+| `type` | 类型 | 值类型 | `channel.fields[].type` |
+| `ctxs` | 命中Ctx | 命中上下文（各规则 `ctxs` 的 id 并集，解析为 key） | `cmpLeft`/`cmpRight`/`cvtLeft`/`cvtRight`/`vdt` 的 `ctxs` 并集 |
+| `eoUnconverted` | 期望值 (EO-U) | EO 未转换值 | `cvtLeft.raw` |
+| `eo` | 期望值 (EO) | 期望值 | `cmpLeft.value` |
+| `aoUnconverted` | 期望值 (AO-U) | AO 未转换值 | `cvtRight.raw` |
+| `ao` | 实际值 (AO) | 实际值 | `cmpRight.value` |
+| `result` | 结果 | 比对结果 | `field.result` |
+| `remarks` | 说明 | 说明 | `field.remarks` |
+
+> `eoEl`/`aoEl`/`eoCvtEl`/`aoCvtEl`/`vdtEl`/`eoUnconverted`/`aoUnconverted` 为数据快速预览列，默认隐藏，可通过「列选择」或 `columns.default` 开启。

@@ -56,3 +56,27 @@ test('标记 deleted 的批次被扫描器跳过（软删除）', async () => {
     try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
   }
 });
+
+test('batch-meta 的 dataUrl 按批次目录解析，而非固定指向 web 根', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'scan-dataurl-'));
+  const out = path.join(tmp, 'batches-index.json');
+  try {
+    const dir = path.join(tmp, 'b1');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'batch-meta.json'), JSON.stringify({
+      batchId: 'b1', batchName: 'batch-one', date: '2026-08-16', executedAt: '2026-08-16T00:00:00+08:00',
+      dataUrl: 'report-validation-data.json', reportEnv: 'OTCXXX', summary: { items: 1 },
+    }), 'utf8');
+    fs.writeFileSync(path.join(dir, 'report-validation-data.json'), JSON.stringify({ mode: 'single', reportEnv: 'OTCXXX', items: [{ tradeId: 'T-1', reportDate: '2026-08-16', channels: [] }] }), 'utf8');
+
+    const r = await scan({ basedir: tmp, out, ignore: [], env: null });
+    assert.equal(r.ok, true, r.error);
+    assert.equal(r.count, 1, '应发现一个批次');
+    assert.equal(r.batches[0].dataUrl, 'b1/report-validation-data.json',
+      'dataUrl 应指向批次目录自身的 report-validation-data.json');
+    assert.notEqual(r.batches[0].dataUrl, 'report-validation-data.json',
+      'dataUrl 不应固定指向 web 根目录的 report-validation-data.json');
+  } finally {
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+  }
+});

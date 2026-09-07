@@ -17,10 +17,10 @@ import lombok.NoArgsConstructor;
 public class CmpSide {
     /** Expected (EO) or actual (AO) value. */
     private String value;
-    /** First matching mapping-context key, or {@code null}. */
-    private String ctx;
-    /** All matching mapping-context keys. */
-    private List<String> ctxs;
+    /** First matching mapping-context id, or {@code null}. */
+    private Integer ctx;
+    /** All matching mapping-context ids. */
+    private List<Integer> ctxs;
     /** Raw Excel mapping configuration text. */
     private String elRaw;
     /** Source element: CCP XPath (srcType=1) or CSV field name (srcType=2). */

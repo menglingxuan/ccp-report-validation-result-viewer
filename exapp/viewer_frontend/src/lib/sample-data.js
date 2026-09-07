@@ -296,26 +296,21 @@ import path from 'node:path';
       return base.filter(function (def) { return drop.indexOf(def[0]) === -1; });
     }
 
-    // item 级字段注册表：按 id（数字字符串）去重，每个 item 各自构建（不同 item 可有不同字段定义）。
-    // id 按字段首次出现顺序编号："1"、"2"、…；name 为字段名。
-    function buildFieldRegistry(itemIndex) {
-      const seen = {};
+    // report channel 级字段注册表：每个报告渠道各自构建（不同渠道的字段定义不同）。
+    // id 按该渠道字段出现顺序编号："1"、"2"、…；name 为字段名。
+    function buildChannelFieldRegistry(fieldsDef) {
       const registry = [];
-      CHANNELS.forEach(function (ch) {
-        fieldDefsForItem(itemIndex, ch).forEach(function (def) {
-          const name = def[0];
-          if (!seen[name]) {
-            seen[name] = true;
-            registry.push({ id: String(registry.length + 1), name: name, userTag: def[2], type: def[3] });
-          }
-        });
-      });
       const nameToId = {};
-      registry.forEach(function (d) { nameToId[d.name] = d.id; });
+      fieldsDef.forEach(function (def) {
+        const id = String(registry.length + 1);
+        nameToId[def[0]] = id;
+        registry.push({ id: id, name: def[0], userTag: def[2], type: def[3] });
+      });
       return { registry: registry, nameToId: nameToId };
     }
 
-    function buildChannelData(ch, tradeId, reportDate, rng, failRate, nameToId, fieldsDef, sourceCount) {
+    function buildChannelData(ch, tradeId, reportDate, rng, failRate, fieldsDef, sourceCount, idByKey) {
+      const fr = buildChannelFieldRegistry(fieldsDef);
       const base = ch.name.toLowerCase();
       const mapPool = [
         base + '.ctx.default',
@@ -326,6 +321,10 @@ import path from 'node:path';
       const convPool = [base + '.ctx.conv.default', base + '.ctx.conv.v2'];
       const valPool = [base + '.ctx.val.default', base + '.ctx.val.v2'];
       const isCsv = ch.format === 'csv';
+      // ctx key → ctxDefs.id 引用
+      const toIds = function (arr) {
+        return (arr || []).map(function (k) { return idByKey[k]; }).filter(function (id) { return id != null; });
+      };
       // 来源渠道数量：默认为 2（A/B），部分 item 仅有 1 个来源渠道（sourceCount=1）。
       const sourceIndexes = sourceCount === 1 ? [1] : [1, 2];
       const sources = sourceIndexes.map(sn => {
@@ -354,6 +353,7 @@ import path from 'node:path';
           // AO 侧值转换规则（cvtRight 样例数据）。
           const aoConverted = rng() < 0.4;
           const aoConversionRule = aoConverted ? { ctx: pickCtx(convPool, rng), value: convRuleFor(k, rng) } : null;
+          const aoUnconverted = aoConverted ? genUnconverted(ao, k) : null;
           const validationRule = rng() < 0.75 ? { ctx: pickCtx(valPool, rng), value: valRuleFor(k, rng) } : null;
           const isExcelSample = tradeId === 'T-20240814-1001' && ch.name === 'HKTR' && idx === 0;
           const excelMapping = genExcelMapping(el, ctx, isExcelSample);
@@ -371,14 +371,18 @@ import path from 'node:path';
           const aoConvCtxs = aoConversionRule ? aoConversionRule.ctx : [];
           const valCtxs = validationRule ? validationRule.ctx : [];
 
+          // ctx 引用改为 id：各规则 ctxs 均为 ctxDefs 的 id；field 级 ctxs 已删除（由规则 ctxs 取合集）。
+          const mapCtxIds = toIds(mapCtxs);
+          const convCtxIds = toIds(convCtxs);
+          const aoConvCtxIds = toIds(aoConvCtxs);
+          const valCtxIds = toIds(valCtxs);
           return {
-            id: nameToId[f],
-            ctxs: ctx,
-            cmpLeft: { value: eo, ctx: mapCtxs[0] || null, ctxs: mapCtxs, elRaw: eoMapping, el: eoCol, srcType: 2 },
-            cmpRight: { value: ao, ctx: mapCtxs[0] || null, ctxs: mapCtxs, elRaw: excelMapping, el: el, srcType: srcType },
-            cvtLeft: conversionRule ? { ctx: convCtxs[0] || null, ctxs: convCtxs, el: conversionRule.value, elRaw: excelConversionRule, raw: eoUnconverted } : null,
-            cvtRight: aoConversionRule ? { ctx: aoConvCtxs[0] || null, ctxs: aoConvCtxs, el: aoConversionRule.value, elRaw: genExcelRuleText(aoConversionRule.value, ctx, isExcelSample), raw: null } : null,
-            vdt: validationRule ? { ctx: valCtxs[0] || null, ctxs: valCtxs, el: validationRule.value, elRaw: excelValidationRule } : null,
+            id: fr.nameToId[f],
+            cmpLeft: { value: eo, ctx: mapCtxIds.length ? mapCtxIds[0] : null, ctxs: mapCtxIds, elRaw: eoMapping, el: eoCol, srcType: 2 },
+            cmpRight: { value: ao, ctx: mapCtxIds.length ? mapCtxIds[0] : null, ctxs: mapCtxIds, elRaw: excelMapping, el: el, srcType: srcType },
+            cvtLeft: conversionRule ? { ctx: convCtxIds.length ? convCtxIds[0] : null, ctxs: convCtxIds, el: conversionRule.value, elRaw: excelConversionRule, raw: eoUnconverted } : null,
+            cvtRight: aoConversionRule ? { ctx: aoConvCtxIds.length ? aoConvCtxIds[0] : null, ctxs: aoConvCtxIds, el: aoConversionRule.value, elRaw: genExcelRuleText(aoConversionRule.value, ctx, isExcelSample), raw: aoUnconverted } : null,
+            vdt: validationRule ? { ctx: valCtxIds.length ? valCtxIds[0] : null, ctxs: valCtxIds, el: validationRule.value, elRaw: excelValidationRule } : null,
             result: result,
             remarks: note,
             resultText: resultNote,
@@ -405,7 +409,7 @@ import path from 'node:path';
       };
 
       return {
-        channel: { name: ch.name, desc: ch.desc, format: ch.format, files: files, sources: sources },
+        channel: { name: ch.name, desc: ch.desc, format: ch.format, files: files, fields: fr.registry, sources: sources },
         warnings: buildMessages('warning', rng, ch.name, fieldsDef),
         errors: buildMessages('error', rng, ch.name, fieldsDef),
         uncompared: buildUncompared(ch.name, rng, fieldsDef, isCsv ? 2 : 1),
@@ -454,25 +458,33 @@ import path from 'node:path';
     function buildCtxDefs(itemIndex) {
       const seed = itemIndex || 0;
       const defs = {};
+      const idByKey = {};
+      let nextId = 1;
+      const add = function (key, scopes, type, defText, hitsText) {
+        defs[key] = { id: nextId, scopes: scopes, type: type, def: defText, hits: hitsText };
+        idByKey[key] = nextId;
+        nextId++;
+      };
       CHANNELS.forEach(function (ch) {
         const p = ch.name.toLowerCase();
-        // type 1：字段映射规则
-        defs[p + '.ctx.default'] = { type: [1], def: ch.name + ' 默认上下文（标准报送场景）', hits: '命中 ' + (3 + seed % 3) + ' 个映射条目（EO 2 / AO 1）' };
-        defs[p + '.ctx.v2'] = { type: [1], def: ch.name + ' v2 上下文（2024 新版映射）', hits: '命中 ' + (2 + seed % 2) + ' 个映射条目（EO 1 / AO 1）' };
-        defs[p + '.ctx.v3'] = { type: [1], def: ch.name + ' v3 上下文（最新版映射）', hits: '命中 ' + (1 + seed % 2) + ' 个映射条目（EO 1 / AO 0）' };
-        defs[p + '.ctx.extended.production.region.east.v2024.latest'] = { type: [1], def: ch.name + ' 扩展上下文（生产·东部区域·2024 最新）', hits: '命中 ' + (4 + seed % 2) + ' 个映射条目（EO 2 / AO 2）' };
-        // type 2：值转换规则
-        defs[p + '.ctx.conv.default'] = { type: [2], def: ch.name + ' 值转换默认上下文（EO 归一化）', hits: '命中 ' + (2 + seed % 2) + ' 个转换规则（@trim / @toUpper 等）' };
-        defs[p + '.ctx.conv.v2'] = { type: [2], def: ch.name + ' 值转换 v2 上下文', hits: '命中 ' + (1 + seed % 2) + ' 个转换规则' };
-        // type 3：终值校验规则
-        defs[p + '.ctx.val.default'] = { type: [3], def: ch.name + ' 终值校验默认上下文', hits: '命中 ' + (3 + seed % 3) + ' 个校验规则（枚举/正则/非空）' };
-        defs[p + '.ctx.val.v2'] = { type: [3], def: ch.name + ' 终值校验 v2 上下文', hits: '命中 ' + (2 + seed % 2) + ' 个校验规则' };
+        // scopes 1：字段映射规则
+        add(p + '.ctx.default', [1], 'builtin', ch.name + ' 默认上下文（标准报送场景）', '命中 ' + (3 + seed % 3) + ' 个映射条目（EO 2 / AO 1）');
+        add(p + '.ctx.v2', [1], 'builtin', ch.name + ' v2 上下文（2024 新版映射）', '命中 ' + (2 + seed % 2) + ' 个映射条目（EO 1 / AO 1）');
+        add(p + '.ctx.v3', [1], 'builtin', ch.name + ' v3 上下文（最新版映射）', '命中 ' + (1 + seed % 2) + ' 个映射条目（EO 1 / AO 0）');
+        add(p + '.ctx.extended.production.region.east.v2024.latest', [1], 'user', ch.name + ' 扩展上下文（生产·东部区域·2024 最新）', '命中 ' + (4 + seed % 2) + ' 个映射条目（EO 2 / AO 2）');
+        // scopes 2：值转换规则
+        add(p + '.ctx.conv.default', [2], 'builtin', ch.name + ' 值转换默认上下文（EO 归一化）', '命中 ' + (2 + seed % 2) + ' 个转换规则（@trim / @toUpper 等）');
+        add(p + '.ctx.conv.v2', [2], 'builtin', ch.name + ' 值转换 v2 上下文', '命中 ' + (1 + seed % 2) + ' 个转换规则');
+        // scopes 3：终值校验规则
+        add(p + '.ctx.val.default', [3], 'builtin', ch.name + ' 终值校验默认上下文', '命中 ' + (3 + seed % 3) + ' 个校验规则（枚举/正则/非空）');
+        add(p + '.ctx.val.v2', [3], 'builtin', ch.name + ' 终值校验 v2 上下文', '命中 ' + (2 + seed % 2) + ' 个校验规则');
       });
-      return defs;
+      return { defs: defs, idByKey: idByKey };
     }
 
-    function buildDataset() {
+    function buildDataset(opts) {
       const rng = mulberry32(20240814);
+      const singleSource = !!(opts && opts.singleSource);
       const items = [];
       const platforms = ['OTC-PLATFORM-A', 'OTC-PLATFORM-B', 'OTC-PLATFORM-C'];
       for (let i = 0; i < 18; i++) {
@@ -487,19 +499,19 @@ import path from 'node:path';
         const product = subProducts[Math.floor(rng() * subProducts.length)];
         const counterpartyItemId = (Math.floor(i / 2) === 5) ? '' : (i % 2 === 0 ? 'T-20240814-' + String(1002 + i) : 'T-20240814-' + String(1000 + i));
 
-        // 字段注册表按 item 构建（每个 item 可有不同的字段定义）。
-        const fr = buildFieldRegistry(i);
-        // 最后一个 item 仅含 1 个来源渠道（演示单一来源渠道场景）。
-        const sourceCount = i === 17 ? 1 : 2;
+        // 默认：最后一个 item 仅含 1 个来源渠道（演示单一来源渠道场景）；singleSource 模式下全部 item 均为单来源。
+        const sourceCount = singleSource ? 1 : (i === 17 ? 1 : 2);
 
         const channels = [];
         const warnings = [];
         const errors = [];
         const uncompared = [];
         const channelLogs = [];
+        const ctxDefsRes = buildCtxDefs(i);
+        const idByKey = ctxDefsRes.idByKey;
         CHANNELS.forEach(function (ch) {
           const fieldsDef = fieldDefsForItem(i, ch);
-          const built = buildChannelData(ch, tradeId, reportDate, rng, failRate, fr.nameToId, fieldsDef, sourceCount);
+          const built = buildChannelData(ch, tradeId, reportDate, rng, failRate, fieldsDef, sourceCount, idByKey);
           channels.push(built.channel);
           warnings.push.apply(warnings, built.warnings);
           errors.push.apply(errors, built.errors);
@@ -517,8 +529,7 @@ import path from 'node:path';
           counterpartyItemId: counterpartyItemId,
           platformTradeId: 'PT-' + tradeId.slice(2),
           platformDealId: 'PD-' + tradeId.slice(2),
-          ctxDefs: buildCtxDefs(i),
-          fields: fr.registry.slice(),
+          ctxDefs: ctxDefsRes.defs,
           channels: channels,
           enabledChannels: (i % 3 === 0) ? ['HKTR', 'JSFA', 'CFTC'] : (i % 3 === 1 ? ['HKTR', 'JSFA'] : ['HKTR', 'CFTC']),
           skippedItems: buildSkippedItems(reportDate, rng),

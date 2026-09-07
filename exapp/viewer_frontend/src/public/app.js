@@ -53,6 +53,8 @@
     let IGNORE_CONFIG_URL = 'ignore-config-by-platform.json';
     const CONFIG_URL = 'config.json';
     let DATA_MODE = 'single';
+    // 当前已加载数据清单文件的绝对 URL（多文件模式据此解析 item 文件的相对路径）。
+    let DATA_FILE_URL = null;
     let APP_LIMITS = { pageSize: 20, pageSizeOptions: [10, 20, 50], sidebarPageSize: 8, msgPageSize: 20, globalSearchLimit: 200 };
     let APP_REPORT_CAT_DEFAULT = null;
     let APP_PROGRESS_STYLE = 'status';
@@ -79,6 +81,9 @@
     const SUPPORTED_FORMAT_VERSIONS = [2];
     const VIEWER_VERSION = '6.0.0';
     const BATCH_STORAGE_KEY = 'reportValidationBatch.v1';
+    const PIN_STORAGE_KEY = 'reportValidationPin.v1';
+    // 被「置顶为默认加载」的批次 id（持久化，冷/热启动时优先加载）。
+    let PINNED_BATCH_ID = null;
     let BATCHES_INDEX = { batches: [] };
     let BATCH_STATE = {
       loaded: false,
@@ -182,10 +187,25 @@
         if (typeof lm.msgPageSize === 'number' && lm.msgPageSize > 0) APP_LIMITS.msgPageSize = Math.floor(lm.msgPageSize);
         if (typeof lm.globalSearchLimit === 'number' && lm.globalSearchLimit > 0) APP_LIMITS.globalSearchLimit = Math.floor(lm.globalSearchLimit);
 
-        if (cfg.columns && cfg.columns.default && typeof cfg.columns.default === 'object') {
-          Object.keys(cfg.columns.default).forEach(function (k) {
-            if (Object.prototype.hasOwnProperty.call(DEFAULT_COLUMNS, k)) DEFAULT_COLUMNS[k] = !!cfg.columns.default[k];
-          });
+        if (cfg.columns && typeof cfg.columns === 'object') {
+          if (cfg.columns.default && typeof cfg.columns.default === 'object') {
+            Object.keys(cfg.columns.default).forEach(function (k) {
+              if (Object.prototype.hasOwnProperty.call(DEFAULT_COLUMNS, k)) DEFAULT_COLUMNS[k] = !!cfg.columns.default[k];
+            });
+          }
+          if (cfg.columns.labels && typeof cfg.columns.labels === 'object') {
+            Object.keys(cfg.columns.labels).forEach(function (k) { COL_LABELS[k] = cfg.columns.labels[k]; });
+          }
+          if (cfg.columns.selector && typeof cfg.columns.selector === 'object') {
+            Object.keys(cfg.columns.selector).forEach(function (k) { COL_SELECTOR[k] = !!cfg.columns.selector[k]; });
+          }
+          if (cfg.columns.tag !== undefined) COL_TAG = !!cfg.columns.tag;
+          if (cfg.columns.userTag && typeof cfg.columns.userTag === 'object') {
+            if (cfg.columns.userTag.raw !== undefined) USER_TAG_RAW = !!cfg.columns.userTag.raw;
+            if (cfg.columns.userTag.labels && typeof cfg.columns.userTag.labels === 'object') {
+              Object.keys(cfg.columns.userTag.labels).forEach(function (k) { USER_TAG_LABELS[k] = cfg.columns.userTag.labels[k]; });
+            }
+          }
         }
 
         const bt = cfg.batches && typeof cfg.batches === 'object' ? cfg.batches : {};
@@ -280,14 +300,15 @@
       if (mode === 'init') {
         try {
           const json = await fetchJSON(INIT_DATA_URL);
-          if (validDataset(json)) return normalizeLoaded(json);
+          if (validDataset(json)) { DATA_FILE_URL = resolveUrl(location.href, INIT_DATA_URL); return normalizeLoaded(json); }
         } catch (e) { console.warn('[data] init 数据文件加载失败：', e); }
       } else if (mode && mode !== 'default') {
         const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === mode || x.batchName === mode; });
         if (b && b.dataUrl) {
+          const url = resolveUrl(indexBaseUrl(), b.dataUrl);
           try {
-            const json = await fetchJSON(resolveUrl(indexBaseUrl(), b.dataUrl));
-            if (validDataset(json)) { BATCH_STATE.active = b; saveBatchActive(); return normalizeLoaded(json); }
+            const json = await fetchJSON(url);
+            if (validDataset(json)) { BATCH_STATE.active = b; saveBatchActive(); DATA_FILE_URL = url; return normalizeLoaded(json); }
           } catch (e) { console.warn('[data] 批次数据加载失败：' + mode, e); }
         }
       }
@@ -295,15 +316,16 @@
       if (DEFAULT_DATA_URL) {
         try {
           const json = await fetchJSON(DEFAULT_DATA_URL);
-          if (validDataset(json)) return normalizeLoaded(json);
+          if (validDataset(json)) { DATA_FILE_URL = resolveUrl(location.href, DEFAULT_DATA_URL); return normalizeLoaded(json); }
         } catch (e) { console.warn('[data] 默认数据文件加载失败：', e); }
       }
       try {
         const json = await fetchJSON(DATA_URL);
-        if (validDataset(json)) return normalizeLoaded(json);
+        if (validDataset(json)) { DATA_FILE_URL = resolveUrl(location.href, DATA_URL); return normalizeLoaded(json); }
         throw new Error('数据格式无效');
       } catch (e) {
         console.warn('[data] 外部 JSON 加载失败：', e);
+        DATA_FILE_URL = null;
         return { mode: 'single', items: [], reportEnv: DEFAULT_ENV };
       }
     }
@@ -312,8 +334,10 @@
     async function loadItemFile(tradeId) {
       const meta = DATA.items.find(function (i) { return i.tradeId === tradeId; });
       if (!meta || !meta.file) return null;
+      // item 文件相对「当前清单文件」所在目录解析：根目录数据与批次目录数据均能正确加载。
+      const base = DATA_FILE_URL || location.href;
       try {
-        const full = await fetchJSON(resolveUrl(location.href, meta.file));
+        const full = await fetchJSON(resolveUrl(base, meta.file));
         if (full && typeof full === 'object') return full;
       } catch (e) { console.warn('[data] item 文件加载失败：' + tradeId, e); }
       return null;
@@ -336,20 +360,51 @@
     }
     // 后台渐进加载所有 item 文件（不阻塞首屏渲染）。
     function preloadAllItems() { ensureAllLoaded(); }
+    // 字段比较表列注册表。label 为 i18n 键，可被 config.columns.labels 覆盖为字面量。
+    // 「表达式 / 未转换值」预览列默认隐藏，用于数据快速预览。
     const COLUMNS = [
       { key: 'channel', label: 'colChannel', sortable: true,  filterable: 'select' },
       { key: 'source',  label: 'colSource',  sortable: true,  filterable: 'select' },
-      { key: 'f',       label: 'colField',   sortable: true,  filterable: 'text' },
-      { key: 'x',       label: 'colXPath',   sortable: true,  filterable: 'text' },
-      { key: 'aoCsv',   label: 'colAoCsv',   sortable: true,  filterable: 'text' },
-      { key: 't',       label: 'colType',    sortable: true,  filterable: 'select' },
-      { key: 'ctx',     label: 'colCtx',     sortable: true,  filterable: 'text' },
+      { key: 'field',   label: 'colField',   sortable: true,  filterable: 'text' },
+      { key: 'userTag', label: 'colUserTag', sortable: true,  filterable: 'select' },
+      { key: 'eoEl',    label: 'colEoEl',    sortable: false, filterable: 'text' },
+      { key: 'aoEl',    label: 'colAoEl',    sortable: true,  filterable: 'text' },
+      { key: 'eoCvtEl', label: 'colEoCvtEl', sortable: false, filterable: 'text' },
+      { key: 'aoCvtEl', label: 'colAoCvtEl', sortable: false, filterable: 'text' },
+      { key: 'vdtEl',   label: 'colVdtEl',   sortable: false, filterable: 'text' },
+      { key: 'type',    label: 'colType',    sortable: true,  filterable: 'select' },
+      { key: 'ctxs',    label: 'colCtx',     sortable: true,  filterable: 'text' },
+      { key: 'eoUnconverted', label: 'colEoUnconverted', sortable: false, filterable: 'text' },
       { key: 'eo',      label: 'colEO',      sortable: false, filterable: 'text' },
+      { key: 'aoUnconverted', label: 'colAoUnconverted', sortable: false, filterable: 'text' },
       { key: 'ao',      label: 'colAO',      sortable: false, filterable: 'text' },
       { key: 'result',  label: 'colResult',  sortable: true,  filterable: 'select' },
-      { key: 'note',    label: 'colNote',    sortable: true,  filterable: 'text' },
+      { key: 'remarks', label: 'colNote',    sortable: true,  filterable: 'text' },
     ];
-    const DEFAULT_COLUMNS = { channel: true, source: true, f: true, x: true, aoCsv: true, t: false, ctx: false, eo: true, ao: true, result: true, note: false };
+    const DEFAULT_COLUMNS = { channel: true, source: true, field: true, userTag: true, eoEl: false, aoEl: false, eoCvtEl: false, aoCvtEl: false, vdtEl: false, type: false, ctxs: false, eoUnconverted: false, eo: true, aoUnconverted: false, ao: true, result: true, remarks: false };
+    // 列显示名 / 是否出现在「列选择」/ XPath-CSV 标签开关，均可由 config.columns 覆盖。
+    let COL_LABELS = {};
+    let COL_SELECTOR = {};
+    let COL_TAG = false;
+    // 用户标签「值 → 显示」：raw 时显示原值（普通文本），否则按 labels 映射显示标签样式。
+    let USER_TAG_RAW = false;
+    let USER_TAG_LABELS = {};
+    // 解析多语配置值：字符串直接返回；对象按当前语言取值（回退 zh-CN，再回退首个值）。
+    function locText(v) {
+      if (typeof v === 'string') return v;
+      if (v && typeof v === 'object') {
+        if (v[LANG] != null) return String(v[LANG]);
+        if (v['zh-CN'] != null) return String(v['zh-CN']);
+        const k = Object.keys(v)[0];
+        if (k) return String(v[k]);
+      }
+      return null;
+    }
+    function colLabel(c) {
+      const s = locText(COL_LABELS[c.key]);
+      return s != null ? s : t(c.label);
+    }
+    function isColSelectable(c) { return COL_SELECTOR[c.key] !== false; }
 
     let state = null;
     function initState() {
@@ -359,7 +414,7 @@
         channel: 'ALL',
         source: 'ALL',
         search: '',
-        colFilter: { channel: 'ALL', source: 'ALL', f: '', x: '', aoCsv: '', t: 'ALL', ctx: '', eo: '', ao: '', result: 'ALL', note: '' },
+        colFilter: { channel: 'ALL', source: 'ALL', field: '', userTag: 'ALL', eoEl: '', aoEl: '', eoCvtEl: '', aoCvtEl: '', vdtEl: '', type: 'ALL', ctxs: '', eoUnconverted: '', eo: '', aoUnconverted: '', ao: '', result: 'ALL', remarks: '' },
         sort: { key: '', dir: 1 },
         page: 1,
         pageSize: APP_LIMITS.pageSize,
@@ -591,6 +646,7 @@
         const idx = await fetchJSONCached(BATCHES_INDEX_URL);
         if (idx && Array.isArray(idx.batches)) BATCHES_INDEX = idx;
       } catch (e) {}
+      prunePinnedBatch();
       BATCH_STATE.loaded = true;
     }
     function batchCompatible(b) {
@@ -674,12 +730,14 @@
       if (BATCH_STATE.detailMode === 'modal' && !pending) {
         infoBtn = '<button class="bi-info" data-binfor="' + esc(b.batchId) + '" title="' + t('batchInfo') + '" aria-label="' + t('batchInfo') + '">ℹ</button>';
       }
+      const pinned = isPinned(b);
       const actions = pending
         ? '<div class="bi-actions"><button class="bi-act undo" data-batch-undo="' + esc(b.batchId) + '">' + t('batchDeleteUndo') + '</button>' +
           '<button class="bi-act confirm" data-batch-confirm="' + esc(b.batchId) + '">' + t('batchDeleteConfirm') + '</button></div>'
         : '<span class="bi-actions2">' +
+          (active ? '<button class="bi-pin' + (pinned ? ' on' : '') + '" data-batch-pin="' + esc(b.batchId) + '" title="' + (pinned ? t('pinUnpinTitle') : t('pinTitle')) + '" aria-label="' + (pinned ? t('pinUnpinTitle') : t('pinTitle')) + '">' + (pinned ? '📌' : '📍') + '</button>' : '') +
           '<button class="bi-fav' + (isBatchFavorited(b) ? ' on' : '') + '" data-batch-fav="' + esc(b.batchId) + '" title="' + t('favAdd') + '" aria-label="' + t('favAdd') + '">' + (isBatchFavorited(b) ? '★' : '☆') + '</button>' +
-          (isBatchFavorited(b) ? '' : '<button class="bi-del" data-batch-del="' + esc(b.batchId) + '" title="' + t('batchDelete') + '" aria-label="' + t('batchDelete') + '">✕</button>') +
+          ((isBatchFavorited(b) || pinned) ? '' : '<button class="bi-del" data-batch-del="' + esc(b.batchId) + '" title="' + t('batchDelete') + '" aria-label="' + t('batchDelete') + '">✕</button>') +
           '</span>';
       const dataAttr = pending ? 'data-batch-pending="' + esc(b.batchId) + '"' : 'data-batch="' + esc(b.batchId) + '"';
       return '<div class="batch-item' + (active ? ' active' : '') + (compat ? '' : ' incompat') + (pending ? ' deleting' : '') + '" ' + dataAttr + (pending ? '' : ' role="button" tabindex="0"') + (title && !pending ? ' title="' + title + '"' : '') + '>' +
@@ -689,6 +747,7 @@
         '<div class="bi-badges">' +
         '<span class="b-badge bv">v' + esc(String(b.formatVersion)) + '</span>' +
         (isNewBatch(b) ? '<span class="b-badge new">' + t('batchNew') + '</span>' : '') +
+        (pinned ? '<span class="b-badge pin" title="' + t('pinTitle') + '">📌 ' + t('pinLabel') + '</span>' : '') +
         (compat ? '<span class="b-badge ok">✓ ' + t('batchCompat') + '</span>' : '<span class="b-badge bad">⚠ ' + t('batchIncompat') + '</span>') +
         (b.reportEnv ? '<span class="b-badge benv">' + esc(b.reportEnv) + '</span>' : '') +
         (sum ? '<span class="b-badge bsum">' + esc(sum) + '</span>' : '') +
@@ -712,7 +771,7 @@
       rec.forEach(function (b) {
         const active = BATCH_STATE.active && BATCH_STATE.active.batchId === b.batchId;
         const day = String(b.date || '').slice(-2);
-        chips += '<button class="bd-chip' + (active ? ' active' : '') + (batchCompatible(b) ? '' : ' incompat') + (isBatchFavorited(b) ? ' fav' : '') + '" data-batch="' + esc(b.batchId) + '" aria-label="' + esc(b.batchName + ' · ' + formatBatchTime(b.executedAt)) + '">' + esc(day || '?') + (isNewBatch(b) ? '<span class="bd-new-dot" title="' + t('batchNew') + '"></span>' : '') + '</button>';
+        chips += '<button class="bd-chip' + (active ? ' active' : '') + (batchCompatible(b) ? '' : ' incompat') + (isBatchFavorited(b) ? ' fav' : '') + (isPinned(b) ? ' pinned' : '') + '" data-batch="' + esc(b.batchId) + '" aria-label="' + esc(b.batchName + ' · ' + formatBatchTime(b.executedAt)) + '">' + esc(day || '?') + (isNewBatch(b) ? '<span class="bd-new-dot" title="' + t('batchNew') + '"></span>' : '') + '</button>';
       });
       if (!chips && liveBatches().length) chips = '<span class="bd-empty" title="' + t('batchNoCompat') + '">' + t('batchNoCompat') + '</span>';
       dock.innerHTML =
@@ -792,6 +851,7 @@
     function markBatchPending(id) {
       const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === id; });
       if (b && isBatchFavorited(b)) { setBatchNotice(t('favDeleteBlocked')); return; }
+      if (b && isPinned(b)) { setBatchNotice(t('pinDeleteBlocked')); return; }
       BATCH_STATE.pendingDeletes[id] = true;
       renderBatchPanel(); renderBatchDock();
     }
@@ -810,6 +870,7 @@
       }
       delete BATCH_STATE.pendingDeletes[id];
       BATCHES_INDEX.batches = BATCHES_INDEX.batches.filter(function (b) { return b.batchId !== id; });
+      if (PINNED_BATCH_ID === id) { PINNED_BATCH_ID = null; savePinnedId(); }
       if (BATCH_STATE.active && BATCH_STATE.active.batchId === id) { BATCH_STATE.active = null; saveBatchActive(); }
       setBatchNotice('');
       renderBatchPanel(); renderBatchDock(); renderBatchBadge(); renderForceBanner();
@@ -1139,6 +1200,36 @@
       } catch (e) {}
       return null;
     }
+    function isPinned(b) { return !!(b && PINNED_BATCH_ID === b.batchId); }
+    function loadPinnedId() {
+      try {
+        const v = JSON.parse(localStorage.getItem(PIN_STORAGE_KEY) || 'null');
+        PINNED_BATCH_ID = typeof v === 'string' && v ? v : null;
+      } catch (e) { PINNED_BATCH_ID = null; }
+    }
+    function savePinnedId() {
+      try { if (PINNED_BATCH_ID) localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(PINNED_BATCH_ID)); else localStorage.removeItem(PIN_STORAGE_KEY); } catch (e) {}
+    }
+    function toggleBatchPin(batchId) {
+      const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === batchId; });
+      if (!b) return;
+      PINNED_BATCH_ID = isPinned(b) ? null : b.batchId;
+      savePinnedId();
+      renderBatchPanel(); renderBatchDock(); renderBatchBadge();
+    }
+    // 冷/热启动时优先加载被置顶的批次（存在且未被删除时才生效）。
+    function restorePinnedBatch() {
+      if (!PINNED_BATCH_ID) return null;
+      const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === PINNED_BATCH_ID && !isBatchPending(x); });
+      if (b && b.dataUrl) return { batch: b, forced: false };
+      return null;
+    }
+    // 批次被物理删除（重新扫描后索引中不再存在）时，及时清除置顶状态。
+    function prunePinnedBatch() {
+      if (!PINNED_BATCH_ID) return;
+      const exists = BATCHES_INDEX.batches.some(function (b) { return b.batchId === PINNED_BATCH_ID; });
+      if (!exists) { PINNED_BATCH_ID = null; savePinnedId(); }
+    }
     function toggleBatchPanel(force) {
       BATCH_STATE.expanded = force === undefined ? !BATCH_STATE.expanded : !!force;
       // 批次面板与收藏夹互斥：打开批次面板时隐藏收藏夹。
@@ -1251,6 +1342,7 @@
           '<span class="batch-badge-label">' + t('batchCurrentLabel') + '</span>' +
           (BATCH_STATE.forced ? '<span class="batch-badge-warn" title="' + t('batchForcedBanner') + '">⚠</span>' : '') +
           '<span class="batch-badge-text">' + esc(b.batchName || b.batchId) + '</span>' +
+          (isPinned(b) ? '<span class="batch-badge-pin" title="' + t('pinTitle') + '">📌</span>' : '') +
           (isBatchFavorited(b) ? '<span class="batch-badge-star" title="' + t('favoritesTitle') + '">★</span>' : '');
         el.title = (b.batchName || b.batchId) + ' · ' + formatBatchTime(b.executedAt);
       } else el.hidden = true;
@@ -1293,6 +1385,7 @@
         const json = await res.json();
         if (!json || !Array.isArray(json.items) || !json.items.length) throw new Error('数据格式无效');
         DATA = normalizeLoaded(json);
+        DATA_FILE_URL = dataUrl;
       } catch (e) {
         console.warn('[batch] 加载失败：', e);
         setBatchNotice(t('batchLoadError') + ' ' + (b.batchName || b.batchId));
@@ -1511,11 +1604,15 @@
           entry = { kind: 'warning', channel: arr[2], source: arr[3], scope: arr[4], type: arr[5], level: arr[6], field: arr[7] };
         } else if (arr[0] === 'xpath') {
           platform = arr[3] || 'UNKNOWN';
-          entry = { kind: 'uncomparedXpath', xpath: arr[1], channel: arr[2], product: arr[4], ctx: arr[5] };
+          entry = { kind: 'uncomparedXpath', xpath: arr[1], channel: arr[2], product: arr[4], ctx: '' };
+        } else if (arr[0] === 'csv') {
+          platform = arr[3] || 'UNKNOWN';
+          entry = { kind: 'uncomparedCsv', value: arr[1], channel: arr[2], product: arr[4] };
         } else return;
-        if (!grouped[platform]) grouped[platform] = { warnings: [], uncomparedXpaths: [] };
+        if (!grouped[platform]) grouped[platform] = { warnings: [], uncomparedXpaths: [], uncomparedCsvs: [] };
         if (entry.kind === 'warning') grouped[platform].warnings.push(entry);
-        else grouped[platform].uncomparedXpaths.push(entry);
+        else if (entry.kind === 'uncomparedXpath') grouped[platform].uncomparedXpaths.push(entry);
+        else grouped[platform].uncomparedCsvs.push(entry);
       });
       const blob = new Blob([JSON.stringify(grouped, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -1557,7 +1654,7 @@
       state.page = 1;
       state.channel = 'ALL';
       state.source = 'ALL';
-      state.colFilter = { channel: 'ALL', source: 'ALL', f: '', x: '', aoCsv: '', t: 'ALL', ctx: '', eo: '', ao: '', result: 'ALL', note: '' };
+      state.colFilter = { channel: 'ALL', source: 'ALL', field: '', userTag: 'ALL', eoEl: '', aoEl: '', eoCvtEl: '', aoCvtEl: '', vdtEl: '', type: 'ALL', ctxs: '', eoUnconverted: '', eo: '', aoUnconverted: '', ao: '', result: 'ALL', remarks: '' };
       state.sort = { key: '', dir: 1 };
       state.msgSort = { key: '', dir: 1 };
       state.msgFilter = {};
@@ -1614,17 +1711,7 @@
       return it.channels.filter(function (c) { return c.name === state.channel; });
     }
 
-    function currentChannelFormat() {
-      if (state.channel !== 'ALL') {
-        const it = currentItem();
-        const ch = it.channels.find(function (c) { return c.name === state.channel; });
-        if (ch && ch.format === 'csv') return 'csv';
-      }
-      return 'xml';
-    }
     function isFieldColVisible(c) {
-      if (c.key === 'x') return currentChannelFormat() === 'xml' && state.columns.x;
-      if (c.key === 'aoCsv') return currentChannelFormat() === 'csv' && state.columns.aoCsv;
       return state.columns[c.key];
     }
 
@@ -1748,6 +1835,18 @@
       const m = TYPE_META[type] || { cls: '' };
       return '<span class="chip ' + m.cls + '">' + esc(typeLabel(type)) + '</span>';
     }
+    function userTagLabel(v) {
+      if (!v) return '';
+      if (USER_TAG_RAW) return String(v);
+      const s = locText(USER_TAG_LABELS[v]);
+      return s != null ? s : typeLabel(v);
+    }
+    function userTagHTML(v) {
+      if (!v) return '—';
+      if (USER_TAG_RAW) return esc(String(v));
+      const m = TYPE_META[v] || { cls: '' };
+      return '<span class="chip ' + m.cls + '">' + esc(userTagLabel(v)) + '</span>';
+    }
 
     function errorTypeLabel(type) {
       const m = ERROR_TYPE_META[type];
@@ -1766,7 +1865,7 @@
       return state.sort.dir === 1 ? '▲' : '▼';
     }
 
-    // 字段定位：item.fields 按 id（数字字符串）去重且属于 item；比较字段用 (channel, source, id) 三元组唯一定位。
+    // 字段定位：channel.fields 为 report channel 级字段注册表；比较字段用 (channel, source, id) 三元组唯一定位。
     function fieldLocKey(channel, source, id) { return channel + '\u0001' + source + '\u0001' + id; }
     function parseFieldLoc(key) {
       const p = String(key || '').split('\u0001');
@@ -1778,11 +1877,10 @@
       const s = (ch.sources || []).find(function (x) { return x.name === source; });
       if (!s) return null;
       const f = (s.fields || []).find(function (x) { return x.id === id; });
-      return f ? { channel: ch.name, source: s.name, field: f } : null;
+      return f ? { channel: ch.name, source: s.name, field: f, ch: ch } : null;
     }
-    function fieldDef(id) {
-      const it = currentItem();
-      const arr = (it && it.fields) || [];
+    function fieldDef(channel, id) {
+      const arr = (channel && channel.fields) || [];
       for (let i = 0; i < arr.length; i++) if (arr[i].id === id) return arr[i];
       return null;
     }
@@ -2093,10 +2191,11 @@
           '</div>';
       };
       const html = chs.map(function (ch) {
-        const eoRows = ch.files.eo.map(function (v) { return fileRowHTML('EO', 'ftag-eo', stripColon(t('filesEO')), v); }).join('');
+        const eoRows = ((ch.files && ch.files.eo) || []).map(function (v) { return fileRowHTML('EO', 'ftag-eo', stripColon(t('filesEO')), v); }).join('');
         const aoTip = stripColon(ch.format === 'csv' ? t('filesAOCsv') : t('filesAO'));
-        const aoRows = ch.files.ao.map(function (v) { return fileRowHTML('AO', 'ftag-ao', aoTip, v); }).join('');
-        const xlRow = fileRowHTML('XL', 'ftag-xl', stripColon(t('filesExcel')), { name: ch.files.excel.file, path: ch.files.excel.path }, 'sheet: ' + ch.files.excel.sheet);
+        const aoRows = ((ch.files && ch.files.ao) || []).map(function (v) { return fileRowHTML('AO', 'ftag-ao', aoTip, v); }).join('');
+        const xl = (ch.files && ch.files.excel) || {};
+        const xlRow = fileRowHTML('XL', 'ftag-xl', stripColon(t('filesExcel')), { name: xl.file, path: xl.path }, 'sheet: ' + (xl.sheet || ''));
         return '<div class="file-card">' +
           '<div class="fc-head">' + esc(ch.name) + '</div>' +
           '<div class="fc-body">' + eoRows + aoRows + xlRow + '</div>' +
@@ -2199,9 +2298,9 @@
         COLUMNS.forEach(function (c) {
           const v = state.colFilter[c.key];
           if (v && v !== 'ALL') {
-            const shown = c.key === 't' ? valueTypeLabel(v) : v;
+            const shown = c.key === 'type' ? valueTypeLabel(v) : v;
             list.push({
-              label: t(c.label) + ': ' + shown,
+              label: colLabel(c) + ': ' + shown,
               clear: (function (key) {
                 return function () {
                   const def = COLUMNS.find(function (x) { return x.key === key; });
@@ -2280,8 +2379,17 @@
       const r = anchor.getBoundingClientRect();
       const w = Math.min(260, window.innerWidth - 16);
       pop.style.width = w + 'px';
-      pop.style.top = (r.bottom + 6) + 'px';
       pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+      // 选项过多时：限高 + 内部滚动，保证能滚动看到全部选项；优先向下，下方空间不足则向上展开。
+      const gap = 6;
+      const below = window.innerHeight - r.bottom - gap;
+      const above = r.top - gap;
+      const openUp = below < above && above > 120;
+      const space = openUp ? above : below;
+      pop.style.maxHeight = Math.max(120, Math.min(space, window.innerHeight - 16)) + 'px';
+      pop.style.overflowY = 'auto';
+      if (openUp) pop.style.bottom = (window.innerHeight - r.top + gap) + 'px';
+      else pop.style.top = (r.bottom + gap) + 'px';
       anchor.classList.add('active');
       POPOVER.el = pop;
       const docClick = function (e) {
@@ -2292,30 +2400,38 @@
       return pop;
     }
 
-    function selectOptionsFor(col) {
+    function selectOptionsFor(col, table) {
       let arr;
-      if (col === 't') arr = ['ALL', 'id', 'num', 'date', 'code', 'product', 'text', 'multi'];
-      else if (col === 'type') arr = state.tab === 'errors' ? ['ALL'].concat(Object.keys(ERROR_TYPE_META)) : ['ALL', 'platformAssertion', 'productAssertion', 'contextAssertion'];
-      else if (col === 'result') arr = ['ALL', 'PASSED', 'FAILED'];
-      else if (col === 'channel') arr = ['ALL', 'HKTR', 'JSFA', 'CFTC'];
-      else if (col === 'source') arr = ['ALL'].concat(sourceNames());
-      else if (col === 'level') arr = ['ALL', 'WARN', 'INFO', 'NOTICE', 'DEBUG', 'ERROR', 'FATAL', 'SEVERE'];
-      else arr = ['ALL'];
+      if (table === 'fields') {
+        if (col === 'type') arr = ['ALL', 'id', 'num', 'date', 'code', 'product', 'text', 'multi'];
+        else if (col === 'userTag') arr = ['ALL', 'platformAssertion', 'productAssertion', 'contextAssertion'];
+        else if (col === 'result') arr = ['ALL', 'PASSED', 'FAILED'];
+        else if (col === 'channel') arr = ['ALL', 'HKTR', 'JSFA', 'CFTC'];
+        else if (col === 'source') arr = ['ALL'].concat(sourceNames());
+        else arr = ['ALL'];
+      } else {
+        if (col === 'type') arr = state.tab === 'errors' ? ['ALL'].concat(Object.keys(ERROR_TYPE_META)) : ['ALL', 'platformAssertion', 'productAssertion', 'contextAssertion'];
+        else if (col === 'channel') arr = ['ALL', 'HKTR', 'JSFA', 'CFTC'];
+        else if (col === 'source') arr = ['ALL'].concat(sourceNames());
+        else if (col === 'level') arr = ['ALL', 'WARN', 'INFO', 'NOTICE', 'DEBUG', 'ERROR', 'FATAL', 'SEVERE'];
+        else arr = ['ALL'];
+      }
       return arr.map(function (v) {
         let l = v;
         if (v === 'ALL') l = t('all');
         else if (col === 'source') l = sourceName(v);
-        else if (col === 't') l = valueTypeLabel(v);
-        else if (col === 'type') l = state.tab === 'errors' ? errorTypeLabel(v) : typeLabel(v);
+        else if (table === 'fields' && col === 'type') l = valueTypeLabel(v);
+        else if (table === 'fields' && col === 'userTag') l = userTagLabel(v);
+        else if (table === 'msg' && col === 'type') l = state.tab === 'errors' ? errorTypeLabel(v) : typeLabel(v);
         return [v, l];
       });
     }
 
-    function openFilterPopover(btn, filterObj, col, kind, placeholder, onApply) {
+    function openFilterPopover(btn, filterObj, col, kind, placeholder, onApply, table) {
       if (btn.classList.contains('active')) { closePopover(); return; }
       let control;
       if (kind === 'select') {
-        const opts = selectOptionsFor(col);
+        const opts = selectOptionsFor(col, table);
         control = '<select class="pop-control">' +
           opts.map(function (o) { return '<option value="' + o[0] + '"' + (filterObj[col] === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
       } else {
@@ -2337,17 +2453,17 @@
       const col = btn.getAttribute('data-hf');
       const kind = btn.getAttribute('data-kind');
       const def = COLUMNS.find(function (c) { return c.key === col; });
-      openFilterPopover(btn, state.colFilter, col, kind, def ? t(def.label) : t('toolbarSearch'), function () {
+      openFilterPopover(btn, state.colFilter, col, kind, def ? colLabel(def) : t('toolbarSearch'), function () {
         if (col === 'channel') { state.channel = state.colFilter.channel; renderChannelTabs(); }
         else if (col === 'source') { state.source = state.colFilter.source; renderChannelTabs(); }
         refreshFieldsBody(); renderFilterChips();
-      });
+      }, 'fields');
     }
 
     function openMsgFilterPopover(btn) {
       const col = btn.getAttribute('data-hf');
       const kind = btn.getAttribute('data-kind');
-      openFilterPopover(btn, state.msgFilter, col, kind, btn.getAttribute('data-title') || '搜索', function () { renderContent(); renderFilterChips(); });
+      openFilterPopover(btn, state.msgFilter, col, kind, btn.getAttribute('data-title') || '搜索', function () { renderContent(); renderFilterChips(); }, 'msg');
     }
 
     function openSpecialPopover(btn) {
@@ -2367,16 +2483,11 @@
     function openColumnMenu(anchor) {
       if (anchor.classList.contains('active')) { closePopover(); return; }
       const buildContent = function () {
-        const fmt = currentChannelFormat();
-        const cols = COLUMNS.filter(function (c) {
-          if (c.key === 'x') return fmt === 'xml';
-          if (c.key === 'aoCsv') return fmt === 'csv';
-          return true;
-        });
+        const cols = COLUMNS.filter(isColSelectable);
         const allChecked = cols.every(function (c) { return state.columns[c.key]; });
         let html = '<label class="col-option"><input type="checkbox" data-colkey="__ALL__"' + (allChecked ? ' checked' : '') + '> ' + t('all') + '</label>';
         cols.forEach(function (c) {
-          html += '<label class="col-option"><input type="checkbox" data-colkey="' + c.key + '"' + (state.columns[c.key] ? ' checked' : '') + '> ' + t(c.label) + '</label>';
+          html += '<label class="col-option"><input type="checkbox" data-colkey="' + c.key + '"' + (state.columns[c.key] ? ' checked' : '') + '> ' + colLabel(c) + '</label>';
         });
         return html;
       };
@@ -2500,18 +2611,31 @@
       switch (key) {
         case 'channel': return '<td><span class="chip channel-chip">' + esc(r.channel) + '</span></td>';
         case 'source': return '<td>' + esc(sourceName(r.source)) + '</td>';
-        case 'f': return '<td class="mono"><a class="val-link" data-detail="' + esc(fieldLocKey(r.channel, r.source, r.id)) + '" title="查看比较详情">' + esc(r.f) + '</a></td>';
-        case 'x': return '<td>' + valueCellHTML(r.x) + '</td>';
-        case 'aoCsv': return '<td class="mono">' + (r.aoCsv ? esc(r.aoCsv) : '—') + '</td>';
-        case 't': return '<td><span class="vt-plain">' + esc(valueTypeLabel(r.k)) + '</span></td>';
-        case 'ctx': return '<td data-col="ctx" style="width:' + state.ctxColWidth + 'px; min-width:' + state.ctxColWidth + 'px;"><div class="ctx-tags">' + (ctxTagsHTML(r.ctx) || '') + '</div></td>';
+        case 'field': return '<td class="mono"><a class="val-link" data-detail="' + esc(fieldLocKey(r.channel, r.source, r.id)) + '" title="查看比较详情">' + esc(r.field) + '</a></td>';
+        case 'userTag': return '<td>' + userTagHTML(r.userTag) + '</td>';
+        case 'aoEl': {
+          const chip = COL_TAG
+            ? (r.srcType === 2
+              ? '<span class="chip vt-code" title="' + t('modalAoCsvField') + '">CSV</span> '
+              : '<span class="chip channel-chip" title="' + t('modalXPath') + '">XPath</span> ')
+            : '';
+          return '<td>' + chip + valueCellHTML(r.aoEl || '—') + '</td>';
+        }
+        case 'eoEl': return '<td class="mono">' + valueCellHTML(r.eoEl || '—') + '</td>';
+        case 'eoCvtEl': return '<td class="mono">' + valueCellHTML(r.eoCvtEl || '—') + '</td>';
+        case 'aoCvtEl': return '<td class="mono">' + valueCellHTML(r.aoCvtEl || '—') + '</td>';
+        case 'vdtEl': return '<td class="mono">' + valueCellHTML(r.vdtEl || '—') + '</td>';
+        case 'eoUnconverted': return '<td>' + valueCellHTML(r.eoUnconverted || '—') + '</td>';
+        case 'aoUnconverted': return '<td>' + valueCellHTML(r.aoUnconverted || '—') + '</td>';
+        case 'type': return '<td><span class="vt-plain">' + esc(valueTypeLabel(r.type)) + '</span></td>';
+        case 'ctxs': return '<td data-col="ctxs" style="width:' + state.ctxColWidth + 'px; min-width:' + state.ctxColWidth + 'px;"><div class="ctx-tags">' + (ctxTagsHTML(r.ctxs) || '') + '</div></td>';
         case 'eo': return '<td data-col="eo" style="width:' + state.eoColWidth + 'px; min-width:' + state.eoColWidth + 'px;">' + valueCellHTML(r.eo) + '</td>';
         case 'ao': return '<td data-col="ao" style="width:' + state.aoColWidth + 'px; min-width:' + state.aoColWidth + 'px;">' + valueCellHTML(r.ao) + '</td>';
         case 'result': {
           const pass = r.result === 'PASSED';
           return '<td><span class="badge ' + (pass ? 'pass' : 'fail') + '">' + r.result + '</span></td>';
         }
-        case 'note': return '<td data-col="note" style="width:' + state.noteColWidth + 'px; min-width:' + state.noteColWidth + 'px;">' + hoverCellHTML(r.note || '—') + '</td>';
+        case 'remarks': return '<td data-col="remarks" style="width:' + state.noteColWidth + 'px; min-width:' + state.noteColWidth + 'px;">' + hoverCellHTML(r.remarks || '—') + '</td>';
         default: return '<td></td>';
       }
     }
@@ -2536,10 +2660,10 @@
     }
 
     const RESIZABLE_COLS = {
-      ctx:  { stateKey: 'ctxColWidth',  min: 140, max: 560 },
-      eo:   { stateKey: 'eoColWidth',   min: 120, max: 600 },
-      ao:   { stateKey: 'aoColWidth',   min: 120, max: 600 },
-      note: { stateKey: 'noteColWidth', min: 120, max: 600 },
+      ctxs:    { stateKey: 'ctxColWidth',  min: 140, max: 560 },
+      eo:      { stateKey: 'eoColWidth',   min: 120, max: 600 },
+      ao:      { stateKey: 'aoColWidth',   min: 120, max: 600 },
+      remarks: { stateKey: 'noteColWidth', min: 120, max: 600 },
     };
 
     function applyColWidth(key) {
@@ -2572,7 +2696,7 @@
           specialBtn = '<button class="special-toggle" data-special="' + c.key + '" title="空值/空白/含特殊字符过滤">∅</button>';
         }
         const handle = rc ? '<span class="col-resize" data-resize="' + c.key + '" title="拖动调整列宽"></span>' : '';
-        return '<th' + sortAttr + extra + ' scope="col">' + t(c.label) +
+        return '<th' + sortAttr + extra + ' scope="col">' + colLabel(c) +
           (c.sortable ? ' <span class="sort-arrow">' + sortArrow(c.key) + '</span>' : '') +
           btn + specialBtn + handle + '</th>';
       }).join('');
@@ -2917,20 +3041,30 @@
       2: { label: 'ctxTypeConversion' },
       3: { label: 'ctxTypeValidation' },
     };
-    function ctxTypes(key) {
+    function ctxDefsOf() {
       const it = currentItem();
-      const def = (it && it.ctxDefs ? it.ctxDefs : {})[key] || {};
-      const tp = def.type;
-      if (Array.isArray(tp)) return tp.filter(function (t) { return t === 1 || t === 2 || t === 3; });
-      if (tp === 1 || tp === 2 || tp === 3) return [tp];
+      return (it && it.ctxDefs) || {};
+    }
+    function ctxDefById(id) {
+      const defs = ctxDefsOf();
+      // data-ctx 属性为字符串，而 ctxDefs.id 为数字，统一按数值匹配。
+      const num = Number(id);
+      for (const k in defs) {
+        if (Number(defs[k].id) === num) return { key: k, def: defs[k] };
+      }
+      return { key: String(id), def: {} };
+    }
+    function ctxScopes(id) {
+      const d = ctxDefById(id).def;
+      const s = d.scopes;
+      if (Array.isArray(s)) return s.filter(function (t) { return t === 1 || t === 2 || t === 3; });
+      if (s === 1 || s === 2 || s === 3) return [s];
       return [];
     }
-    function ctxKeysOfType(field, type) {
-      return (field && field.ctxs ? field.ctxs : []).filter(function (k) { return ctxTypes(k).indexOf(type) !== -1; });
-    }
     function ctxTagsHTML(ctxArr) {
-      return (ctxArr || []).map(function (c) {
-        return '<span class="ctx-tag" data-ctx="' + esc(c) + '">' + esc(c) + '</span>';
+      return (ctxArr || []).map(function (id) {
+        const key = ctxDefById(id).key;
+        return '<span class="ctx-tag" data-ctx="' + esc(id) + '">' + esc(key) + '</span>';
       }).join('');
     }
 
@@ -2946,22 +3080,25 @@
       }).join('');
     }
 
-    function showCtxDefPopup(anchor, ctxKey) {
+    function showCtxDefPopup(anchor, ctxId) {
       // 再次点击同一标签：关闭（切换）；点击其他标签：直接切换展开当前标签。
-      if (CTX_DEF_POPUP && CTX_DEF_POPUP.__ctxKey === ctxKey) { closeCtxDefPopup(); return; }
+      if (CTX_DEF_POPUP && CTX_DEF_POPUP.__ctxKey === ctxId) { closeCtxDefPopup(); return; }
       closeCtxDefPopup();
       closeRulePopup();
-      const it = currentItem();
-      const def = (it && it.ctxDefs ? it.ctxDefs : {})[ctxKey] || {};
-      // 命中详情显示所有 type（一个 ctx key 可能同时用于多种规则）。
-      const typeBadges = ctxTypes(ctxKey).map(function (tp) {
+      const found = ctxDefById(ctxId);
+      const def = found.def;
+      // 来源类型（builtin / user）放在 scopes 标签最前面，以不同样式区分。
+      const origin = def.type === 'user' ? 'user' : 'builtin';
+      const originBadge = '<span class="ctx-origin-badge ' + origin + '">' + (origin === 'user' ? t('ctxOriginUser') : t('ctxOriginBuiltin')) + '</span>';
+      // 命中详情显示所有 scopes（一个 ctx 可能同时用于多种规则）。
+      const typeBadges = ctxScopes(ctxId).map(function (tp) {
         return '<span class="ctx-type-badge t' + tp + '">' + t(CTX_TYPE_META[tp].label) + '</span>';
       }).join(' ');
       const pop = document.createElement('div');
       pop.className = 'ctx-def-popup';
       pop.innerHTML =
-        '<div class="ctx-def-key">' + esc(ctxKey) + '</div>' +
-        (typeBadges ? '<div class="ctx-def-type">' + typeBadges + '</div>' : '') +
+        '<div class="ctx-def-key">' + esc(found.key) + '</div>' +
+        '<div class="ctx-def-type">' + originBadge + (typeBadges ? ' ' + typeBadges : '') + '</div>' +
         '<div class="ctx-def-row"><span class="ctx-def-label">' + t('ctxDefLabel') + '</span><span class="ctx-def-value">' + esc(def.def || '—') + '</span></div>' +
         '<div class="ctx-def-row"><span class="ctx-def-label">' + t('ctxHitLabel') + '</span><span class="ctx-def-value">' + esc(def.hits || '—') + '</span></div>';
       document.body.appendChild(pop);
@@ -2972,7 +3109,7 @@
       if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 6);
       pop.style.left = left + 'px';
       pop.style.top = top + 'px';
-      pop.__ctxKey = ctxKey;
+      pop.__ctxKey = ctxId;
       CTX_DEF_POPUP = pop;
     }
 
@@ -3005,7 +3142,8 @@
     function ruleCtxHTML(ctxArr) {
       // ctx：先显示 ctx 文本，再换行显示具体标签（可点击）。
       const arr = ctxArr || [];
-      const data = arr.join(' ');
+      const keys = arr.map(function (id) { return ctxDefById(id).key; });
+      const data = keys.join(' ');
       const tags = ctxTagsHTML(arr);
       return '<div class="rc-row rc-ctx">' +
         '<span class="rc-label">' + t('rcCtxLabel') + '</span>' +
@@ -3044,7 +3182,7 @@
         const found = findField(currentItem(), ch, src, fid);
         if (!found) return null;
         const f = found.field;
-        const def = fieldDef(fid) || {};
+        const def = fieldDef(found.ch, fid) || {};
         let navInfo = null;
         if (!isGlobal) {
           const rows = filteredFields(currentItem());
@@ -3102,7 +3240,7 @@
           '<span class="k">' + t('modalSource') + '</span><span class="v">' + esc(sourceName(found.source)) + '</span>' +
           '<span class="k">' + t('modalField') + '</span><span class="v">' + esc(def.name) + '</span>' +
           '<span class="k">' + xpathLabel + '</span><span class="v">' + esc(xpathValue) + '</span>' +
-          '<span class="k">' + t('modalUserTag') + '</span><span class="v">' + esc(def.userTag || '—') + '</span>' +
+          '<span class="k">' + t('modalUserTag') + '</span><span class="v">' + userTagHTML(def.userTag) + '</span>' +
           '<span class="k">' + t('modalResult') + '</span><span class="v"><span class="badge ' + (pass ? 'pass' : 'fail') + '">' + f.result + '</span>' +
           (f.resultText ? '　' + esc(f.resultText) : '') + '</span>' +
           '</div>' +
@@ -3120,7 +3258,7 @@
               '</div>'
             : '') +
           (APP_FEATURES.modalPrints ? '<div class="print-box"><div class="pb-head">' + t('modalPrints') + '</div>' +
-          '<div class="log-box">' + f.prints.map(p => '<div class="log-line">' + esc(p) + '</div>').join('') + '</div>' +
+          '<div class="log-box">' + (f.prints || []).map(p => '<div class="log-line">' + esc(p) + '</div>').join('') + '</div>' +
           '</div>' : '') +
           '</div></div>';
         return { html: html, navInfo: navInfo };
@@ -3352,9 +3490,9 @@
       const rows = [];
       chA.sources.forEach(function (sA) {
         sA.fields.forEach(function (fA) {
-          const defA = fieldDef(fA.id) || {};
+          const defA = fieldDef(chA, fA.id) || {};
           const sB = chB.sources.find(function (s) { return s.name === sA.name; });
-          const fB = sB ? sB.fields.find(function (f) { const d = fieldDef(f.id) || {}; return d.name === defA.name; }) : null;
+          const fB = sB ? sB.fields.find(function (f) { const d = fieldDef(chB, f.id) || {}; return d.name === defA.name; }) : null;
           rows.push({ f: defA.name, source: sA.name, a: fA, b: fB });
         });
       });
@@ -3655,10 +3793,10 @@
     function healthChartsHTML(h, channel) {
       const chStats = {};
       h.items.forEach(function (it) {
-        it.channels.forEach(function (ch) {
+        (it.channels || []).forEach(function (ch) {
           if (channel && channel !== 'ALL' && ch.name !== channel) return;
           const st = chStats[ch.name] || (chStats[ch.name] = { total: 0, passed: 0, failed: 0 });
-          ch.sources.forEach(function (s) { s.fields.forEach(function (fd) { st.total++; fd.result === 'PASSED' ? st.passed++ : st.failed++; }); });
+          (ch.sources || []).forEach(function (s) { (s.fields || []).forEach(function (fd) { st.total++; fd.result === 'PASSED' ? st.passed++ : st.failed++; }); });
         });
       });
       const chList = CHANNELS.filter(function (c) { return chStats[c.name]; }).map(function (c) {
@@ -3869,7 +4007,7 @@
               return '<div class="gs-row" data-goto="' + esc(r.itemId) + '" data-field-id="' + esc(r.fieldId) + '" data-channel="' + esc(r.channel) + '" data-source="' + esc(r.source) + '">' +
                 '<span class="gs-item mono">' + esc(r.itemId) + '</span>' +
                 '<span class="chip channel-chip">' + esc(r.channel) + '</span>' +
-                '<span class="mono">' + esc(r.f) + '</span>' +
+                '<span class="mono">' + esc(r.field) + '</span>' +
                 '<span class="gs-snippet">' + highlight(r.snippet, q) + '</span>' +
                 '</div>';
             }).join('')
@@ -3983,6 +4121,8 @@
         if (noticeClose) { setBatchNotice(''); return; }
         const delBtn = e.target.closest('[data-batch-del]');
         if (delBtn) { markBatchPending(delBtn.getAttribute('data-batch-del')); return; }
+        const pinBtn = e.target.closest('[data-batch-pin]');
+        if (pinBtn) { toggleBatchPin(pinBtn.getAttribute('data-batch-pin')); return; }
         const undoBtn = e.target.closest('[data-batch-undo]');
         if (undoBtn) { unmarkBatchPending(undoBtn.getAttribute('data-batch-undo')); return; }
         const confirmBtn = e.target.closest('[data-batch-confirm]');
@@ -4407,7 +4547,7 @@
         if (!el) return;
         state.channel = el.getAttribute('data-channel'); state.page = 1;
         state.source = 'ALL';
-        state.colFilter = { channel: state.channel, source: 'ALL', f: '', x: '', aoCsv: '', t: 'ALL', ctx: '', eo: '', ao: '', result: 'ALL', note: '' };
+        state.colFilter = { channel: state.channel, source: 'ALL', field: '', userTag: 'ALL', eoEl: '', aoEl: '', eoCvtEl: '', aoCvtEl: '', vdtEl: '', type: 'ALL', ctxs: '', eoUnconverted: '', eo: '', aoUnconverted: '', ao: '', result: 'ALL', remarks: '' };
         render();
       });
 
@@ -4624,6 +4764,7 @@
       await loadI18n();
       await loadBatchHelp();
       loadPrefs();
+      loadPinnedId();
       await loadFavorites();
       applyTheme(THEME);
       applySidebarWidth();
@@ -4632,8 +4773,12 @@
       applyBatchListH();
       await loadBatchesIndex();
       applyFeatureVisibility();
+      const pinned = restorePinnedBatch();
       const restored = restoreActiveBatch();
-      if (restored) {
+      if (pinned) {
+        const ok = await loadBatchData(pinned.batch, pinned.forced, resolveUrl(indexBaseUrl(), pinned.batch.dataUrl || ''));
+        if (!ok) { DATA = await loadData(); await loadIgnoreConfig(); }
+      } else if (restored) {
         const ok = await loadBatchData(restored.batch, restored.forced, resolveUrl(indexBaseUrl(), restored.batch.dataUrl || ''));
         if (!ok) { DATA = await loadData(); await loadIgnoreConfig(); }
       } else {
@@ -4670,7 +4815,6 @@
       groupedToFlat, msgIgnoreKey, msgIsIgnored,
       filteredFields, getMsgRows, diffSegments,
       parseSearchQuery, makeMatcher, matchRow,
-      ctxTypes, ctxKeysOfType,
     };
     export const __test = {
       setState(s) { state = s; },

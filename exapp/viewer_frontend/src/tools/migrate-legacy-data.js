@@ -22,23 +22,28 @@ function ctxKeysOfType(ctx, ctxDefs, type) {
   });
 }
 
-function migrateField(f, ctxDefs, nameToId) {
+function migrateField(f, ctxDefs, nameToId, ctxIdByKey) {
+  const toIds = function (arr) {
+    return (arr || []).map(function (k) { return ctxIdByKey[k]; }).filter(function (id) { return id != null; });
+  };
   const ctx = Array.isArray(f.ctx) ? f.ctx : [];
   const mapCtxs = ctxKeysOfType(ctx, ctxDefs, 1);
+  const mapCtxIds = toIds(mapCtxs);
   const convRule = f.conversionRule || null;
   const valRule = f.validationRule || null;
+  const convCtxIds = convRule ? toIds(convRule.ctx) : [];
+  const valCtxIds = valRule ? toIds(valRule.ctx) : [];
   const isCsv = (f.x == null || f.x === '') && (f.aoCsv != null && f.aoCsv !== '');
   const el = isCsv ? (f.aoCsv || '') : (f.x || '');
   return {
     id: nameToId[f.f || f.id || ''] || '',
-    ctxs: ctx,
     cmpLeft: { value: f.eo == null ? '' : f.eo, ctx: null, ctxs: [], elRaw: null, el: null, srcType: null },
-    cmpRight: { value: f.ao == null ? '' : f.ao, ctx: mapCtxs[0] || null, ctxs: mapCtxs, elRaw: f.excelMapping || '', el: el, srcType: isCsv ? 2 : 1 },
+    cmpRight: { value: f.ao == null ? '' : f.ao, ctx: mapCtxIds.length ? mapCtxIds[0] : null, ctxs: mapCtxIds, elRaw: f.excelMapping || '', el: el, srcType: isCsv ? 2 : 1 },
     // cvtLeft / cvtRight / vdt 为可选配置：旧数据未配置时迁移为 null（而非空对象）。
     cvtLeft: convRule
       ? {
-          ctx: (convRule.ctx && convRule.ctx[0]) || null,
-          ctxs: convRule.ctx || [],
+          ctx: convCtxIds.length ? convCtxIds[0] : null,
+          ctxs: convCtxIds,
           el: convRule.value,
           elRaw: f.excelConversionRule || '',
           raw: f.eoUnconverted == null ? null : f.eoUnconverted,
@@ -47,8 +52,8 @@ function migrateField(f, ctxDefs, nameToId) {
     cvtRight: null,
     vdt: valRule
       ? {
-          ctx: (valRule.ctx && valRule.ctx[0]) || null,
-          ctxs: valRule.ctx || [],
+          ctx: valCtxIds.length ? valCtxIds[0] : null,
+          ctxs: valCtxIds,
           el: valRule.value,
           elRaw: f.excelValidationRule || '',
         }
@@ -85,11 +90,25 @@ function migrateItem(it) {
     });
   });
 
-  // 第二遍：迁移比较字段，id 使用数字字符串。
+  // 构建新的 ctxDefs（id/scopes/type）与 key→id 映射。
+  const ctxIdByKey = {};
+  const ctxDefsNew = {};
+  let ctxId = 1;
+  const oldCtxDefs = it.ctxDefs || {};
+  Object.keys(oldCtxDefs).forEach(function (key) {
+    const def = oldCtxDefs[key] || {};
+    const tp = def.type;
+    const scopes = Array.isArray(tp) ? tp : (tp === 1 || tp === 2 || tp === 3 ? [tp] : []);
+    ctxIdByKey[key] = ctxId;
+    ctxDefsNew[key] = { id: ctxId, scopes: scopes, type: 'builtin', def: def.def || '', hits: def.hits || '' };
+    ctxId++;
+  });
+
+  // 第二遍：迁移比较字段，id 使用数字字符串，ctx 引用改为 ctxDefs 的 id。
   (it.channels || []).forEach(function (ch) {
     (ch.sources || []).forEach(function (s) {
       (s.fields || []).forEach(function (f) {
-        const mf = migrateField(f, it.ctxDefs, nameToId);
+        const mf = migrateField(f, oldCtxDefs, nameToId, ctxIdByKey);
         Object.keys(f).forEach(function (k) { delete f[k]; });
         Object.assign(f, mf);
       });
@@ -125,6 +144,7 @@ function migrateItem(it) {
   delete out.overviewLogs;
 
   out.fields = fields;
+  out.ctxDefs = ctxDefsNew;
   out.warnings = warnings;
   out.errors = errors;
   out.uncompared = uncompared;

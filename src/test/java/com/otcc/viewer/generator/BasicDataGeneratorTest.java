@@ -55,12 +55,12 @@ class BasicDataGeneratorTest {
         assertFalse(item.getWarnings().isEmpty(), "warnings filled");
         assertFalse(item.getErrors().isEmpty(), "errors filled");
         assertFalse(item.getUncompared().isEmpty(), "uncompared filled");
-        assertFalse(item.getFields().isEmpty(), "fields registry filled");
         assertFalse(item.getCtxDefs().isEmpty(), "ctxDefs filled");
 
         for (Channel ch : item.getChannels()) {
             String label = "channel " + ch.getName();
 
+            assertFalse(ch.getFields().isEmpty(), label + " fields registry filled");
             assertFalse(ch.getFiles().getEo().isEmpty(), label + " files.eo filled");
             assertFalse(ch.getFiles().getAo().isEmpty(), label + " files.ao filled");
             assertNotNull(ch.getFiles().getExcel(), label + " files.excel present");
@@ -74,7 +74,7 @@ class BasicDataGeneratorTest {
                 assertFalse(src.getFields().isEmpty(), label + " fields filled");
                 for (Field f : src.getFields()) {
                     String fl = label + " field " + f.getId();
-                    assertFalse(f.getCtxs().isEmpty(), fl + " ctxs filled");
+                    assertFalse(f.getCmpLeft().getCtxs().isEmpty(), fl + " cmpLeft.ctxs filled");
                     assertFalse(f.getPrints().isEmpty(), fl + " prints filled");
                     assertNotNull(f.getCmpLeft(), fl + " cmpLeft present");
                     assertNotNull(f.getCmpRight(), fl + " cmpRight present");

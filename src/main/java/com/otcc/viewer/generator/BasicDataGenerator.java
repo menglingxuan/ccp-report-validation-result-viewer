@@ -89,9 +89,13 @@ public final class BasicDataGenerator {
         String product = "IRS";
         String tradeId = "BASIC-0001";
 
+        Map<String, CtxDef> ctxDefs = buildCtxDefs();
+        Map<String, Integer> ctxIdByKey = new LinkedHashMap<>();
+        ctxDefs.forEach((k, v) -> ctxIdByKey.put(k, v.getId()));
+
         List<Channel> channels = new ArrayList<>();
         for (String name : List.of("HKTR", "JSFA", "CFTC")) {
-            channels.add(buildChannel(name, tradeId, date));
+            channels.add(buildChannel(name, tradeId, date, ctxIdByKey));
         }
 
         ValidationItem item = ValidationItem.builder()
@@ -105,8 +109,7 @@ public final class BasicDataGenerator {
                 .platformTradeId("PT-BASIC-0001")
                 .platformDealId("PD-BASIC-0001")
                 .enabledChannels(List.of("HKTR", "JSFA", "CFTC"))
-                .ctxDefs(buildCtxDefs())
-                .fields(REGISTRY)
+                .ctxDefs(ctxDefs)
                 .channels(channels)
                 .skippedItems(List.of(SkippedItem.builder()
                         .itemId("T-" + date.replace("-", "") + "-0001")
@@ -139,7 +142,7 @@ public final class BasicDataGenerator {
                 .build();
     }
 
-    private static Channel buildChannel(String name, String tradeId, String date) {
+    private static Channel buildChannel(String name, String tradeId, String date, Map<String, Integer> ctxIdByKey) {
         boolean csv = "csv".equals(CHANNEL_FORMAT.get(name));
         String ext = csv ? ".csv" : ".xml";
         String eoName = name.toLowerCase() + "_srcA_" + tradeId + ".csv";
@@ -154,48 +157,53 @@ public final class BasicDataGenerator {
                 .build();
 
         List<Source> sources = List.of(
-                Source.builder().name("来源渠道 A").fields(buildFields(name, 1, targets, csv, mapCtx)).build(),
-                Source.builder().name("来源渠道 B").fields(buildFields(name, 2, targets, csv, mapCtx)).build());
+                Source.builder().name("来源渠道 A").fields(buildFields(name, 1, targets, csv, mapCtx, ctxIdByKey)).build(),
+                Source.builder().name("来源渠道 B").fields(buildFields(name, 2, targets, csv, mapCtx, ctxIdByKey)).build());
 
         return Channel.builder()
                 .name(name)
                 .desc(CHANNEL_DESC.get(name))
                 .format(CHANNEL_FORMAT.get(name))
                 .files(files)
+                .fields(REGISTRY)
                 .sources(sources)
                 .build();
     }
 
-    private static List<Field> buildFields(String name, int sn, String[] targets, boolean csv, String mapCtx) {
+    private static List<Field> buildFields(String name, int sn, String[] targets, boolean csv, String mapCtx,
+                                           Map<String, Integer> ctxIdByKey) {
         List<String> ctx = List.of(mapCtx, name.toLowerCase() + ".ctx.v2");
         return List.of(
                 buildField(name, sn, "tradeId", targets[0], "id", ctx,
                         "TX-BASIC-0001", "TX-BASIC-0001", "PASSED", "",
-                        "BASIC-0001", "@normalizeId", "regex:^TX-\\d{6}$", csv),
+                        "BASIC-0001", "BASIC-0001", "@normalizeId", "regex:^TX-\\d{6}$", csv, ctxIdByKey),
                 buildField(name, sn, "notional", targets[1], "num", ctx,
                         "1000000.00", "1000050.00", "FAILED", "数值差异",
-                        "100000000", "@round2", "regex:^\\d+(\\.\\d{2})?$", csv));
+                        "100000000", "100005000", "@round2", "regex:^\\d+(\\.\\d{2})?$", csv, ctxIdByKey));
     }
 
     private static Field buildField(String chName, int sn, String f, String target, String kind,
                                     List<String> ctx, String eo, String ao, String result, String note,
-                                    String eoUnconverted, String convRule, String valRule, boolean csv) {
+                                    String eoUnconverted, String aoUnconverted, String convRule, String valRule, boolean csv,
+                                    Map<String, Integer> ctxIdByKey) {
         int srcType = csv ? 2 : 1;
         String eoCol = "src_" + f;
+        List<Integer> ctxIds = toIds(ctx, ctxIdByKey);
+        Integer firstCtxId = ctxIds.isEmpty() ? null : ctxIds.get(0);
 
         CmpSide cmpLeft = CmpSide.builder()
-                .value(eo).ctx(ctx.get(0)).ctxs(ctx)
+                .value(eo).ctx(firstCtxId).ctxs(ctxIds)
                 .elRaw(genMapping(eoCol, ctx)).el(eoCol).srcType(2).build();
         CmpSide cmpRight = CmpSide.builder()
-                .value(ao).ctx(ctx.get(0)).ctxs(ctx)
+                .value(ao).ctx(firstCtxId).ctxs(ctxIds)
                 .elRaw(genMapping(target, ctx)).el(target).srcType(srcType).build();
 
         ConversionRule cvtLeft = ConversionRule.builder()
-                .ctx(ctx.get(0)).ctxs(ctx).el(convRule).elRaw(genRule(convRule, ctx)).raw(eoUnconverted).build();
+                .ctx(firstCtxId).ctxs(ctxIds).el(convRule).elRaw(genRule(convRule, ctx)).raw(eoUnconverted).build();
         ConversionRule cvtRight = ConversionRule.builder()
-                .ctx(ctx.get(0)).ctxs(ctx).el(convRule).elRaw(genRule(convRule, ctx)).raw(null).build();
+                .ctx(firstCtxId).ctxs(ctxIds).el(convRule).elRaw(genRule(convRule, ctx)).raw(aoUnconverted).build();
         ValidationRule vdt = ValidationRule.builder()
-                .ctx(ctx.get(0)).ctxs(ctx).el(valRule).elRaw(genRule(valRule, ctx)).build();
+                .ctx(firstCtxId).ctxs(ctxIds).el(valRule).elRaw(genRule(valRule, ctx)).build();
 
         List<ExtraResult> resultDetails = List.of(
                 ExtraResult.builder().label("期望值 (EO, Unconverted)").value(eoUnconverted).build());
@@ -207,7 +215,6 @@ public final class BasicDataGenerator {
 
         return Field.builder()
                 .id(NAME_TO_ID.get(f))
-                .ctxs(ctx)
                 .cmpLeft(cmpLeft)
                 .cmpRight(cmpRight)
                 .cvtLeft(cvtLeft)
@@ -231,16 +238,24 @@ public final class BasicDataGenerator {
 
     private static Map<String, CtxDef> buildCtxDefs() {
         Map<String, CtxDef> defs = new LinkedHashMap<>();
+        int id = 1;
         for (String name : List.of("HKTR", "JSFA", "CFTC")) {
             String p = name.toLowerCase();
-            defs.put(p + ".ctx.default", CtxDef.builder()
-                    .type(List.of(1))
+            defs.put(p + ".ctx.default", CtxDef.builder().id(id++).scopes(List.of(1)).type("builtin")
                     .def(name + " 默认上下文（标准报送场景）").hits("命中 3 个映射条目（EO 2 / AO 1）").build());
-            defs.put(p + ".ctx.v2", CtxDef.builder()
-                    .type(List.of(1))
+            defs.put(p + ".ctx.v2", CtxDef.builder().id(id++).scopes(List.of(1)).type("builtin")
                     .def(name + " v2 上下文（2024 新版映射）").hits("命中 2 个映射条目（EO 1 / AO 1）").build());
         }
         return defs;
+    }
+
+    private static List<Integer> toIds(List<String> keys, Map<String, Integer> ctxIdByKey) {
+        List<Integer> out = new ArrayList<>();
+        for (String k : keys) {
+            Integer id = ctxIdByKey.get(k);
+            if (id != null) out.add(id);
+        }
+        return out;
     }
 
     public static void writeTo(Path outDir) throws IOException {

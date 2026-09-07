@@ -131,19 +131,18 @@ class ValidationJsonEngineTest {
             c.check(item.getPlatformTradeId() != null, it + ".platformTradeId present");
             c.check(item.getPlatformDealId() != null, it + ".platformDealId present");
 
-            // per-item field registry
-            Set<String> fieldIds = validateRegistry(c, item, it);
-
             // per-item ctxDefs
             validateCtxDefs(c, item, it);
 
-            // channels
+            // channels（字段注册表在 report channel 级别）
             c.check(item.getChannels() != null && !item.getChannels().isEmpty(), it + ".channels non-empty");
             Set<String> channelNames = new HashSet<>();
             if (item.getChannels() != null) {
                 for (Channel ch : item.getChannels()) {
                     channelNames.add(ch.getName());
-                    validateChannel(c, ch, it + ".channels[" + ch.getName() + "]", fieldIds);
+                    String chLabel = it + ".channels[" + ch.getName() + "]";
+                    Set<String> fieldIds = validateRegistry(c, ch, chLabel);
+                    validateChannel(c, ch, chLabel, fieldIds);
                 }
             }
             c.check(item.getEnabledChannels() != null && !item.getEnabledChannels().isEmpty(), it + ".enabledChannels non-empty");
@@ -269,8 +268,10 @@ class ValidationJsonEngineTest {
 
             JsonNode itemJson = ValidationJsonGenerator.MAPPER.readTree(itemFile.toFile());
             c.check(it.getTradeId().equals(itemJson.path("tradeId").asText()), "item file tradeId matches");
-            c.check(itemJson.has("ctxDefs") && itemJson.has("channels") && itemJson.has("fields"),
-                    "item file has ctxDefs/channels/fields");
+            c.check(itemJson.has("ctxDefs") && itemJson.has("channels")
+                            && itemJson.path("channels").size() > 0
+                            && itemJson.path("channels").get(0).has("fields"),
+                    "item file has ctxDefs/channels and channel.fields");
 
             ItemSummary s = mi.getSummary();
             c.check(s != null, "manifest[" + i + "].summary present");
@@ -290,16 +291,16 @@ class ValidationJsonEngineTest {
         return ValidationJsonGenerator.MAPPER.readTree(OUT_DIR.resolve(rel).toFile());
     }
 
-    private static Set<String> validateRegistry(Check c, ValidationItem item, String it) {
+    private static Set<String> validateRegistry(Check c, Channel ch, String label) {
         Set<String> ids = new HashSet<>();
-        c.check(item.getFields() != null && !item.getFields().isEmpty(), it + ".fields non-empty");
-        if (item.getFields() != null) {
-            for (FieldDef fd : item.getFields()) {
-                c.check(nonBlank(fd.getId()), it + ".fields.id non-blank");
-                c.check(nonBlank(fd.getName()), it + ".fields.name non-blank");
-                c.check(nonBlank(fd.getUserTag()), it + ".fields.userTag non-blank");
-                c.check(nonBlank(fd.getType()), it + ".fields.type non-blank");
-                c.check(ids.add(fd.getId()), it + ".fields.id unique: " + fd.getId());
+        c.check(ch.getFields() != null && !ch.getFields().isEmpty(), label + ".fields non-empty");
+        if (ch.getFields() != null) {
+            for (FieldDef fd : ch.getFields()) {
+                c.check(nonBlank(fd.getId()), label + ".fields.id non-blank");
+                c.check(nonBlank(fd.getName()), label + ".fields.name non-blank");
+                c.check(nonBlank(fd.getUserTag()), label + ".fields.userTag non-blank");
+                c.check(nonBlank(fd.getType()), label + ".fields.type non-blank");
+                c.check(ids.add(fd.getId()), label + ".fields.id unique: " + fd.getId());
             }
         }
         return ids;
@@ -308,15 +309,22 @@ class ValidationJsonEngineTest {
     private static void validateCtxDefs(Check c, ValidationItem item, String it) {
         c.check(item.getCtxDefs() != null && !item.getCtxDefs().isEmpty(), it + ".ctxDefs non-empty");
         if (item.getCtxDefs() != null) {
+            Set<Integer> ids = new HashSet<>();
             for (Map.Entry<String, CtxDef> e : item.getCtxDefs().entrySet()) {
                 CtxDef def = e.getValue();
                 c.check(nonBlank(e.getKey()), it + ".ctxDef key non-blank");
-                c.check(def.getType() != null && !def.getType().isEmpty(), it + ".ctxDef[" + e.getKey() + "].type non-empty");
-                if (def.getType() != null) {
-                    for (Integer t : def.getType()) {
-                        c.check(t != null && t >= 1 && t <= 3, it + ".ctxDef[" + e.getKey() + "].type in {1,2,3}");
+                c.check(def.getId() != null && def.getId() > 0, it + ".ctxDef[" + e.getKey() + "].id positive");
+                if (def.getId() != null) {
+                    c.check(ids.add(def.getId()), it + ".ctxDef[" + e.getKey() + "].id unique: " + def.getId());
+                }
+                c.check(def.getScopes() != null && !def.getScopes().isEmpty(), it + ".ctxDef[" + e.getKey() + "].scopes non-empty");
+                if (def.getScopes() != null) {
+                    for (Integer t : def.getScopes()) {
+                        c.check(t != null && t >= 1 && t <= 3, it + ".ctxDef[" + e.getKey() + "].scopes in {1,2,3}");
                     }
                 }
+                c.check("builtin".equals(def.getType()) || "user".equals(def.getType()),
+                        it + ".ctxDef[" + e.getKey() + "].type in {builtin,user}");
                 c.check(nonBlank(def.getDef()), it + ".ctxDef[" + e.getKey() + "].def non-blank");
                 c.check(nonBlank(def.getHits()), it + ".ctxDef[" + e.getKey() + "].hits non-blank");
             }
@@ -357,7 +365,8 @@ class ValidationJsonEngineTest {
     private static void validateField(Check c, Field f, String label, boolean csv, Set<String> fieldIds) {
         c.check(nonBlank(f.getId()), label + ".field.id non-blank");
         c.check(fieldIds.contains(f.getId()), label + ".field.id references item.fields: " + f.getId());
-        c.check(f.getCtxs() != null && !f.getCtxs().isEmpty(), label + ".field.ctxs non-empty");
+        c.check(f.getCmpLeft() != null && f.getCmpLeft().getCtxs() != null && !f.getCmpLeft().getCtxs().isEmpty(),
+                label + ".field.cmpLeft.ctxs non-empty");
         c.check("PASSED".equals(f.getResult()) || "FAILED".equals(f.getResult()), label + ".field.result in {PASSED,FAILED}");
 
         CmpSide left = f.getCmpLeft();

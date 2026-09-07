@@ -28,8 +28,6 @@ public class ValidationItem {
     private List<String> enabledChannels;
     /** Per-item hit-context definitions ({@code item.ctxDefs}). */
     private Map<String, CtxDef> ctxDefs;
-    /** Field definition registry ({@code item.fields}), deduplicated by name. */
-    private List<FieldDef> fields;
     private List<Channel> channels;
     private List<SkippedItem> skippedItems;
     /** Item-level warnings (aggregated from channels). */

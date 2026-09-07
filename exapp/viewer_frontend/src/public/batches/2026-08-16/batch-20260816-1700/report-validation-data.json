@@ -1,0 +1,88 @@
+{
+  "mode": "multi",
+  "reportEnv": "OTCXXX",
+  "items": [
+    {
+      "tradeId": "T-20240814-1001",
+      "reportDate": "2024-08-10",
+      "generatedAt": "2024-08-14 10:23:00.000",
+      "platform": "OTC-PLATFORM-A",
+      "product": "IRS",
+      "productCategory": "IR",
+      "counterpartyItemId": "T-20240814-1002",
+      "platformTradeId": "PT-20240814-1001",
+      "platformDealId": "PD-20240814-1001",
+      "enabledChannels": [
+        "HKTR",
+        "JSFA",
+        "CFTC"
+      ],
+      "file": "data/items/T-20240814-1001.json",
+      "summary": {
+        "total": 78,
+        "passed": 78,
+        "failed": 0,
+        "rate": 100,
+        "warnings": 10,
+        "warningsIgnored": 0,
+        "errors": 12,
+        "uncompared": 3,
+        "logs": 73
+      }
+    },
+    {
+      "tradeId": "T-20240814-1002",
+      "reportDate": "2024-08-10",
+      "generatedAt": "2024-08-14 10:23:01.000",
+      "platform": "OTC-PLATFORM-B",
+      "product": "FXO",
+      "productCategory": "FX",
+      "counterpartyItemId": "T-20240814-1001",
+      "platformTradeId": "PT-20240814-1002",
+      "platformDealId": "PD-20240814-1002",
+      "enabledChannels": [
+        "HKTR",
+        "JSFA"
+      ],
+      "file": "data/items/T-20240814-1002.json",
+      "summary": {
+        "total": 72,
+        "passed": 60,
+        "failed": 12,
+        "rate": 83,
+        "warnings": 11,
+        "warningsIgnored": 0,
+        "errors": 9,
+        "uncompared": 0,
+        "logs": 73
+      }
+    },
+    {
+      "tradeId": "T-20240814-1003",
+      "reportDate": "2024-08-10",
+      "generatedAt": "2024-08-14 10:23:02.000",
+      "platform": "OTC-PLATFORM-C",
+      "product": "CDX",
+      "productCategory": "CD",
+      "counterpartyItemId": "T-20240814-1004",
+      "platformTradeId": "PT-20240814-1003",
+      "platformDealId": "PD-20240814-1003",
+      "enabledChannels": [
+        "HKTR",
+        "CFTC"
+      ],
+      "file": "data/items/T-20240814-1003.json",
+      "summary": {
+        "total": 66,
+        "passed": 13,
+        "failed": 53,
+        "rate": 20,
+        "warnings": 10,
+        "warningsIgnored": 0,
+        "errors": 12,
+        "uncompared": 2,
+        "logs": 73
+      }
+    }
+  ]
+}

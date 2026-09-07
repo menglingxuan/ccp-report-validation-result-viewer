@@ -194,7 +194,6 @@ public final class ValidationJsonGenerator {
                 ? ""
                 : (i % 2 == 0 ? "T-20240814-" + (1002 + i) : "T-20240814-" + (1000 + i));
 
-        FieldRegistry fr = buildFieldRegistry(i);
         int sourceCount = i == 17 ? 1 : 2;
 
         List<Channel> channels = new ArrayList<>();
@@ -202,9 +201,11 @@ public final class ValidationJsonGenerator {
         List<Message> errors = new ArrayList<>();
         List<UncomparedEntry> uncompared = new ArrayList<>();
         List<ItemLog> channelLogs = new ArrayList<>();
+        Map<String, CtxDef> ctxDefs = buildCtxDefs(i);
+        Map<String, Integer> ctxIdByKey = ctxIdByKey(ctxDefs);
         for (String chName : CHANNEL_NAMES) {
             List<String[]> fieldsDef = fieldDefsForItem(i, chName);
-            ChannelBuild built = buildChannel(chName, tradeId, reportDate, rng, failRate, fr.nameToId, fieldsDef, sourceCount);
+            ChannelBuild built = buildChannel(chName, tradeId, reportDate, rng, failRate, fieldsDef, sourceCount, ctxIdByKey);
             channels.add(built.channel);
             warnings.addAll(built.warnings);
             errors.addAll(built.errors);
@@ -228,8 +229,7 @@ public final class ValidationJsonGenerator {
                 .counterpartyItemId(counterpartyItemId)
                 .platformTradeId("PT-" + tradeId.substring(2))
                 .platformDealId("PD-" + tradeId.substring(2))
-                .ctxDefs(buildCtxDefs(i))
-                .fields(fr.registry)
+                .ctxDefs(ctxDefs)
                 .channels(channels)
                 .enabledChannels(enabledChannels)
                 .skippedItems(buildSkippedItems(reportDate, rng))
@@ -254,19 +254,14 @@ public final class ValidationJsonGenerator {
         }
     }
 
-    /** Builds the per-item field registry (deduplicated by name, id = first-appearance order). */
-    private static FieldRegistry buildFieldRegistry(int itemIndex) {
+    /** Builds the per-report-channel field registry (id = first-appearance order within the channel). */
+    private static FieldRegistry buildChannelFieldRegistry(List<String[]> fieldsDef) {
         List<FieldDef> registry = new ArrayList<>();
         Map<String, String> nameToId = new LinkedHashMap<>();
-        for (String chName : CHANNEL_NAMES) {
-            for (String[] def : fieldDefsForItem(itemIndex, chName)) {
-                String name = def[0];
-                if (!nameToId.containsKey(name)) {
-                    String id = String.valueOf(registry.size() + 1);
-                    nameToId.put(name, id);
-                    registry.add(FieldDef.builder().id(id).name(name).userTag(def[2]).type(def[3]).build());
-                }
-            }
+        for (String[] def : fieldsDef) {
+            String id = String.valueOf(registry.size() + 1);
+            nameToId.put(def[0], id);
+            registry.add(FieldDef.builder().id(id).name(def[0]).userTag(def[2]).type(def[3]).build());
         }
         return new FieldRegistry(registry, nameToId);
     }
@@ -310,8 +305,10 @@ public final class ValidationJsonGenerator {
     }
 
     private static ChannelBuild buildChannel(String chName, String tradeId, String reportDate,
-                                             Random rng, double failRate, Map<String, String> nameToId,
-                                             List<String[]> fieldsDef, int sourceCount) {
+                                             Random rng, double failRate,
+                                             List<String[]> fieldsDef, int sourceCount,
+                                             Map<String, Integer> ctxIdByKey) {
+        FieldRegistry fr = buildChannelFieldRegistry(fieldsDef);
         boolean csv = "csv".equals(CHANNEL_FORMAT.get(chName));
         String p = chName.toLowerCase();
         List<String> mapPool = List.of(
@@ -347,7 +344,7 @@ public final class ValidationJsonGenerator {
             int idx = 0;
             for (String[] def : fieldsDef) {
                 fields.add(buildField(chName, def, idx, sn, csv, tradeId, rng, failRate,
-                        nameToId, mapPool, convPool, valPool));
+                        fr.nameToId, mapPool, convPool, valPool, ctxIdByKey));
                 idx++;
             }
             sources.add(Source.builder().name("来源渠道 " + (sn == 1 ? "A" : "B")).fields(fields).build());
@@ -358,6 +355,7 @@ public final class ValidationJsonGenerator {
                 .desc(CHANNEL_DESC.get(chName))
                 .format(CHANNEL_FORMAT.get(chName))
                 .files(files)
+                .fields(fr.registry)
                 .sources(sources)
                 .build();
 
@@ -372,7 +370,8 @@ public final class ValidationJsonGenerator {
     private static Field buildField(String chName, String[] def, int idx, int sn, boolean csv,
                                     String tradeId, Random rng, double failRate,
                                     Map<String, String> nameToId, List<String> mapPool,
-                                    List<String> convPool, List<String> valPool) {
+                                    List<String> convPool, List<String> valPool,
+                                    Map<String, Integer> ctxIdByKey) {
         String f = def[0];
         String rawTarget = def[1];
         String k = def[3];
@@ -410,6 +409,7 @@ public final class ValidationJsonGenerator {
         boolean aoConverted = rng.nextDouble() < 0.4;
         List<String> aoConvCtxs = aoConverted ? pickCtx(convPool, rng) : null;
         String aoConvValue = aoConverted ? convRuleFor(k, rng) : null;
+        String aoUnconverted = aoConverted ? genUnconverted(ao, k) : null;
 
         boolean hasValidation = rng.nextDouble() < 0.75;
         List<String> valCtxs = hasValidation ? pickCtx(valPool, rng) : null;
@@ -430,22 +430,26 @@ public final class ValidationJsonGenerator {
         }
 
         List<String> mapCtxs = filterMapCtxs(ctx);
+        List<Integer> mapCtxIds = toIds(mapCtxs, ctxIdByKey);
+        List<Integer> convCtxIds = toIds(convCtxs, ctxIdByKey);
+        List<Integer> aoConvCtxIds = toIds(aoConvCtxs, ctxIdByKey);
+        List<Integer> valCtxIds = toIds(valCtxs, ctxIdByKey);
 
         CmpSide cmpLeft = CmpSide.builder()
-                .value(eo).ctx(firstOrNull(mapCtxs)).ctxs(mapCtxs)
+                .value(eo).ctx(firstIdOrNull(mapCtxIds)).ctxs(mapCtxIds)
                 .elRaw(eoMapping).el(eoCol).srcType(2).build();
         CmpSide cmpRight = CmpSide.builder()
-                .value(ao).ctx(firstOrNull(mapCtxs)).ctxs(mapCtxs)
+                .value(ao).ctx(firstIdOrNull(mapCtxIds)).ctxs(mapCtxIds)
                 .elRaw(excelMapping).el(rawTarget).srcType(srcType).build();
 
         ConversionRule cvtLeft = convCtxs == null ? null : ConversionRule.builder()
-                .ctx(firstOrNull(convCtxs)).ctxs(convCtxs)
+                .ctx(firstIdOrNull(convCtxIds)).ctxs(convCtxIds)
                 .el(convValue).elRaw(excelConversionRule).raw(eoUnconverted).build();
         ConversionRule cvtRight = aoConvCtxs == null ? null : ConversionRule.builder()
-                .ctx(firstOrNull(aoConvCtxs)).ctxs(aoConvCtxs)
-                .el(aoConvValue).elRaw(genExcelRuleText(aoConvValue, ctx, isSample)).raw(null).build();
+                .ctx(firstIdOrNull(aoConvCtxIds)).ctxs(aoConvCtxIds)
+                .el(aoConvValue).elRaw(genExcelRuleText(aoConvValue, ctx, isSample)).raw(aoUnconverted).build();
         ValidationRule vdt = valCtxs == null ? null : ValidationRule.builder()
-                .ctx(firstOrNull(valCtxs)).ctxs(valCtxs)
+                .ctx(firstIdOrNull(valCtxIds)).ctxs(valCtxIds)
                 .el(valValue).elRaw(excelValidationRule).build();
 
         List<String> prints = buildPrints(f, rawTarget, ctx, chName, "来源渠道 " + (sn == 1 ? "A" : "B"),
@@ -453,7 +457,6 @@ public final class ValidationJsonGenerator {
 
         return Field.builder()
                 .id(nameToId.get(f))
-                .ctxs(ctx)
                 .cmpLeft(cmpLeft)
                 .cmpRight(cmpRight)
                 .cvtLeft(cvtLeft)
@@ -570,30 +573,31 @@ public final class ValidationJsonGenerator {
     private static Map<String, CtxDef> buildCtxDefs(int itemIndex) {
         int seed = itemIndex;
         Map<String, CtxDef> defs = new LinkedHashMap<>();
+        int id = 1;
         for (String chName : CHANNEL_NAMES) {
             String p = chName.toLowerCase();
-            defs.put(p + ".ctx.default", CtxDef.builder().type(List.of(1))
+            defs.put(p + ".ctx.default", CtxDef.builder().id(id++).scopes(List.of(1)).type("builtin")
                     .def(chName + " 默认上下文（标准报送场景）")
                     .hits("命中 " + (3 + seed % 3) + " 个映射条目（EO 2 / AO 1）").build());
-            defs.put(p + ".ctx.v2", CtxDef.builder().type(List.of(1))
+            defs.put(p + ".ctx.v2", CtxDef.builder().id(id++).scopes(List.of(1)).type("builtin")
                     .def(chName + " v2 上下文（2024 新版映射）")
                     .hits("命中 " + (2 + seed % 2) + " 个映射条目（EO 1 / AO 1）").build());
-            defs.put(p + ".ctx.v3", CtxDef.builder().type(List.of(1))
+            defs.put(p + ".ctx.v3", CtxDef.builder().id(id++).scopes(List.of(1)).type("builtin")
                     .def(chName + " v3 上下文（最新版映射）")
                     .hits("命中 " + (1 + seed % 2) + " 个映射条目（EO 1 / AO 0）").build());
-            defs.put(p + ".ctx.extended.production.region.east.v2024.latest", CtxDef.builder().type(List.of(1))
+            defs.put(p + ".ctx.extended.production.region.east.v2024.latest", CtxDef.builder().id(id++).scopes(List.of(1)).type("user")
                     .def(chName + " 扩展上下文（生产·东部区域·2024 最新）")
                     .hits("命中 " + (4 + seed % 2) + " 个映射条目（EO 2 / AO 2）").build());
-            defs.put(p + ".ctx.conv.default", CtxDef.builder().type(List.of(2))
+            defs.put(p + ".ctx.conv.default", CtxDef.builder().id(id++).scopes(List.of(2)).type("builtin")
                     .def(chName + " 值转换默认上下文（EO 归一化）")
                     .hits("命中 " + (2 + seed % 2) + " 个转换规则（@trim / @toUpper 等）").build());
-            defs.put(p + ".ctx.conv.v2", CtxDef.builder().type(List.of(2))
+            defs.put(p + ".ctx.conv.v2", CtxDef.builder().id(id++).scopes(List.of(2)).type("builtin")
                     .def(chName + " 值转换 v2 上下文")
                     .hits("命中 " + (1 + seed % 2) + " 个转换规则").build());
-            defs.put(p + ".ctx.val.default", CtxDef.builder().type(List.of(3))
+            defs.put(p + ".ctx.val.default", CtxDef.builder().id(id++).scopes(List.of(3)).type("builtin")
                     .def(chName + " 终值校验默认上下文")
                     .hits("命中 " + (3 + seed % 3) + " 个校验规则（枚举/正则/非空）").build());
-            defs.put(p + ".ctx.val.v2", CtxDef.builder().type(List.of(3))
+            defs.put(p + ".ctx.val.v2", CtxDef.builder().id(id++).scopes(List.of(3)).type("builtin")
                     .def(chName + " 终值校验 v2 上下文")
                     .hits("命中 " + (2 + seed % 2) + " 个校验规则").build());
         }
@@ -626,7 +630,23 @@ public final class ValidationJsonGenerator {
         }
     }
 
-    private static String firstOrNull(List<String> list) {
+    private static Map<String, Integer> ctxIdByKey(Map<String, CtxDef> defs) {
+        Map<String, Integer> m = new LinkedHashMap<>();
+        defs.forEach((k, v) -> m.put(k, v.getId()));
+        return m;
+    }
+
+    private static List<Integer> toIds(List<String> keys, Map<String, Integer> ctxIdByKey) {
+        if (keys == null) return List.of();
+        List<Integer> out = new ArrayList<>();
+        for (String k : keys) {
+            Integer id = ctxIdByKey.get(k);
+            if (id != null) out.add(id);
+        }
+        return out;
+    }
+
+    private static Integer firstIdOrNull(List<Integer> list) {
         return list == null || list.isEmpty() ? null : list.get(0);
     }
 

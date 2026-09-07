@@ -18,10 +18,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Field {
-    /** Numeric-string id referencing {@code item.fields}. */
+    /** Numeric-string id referencing {@code channel.fields}. */
     private String id;
-    /** Hit contexts (mapping / conversion / validation mixed). */
-    private List<String> ctxs;
     /** Left side (EO source). */
     private CmpSide cmpLeft;
     /** Right side (AO submitted). */

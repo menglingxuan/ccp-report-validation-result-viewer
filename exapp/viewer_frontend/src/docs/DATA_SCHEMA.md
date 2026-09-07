@@ -63,7 +63,7 @@
 | `file` | 字符串 | 该 item 完整数据文件的路径（相对 web 根目录） |
 | `summary` | 对象 | 预计算统计摘要（侧栏与统计卡无需加载完整 item） |
 
-每个 item 文件内容与单文件模式中的 item 结构相同（含 `ctxDefs`、`channels`、`skippedItems`、`overviewLogs`）。
+每个 item 文件内容与单文件模式中的 item 结构相同（含 `ctxDefs`、`channels`、`skippedItems`、`logs`；字段注册表在各 channel 内）。
 
 > 多文件模式下：查看器先加载清单（轻量），点击 item 时按需加载完整文件；搜索/筛选/统计对全部 item 的合并数据生效。
 
@@ -79,8 +79,7 @@
 | `platform` / `product` / `productCategory` | 字符串 | 平台 / 产品 / 产品类别 |
 | `counterpartyItemId` / `platformTradeId` / `platformDealId` | 字符串\|空 | 对手方 / 平台标识 |
 | `ctxDefs` | 对象 | **命中上下文定义（每个 item 独立）** |
-| `fields` | 数组 | **字段定义注册表（按字段名去重）** |
-| `channels` | 数组 | 各渠道比较结果 |
+| `channels` | 数组 | 各渠道比较结果（字段定义注册表在各 channel 内） |
 | `enabledChannels` | 字符串数组 | 启用渠道名 |
 | `skippedItems` | 数组 | 未比较 item 记录 |
 | `warnings` / `errors` | 数组 | item 级警告 / 错误（含 scope / source；source 可能为空） |
@@ -91,36 +90,38 @@
 
 ```json
 "ctxDefs": {
-  "hktr.ctx.default": { "type": [1], "def": "HKTR 默认上下文（标准报送场景）", "hits": "命中 3 个映射条目（EO 2 / AO 1）" },
-  "hktr.ctx.conv.default": { "type": [2], "def": "…", "hits": "…" },
-  "hktr.ctx.val.default": { "type": [3], "def": "…", "hits": "…" }
+  "hktr.ctx.default": { "id": 1, "scopes": [1], "type": "builtin", "def": "HKTR 默认上下文（标准报送场景）", "hits": "命中 3 个映射条目（EO 2 / AO 1）" },
+  "hktr.ctx.conv.default": { "id": 5, "scopes": [2], "type": "builtin", "def": "…", "hits": "…" },
+  "hktr.ctx.val.default": { "id": 7, "scopes": [3], "type": "builtin", "def": "…", "hits": "…" }
 }
 ```
 
 | 键 | 类型 | 说明 |
 |---|---|---|
-| `type` | 整数数组 | CtxKey 类型数组：`1` 字段映射规则 / `2` 值转换规则 / `3` 终值校验规则；同一 ctx key 可配置在多种规则中，故为数组（兼容旧数据的单值整数） |
+| `id` | 正整数 | 该 item 内唯一的上下文 id，供字段各规则的 `ctx` / `ctxs` 引用 |
+| `scopes` | 整数数组 | 上下文作用域：`1` 字段映射 / `2` 值转换 / `3` 终值校验；同一 ctx 可配置在多种规则中，故为数组 |
+| `type` | 字符串 | 来源类型：`builtin`（内置）/ `user`（用户自定义） |
 | `def` | 字符串 | 上下文定义 |
 | `hits` | 字符串 | 命中说明 |
 
-### `item.fields`（字段定义注册表）
+### `channel.fields`（字段定义注册表，位于 channel 对象内）
 
 ```json
 "fields": [
   { "id": "1", "name": "tradeId", "userTag": "contextAssertion", "type": "id" },
-  { "id": "4", "name": "notional", "userTag": "productAssertion", "type": "num" }
+  { "id": "2", "name": "notional", "userTag": "productAssertion", "type": "num" }
 ]
 ```
 
 | 键 | 类型 | 说明 |
 |---|---|---|
-| `id` | 数字字符串 | 字段标识（如 `"1"`、`"2"`…，按字段名去重后按出现顺序编号，用于关联比较字段） |
+| `id` | 数字字符串 | 字段标识（如 `"1"`、`"2"`…，按该渠道字段出现顺序编号，用于关联比较字段） |
 | `name` | 字符串 | 字段名（原 `f`） |
 | `userTag` | 字符串 | 断言类型（原 `t`：platformAssertion / productAssertion / contextAssertion） |
 | `type` | 字符串 | 值类型（原 `k`：id/num/date/code/product/text/multi） |
 
-> 说明：`fields` 按 id（数字字符串）去重，且属于 item（每个 item 可有不同的字段定义）；同一字段名在多个渠道/来源中共享同一定义与同一个数字字符串 `id`。
-> 比较字段通过 `id` 关联注册表，查看器用 (channel, source, id) 三元组唯一定位某个比较字段。
+> 说明：`fields` 属于 **report channel**（每个报告渠道的字段定义不同），按 id（数字字符串）在该渠道内唯一；同一字段名在不同渠道可复用同一个 `name`，但 id 按各渠道自身顺序编号。
+> 比较字段通过 `id` 关联所在渠道的注册表，查看器用 (channel, source, id) 三元组唯一定位某个比较字段。
 
 ## 空占位数据（`report-validation-data-init.json`）
 
@@ -140,26 +141,26 @@
 | `desc` | 字符串 | 渠道描述 |
 | `format` | 字符串 | `xml` 或 `csv` |
 | `files` | 对象 | 输入/配置文件（`eo` / `ao` / `excel`） |
+| `fields` | 数组 | 字段定义注册表（该渠道的字段定义，见 `channel.fields`） |
 | `sources` | 数组 | 来源渠道（A/B），其 `fields[]` 为比较结果 |
 
 ## 5. field（`channel.sources[].fields[]`）
 
 | 键 | 类型 | 说明 |
 |---|---|---|
-| `id` | 数字字符串 | 关联 `item.fields` 的字段标识 |
-| `ctxs` | 字符串数组 | 命中上下文（原 `ctx`） |
-| `cmpLeft` | 对象 | 左侧（EO/来源）：`{ value, ctx, ctxs, elRaw, el, srcType }`；`el` 为 EO 来源元素（CSV 列），`elRaw` 为 EO 字段映射原始配置 |
-| `cmpRight` | 对象 | 右侧（AO/报送）：`{ value, ctx, ctxs, elRaw, el, srcType }`；`el` 即原 `x`（srcType=1）或 `aoCsv`（srcType=2），`elRaw` 即原 `excelMapping` |
-| `cvtLeft` | 对象\|null | EO 值转换规则：`{ ctx, ctxs, el, elRaw, raw }`；`el` 即原 `conversionRule.value`，`ctxs` 即原 `conversionRule.ctx`，`elRaw` 即原 `excelConversionRule`，`raw` 即原 `eoUnconverted`；未配置时为 `null` |
-| `cvtRight` | 对象\|null | AO 值转换规则（结构同 `cvtLeft`）；未配置时为 `null` |
-| `vdt` | 对象\|null | AO 终值校验规则：`{ ctx, ctxs, el, elRaw }`；`el` 即原 `validationRule.value`，`ctxs` 即原 `validationRule.ctx`，`elRaw` 即原 `excelValidationRule`；未配置时为 `null` |
+| `id` | 数字字符串 | 关联 `channel.fields` 的字段标识 |
+| `cmpLeft` | 对象 | 左侧（EO/来源）：`{ value, ctx, ctxs, elRaw, el, srcType }`；`ctx` / `ctxs` 为 `item.ctxDefs` 的 **id 引用**；`el` 为 EO 来源元素（CSV 列），`elRaw` 为 EO 字段映射原始配置 |
+| `cmpRight` | 对象 | 右侧（AO/报送）：`{ value, ctx, ctxs, elRaw, el, srcType }`；`ctx` / `ctxs` 为 id 引用；`el` 即原 `x`（srcType=1）或 `aoCsv`（srcType=2），`elRaw` 即原 `excelMapping` |
+| `cvtLeft` | 对象\|null | EO 值转换规则：`{ ctx, ctxs, el, elRaw, raw }`；`ctx` / `ctxs` 为 id 引用；`el` 即原 `conversionRule.value`，`elRaw` 即原 `excelConversionRule`，`raw` 即原 `eoUnconverted`；未配置时为 `null` |
+| `cvtRight` | 对象\|null | AO 值转换规则（结构同 `cvtLeft`）；`ctx` / `ctxs` 为 id 引用；`raw` 为 AO 未转换值；未配置时为 `null` |
+| `vdt` | 对象\|null | AO 终值校验规则：`{ ctx, ctxs, el, elRaw }`；`ctx` / `ctxs` 为 id 引用；`el` 即原 `validationRule.value`，`elRaw` 即原 `excelValidationRule`；未配置时为 `null` |
 | `result` | 字符串 | `PASSED` 或 `FAILED` |
 | `remarks` | 字符串 | 说明（原 `note`） |
 | `resultText` | 字符串 | 结果说明（原 `resultNote`） |
 | `resultDetails` | 数组 | 额外结果 `[{label, value}]`（原 `extraResults`） |
 | `prints` | 字符串数组 | 相关打印信息 |
 
-> 已移除字段：`eoConverted`（不再需要）。`f` / `t` / `k` 迁移到 `item.fields`；`x` / `aoCsv` / `ctx` / `eo` / `ao` / `eoUnconverted` / `conversionRule` / `validationRule` / `excelMapping` / `excelConversionRule` / `excelValidationRule` 迁移到上述对象。
+> 已移除字段：`eoConverted`（不再需要）与 `field.ctxs`（命中上下文现由 `cmpLeft` / `cmpRight` / `cvtLeft` / `cvtRight` / `vdt` 的 `ctxs` 取并集）。`f` / `t` / `k` 迁移到 `channel.fields`；`x` / `aoCsv` / `ctx` / `eo` / `ao` / `eoUnconverted` / `conversionRule` / `validationRule` / `excelMapping` / `excelConversionRule` / `excelValidationRule` 迁移到上述对象；`ctx` / `ctxs` 由 ctx key 字符串改为 `item.ctxDefs` 的 id 引用。
 
 ## 6. 批次元数据（`batch-meta.json`）与索引（`batches-index.json`）
 

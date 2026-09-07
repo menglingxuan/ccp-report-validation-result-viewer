@@ -72,15 +72,48 @@
     "default": {
       "channel": true,
       "source": true,
-      "f": true,
-      "x": true,
-      "aoCsv": true,
-      "t": false,
-      "ctx": false,
+      "field": true,
+      "userTag": true,
+      "eoEl": false,
+      "aoEl": false,
+      "eoCvtEl": false,
+      "aoCvtEl": false,
+      "vdtEl": false,
+      "type": false,
+      "ctxs": false,
+      "eoUnconverted": false,
       "eo": true,
+      "aoUnconverted": false,
       "ao": true,
       "result": true,
-      "note": false
+      "remarks": false
+    },
+    "labels": {
+      "aoEl": { "zh-CN": "表达式 (CMP-R)", "zh-HK": "表達式 (CMP-R)", "en": "Expression (CMP-R)" },
+      "eoEl": { "zh-CN": "表达式 (CMP-L)", "zh-HK": "表達式 (CMP-L)", "en": "Expression (CMP-L)" },
+      "eoCvtEl": { "zh-CN": "表达式 (CVT-L)", "zh-HK": "表達式 (CVT-L)", "en": "Expression (CVT-L)" },
+      "aoCvtEl": { "zh-CN": "表达式 (CVT-R)", "zh-HK": "表達式 (CVT-R)", "en": "Expression (CVT-R)" },
+      "vdtEl": { "zh-CN": "表达式 (VDT)", "zh-HK": "表達式 (VDT)", "en": "Expression (VDT)" },
+      "eoUnconverted": { "zh-CN": "期望值 (EO-U)", "zh-HK": "期望值 (EO-U)", "en": "Expected (EO-U)" },
+      "aoUnconverted": { "zh-CN": "期望值 (AO-U)", "zh-HK": "期望值 (AO-U)", "en": "Expected (AO-U)" }
+    },
+    "selector": {
+      "aoEl": true,
+      "eoEl": true,
+      "eoCvtEl": true,
+      "aoCvtEl": true,
+      "vdtEl": true,
+      "eoUnconverted": true,
+      "aoUnconverted": true
+    },
+    "tag": false,
+    "userTag": {
+      "raw": false,
+      "labels": {
+        "contextAssertion": { "zh-CN": "上下文断言", "zh-HK": "上下文斷言", "en": "Context Assertion" },
+        "productAssertion": { "zh-CN": "产品断言", "zh-HK": "產品斷言", "en": "Product Assertion" },
+        "platformAssertion": { "zh-CN": "平台断言", "zh-HK": "平台斷言", "en": "Platform Assertion" }
+      }
     }
   }
 }

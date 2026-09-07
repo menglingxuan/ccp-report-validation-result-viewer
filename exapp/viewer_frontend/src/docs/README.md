@@ -13,10 +13,11 @@
   - 单文件：一个 `report-validation-data.json` 包含全部 item。
   - 多文件：`report-validation-data.json` 为清单（manifest），每个 item 一个独立文件，支持**动态加载**、跨文件**搜索/筛选/统计**。
   - 所有近期功能（typed Ctx 标签/弹框、批次删除/收藏、新增徽章、可配置默认数据源、空数据占位、来源渠道筛选、字段详情左右导航与规则折叠等）均同时适配单文件与多文件模式。
-- **每个 item 独立 ctx 定义**：`def` / `hits` / `type` 内联到每个 item（`item.ctxDefs`），不再全局共享。
-  - `type` 为**数组**：`[1]` 字段映射规则 / `[2]` 值转换规则 / `[3]` 终值校验规则；同一 ctx key 可配置在多种规则中（兼容旧数据的单值整数）。
-  - 主列表「命中Ctx」列展示所有 type 的 CtxKey，统一使用主题配色标签（不再按 type 多色着色）；字段详情页各规则 section 通过 `type` 是否包含对应值来归类 CtxKey。
-  - 「命中Ctx」标签单击即弹出定义/命中详情（主列表与详情页均可，弹框跟随标签，长文本/多行可滚动），命中详情内展示该 CtxKey 的**全部 type** 徽章。
+- **每个 item 独立 ctx 定义**：`id` / `scopes` / `type` / `def` / `hits` 内联到每个 item（`item.ctxDefs`），不再全局共享。
+  - `scopes` 为**数组**：`[1]` 字段映射规则 / `[2]` 值转换规则 / `[3]` 终值校验规则；同一 ctx 可配置在多种规则中；`type` 为 `builtin`（内置）/ `user`（用户自定义）。
+  - 主列表「命中Ctx」列展示各规则 `ctxs` 的 id 并集（解析为 CtxKey），统一使用主题配色标签；字段详情页各规则 section 直接展示各自 `ctxs` 的 id 引用。
+  - 「命中Ctx」标签单击即弹出定义/命中详情（主列表与详情页均可，弹框跟随标签，长文本/多行可滚动），命中详情内展示该 CtxKey 的**全部 scopes** 徽章。
+- **字段定义注册表在 report channel 级别**：`channel.fields`（`id` / `name` / `userTag` / `type`）每个报告渠道各自维护（不同渠道的字段定义不同）；比较字段通过 `id` 关联所在渠道的注册表。
 - **默认数据源可配置**：`urls.defaultDataMode` 取值 `init`（加载 `report-validation-data-init.json`）、`default`（加载 `report-validation-data-default.json`）或某个已扫描批次名（加载该批次数据）；其他值等同 `default`。
   - 加载 init 空占位数据时，「运行环境」显示为空。
 - **空占位数据**：`report-validation-data-init.json`（0 个 item）可临时改名为 default 文件，查看器展示友好空状态。
@@ -150,7 +151,8 @@ src/
 
 - `report-validation-data.json` 顶层 `"mode"` 为 `"single"` 或 `"multi"`。
 - 多文件模式：清单中的每个 item 带 `file` 与预计算 `summary`，查看器动态加载 item 文件；搜索/筛选/统计仍作用于全部 item 的合并数据。
-- 每个 item 内联 `ctxDefs`（`def` / `hits` / `type`）。
+- 每个 item 内联 `ctxDefs`（`id` / `scopes` / `type` / `def` / `hits`）。
+- 字段定义注册表在每个 `channel` 内（`channel.fields`，`id` / `name` / `userTag` / `type`）。
 
 ## 生成样例数据
 

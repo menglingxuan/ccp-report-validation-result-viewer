@@ -16,10 +16,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ValidationRule {
-    /** First validation-context key, or {@code null}. */
-    private String ctx;
-    /** All validation-context keys. */
-    private List<String> ctxs;
+    /** First validation-context id, or {@code null}. */
+    private Integer ctx;
+    /** All validation-context ids. */
+    private List<Integer> ctxs;
     /** Rule value (e.g. {@code enum: [...]}, {@code regex:...}). */
     private String el;
     /** Raw Excel validation-rule configuration text. */

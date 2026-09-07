@@ -46,31 +46,31 @@ export function validateDataset(json) {
       errors.push(label + ' 缺少 channels 数组');
       return;
     }
+    const ctxIds = {};
     if (item.ctxDefs !== undefined && (typeof item.ctxDefs !== 'object' || item.ctxDefs === null)) {
       errors.push(label + ' ctxDefs 必须是对象');
     } else if (item.ctxDefs) {
       Object.keys(item.ctxDefs).forEach(function (key) {
         const def = item.ctxDefs[key];
         if (!def || typeof def !== 'object') { errors.push(label + ' ctxDefs.' + key + ' 必须是对象'); return; }
-        const tp = def.type;
+        if (typeof def.id !== 'number' || !Number.isInteger(def.id) || def.id <= 0) {
+          errors.push(label + ' ctxDefs.' + key + ' 缺少正整数 id');
+        } else if (ctxIds[def.id]) {
+          errors.push(label + ' ctxDefs.' + key + ' 的 id 重复：' + def.id);
+        } else {
+          ctxIds[def.id] = true;
+        }
+        const sp = def.scopes;
         const valid = (n) => n === 1 || n === 2 || n === 3;
-        const okT = (Array.isArray(tp) && tp.length > 0 && tp.every(valid)) || valid(tp);
-        if (!okT) errors.push(label + ' ctxDefs.' + key + ' 的 type 必须是 1/2/3 或由它们组成的数组');
+        const okSp = (Array.isArray(sp) && sp.length > 0 && sp.every(valid)) || valid(sp);
+        if (!okSp) errors.push(label + ' ctxDefs.' + key + ' 的 scopes 必须是 1/2/3 或由它们组成的数组');
+        if (def.type !== undefined && def.type !== 'builtin' && def.type !== 'user') {
+          errors.push(label + ' ctxDefs.' + key + ' 的 type 只能是 "builtin" 或 "user"');
+        }
       });
     }
     if (item.enabledChannels !== undefined && !Array.isArray(item.enabledChannels)) {
       errors.push(label + ' enabledChannels 必须是数组');
-    }
-    if (item.fields !== undefined && !Array.isArray(item.fields)) {
-      errors.push(label + ' fields 必须是数组');
-    } else if (Array.isArray(item.fields)) {
-      item.fields.forEach(function (d, di) {
-        if (!d || typeof d !== 'object') { errors.push(label + '.fields[' + di + '] 必须是对象'); return; }
-        if (typeof d.id !== 'string' || !/^\d+$/.test(d.id)) errors.push(label + '.fields[' + di + '] 缺少数字字符串 id');
-        if (typeof d.name !== 'string') errors.push(label + '.fields[' + di + '] 缺少 name');
-        if (typeof d.userTag !== 'string') errors.push(label + '.fields[' + di + '] 缺少 userTag');
-        if (typeof d.type !== 'string') errors.push(label + '.fields[' + di + '] 缺少 type');
-      });
     }
     ['warnings', 'errors', 'uncompared', 'logs'].forEach(function (k) {
       if (item[k] !== undefined && !Array.isArray(item[k])) errors.push(label + ' ' + k + ' 必须是数组');
@@ -82,6 +82,18 @@ export function validateDataset(json) {
         return;
       }
       if (typeof ch.name !== 'string' || !ch.name) errors.push(clabel + ' 缺少 name');
+      // 字段注册表为 report channel 级别。
+      if (ch.fields !== undefined && !Array.isArray(ch.fields)) {
+        errors.push(clabel + ' fields 必须是数组');
+      } else if (Array.isArray(ch.fields)) {
+        ch.fields.forEach(function (d, di) {
+          if (!d || typeof d !== 'object') { errors.push(clabel + '.fields[' + di + '] 必须是对象'); return; }
+          if (typeof d.id !== 'string' || !/^\d+$/.test(d.id)) errors.push(clabel + '.fields[' + di + '] 缺少数字字符串 id');
+          if (typeof d.name !== 'string') errors.push(clabel + '.fields[' + di + '] 缺少 name');
+          if (typeof d.userTag !== 'string') errors.push(clabel + '.fields[' + di + '] 缺少 userTag');
+          if (typeof d.type !== 'string') errors.push(clabel + '.fields[' + di + '] 缺少 type');
+        });
+      }
       if (!Array.isArray(ch.sources)) errors.push(clabel + ' 缺少 sources 数组');
       if (Array.isArray(ch.sources)) {
         ch.sources.forEach(function (s, si) {
@@ -97,6 +109,14 @@ export function validateDataset(json) {
               if (f[rk] !== undefined && f[rk] !== null && (typeof f[rk] !== 'object' || Array.isArray(f[rk]))) {
                 errors.push(flabel + ' ' + rk + ' 必须为对象或 null');
               }
+            });
+            // 校验所有 ctx 引用（id）均在 ctxDefs 中有定义。
+            ['cmpLeft', 'cmpRight', 'cvtLeft', 'cvtRight', 'vdt'].forEach(function (rk) {
+              const r = f[rk];
+              if (!r || typeof r !== 'object') return;
+              (Array.isArray(r.ctxs) ? r.ctxs : []).forEach(function (cid) {
+                if (typeof cid !== 'number' || !ctxIds[cid]) errors.push(flabel + ' ' + rk + '.ctxs 引用了未定义的 ctx id：' + cid);
+              });
             });
           });
         });

@@ -146,6 +146,10 @@
       content: '★'; position: absolute; top: -5px; left: -2px;
       font-size: 9px; color: #eab308; line-height: 1;
     }
+    .bd-chip.pinned::before {
+      content: ''; position: absolute; bottom: -3px; left: -3px; width: 8px; height: 8px;
+      border-radius: 50%; background: var(--accent); border: 2px solid var(--card);
+    }
     .bd-new-dot { position: absolute; bottom: -3px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--fail); border: 2px solid var(--card); }
     .bd-sep { width: 22px; height: 1px; background: var(--border); }
     .bd-empty { writing-mode: vertical-rl; font-size: 10px; color: var(--muted); letter-spacing: 1px; text-align: center; }
@@ -227,6 +231,10 @@
     .batch-item:hover .bi-fav, .batch-item:focus-visible .bi-fav { opacity: 1; }
     .bi-fav:hover { color: #eab308; }
     .bi-fav.on { opacity: 1; color: #eab308; }
+    .bi-pin { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 13px; line-height: 1; padding: 2px; opacity: 0; }
+    .batch-item:hover .bi-pin, .batch-item:focus-visible .bi-pin { opacity: 1; }
+    .bi-pin:hover { color: var(--accent); }
+    .bi-pin.on { opacity: 1; color: var(--accent); }
 
     /* 收藏夹（层级折叠树，契合包名 aa.bb.cc 概念） */
     .fav-panel { width: 300px; }
@@ -262,6 +270,7 @@
     .b-badge.bad { background: var(--warn-bg); color: var(--warn); }
     .b-badge.bsum { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
     .b-badge.new { background: var(--fail-bg); color: var(--fail); }
+    .b-badge.pin { background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent); }
     .batch-item .empty { padding: 18px 14px; color: var(--muted); font-size: 12px; }
     .bp-compat { border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; border-radius: 999px; padding: 2px 9px; font-size: 12px; line-height: 1.6; }
     .bp-compat:hover { color: var(--accent); border-color: var(--accent); }
@@ -307,6 +316,7 @@
     .batch-badge-label { color: rgba(255,255,255,.72); font-size: 11px; flex: 0 0 auto; }
     .batch-badge-warn { color: #fde68a; flex: 0 0 auto; }
     .batch-badge-star { color: #facc15; flex: 0 0 auto; }
+    .batch-badge-pin { flex: 0 0 auto; }
     .batch-badge .batch-badge-text {
       min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       font-family: var(--mono); font-weight: 600;
@@ -672,10 +682,12 @@
     .ctx-def-label { color: var(--muted); margin-right: 6px; font-weight: 600; flex: 0 0 auto; padding-top: 1px; }
     .ctx-def-value { color: var(--text); flex: 1; min-width: 0; white-space: pre-wrap; word-break: break-word; max-height: 180px; overflow-y: auto; padding-right: 4px; }
     .ctx-def-type { margin-bottom: 2px; }
-    .ctx-type-badge { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 500; }
+    .ctx-type-badge, .ctx-origin-badge { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 500; }
     .ctx-type-badge.t1 { background: var(--chip-ctx-bg); color: var(--chip-ctx-fg); }
     .ctx-type-badge.t2 { background: var(--chip-code-bg); color: var(--chip-code-fg); }
     .ctx-type-badge.t3 { background: var(--chip-product-bg); color: var(--chip-product-fg); }
+    .ctx-origin-badge.builtin { background: var(--indigo-bg); color: var(--indigo-fg); border: 1px solid color-mix(in srgb, var(--indigo-fg) 30%, transparent); }
+    .ctx-origin-badge.user { background: var(--chip-context-bg); color: var(--chip-context-fg); border: 1px solid color-mix(in srgb, var(--chip-context-fg) 30%, transparent); }
 
     /* 规则展示（映射 / 转换 / 校验）—— 标题样式对齐「相关打印信息」；EO/AO 两栏并排 */
     .rule-section { margin-top: 12px; }
