@@ -122,9 +122,10 @@ export function loadConfig(cli) {
   // 仅当程序目录只读（如安装到 Program Files）时才回退到当前用户主目录。
   const reportHome = reportBaseDir();
 
-  // 扫描目录：显式环境变量覆盖为绝对路径；否则相对租户数据根解析。
-  if (env.REPORT_VIEWER_BASEDIR) cfg.scan.basedir = path.resolve(env.REPORT_VIEWER_BASEDIR);
-  if (env.REPORT_VIEWER_OUT) cfg.scan.out = path.resolve(env.REPORT_VIEWER_OUT);
+  // 扫描目录：环境变量覆盖时保留原始值（绝对路径按原样；相对路径相对租户数据根解析，与 config 一致，
+  // 避免把旧式的相对值如 public/batches-index.json 解析到程序目录而绕过租户隔离）。
+  if (env.REPORT_VIEWER_BASEDIR) cfg.scan.basedir = env.REPORT_VIEWER_BASEDIR;
+  if (env.REPORT_VIEWER_OUT) cfg.scan.out = env.REPORT_VIEWER_OUT;
 
   cfg.srcRoot = SRC_ROOT;
   cfg.server.webRootAbs = path.resolve(SRC_ROOT, cfg.server.webRoot);

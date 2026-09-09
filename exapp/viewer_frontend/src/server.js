@@ -384,14 +384,12 @@ const server = http.createServer(function (req, res) {
 
   if (url === '/config.json') {
     // 将 urls.batches 重写为租户索引地址：批次索引与批次数据均按租户隔离。
-    try {
-      const servedCfg = JSON.parse(fs.readFileSync(ACTIVE_CONFIG_FILE, 'utf8'));
-      servedCfg.urls = servedCfg.urls || {};
-      servedCfg.urls.batches = '/tenant/';
-      json(res, 200, servedCfg);
-    } catch (e) {
-      serveFile(req, res, ACTIVE_CONFIG_FILE);
-    }
+    // 配置文件损坏/缺失时仍返回带租户索引的配置，避免前端回退到程序自身的 batches-index.json。
+    let servedCfg = {};
+    try { servedCfg = JSON.parse(fs.readFileSync(ACTIVE_CONFIG_FILE, 'utf8')) || {}; } catch (e) { servedCfg = {}; }
+    servedCfg.urls = servedCfg.urls || {};
+    servedCfg.urls.batches = '/tenant/';
+    json(res, 200, servedCfg);
     return;
   }
 
