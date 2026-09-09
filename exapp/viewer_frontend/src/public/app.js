@@ -1534,6 +1534,17 @@
       document.body.appendChild(backdrop);
     }
     let BATCH_QD = null;
+    let BATCH_QD_HIDE_TIMER = null;
+    function scheduleBatchQdHide() {
+      clearTimeout(BATCH_QD_HIDE_TIMER);
+      BATCH_QD_HIDE_TIMER = setTimeout(function () {
+        if (BATCH_QD && !BATCH_QD.__hover) hideBatchQuickDetail();
+      }, 180);
+    }
+    function cancelBatchQdHide() {
+      clearTimeout(BATCH_QD_HIDE_TIMER);
+      BATCH_QD_HIDE_TIMER = null;
+    }
     function buildBatchQuickDetail(b) {
       const compat = batchCompatible(b);
       const card = document.createElement('div');
@@ -1547,6 +1558,9 @@
         '<div class="bi-kv">' + batchDetailKVHTML(b) + '</div>' +
         batchDetailCmdHTML(b) +
         batchDetailDescHTML(b);
+      // 悬停进详情框时保持显示，移出后自动消失。
+      card.addEventListener('mouseenter', function () { card.__hover = true; cancelBatchQdHide(); });
+      card.addEventListener('mouseleave', function () { card.__hover = false; scheduleBatchQdHide(); });
       return card;
     }
     function placeBatchQuickDetail(card, left, top) {
@@ -1575,6 +1589,7 @@
       BATCH_QD = card;
     }
     function hideBatchQuickDetail() {
+      cancelBatchQdHide();
       if (BATCH_QD) { BATCH_QD.remove(); BATCH_QD = null; }
     }
 
@@ -3139,11 +3154,12 @@
       RULE_POPUP = pop;
     }
 
-    function ruleCtxHTML(ctxArr) {
-      // ctx：先显示 ctx 文本，再换行显示具体标签（可点击）。
+    function ruleCtxHTML(ctxText, ctxArr) {
+      // ctx 头文本：优先显示规则对象的 ctx（命中 ctxKey 的原始字符串表达式，如 "hktr.ctx.default and hktr.ctx.v2"），
+      // 其每个元 ctxKey 的 id 引用在同级别 ctxs 数组中；缺失时回退为标签 key 列表。下方再渲染可点击标签。
       const arr = ctxArr || [];
       const keys = arr.map(function (id) { return ctxDefById(id).key; });
-      const data = keys.join(' ');
+      const data = (ctxText != null && ctxText !== '') ? ctxText : keys.join(' ');
       const tags = ctxTagsHTML(arr);
       return '<div class="rc-row rc-ctx">' +
         '<span class="rc-label">' + t('rcCtxLabel') + '</span>' +
@@ -3211,16 +3227,16 @@
         const noneHtml = ruleNoneHTML();
         const mapRuleHtml = APP_FEATURES.excelMapping
           ? rulePairHTML(
-              ruleSectionHTML('mappingEO', t('modalMappingRuleEO'), ruleValueHTML(left.el || '—'), ruleCtxHTML(left.ctxs)),
-              ruleSectionHTML('mappingAO', t('modalMappingRuleAO'), ruleValueHTML(right.el || '—'), ruleCtxHTML(right.ctxs)))
+              ruleSectionHTML('mappingEO', t('modalMappingRuleEO'), ruleValueHTML(left.el || '—'), ruleCtxHTML(left.ctx, left.ctxs)),
+              ruleSectionHTML('mappingAO', t('modalMappingRuleAO'), ruleValueHTML(right.el || '—'), ruleCtxHTML(right.ctx, right.ctxs)))
           : '';
         const convRuleHtml = APP_FEATURES.conversionRule
           ? rulePairHTML(
-              ruleSectionHTML('convEO', t('modalConversionRuleEO'), cvtLeft ? ruleValueHTML(cvtLeft.el || '—') : noneHtml, ruleCtxHTML(cvtLeft ? cvtLeft.ctxs : null)),
-              ruleSectionHTML('convAO', t('modalConversionRuleAO'), cvtRight ? ruleValueHTML(cvtRight.el || '—') : noneHtml, ruleCtxHTML(cvtRight ? cvtRight.ctxs : null)))
+              ruleSectionHTML('convEO', t('modalConversionRuleEO'), cvtLeft ? ruleValueHTML(cvtLeft.el || '—') : noneHtml, ruleCtxHTML(cvtLeft ? cvtLeft.ctx : null, cvtLeft ? cvtLeft.ctxs : null)),
+              ruleSectionHTML('convAO', t('modalConversionRuleAO'), cvtRight ? ruleValueHTML(cvtRight.el || '—') : noneHtml, ruleCtxHTML(cvtRight ? cvtRight.ctx : null, cvtRight ? cvtRight.ctxs : null)))
           : '';
         const valRuleHtml = APP_FEATURES.validationRule
-          ? ruleSectionHTML('validation', t('modalValidationRule'), vdt ? ruleValueHTML(vdt.el || '—') : noneHtml, ruleCtxHTML(vdt ? vdt.ctxs : null))
+          ? ruleSectionHTML('validation', t('modalValidationRule'), vdt ? ruleValueHTML(vdt.el || '—') : noneHtml, ruleCtxHTML(vdt ? vdt.ctx : null, vdt ? vdt.ctxs : null))
           : '';
 
         const xpathLabel = right.srcType === 2 ? t('modalAoCsvField') : t('modalXPath');
@@ -4307,7 +4323,8 @@
         if (BATCH_STATE.active) showBatchQuickDetailBelow(e.currentTarget, BATCH_STATE.active);
       });
       document.getElementById('batchBadge').addEventListener('mouseout', function (e) {
-        if (BATCH_QD && !e.relatedTarget) hideBatchQuickDetail();
+        // 移出徽标后延迟隐藏；若移入详情框则由其 mouseenter 取消。
+        scheduleBatchQdHide();
       });
       document.getElementById('batchBackDefault').addEventListener('click', function () { loadDefaultReport(); });
 

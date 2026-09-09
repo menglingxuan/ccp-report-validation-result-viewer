@@ -17,8 +17,8 @@ import lombok.NoArgsConstructor;
 public class CmpSide {
     /** Expected (EO) or actual (AO) value. */
     private String value;
-    /** First matching mapping-context id, or {@code null}. */
-    private Integer ctx;
+    /** Raw expression of the matched mapping-context keys (e.g. {@code "hktr.ctx.default and hktr.ctx.v2"}), or {@code null}. */
+    private String ctx;
     /** All matching mapping-context ids. */
     private List<Integer> ctxs;
     /** Raw Excel mapping configuration text. */

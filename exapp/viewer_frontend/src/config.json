@@ -6,12 +6,14 @@
     "webRoot": "public"
   },
   "scan": {
-    "basedir": "public/batches",
-    "out": "public/batches-index.json",
+    "basedir": "batches",
+    "out": "batches-index.json",
     "ignore": [],
     "env": null
   },
   "runType": "dev",
+  "audit": false,
+  "tenants": {},
   "urls": {
     "data": "report-validation-data.json",
     "defaultData": "report-validation-data-default.json",

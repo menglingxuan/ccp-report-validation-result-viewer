@@ -110,10 +110,13 @@ export function validateDataset(json) {
                 errors.push(flabel + ' ' + rk + ' 必须为对象或 null');
               }
             });
-            // 校验所有 ctx 引用（id）均在 ctxDefs 中有定义。
+            // 校验所有 ctx 引用（id）均在 ctxDefs 中有定义；ctx（单数）为原始字符串表达式。
             ['cmpLeft', 'cmpRight', 'cvtLeft', 'cvtRight', 'vdt'].forEach(function (rk) {
               const r = f[rk];
               if (!r || typeof r !== 'object') return;
+              if (r.ctx !== undefined && r.ctx !== null && typeof r.ctx !== 'string') {
+                errors.push(flabel + ' ' + rk + '.ctx 必须是字符串（命中 ctxKey 的原始表达式）或 null');
+              }
               (Array.isArray(r.ctxs) ? r.ctxs : []).forEach(function (cid) {
                 if (typeof cid !== 'number' || !ctxIds[cid]) errors.push(flabel + ' ' + rk + '.ctxs 引用了未定义的 ctx id：' + cid);
               });

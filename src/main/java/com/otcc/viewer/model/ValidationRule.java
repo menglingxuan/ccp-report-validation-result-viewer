@@ -16,8 +16,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ValidationRule {
-    /** First validation-context id, or {@code null}. */
-    private Integer ctx;
+    /** Raw expression of the matched validation-context keys (e.g. {@code "hktr.ctx.val.default"}), or {@code null}. */
+    private String ctx;
     /** All validation-context ids. */
     private List<Integer> ctxs;
     /** Rule value (e.g. {@code enum: [...]}, {@code regex:...}). */

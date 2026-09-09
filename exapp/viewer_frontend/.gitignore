@@ -1,4 +1,6 @@
 # 运行时生成的用户数据（收藏夹服务端持久化），不纳入版本控制。
 src/favorites.json
+# 租户 active 追踪与审查日志（写在程序目录 src/ 下）。
+src/.report-viewer/
 node_modules/
 *.log

@@ -325,6 +325,11 @@ import path from 'node:path';
       const toIds = function (arr) {
         return (arr || []).map(function (k) { return idByKey[k]; }).filter(function (id) { return id != null; });
       };
+      // ctx（单数）为命中 ctxKey 的原始字符串表达式，如 "hktr.ctx.val.v2 and hktr.ctx.default"；
+      // 其中每个元 ctxKey 的 id 引用在同级别的 ctxs 数组中。
+      const ctxExpr = function (arr) {
+        return (arr && arr.length) ? arr.join(' and ') : null;
+      };
       // 来源渠道数量：默认为 2（A/B），部分 item 仅有 1 个来源渠道（sourceCount=1）。
       const sourceIndexes = sourceCount === 1 ? [1] : [1, 2];
       const sources = sourceIndexes.map(sn => {
@@ -378,11 +383,11 @@ import path from 'node:path';
           const valCtxIds = toIds(valCtxs);
           return {
             id: fr.nameToId[f],
-            cmpLeft: { value: eo, ctx: mapCtxIds.length ? mapCtxIds[0] : null, ctxs: mapCtxIds, elRaw: eoMapping, el: eoCol, srcType: 2 },
-            cmpRight: { value: ao, ctx: mapCtxIds.length ? mapCtxIds[0] : null, ctxs: mapCtxIds, elRaw: excelMapping, el: el, srcType: srcType },
-            cvtLeft: conversionRule ? { ctx: convCtxIds.length ? convCtxIds[0] : null, ctxs: convCtxIds, el: conversionRule.value, elRaw: excelConversionRule, raw: eoUnconverted } : null,
-            cvtRight: aoConversionRule ? { ctx: aoConvCtxIds.length ? aoConvCtxIds[0] : null, ctxs: aoConvCtxIds, el: aoConversionRule.value, elRaw: genExcelRuleText(aoConversionRule.value, ctx, isExcelSample), raw: aoUnconverted } : null,
-            vdt: validationRule ? { ctx: valCtxIds.length ? valCtxIds[0] : null, ctxs: valCtxIds, el: validationRule.value, elRaw: excelValidationRule } : null,
+            cmpLeft: { value: eo, ctx: ctxExpr(mapCtxs), ctxs: mapCtxIds, elRaw: eoMapping, el: eoCol, srcType: 2 },
+            cmpRight: { value: ao, ctx: ctxExpr(mapCtxs), ctxs: mapCtxIds, elRaw: excelMapping, el: el, srcType: srcType },
+            cvtLeft: conversionRule ? { ctx: ctxExpr(convCtxs), ctxs: convCtxIds, el: conversionRule.value, elRaw: excelConversionRule, raw: eoUnconverted } : null,
+            cvtRight: aoConversionRule ? { ctx: ctxExpr(aoConvCtxs), ctxs: aoConvCtxIds, el: aoConversionRule.value, elRaw: genExcelRuleText(aoConversionRule.value, ctx, isExcelSample), raw: aoUnconverted } : null,
+            vdt: validationRule ? { ctx: ctxExpr(valCtxs), ctxs: valCtxIds, el: validationRule.value, elRaw: excelValidationRule } : null,
             result: result,
             remarks: note,
             resultText: resultNote,

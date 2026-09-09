@@ -98,7 +98,7 @@
 
 | 键 | 类型 | 说明 |
 |---|---|---|
-| `id` | 正整数 | 该 item 内唯一的上下文 id，供字段各规则的 `ctx` / `ctxs` 引用 |
+| `id` | 正整数 | 该 item 内唯一的上下文 id，供字段各规则的 `ctxs`（id 数组）引用 |
 | `scopes` | 整数数组 | 上下文作用域：`1` 字段映射 / `2` 值转换 / `3` 终值校验；同一 ctx 可配置在多种规则中，故为数组 |
 | `type` | 字符串 | 来源类型：`builtin`（内置）/ `user`（用户自定义） |
 | `def` | 字符串 | 上下文定义 |
@@ -149,18 +149,18 @@
 | 键 | 类型 | 说明 |
 |---|---|---|
 | `id` | 数字字符串 | 关联 `channel.fields` 的字段标识 |
-| `cmpLeft` | 对象 | 左侧（EO/来源）：`{ value, ctx, ctxs, elRaw, el, srcType }`；`ctx` / `ctxs` 为 `item.ctxDefs` 的 **id 引用**；`el` 为 EO 来源元素（CSV 列），`elRaw` 为 EO 字段映射原始配置 |
-| `cmpRight` | 对象 | 右侧（AO/报送）：`{ value, ctx, ctxs, elRaw, el, srcType }`；`ctx` / `ctxs` 为 id 引用；`el` 即原 `x`（srcType=1）或 `aoCsv`（srcType=2），`elRaw` 即原 `excelMapping` |
-| `cvtLeft` | 对象\|null | EO 值转换规则：`{ ctx, ctxs, el, elRaw, raw }`；`ctx` / `ctxs` 为 id 引用；`el` 即原 `conversionRule.value`，`elRaw` 即原 `excelConversionRule`，`raw` 即原 `eoUnconverted`；未配置时为 `null` |
-| `cvtRight` | 对象\|null | AO 值转换规则（结构同 `cvtLeft`）；`ctx` / `ctxs` 为 id 引用；`raw` 为 AO 未转换值；未配置时为 `null` |
-| `vdt` | 对象\|null | AO 终值校验规则：`{ ctx, ctxs, el, elRaw }`；`ctx` / `ctxs` 为 id 引用；`el` 即原 `validationRule.value`，`elRaw` 即原 `excelValidationRule`；未配置时为 `null` |
+| `cmpLeft` | 对象 | 左侧（EO/来源）：`{ value, ctx, ctxs, elRaw, el, srcType }`；`ctx` 为命中 ctxKey 的 **原始字符串表达式**（如 `"hktr.ctx.default and hktr.ctx.v2"`，其中每个元 ctxKey 的 id 见 `ctxs`）；`ctxs` 为 `item.ctxDefs` 的 **id 引用数组**；`el` 为 EO 来源元素（CSV 列），`elRaw` 为 EO 字段映射原始配置 |
+| `cmpRight` | 对象 | 右侧（AO/报送）：`{ value, ctx, ctxs, elRaw, el, srcType }`；`ctx` 为原始字符串表达式、`ctxs` 为 id 引用数组；`el` 即原 `x`（srcType=1）或 `aoCsv`（srcType=2），`elRaw` 即原 `excelMapping` |
+| `cvtLeft` | 对象\|null | EO 值转换规则：`{ ctx, ctxs, el, elRaw, raw }`；`ctx` 为原始字符串表达式、`ctxs` 为 id 引用数组；`el` 即原 `conversionRule.value`，`elRaw` 即原 `excelConversionRule`，`raw` 即原 `eoUnconverted`；未配置时为 `null` |
+| `cvtRight` | 对象\|null | AO 值转换规则（结构同 `cvtLeft`）；`ctx` 为原始字符串表达式、`ctxs` 为 id 引用数组；`raw` 为 AO 未转换值；未配置时为 `null` |
+| `vdt` | 对象\|null | AO 终值校验规则：`{ ctx, ctxs, el, elRaw }`；`ctx` 为原始字符串表达式、`ctxs` 为 id 引用数组；`el` 即原 `validationRule.value`，`elRaw` 即原 `excelValidationRule`；未配置时为 `null` |
 | `result` | 字符串 | `PASSED` 或 `FAILED` |
 | `remarks` | 字符串 | 说明（原 `note`） |
 | `resultText` | 字符串 | 结果说明（原 `resultNote`） |
 | `resultDetails` | 数组 | 额外结果 `[{label, value}]`（原 `extraResults`） |
 | `prints` | 字符串数组 | 相关打印信息 |
 
-> 已移除字段：`eoConverted`（不再需要）与 `field.ctxs`（命中上下文现由 `cmpLeft` / `cmpRight` / `cvtLeft` / `cvtRight` / `vdt` 的 `ctxs` 取并集）。`f` / `t` / `k` 迁移到 `channel.fields`；`x` / `aoCsv` / `ctx` / `eo` / `ao` / `eoUnconverted` / `conversionRule` / `validationRule` / `excelMapping` / `excelConversionRule` / `excelValidationRule` 迁移到上述对象；`ctx` / `ctxs` 由 ctx key 字符串改为 `item.ctxDefs` 的 id 引用。
+> 已移除字段：`eoConverted`（不再需要）与 `field.ctxs`（命中上下文现由 `cmpLeft` / `cmpRight` / `cvtLeft` / `cvtRight` / `vdt` 的 `ctxs` 取并集）。`f` / `t` / `k` 迁移到 `channel.fields`；`x` / `aoCsv` / `ctx` / `eo` / `ao` / `eoUnconverted` / `conversionRule` / `validationRule` / `excelMapping` / `excelConversionRule` / `excelValidationRule` 迁移到上述对象；`ctx`（单数）由 ctx key 字符串/id 改为 **命中 ctxKey 的原始字符串表达式**，`ctxs` 改为 `item.ctxDefs` 的 id 引用数组。
 
 ## 6. 批次元数据（`batch-meta.json`）与索引（`batches-index.json`）
 

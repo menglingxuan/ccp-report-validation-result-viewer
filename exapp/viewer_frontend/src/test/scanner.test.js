@@ -1,18 +1,19 @@
-// 批次扫描器测试：扫描 public/batches，输出到临时索引文件。
+// 批次扫描器测试：扫描 public/batches（共享样例数据），输出到临时索引文件。
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { scan } from '../lib/scanner.js';
-import { loadConfig } from '../lib/config.js';
+import { SRC_ROOT } from '../lib/config.js';
 
-const cfg = loadConfig();
+// 直接使用共享样例批次目录（扫描器本身与租户无关，由 server.js 传入租户路径）。
+const SHARED_BATCHES = path.join(SRC_ROOT, 'public', 'batches');
 
 test('扫描批次目录并生成索引', async () => {
   const out = path.join(os.tmpdir(), 'batches-index-test-' + Date.now() + '.json');
   try {
-    const r = await scan({ basedir: cfg.scan.basedirAbs, out, ignore: [], env: null });
+    const r = await scan({ basedir: SHARED_BATCHES, out, ignore: [], env: null });
     assert.equal(r.ok, true, r.error);
     assert.ok(r.count > 0, '应至少发现一个批次');
     assert.ok(fs.existsSync(out));
@@ -32,7 +33,7 @@ test('扫描批次目录并生成索引', async () => {
 test('env 过滤只返回指定环境', async () => {
   const out = path.join(os.tmpdir(), 'batches-index-env-test-' + Date.now() + '.json');
   try {
-    const r = await scan({ basedir: cfg.scan.basedirAbs, out, ignore: [], env: 'OTCXXX' });
+    const r = await scan({ basedir: SHARED_BATCHES, out, ignore: [], env: 'OTCXXX' });
     assert.equal(r.ok, true, r.error);
     r.batches.forEach((b) => assert.equal(b.reportEnv, 'OTCXXX'));
   } finally {

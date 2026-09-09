@@ -16,8 +16,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ConversionRule {
-    /** First conversion-context id, or {@code null}. */
-    private Integer ctx;
+    /** Raw expression of the matched conversion-context keys (e.g. {@code "hktr.ctx.conv.default"}), or {@code null}. */
+    private String ctx;
     /** All conversion-context ids. */
     private List<Integer> ctxs;
     /** Rule value (e.g. {@code @round2}, {@code @toUpper}). */

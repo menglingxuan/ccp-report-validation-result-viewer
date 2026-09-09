@@ -334,7 +334,7 @@
               "id": "1",
               "cmpLeft": {
                 "value": "TX-2024-962587",
-                "ctx": 2,
+                "ctx": "hktr.ctx.v2",
                 "ctxs": [
                   2
                 ],
@@ -344,7 +344,7 @@
               },
               "cmpRight": {
                 "value": "TX-2024-962587",
-                "ctx": 2,
+                "ctx": "hktr.ctx.v2",
                 "ctxs": [
                   2
                 ],
@@ -354,7 +354,7 @@
               },
               "cvtLeft": null,
               "cvtRight": {
-                "ctx": 5,
+                "ctx": "hktr.ctx.conv.default and hktr.ctx.conv.v2",
                 "ctxs": [
                   5,
                   6
@@ -364,7 +364,7 @@
                 "raw": "2024-962587"
               },
               "vdt": {
-                "ctx": 7,
+                "ctx": "hktr.ctx.val.default",
                 "ctxs": [
                   7
                 ],
@@ -385,7 +385,7 @@
               "id": "2",
               "cmpLeft": {
                 "value": "TX-2024-460446",
-                "ctx": 3,
+                "ctx": "hktr.ctx.v3",
                 "ctxs": [
                   3
                 ],
@@ -395,7 +395,7 @@
               },
               "cmpRight": {
                 "value": "TX-2024-460442",
-                "ctx": 3,
+                "ctx": "hktr.ctx.v3",
                 "ctxs": [
                   3
                 ],
@@ -406,7 +406,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 7,
+                "ctx": "hktr.ctx.val.default",
                 "ctxs": [
                   7
                 ],
@@ -427,7 +427,7 @@
               "id": "3",
               "cmpLeft": {
                 "value": "FXS",
-                "ctx": 1,
+                "ctx": "hktr.ctx.default",
                 "ctxs": [
                   1
                 ],
@@ -437,7 +437,7 @@
               },
               "cmpRight": {
                 "value": "IRS",
-                "ctx": 1,
+                "ctx": "hktr.ctx.default",
                 "ctxs": [
                   1
                 ],
@@ -448,7 +448,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 7,
+                "ctx": "hktr.ctx.val.default",
                 "ctxs": [
                   7
                 ],
@@ -469,7 +469,7 @@
               "id": "4",
               "cmpLeft": {
                 "value": "1044694.78",
-                "ctx": 3,
+                "ctx": "hktr.ctx.v3",
                 "ctxs": [
                   3
                 ],
@@ -479,7 +479,7 @@
               },
               "cmpRight": {
                 "value": "1044761.79",
-                "ctx": 3,
+                "ctx": "hktr.ctx.v3",
                 "ctxs": [
                   3
                 ],
@@ -488,7 +488,7 @@
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": 5,
+                "ctx": "hktr.ctx.conv.default",
                 "ctxs": [
                   5
                 ],
@@ -497,7 +497,7 @@
                 "raw": "104469478"
               },
               "cvtRight": {
-                "ctx": 6,
+                "ctx": "hktr.ctx.conv.v2",
                 "ctxs": [
                   6
                 ],
@@ -506,7 +506,7 @@
                 "raw": "104476179"
               },
               "vdt": {
-                "ctx": 8,
+                "ctx": "hktr.ctx.val.v2",
                 "ctxs": [
                   8
                 ],
@@ -532,7 +532,7 @@
               "id": "5",
               "cmpLeft": {
                 "value": "EUR",
-                "ctx": 2,
+                "ctx": "hktr.ctx.v2 and hktr.ctx.v3",
                 "ctxs": [
                   2,
                   3
@@ -543,7 +543,7 @@
               },
               "cmpRight": {
                 "value": "USD",
-                "ctx": 2,
+                "ctx": "hktr.ctx.v2 and hktr.ctx.v3",
                 "ctxs": [
                   2,
                   3
@@ -554,7 +554,7 @@
               },
               "cvtLeft": null,
               "cvtRight": {
-                "ctx": 5,
+                "ctx": "hktr.ctx.conv.default",
                 "ctxs": [
                   5
                 ],
@@ -563,7 +563,7 @@
                 "raw": "usd"
               },
               "vdt": {
-                "ctx": 7,
+                "ctx": "hktr.ctx.val.default and hktr.ctx.val.v2",
                 "ctxs": [
                   7,
                   8
@@ -585,7 +585,7 @@
               "id": "6",
               "cmpLeft": {
                 "value": "2024-01-08",
-                "ctx": 3,
+                "ctx": "hktr.ctx.v3",
                 "ctxs": [
                   3
                 ],
@@ -595,7 +595,7 @@
               },
               "cmpRight": {
                 "value": "2024-01-09",
-                "ctx": 3,
+                "ctx": "hktr.ctx.v3",
                 "ctxs": [
                   3
                 ],
@@ -606,7 +606,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 8,
+                "ctx": "hktr.ctx.val.v2",
                 "ctxs": [
                   8
                 ],
@@ -627,7 +627,7 @@
               "id": "7",
               "cmpLeft": {
                 "value": "2024-06-16",
-                "ctx": 2,
+                "ctx": "hktr.ctx.v2",
                 "ctxs": [
                   2
                 ],
@@ -637,7 +637,7 @@
               },
               "cmpRight": {
                 "value": "2024-06-21",
-                "ctx": 2,
+                "ctx": "hktr.ctx.v2",
                 "ctxs": [
                   2
                 ],
@@ -647,7 +647,7 @@
               },
               "cvtLeft": null,
               "cvtRight": {
-                "ctx": 5,
+                "ctx": "hktr.ctx.conv.default",
                 "ctxs": [
                   5
                 ],
@@ -670,7 +670,7 @@
               "id": "8",
               "cmpLeft": {
                 "value": "HSBC",
-                "ctx": 1,
+                "ctx": "hktr.ctx.default and hktr.ctx.v3",
                 "ctxs": [
                   1,
                   3
@@ -681,7 +681,7 @@
               },
               "cmpRight": {
                 "value": "HSBC",
-                "ctx": 1,
+                "ctx": "hktr.ctx.default and hktr.ctx.v3",
                 "ctxs": [
                   1,
                   3
@@ -691,7 +691,7 @@
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": 5,
+                "ctx": "hktr.ctx.conv.default and hktr.ctx.conv.v2",
                 "ctxs": [
                   5,
                   6
@@ -702,7 +702,7 @@
               },
               "cvtRight": null,
               "vdt": {
-                "ctx": 7,
+                "ctx": "hktr.ctx.val.default and hktr.ctx.val.v2",
                 "ctxs": [
                   7,
                   8
@@ -729,7 +729,7 @@
               "id": "9",
               "cmpLeft": {
                 "value": "Citi Group",
-                "ctx": 2,
+                "ctx": "hktr.ctx.v2",
                 "ctxs": [
                   2
                 ],
@@ -739,7 +739,7 @@
               },
               "cmpRight": {
                 "value": "XYZ Bank",
-                "ctx": 2,
+                "ctx": "hktr.ctx.v2",
                 "ctxs": [
                   2
                 ],
@@ -749,7 +749,7 @@
               },
               "cvtLeft": null,
               "cvtRight": {
-                "ctx": 6,
+                "ctx": "hktr.ctx.conv.v2",
                 "ctxs": [
                   6
                 ],
@@ -758,7 +758,7 @@
                 "raw": "  XYZ Bank  "
               },
               "vdt": {
-                "ctx": 8,
+                "ctx": "hktr.ctx.val.v2",
                 "ctxs": [
                   8
                 ],
@@ -779,7 +779,7 @@
               "id": "10",
               "cmpLeft": {
                 "value": "9164638.50",
-                "ctx": 3,
+                "ctx": "hktr.ctx.v3",
                 "ctxs": [
                   3
                 ],
@@ -789,7 +789,7 @@
               },
               "cmpRight": {
                 "value": "9164733.51",
-                "ctx": 3,
+                "ctx": "hktr.ctx.v3",
                 "ctxs": [
                   3
                 ],
@@ -799,7 +799,7 @@
               },
               "cvtLeft": null,
               "cvtRight": {
-                "ctx": 5,
+                "ctx": "hktr.ctx.conv.default and hktr.ctx.conv.v2",
                 "ctxs": [
                   5,
                   6
@@ -809,7 +809,7 @@
                 "raw": "916473351"
               },
               "vdt": {
-                "ctx": 7,
+                "ctx": "hktr.ctx.val.default",
                 "ctxs": [
                   7
                 ],
@@ -830,7 +830,7 @@
               "id": "11",
               "cmpLeft": {
                 "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": 4,
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest and hktr.ctx.v2",
                 "ctxs": [
                   4,
                   2
@@ -841,7 +841,7 @@
               },
               "cmpRight": {
                 "value": "第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。",
-                "ctx": 4,
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest and hktr.ctx.v2",
                 "ctxs": [
                   4,
                   2
@@ -852,7 +852,7 @@
               },
               "cvtLeft": null,
               "cvtRight": {
-                "ctx": 5,
+                "ctx": "hktr.ctx.conv.default",
                 "ctxs": [
                   5
                 ],
@@ -861,7 +861,7 @@
                 "raw": "第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。"
               },
               "vdt": {
-                "ctx": 8,
+                "ctx": "hktr.ctx.val.v2",
                 "ctxs": [
                   8
                 ],
@@ -887,7 +887,7 @@
               "id": "1",
               "cmpLeft": {
                 "value": "TX-2024-868224",
-                "ctx": 3,
+                "ctx": "hktr.ctx.v3",
                 "ctxs": [
                   3
                 ],
@@ -897,7 +897,7 @@
               },
               "cmpRight": {
                 "value": "TX-2024-868229",
-                "ctx": 3,
+                "ctx": "hktr.ctx.v3",
                 "ctxs": [
                   3
                 ],
@@ -908,7 +908,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 7,
+                "ctx": "hktr.ctx.val.default",
                 "ctxs": [
                   7
                 ],
@@ -929,7 +929,7 @@
               "id": "2",
               "cmpLeft": {
                 "value": "TX-2024-803820",
-                "ctx": 4,
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   4
                 ],
@@ -939,7 +939,7 @@
               },
               "cmpRight": {
                 "value": "TX-2024-803822",
-                "ctx": 4,
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   4
                 ],
@@ -950,7 +950,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 7,
+                "ctx": "hktr.ctx.val.default",
                 "ctxs": [
                   7
                 ],
@@ -971,7 +971,7 @@
               "id": "3",
               "cmpLeft": {
                 "value": "BSW",
-                "ctx": 2,
+                "ctx": "hktr.ctx.v2",
                 "ctxs": [
                   2
                 ],
@@ -981,7 +981,7 @@
               },
               "cmpRight": {
                 "value": "BSW",
-                "ctx": 2,
+                "ctx": "hktr.ctx.v2",
                 "ctxs": [
                   2
                 ],
@@ -992,7 +992,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 7,
+                "ctx": "hktr.ctx.val.default",
                 "ctxs": [
                   7
                 ],
@@ -1013,7 +1013,7 @@
               "id": "4",
               "cmpLeft": {
                 "value": "194315.73",
-                "ctx": 4,
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   4
                 ],
@@ -1023,7 +1023,7 @@
               },
               "cmpRight": {
                 "value": "194379.74",
-                "ctx": 4,
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   4
                 ],
@@ -1032,7 +1032,7 @@
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": 6,
+                "ctx": "hktr.ctx.conv.v2",
                 "ctxs": [
                   6
                 ],
@@ -1042,7 +1042,7 @@
               },
               "cvtRight": null,
               "vdt": {
-                "ctx": 8,
+                "ctx": "hktr.ctx.val.v2",
                 "ctxs": [
                   8
                 ],
@@ -1068,7 +1068,7 @@
               "id": "5",
               "cmpLeft": {
                 "value": "EUR",
-                "ctx": 1,
+                "ctx": "hktr.ctx.default",
                 "ctxs": [
                   1
                 ],
@@ -1078,7 +1078,7 @@
               },
               "cmpRight": {
                 "value": "USD",
-                "ctx": 1,
+                "ctx": "hktr.ctx.default",
                 "ctxs": [
                   1
                 ],
@@ -1089,7 +1089,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 8,
+                "ctx": "hktr.ctx.val.v2 and hktr.ctx.val.default",
                 "ctxs": [
                   8,
                   7
@@ -1111,7 +1111,7 @@
               "id": "6",
               "cmpLeft": {
                 "value": "2024-01-29",
-                "ctx": 1,
+                "ctx": "hktr.ctx.default",
                 "ctxs": [
                   1
                 ],
@@ -1121,7 +1121,7 @@
               },
               "cmpRight": {
                 "value": "2024-02-01",
-                "ctx": 1,
+                "ctx": "hktr.ctx.default",
                 "ctxs": [
                   1
                 ],
@@ -1130,7 +1130,7 @@
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": 6,
+                "ctx": "hktr.ctx.conv.v2",
                 "ctxs": [
                   6
                 ],
@@ -1139,7 +1139,7 @@
                 "raw": "20240129"
               },
               "cvtRight": {
-                "ctx": 6,
+                "ctx": "hktr.ctx.conv.v2 and hktr.ctx.conv.default",
                 "ctxs": [
                   6,
                   5
@@ -1149,7 +1149,7 @@
                 "raw": "20240201"
               },
               "vdt": {
-                "ctx": 8,
+                "ctx": "hktr.ctx.val.v2 and hktr.ctx.val.default",
                 "ctxs": [
                   8,
                   7
@@ -1176,7 +1176,7 @@
               "id": "7",
               "cmpLeft": {
                 "value": "2024-12-24",
-                "ctx": 4,
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   4
                 ],
@@ -1186,7 +1186,7 @@
               },
               "cmpRight": {
                 "value": "2024-12-27",
-                "ctx": 4,
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   4
                 ],
@@ -1195,7 +1195,7 @@
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": 5,
+                "ctx": "hktr.ctx.conv.default",
                 "ctxs": [
                   5
                 ],
@@ -1204,7 +1204,7 @@
                 "raw": "20241224"
               },
               "cvtRight": {
-                "ctx": 5,
+                "ctx": "hktr.ctx.conv.default",
                 "ctxs": [
                   5
                 ],
@@ -1232,7 +1232,7 @@
               "id": "8",
               "cmpLeft": {
                 "value": "Nomura",
-                "ctx": 1,
+                "ctx": "hktr.ctx.default",
                 "ctxs": [
                   1
                 ],
@@ -1242,7 +1242,7 @@
               },
               "cmpRight": {
                 "value": "XYZ Bank",
-                "ctx": 1,
+                "ctx": "hktr.ctx.default",
                 "ctxs": [
                   1
                 ],
@@ -1252,7 +1252,7 @@
               },
               "cvtLeft": null,
               "cvtRight": {
-                "ctx": 6,
+                "ctx": "hktr.ctx.conv.v2",
                 "ctxs": [
                   6
                 ],
@@ -1261,7 +1261,7 @@
                 "raw": "  XYZ Bank  "
               },
               "vdt": {
-                "ctx": 7,
+                "ctx": "hktr.ctx.val.default",
                 "ctxs": [
                   7
                 ],
@@ -1282,7 +1282,7 @@
               "id": "9",
               "cmpLeft": {
                 "value": "Nomura",
-                "ctx": 2,
+                "ctx": "hktr.ctx.v2",
                 "ctxs": [
                   2
                 ],
@@ -1292,7 +1292,7 @@
               },
               "cmpRight": {
                 "value": "XYZ Bank",
-                "ctx": 2,
+                "ctx": "hktr.ctx.v2",
                 "ctxs": [
                   2
                 ],
@@ -1303,7 +1303,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 8,
+                "ctx": "hktr.ctx.val.v2",
                 "ctxs": [
                   8
                 ],
@@ -1324,7 +1324,7 @@
               "id": "10",
               "cmpLeft": {
                 "value": "3567937.09",
-                "ctx": 3,
+                "ctx": "hktr.ctx.v3 and hktr.ctx.v2",
                 "ctxs": [
                   3,
                   2
@@ -1335,7 +1335,7 @@
               },
               "cmpRight": {
                 "value": "3567971.10",
-                "ctx": 3,
+                "ctx": "hktr.ctx.v3 and hktr.ctx.v2",
                 "ctxs": [
                   3,
                   2
@@ -1347,7 +1347,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 8,
+                "ctx": "hktr.ctx.val.v2 and hktr.ctx.val.default",
                 "ctxs": [
                   8,
                   7
@@ -1369,7 +1369,7 @@
               "id": "11",
               "cmpLeft": {
                 "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": 1,
+                "ctx": "hktr.ctx.default",
                 "ctxs": [
                   1
                 ],
@@ -1379,7 +1379,7 @@
               },
               "cmpRight": {
                 "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": 1,
+                "ctx": "hktr.ctx.default",
                 "ctxs": [
                   1
                 ],
@@ -1511,7 +1511,7 @@
               "id": "1",
               "cmpLeft": {
                 "value": "TX-2024-562385",
-                "ctx": 12,
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   12
                 ],
@@ -1521,7 +1521,7 @@
               },
               "cmpRight": {
                 "value": "TX-2024-562385",
-                "ctx": 12,
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   12
                 ],
@@ -1546,7 +1546,7 @@
               "id": "2",
               "cmpLeft": {
                 "value": "TX-2024-475013",
-                "ctx": 12,
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest and jsfa.ctx.v3",
                 "ctxs": [
                   12,
                   11
@@ -1557,7 +1557,7 @@
               },
               "cmpRight": {
                 "value": "TX-2024-475014",
-                "ctx": 12,
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest and jsfa.ctx.v3",
                 "ctxs": [
                   12,
                   11
@@ -1568,7 +1568,7 @@
               },
               "cvtLeft": null,
               "cvtRight": {
-                "ctx": 13,
+                "ctx": "jsfa.ctx.conv.default",
                 "ctxs": [
                   13
                 ],
@@ -1577,7 +1577,7 @@
                 "raw": "2024-475014"
               },
               "vdt": {
-                "ctx": 15,
+                "ctx": "jsfa.ctx.val.default and jsfa.ctx.val.v2",
                 "ctxs": [
                   15,
                   16
@@ -1599,7 +1599,7 @@
               "id": "3",
               "cmpLeft": {
                 "value": "FXF",
-                "ctx": 10,
+                "ctx": "jsfa.ctx.v2",
                 "ctxs": [
                   10
                 ],
@@ -1609,7 +1609,7 @@
               },
               "cmpRight": {
                 "value": "IRS",
-                "ctx": 10,
+                "ctx": "jsfa.ctx.v2",
                 "ctxs": [
                   10
                 ],
@@ -1619,7 +1619,7 @@
               },
               "cvtLeft": null,
               "cvtRight": {
-                "ctx": 14,
+                "ctx": "jsfa.ctx.conv.v2",
                 "ctxs": [
                   14
                 ],
@@ -1628,7 +1628,7 @@
                 "raw": "irs"
               },
               "vdt": {
-                "ctx": 15,
+                "ctx": "jsfa.ctx.val.default",
                 "ctxs": [
                   15
                 ],
@@ -1649,7 +1649,7 @@
               "id": "4",
               "cmpLeft": {
                 "value": "721332.65",
-                "ctx": 12,
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   12
                 ],
@@ -1659,7 +1659,7 @@
               },
               "cmpRight": {
                 "value": "721276.64",
-                "ctx": 12,
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   12
                 ],
@@ -1684,7 +1684,7 @@
               "id": "5",
               "cmpLeft": {
                 "value": "JPY",
-                "ctx": 9,
+                "ctx": "jsfa.ctx.default",
                 "ctxs": [
                   9
                 ],
@@ -1694,7 +1694,7 @@
               },
               "cmpRight": {
                 "value": "USD",
-                "ctx": 9,
+                "ctx": "jsfa.ctx.default",
                 "ctxs": [
                   9
                 ],
@@ -1703,7 +1703,7 @@
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": 14,
+                "ctx": "jsfa.ctx.conv.v2",
                 "ctxs": [
                   14
                 ],
@@ -1713,7 +1713,7 @@
               },
               "cvtRight": null,
               "vdt": {
-                "ctx": 16,
+                "ctx": "jsfa.ctx.val.v2 and jsfa.ctx.val.default",
                 "ctxs": [
                   16,
                   15
@@ -1740,7 +1740,7 @@
               "id": "6",
               "cmpLeft": {
                 "value": "2024-09-06",
-                "ctx": 10,
+                "ctx": "jsfa.ctx.v2 and jsfa.ctx.default",
                 "ctxs": [
                   10,
                   9
@@ -1751,7 +1751,7 @@
               },
               "cmpRight": {
                 "value": "2024-09-11",
-                "ctx": 10,
+                "ctx": "jsfa.ctx.v2 and jsfa.ctx.default",
                 "ctxs": [
                   10,
                   9
@@ -1763,7 +1763,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 15,
+                "ctx": "jsfa.ctx.val.default",
                 "ctxs": [
                   15
                 ],
@@ -1784,7 +1784,7 @@
               "id": "7",
               "cmpLeft": {
                 "value": "2024-04-28",
-                "ctx": 12,
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   12
                 ],
@@ -1794,7 +1794,7 @@
               },
               "cmpRight": {
                 "value": "2024-04-29",
-                "ctx": 12,
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   12
                 ],
@@ -1805,7 +1805,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 15,
+                "ctx": "jsfa.ctx.val.default",
                 "ctxs": [
                   15
                 ],
@@ -1826,7 +1826,7 @@
               "id": "8",
               "cmpLeft": {
                 "value": "Nomura",
-                "ctx": 10,
+                "ctx": "jsfa.ctx.v2 and jsfa.ctx.default",
                 "ctxs": [
                   10,
                   9
@@ -1837,7 +1837,7 @@
               },
               "cmpRight": {
                 "value": "Nomura",
-                "ctx": 10,
+                "ctx": "jsfa.ctx.v2 and jsfa.ctx.default",
                 "ctxs": [
                   10,
                   9
@@ -1848,7 +1848,7 @@
               },
               "cvtLeft": null,
               "cvtRight": {
-                "ctx": 14,
+                "ctx": "jsfa.ctx.conv.v2",
                 "ctxs": [
                   14
                 ],
@@ -1857,7 +1857,7 @@
                 "raw": "  Nomura  "
               },
               "vdt": {
-                "ctx": 16,
+                "ctx": "jsfa.ctx.val.v2",
                 "ctxs": [
                   16
                 ],
@@ -1878,7 +1878,7 @@
               "id": "9",
               "cmpLeft": {
                 "value": "   ",
-                "ctx": 9,
+                "ctx": "jsfa.ctx.default and jsfa.ctx.v2",
                 "ctxs": [
                   9,
                   10
@@ -1889,7 +1889,7 @@
               },
               "cmpRight": {
                 "value": "XYZ Bank",
-                "ctx": 9,
+                "ctx": "jsfa.ctx.default and jsfa.ctx.v2",
                 "ctxs": [
                   9,
                   10
@@ -1901,7 +1901,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 15,
+                "ctx": "jsfa.ctx.val.default",
                 "ctxs": [
                   15
                 ],
@@ -1922,7 +1922,7 @@
               "id": "10",
               "cmpLeft": {
                 "value": "2571278.43",
-                "ctx": 11,
+                "ctx": "jsfa.ctx.v3",
                 "ctxs": [
                   11
                 ],
@@ -1932,7 +1932,7 @@
               },
               "cmpRight": {
                 "value": "2571317.44",
-                "ctx": 11,
+                "ctx": "jsfa.ctx.v3",
                 "ctxs": [
                   11
                 ],
@@ -1957,7 +1957,7 @@
               "id": "11",
               "cmpLeft": {
                 "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": 10,
+                "ctx": "jsfa.ctx.v2",
                 "ctxs": [
                   10
                 ],
@@ -1967,7 +1967,7 @@
               },
               "cmpRight": {
                 "value": "第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。",
-                "ctx": 10,
+                "ctx": "jsfa.ctx.v2",
                 "ctxs": [
                   10
                 ],
@@ -1976,7 +1976,7 @@
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": 14,
+                "ctx": "jsfa.ctx.conv.v2",
                 "ctxs": [
                   14
                 ],
@@ -2010,7 +2010,7 @@
               "id": "1",
               "cmpLeft": {
                 "value": "TX-2024-174225",
-                "ctx": 9,
+                "ctx": "jsfa.ctx.default",
                 "ctxs": [
                   9
                 ],
@@ -2020,7 +2020,7 @@
               },
               "cmpRight": {
                 "value": "TX-2024-174225",
-                "ctx": 9,
+                "ctx": "jsfa.ctx.default",
                 "ctxs": [
                   9
                 ],
@@ -2031,7 +2031,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 16,
+                "ctx": "jsfa.ctx.val.v2",
                 "ctxs": [
                   16
                 ],
@@ -2052,7 +2052,7 @@
               "id": "2",
               "cmpLeft": {
                 "value": "TX-2024-840412",
-                "ctx": 11,
+                "ctx": "jsfa.ctx.v3",
                 "ctxs": [
                   11
                 ],
@@ -2062,7 +2062,7 @@
               },
               "cmpRight": {
                 "value": "TX-2024-840411",
-                "ctx": 11,
+                "ctx": "jsfa.ctx.v3",
                 "ctxs": [
                   11
                 ],
@@ -2072,7 +2072,7 @@
               },
               "cvtLeft": null,
               "cvtRight": {
-                "ctx": 14,
+                "ctx": "jsfa.ctx.conv.v2",
                 "ctxs": [
                   14
                 ],
@@ -2081,7 +2081,7 @@
                 "raw": "2024-840411"
               },
               "vdt": {
-                "ctx": 16,
+                "ctx": "jsfa.ctx.val.v2",
                 "ctxs": [
                   16
                 ],
@@ -2102,7 +2102,7 @@
               "id": "3",
               "cmpLeft": {
                 "value": "FXF",
-                "ctx": 10,
+                "ctx": "jsfa.ctx.v2 and jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   10,
                   12
@@ -2113,7 +2113,7 @@
               },
               "cmpRight": {
                 "value": "IRS",
-                "ctx": 10,
+                "ctx": "jsfa.ctx.v2 and jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   10,
                   12
@@ -2139,7 +2139,7 @@
               "id": "4",
               "cmpLeft": {
                 "value": "4968148.67",
-                "ctx": 12,
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   12
                 ],
@@ -2149,7 +2149,7 @@
               },
               "cmpRight": {
                 "value": "4968077.66",
-                "ctx": 12,
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   12
                 ],
@@ -2174,7 +2174,7 @@
               "id": "5",
               "cmpLeft": {
                 "value": "EUR",
-                "ctx": 11,
+                "ctx": "jsfa.ctx.v3",
                 "ctxs": [
                   11
                 ],
@@ -2184,7 +2184,7 @@
               },
               "cmpRight": {
                 "value": "USD",
-                "ctx": 11,
+                "ctx": "jsfa.ctx.v3",
                 "ctxs": [
                   11
                 ],
@@ -2193,7 +2193,7 @@
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": 13,
+                "ctx": "jsfa.ctx.conv.default and jsfa.ctx.conv.v2",
                 "ctxs": [
                   13,
                   14
@@ -2203,7 +2203,7 @@
                 "raw": "eur"
               },
               "cvtRight": {
-                "ctx": 13,
+                "ctx": "jsfa.ctx.conv.default",
                 "ctxs": [
                   13
                 ],
@@ -2212,7 +2212,7 @@
                 "raw": "usd"
               },
               "vdt": {
-                "ctx": 16,
+                "ctx": "jsfa.ctx.val.v2 and jsfa.ctx.val.default",
                 "ctxs": [
                   16,
                   15
@@ -2239,7 +2239,7 @@
               "id": "6",
               "cmpLeft": {
                 "value": "2024-02-14",
-                "ctx": 9,
+                "ctx": "jsfa.ctx.default",
                 "ctxs": [
                   9
                 ],
@@ -2249,7 +2249,7 @@
               },
               "cmpRight": {
                 "value": "2024-02-20",
-                "ctx": 9,
+                "ctx": "jsfa.ctx.default",
                 "ctxs": [
                   9
                 ],
@@ -2258,7 +2258,7 @@
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": 14,
+                "ctx": "jsfa.ctx.conv.v2 and jsfa.ctx.conv.default",
                 "ctxs": [
                   14,
                   13
@@ -2269,7 +2269,7 @@
               },
               "cvtRight": null,
               "vdt": {
-                "ctx": 16,
+                "ctx": "jsfa.ctx.val.v2 and jsfa.ctx.val.default",
                 "ctxs": [
                   16,
                   15
@@ -2296,7 +2296,7 @@
               "id": "7",
               "cmpLeft": {
                 "value": "2024-05-31",
-                "ctx": 10,
+                "ctx": "jsfa.ctx.v2",
                 "ctxs": [
                   10
                 ],
@@ -2306,7 +2306,7 @@
               },
               "cmpRight": {
                 "value": "2024-06-02",
-                "ctx": 10,
+                "ctx": "jsfa.ctx.v2",
                 "ctxs": [
                   10
                 ],
@@ -2315,7 +2315,7 @@
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": 14,
+                "ctx": "jsfa.ctx.conv.v2",
                 "ctxs": [
                   14
                 ],
@@ -2324,7 +2324,7 @@
                 "raw": "20240531"
               },
               "cvtRight": {
-                "ctx": 14,
+                "ctx": "jsfa.ctx.conv.v2",
                 "ctxs": [
                   14
                 ],
@@ -2333,7 +2333,7 @@
                 "raw": "20240602"
               },
               "vdt": {
-                "ctx": 15,
+                "ctx": "jsfa.ctx.val.default",
                 "ctxs": [
                   15
                 ],
@@ -2359,7 +2359,7 @@
               "id": "8",
               "cmpLeft": {
                 "value": "Citi Group",
-                "ctx": 12,
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   12
                 ],
@@ -2369,7 +2369,7 @@
               },
               "cmpRight": {
                 "value": "XYZ Bank",
-                "ctx": 12,
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   12
                 ],
@@ -2378,7 +2378,7 @@
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": 13,
+                "ctx": "jsfa.ctx.conv.default and jsfa.ctx.conv.v2",
                 "ctxs": [
                   13,
                   14
@@ -2389,7 +2389,7 @@
               },
               "cvtRight": null,
               "vdt": {
-                "ctx": 16,
+                "ctx": "jsfa.ctx.val.v2",
                 "ctxs": [
                   16
                 ],
@@ -2415,7 +2415,7 @@
               "id": "9",
               "cmpLeft": {
                 "value": "Goldman Sachs",
-                "ctx": 9,
+                "ctx": "jsfa.ctx.default",
                 "ctxs": [
                   9
                 ],
@@ -2425,7 +2425,7 @@
               },
               "cmpRight": {
                 "value": "XYZ Bank",
-                "ctx": 9,
+                "ctx": "jsfa.ctx.default",
                 "ctxs": [
                   9
                 ],
@@ -2434,7 +2434,7 @@
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": 14,
+                "ctx": "jsfa.ctx.conv.v2",
                 "ctxs": [
                   14
                 ],
@@ -2443,7 +2443,7 @@
                 "raw": "  Goldman Sachs  "
               },
               "cvtRight": {
-                "ctx": 14,
+                "ctx": "jsfa.ctx.conv.v2",
                 "ctxs": [
                   14
                 ],
@@ -2452,7 +2452,7 @@
                 "raw": "  XYZ Bank  "
               },
               "vdt": {
-                "ctx": 15,
+                "ctx": "jsfa.ctx.val.default and jsfa.ctx.val.v2",
                 "ctxs": [
                   15,
                   16
@@ -2479,7 +2479,7 @@
               "id": "10",
               "cmpLeft": {
                 "value": "4802905.42",
-                "ctx": 12,
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   12
                 ],
@@ -2489,7 +2489,7 @@
               },
               "cmpRight": {
                 "value": "4802835.41",
-                "ctx": 12,
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   12
                 ],
@@ -2498,7 +2498,7 @@
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": 14,
+                "ctx": "jsfa.ctx.conv.v2",
                 "ctxs": [
                   14
                 ],
@@ -2507,7 +2507,7 @@
                 "raw": "480290542"
               },
               "cvtRight": {
-                "ctx": 13,
+                "ctx": "jsfa.ctx.conv.default and jsfa.ctx.conv.v2",
                 "ctxs": [
                   13,
                   14
@@ -2517,7 +2517,7 @@
                 "raw": "480283541"
               },
               "vdt": {
-                "ctx": 15,
+                "ctx": "jsfa.ctx.val.default",
                 "ctxs": [
                   15
                 ],
@@ -2543,7 +2543,7 @@
               "id": "11",
               "cmpLeft": {
                 "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": 9,
+                "ctx": "jsfa.ctx.default",
                 "ctxs": [
                   9
                 ],
@@ -2553,7 +2553,7 @@
               },
               "cmpRight": {
                 "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": 9,
+                "ctx": "jsfa.ctx.default",
                 "ctxs": [
                   9
                 ],
@@ -2564,7 +2564,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 16,
+                "ctx": "jsfa.ctx.val.v2",
                 "ctxs": [
                   16
                 ],
@@ -2692,7 +2692,7 @@
               "id": "1",
               "cmpLeft": {
                 "value": "TX-2024-862201",
-                "ctx": 19,
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
                   19
                 ],
@@ -2702,7 +2702,7 @@
               },
               "cmpRight": {
                 "value": "TX-2024-862208",
-                "ctx": 19,
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
                   19
                 ],
@@ -2727,7 +2727,7 @@
               "id": "2",
               "cmpLeft": {
                 "value": "TX-2024-851025",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
                   18
                 ],
@@ -2737,7 +2737,7 @@
               },
               "cmpRight": {
                 "value": "TX-2024-851025",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
                   18
                 ],
@@ -2748,7 +2748,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 24,
+                "ctx": "cftc.ctx.val.v2 and cftc.ctx.val.default",
                 "ctxs": [
                   24,
                   23
@@ -2770,7 +2770,7 @@
               "id": "3",
               "cmpLeft": {
                 "value": "FXS",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
                   18
                 ],
@@ -2780,7 +2780,7 @@
               },
               "cmpRight": {
                 "value": "IRS",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
                   18
                 ],
@@ -2789,7 +2789,7 @@
                 "srcType": 2
               },
               "cvtLeft": {
-                "ctx": 22,
+                "ctx": "cftc.ctx.conv.v2",
                 "ctxs": [
                   22
                 ],
@@ -2798,7 +2798,7 @@
                 "raw": "fxs"
               },
               "cvtRight": {
-                "ctx": 21,
+                "ctx": "cftc.ctx.conv.default",
                 "ctxs": [
                   21
                 ],
@@ -2807,7 +2807,7 @@
                 "raw": "irs"
               },
               "vdt": {
-                "ctx": 23,
+                "ctx": "cftc.ctx.val.default and cftc.ctx.val.v2",
                 "ctxs": [
                   23,
                   24
@@ -2834,7 +2834,7 @@
               "id": "4",
               "cmpLeft": {
                 "value": "6557077.66",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
                   18
                 ],
@@ -2844,7 +2844,7 @@
               },
               "cmpRight": {
                 "value": "6556982.65",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
                   18
                 ],
@@ -2854,7 +2854,7 @@
               },
               "cvtLeft": null,
               "cvtRight": {
-                "ctx": 22,
+                "ctx": "cftc.ctx.conv.v2",
                 "ctxs": [
                   22
                 ],
@@ -2863,7 +2863,7 @@
                 "raw": "655698265"
               },
               "vdt": {
-                "ctx": 23,
+                "ctx": "cftc.ctx.val.default and cftc.ctx.val.v2",
                 "ctxs": [
                   23,
                   24
@@ -2885,7 +2885,7 @@
               "id": "5",
               "cmpLeft": {
                 "value": "JPY",
-                "ctx": 19,
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
                   19
                 ],
@@ -2895,7 +2895,7 @@
               },
               "cmpRight": {
                 "value": "USD",
-                "ctx": 19,
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
                   19
                 ],
@@ -2906,7 +2906,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 23,
+                "ctx": "cftc.ctx.val.default and cftc.ctx.val.v2",
                 "ctxs": [
                   23,
                   24
@@ -2928,7 +2928,7 @@
               "id": "6",
               "cmpLeft": {
                 "value": "2024-04-19",
-                "ctx": 20,
+                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   20
                 ],
@@ -2938,7 +2938,7 @@
               },
               "cmpRight": {
                 "value": "2024-04-19",
-                "ctx": 20,
+                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   20
                 ],
@@ -2963,7 +2963,7 @@
               "id": "7",
               "cmpLeft": {
                 "value": "2024-11-07",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
                   18
                 ],
@@ -2973,7 +2973,7 @@
               },
               "cmpRight": {
                 "value": "2024-11-07",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
                   18
                 ],
@@ -2982,7 +2982,7 @@
                 "srcType": 2
               },
               "cvtLeft": {
-                "ctx": 22,
+                "ctx": "cftc.ctx.conv.v2",
                 "ctxs": [
                   22
                 ],
@@ -3011,7 +3011,7 @@
               "id": "8",
               "cmpLeft": {
                 "value": "ABC Bank",
-                "ctx": 19,
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
                   19
                 ],
@@ -3021,7 +3021,7 @@
               },
               "cmpRight": {
                 "value": "XYZ Bank",
-                "ctx": 19,
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
                   19
                 ],
@@ -3030,7 +3030,7 @@
                 "srcType": 2
               },
               "cvtLeft": {
-                "ctx": 21,
+                "ctx": "cftc.ctx.conv.default and cftc.ctx.conv.v2",
                 "ctxs": [
                   21,
                   22
@@ -3040,7 +3040,7 @@
                 "raw": "  ABC Bank  "
               },
               "cvtRight": {
-                "ctx": 22,
+                "ctx": "cftc.ctx.conv.v2",
                 "ctxs": [
                   22
                 ],
@@ -3049,7 +3049,7 @@
                 "raw": "  XYZ Bank  "
               },
               "vdt": {
-                "ctx": 24,
+                "ctx": "cftc.ctx.val.v2",
                 "ctxs": [
                   24
                 ],
@@ -3075,7 +3075,7 @@
               "id": "9",
               "cmpLeft": {
                 "value": "",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2 and cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   18,
                   20
@@ -3086,7 +3086,7 @@
               },
               "cmpRight": {
                 "value": "XYZ Bank",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2 and cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   18,
                   20
@@ -3098,7 +3098,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 24,
+                "ctx": "cftc.ctx.val.v2",
                 "ctxs": [
                   24
                 ],
@@ -3119,7 +3119,7 @@
               "id": "10",
               "cmpLeft": {
                 "value": "9804525.75",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
                   18
                 ],
@@ -3129,7 +3129,7 @@
               },
               "cmpRight": {
                 "value": "9804447.74",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
                   18
                 ],
@@ -3139,7 +3139,7 @@
               },
               "cvtLeft": null,
               "cvtRight": {
-                "ctx": 21,
+                "ctx": "cftc.ctx.conv.default and cftc.ctx.conv.v2",
                 "ctxs": [
                   21,
                   22
@@ -3149,7 +3149,7 @@
                 "raw": "980444774"
               },
               "vdt": {
-                "ctx": 24,
+                "ctx": "cftc.ctx.val.v2 and cftc.ctx.val.default",
                 "ctxs": [
                   24,
                   23
@@ -3171,7 +3171,7 @@
               "id": "11",
               "cmpLeft": {
                 "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": 19,
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
                   19
                 ],
@@ -3181,7 +3181,7 @@
               },
               "cmpRight": {
                 "value": "第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。",
-                "ctx": 19,
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
                   19
                 ],
@@ -3192,7 +3192,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 23,
+                "ctx": "cftc.ctx.val.default",
                 "ctxs": [
                   23
                 ],
@@ -3218,7 +3218,7 @@
               "id": "1",
               "cmpLeft": {
                 "value": "TX-2024-676424",
-                "ctx": 19,
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
                   19
                 ],
@@ -3228,7 +3228,7 @@
               },
               "cmpRight": {
                 "value": "TX-2024-676428",
-                "ctx": 19,
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
                   19
                 ],
@@ -3237,7 +3237,7 @@
                 "srcType": 2
               },
               "cvtLeft": {
-                "ctx": 22,
+                "ctx": "cftc.ctx.conv.v2",
                 "ctxs": [
                   22
                 ],
@@ -3247,7 +3247,7 @@
               },
               "cvtRight": null,
               "vdt": {
-                "ctx": 24,
+                "ctx": "cftc.ctx.val.v2",
                 "ctxs": [
                   24
                 ],
@@ -3273,7 +3273,7 @@
               "id": "2",
               "cmpLeft": {
                 "value": "TX-2024-648955",
-                "ctx": 17,
+                "ctx": "cftc.ctx.default and cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   17,
                   20
@@ -3284,7 +3284,7 @@
               },
               "cmpRight": {
                 "value": "TX-2024-648952",
-                "ctx": 17,
+                "ctx": "cftc.ctx.default and cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   17,
                   20
@@ -3294,7 +3294,7 @@
                 "srcType": 2
               },
               "cvtLeft": {
-                "ctx": 22,
+                "ctx": "cftc.ctx.conv.v2",
                 "ctxs": [
                   22
                 ],
@@ -3304,7 +3304,7 @@
               },
               "cvtRight": null,
               "vdt": {
-                "ctx": 23,
+                "ctx": "cftc.ctx.val.default",
                 "ctxs": [
                   23
                 ],
@@ -3330,7 +3330,7 @@
               "id": "3",
               "cmpLeft": {
                 "value": "OIS",
-                "ctx": 20,
+                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   20
                 ],
@@ -3340,7 +3340,7 @@
               },
               "cmpRight": {
                 "value": "IRS",
-                "ctx": 20,
+                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   20
                 ],
@@ -3351,7 +3351,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 23,
+                "ctx": "cftc.ctx.val.default and cftc.ctx.val.v2",
                 "ctxs": [
                   23,
                   24
@@ -3373,7 +3373,7 @@
               "id": "4",
               "cmpLeft": {
                 "value": "3165437.20",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
                   18
                 ],
@@ -3383,7 +3383,7 @@
               },
               "cmpRight": {
                 "value": "3165437.20",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
                   18
                 ],
@@ -3392,7 +3392,7 @@
                 "srcType": 2
               },
               "cvtLeft": {
-                "ctx": 21,
+                "ctx": "cftc.ctx.conv.default",
                 "ctxs": [
                   21
                 ],
@@ -3421,7 +3421,7 @@
               "id": "5",
               "cmpLeft": {
                 "value": "CNY",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
                   18
                 ],
@@ -3431,7 +3431,7 @@
               },
               "cmpRight": {
                 "value": "USD",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
                   18
                 ],
@@ -3442,7 +3442,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 24,
+                "ctx": "cftc.ctx.val.v2",
                 "ctxs": [
                   24
                 ],
@@ -3463,7 +3463,7 @@
               "id": "6",
               "cmpLeft": {
                 "value": "2024-04-08",
-                "ctx": 17,
+                "ctx": "cftc.ctx.default",
                 "ctxs": [
                   17
                 ],
@@ -3473,7 +3473,7 @@
               },
               "cmpRight": {
                 "value": "2024-04-17",
-                "ctx": 17,
+                "ctx": "cftc.ctx.default",
                 "ctxs": [
                   17
                 ],
@@ -3484,7 +3484,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 23,
+                "ctx": "cftc.ctx.val.default",
                 "ctxs": [
                   23
                 ],
@@ -3505,7 +3505,7 @@
               "id": "7",
               "cmpLeft": {
                 "value": "2024-07-28",
-                "ctx": 20,
+                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   20
                 ],
@@ -3515,7 +3515,7 @@
               },
               "cmpRight": {
                 "value": "2024-07-29",
-                "ctx": 20,
+                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   20
                 ],
@@ -3526,7 +3526,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 24,
+                "ctx": "cftc.ctx.val.v2",
                 "ctxs": [
                   24
                 ],
@@ -3547,7 +3547,7 @@
               "id": "8",
               "cmpLeft": {
                 "value": "HSBC",
-                "ctx": 19,
+                "ctx": "cftc.ctx.v3 and cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   19,
                   20
@@ -3558,7 +3558,7 @@
               },
               "cmpRight": {
                 "value": "HSBC",
-                "ctx": 19,
+                "ctx": "cftc.ctx.v3 and cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   19,
                   20
@@ -3568,7 +3568,7 @@
                 "srcType": 2
               },
               "cvtLeft": {
-                "ctx": 21,
+                "ctx": "cftc.ctx.conv.default",
                 "ctxs": [
                   21
                 ],
@@ -3578,7 +3578,7 @@
               },
               "cvtRight": null,
               "vdt": {
-                "ctx": 24,
+                "ctx": "cftc.ctx.val.v2",
                 "ctxs": [
                   24
                 ],
@@ -3604,7 +3604,7 @@
               "id": "9",
               "cmpLeft": {
                 "value": "ABC Bank",
-                "ctx": 20,
+                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   20
                 ],
@@ -3614,7 +3614,7 @@
               },
               "cmpRight": {
                 "value": "ABC Bank",
-                "ctx": 20,
+                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   20
                 ],
@@ -3625,7 +3625,7 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": 24,
+                "ctx": "cftc.ctx.val.v2 and cftc.ctx.val.default",
                 "ctxs": [
                   24,
                   23
@@ -3647,7 +3647,7 @@
               "id": "10",
               "cmpLeft": {
                 "value": "6435791.59",
-                "ctx": 19,
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
                   19
                 ],
@@ -3657,7 +3657,7 @@
               },
               "cmpRight": {
                 "value": "6435740.58",
-                "ctx": 19,
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
                   19
                 ],
@@ -3667,7 +3667,7 @@
               },
               "cvtLeft": null,
               "cvtRight": {
-                "ctx": 21,
+                "ctx": "cftc.ctx.conv.default and cftc.ctx.conv.v2",
                 "ctxs": [
                   21,
                   22
@@ -3677,7 +3677,7 @@
                 "raw": "643574058"
               },
               "vdt": {
-                "ctx": 23,
+                "ctx": "cftc.ctx.val.default",
                 "ctxs": [
                   23
                 ],
@@ -3698,7 +3698,7 @@
               "id": "11",
               "cmpLeft": {
                 "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2 and cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   18,
                   20
@@ -3709,7 +3709,7 @@
               },
               "cmpRight": {
                 "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": 18,
+                "ctx": "cftc.ctx.v2 and cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   18,
                   20

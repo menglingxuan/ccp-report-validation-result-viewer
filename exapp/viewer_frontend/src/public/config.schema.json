@@ -16,10 +16,10 @@
     },
     "scan": {
       "type": "object",
-      "description": "批次扫描配置（服务端使用）。",
+      "description": "批次扫描配置（服务端使用；basedir/out 相对租户数据根解析）。",
       "properties": {
-        "basedir": { "type": "string", "default": "public/batches" },
-        "out": { "type": "string", "default": "public/batches-index.json" },
+        "basedir": { "type": "string", "default": "batches" },
+        "out": { "type": "string", "default": "batches-index.json" },
         "ignore": { "type": "array", "items": { "type": "string" }, "default": [] },
         "env": { "type": ["string", "null"], "default": null }
       }
@@ -34,6 +34,23 @@
       "enum": ["dev", "test", "prod"],
       "description": "运行环境。dev/test：features 未显式配置的项默认 true（全量展示）；prod：默认 false（按需开启）。",
       "default": "dev"
+    },
+    "audit": {
+      "type": "boolean",
+      "description": "是否启用租户 active 追踪与审查日志（默认关闭；可被 --audit / --no-audit 覆盖）。",
+      "default": false
+    },
+    "tenants": {
+      "type": "object",
+      "description": "租户配置：键为租户 id（--tenant 或系统用户名），值可含固定端口 port 与数据根 dataRoot。",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "port": { "type": "number", "description": "该租户的固定监听端口（0 表示随机端口）。" },
+          "dataRoot": { "type": "string", "description": "该租户的数据根目录（批次/索引/收藏夹）。" }
+        }
+      },
+      "default": {}
     },
     "urls": {
       "type": "object",

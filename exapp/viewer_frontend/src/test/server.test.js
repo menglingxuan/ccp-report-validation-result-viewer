@@ -13,7 +13,7 @@ const PORT = 20000 + Math.floor(Math.random() * 10000);
 function startServer(extraEnv) {
   const child = spawn(process.execPath, ['server.js'], {
     cwd: SRC,
-    env: Object.assign({}, process.env, { REPORT_VIEWER_PORT: String(PORT) }, extraEnv || {}),
+    env: Object.assign({}, process.env, { REPORT_VIEWER_PORT: String(PORT), REPORT_VIEWER_AUDIT: '0' }, extraEnv || {}),
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let out = '';
@@ -21,7 +21,7 @@ function startServer(extraEnv) {
     const timer = setTimeout(() => reject(new Error('server start timeout')), 10000);
     child.stdout.on('data', (d) => {
       out += String(d);
-      if (out.includes('已启动')) {
+      if (out.includes('Started:')) {
         clearTimeout(timer);
         resolve(child);
       }

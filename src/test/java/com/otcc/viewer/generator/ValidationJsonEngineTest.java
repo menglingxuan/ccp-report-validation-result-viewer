@@ -375,11 +375,13 @@ class ValidationJsonEngineTest {
         c.check(right != null, label + ".field.cmpRight present");
         if (left != null) {
             c.check(left.getValue() != null, label + ".field.cmpLeft.value present (may be empty for text fields)");
+            c.check(nonBlank(left.getCtx()), label + ".field.cmpLeft.ctx non-blank (raw ctx expression)");
             c.check(left.getSrcType() != null && (left.getSrcType() == 1 || left.getSrcType() == 2),
                     label + ".field.cmpLeft.srcType in {1,2}");
         }
         if (right != null) {
             c.check(right.getValue() != null, label + ".field.cmpRight.value present (may be empty for text fields)");
+            c.check(nonBlank(right.getCtx()), label + ".field.cmpRight.ctx non-blank (raw ctx expression)");
             c.check(right.getSrcType() != null && (right.getSrcType() == 1 || right.getSrcType() == 2),
                     label + ".field.cmpRight.srcType in {1,2}");
             if (csv) {

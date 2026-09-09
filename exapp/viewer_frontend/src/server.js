@@ -1,11 +1,20 @@
 #!/usr/bin/env node
 // 统一 HTTP 服务：静态站点（查看器）+ 批次扫描 API。
 //
-//   node server.js          # 启动（默认读取 config.json）
+//   node server.js              # 启动（默认读取 config.json）
+//   node server.js --port 9000  # 覆盖监听端口（优先级最高）
+//   node server.js --port 0     # 使用操作系统分配的随机空闲端口
+//   node server.js --host 0.0.0.0
+//   node server.js --config dev # 使用 config-dev.json
+//   node server.js --tenant alice            # 指定租户 id（默认取系统用户名）
+//   node server.js --data-root C:/data/alice # 指定租户数据根目录
+//   node server.js --audit                   # 启用租户 active 追踪与审查日志
+//   node server.js --no-audit                # 关闭（默认关闭，见 config audit）
 //
 // 接口：
 //   GET  /                 查看器首页（public/index.html）
-//   GET  /config.json      统一配置（供浏览器读取）
+//   GET  /config.json      统一配置（供浏览器读取；urls.batches 会指向租户索引）
+//   GET  /tenant[/...]     租户数据（batches-index.json 与批次数据）
 //   POST /scan             触发一次完整批次扫描（GET 亦可用，便于浏览器直连）
 //   GET  /scan/progress    扫描进度（SSE）
 //   GET  /status | /health 服务状态与当前配置
@@ -14,7 +23,6 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
@@ -23,26 +31,28 @@ import { scan } from './lib/scanner.js';
 import { validateFile } from './lib/validate.js';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
-// CLI 切换配置：node server.js --config dev|test|prod（也可用环境变量 REPORT_VIEWER_CONFIG）
-const cfgIdx = Math.max(process.argv.indexOf('--config'), process.argv.indexOf('--profile'));
-if (cfgIdx !== -1 && process.argv[cfgIdx + 1]) process.env.REPORT_VIEWER_CONFIG = process.argv[cfgIdx + 1];
-const CFG = loadConfig();
+// 读取 CLI 参数（--flag value 形式）。
+//   --config/--profile 切换配置文件；--port/--host 覆盖监听地址；
+//   --tenant 指定租户 id；--data-root 指定租户数据根目录。
+function cliValue(...names) {
+  for (const n of names) {
+    const i = process.argv.indexOf(n);
+    if (i !== -1 && process.argv[i + 1]) return process.argv[i + 1];
+  }
+  return undefined;
+}
+const cfgName = cliValue('--config', '--profile');
+if (cfgName) process.env.REPORT_VIEWER_CONFIG = cfgName;
+const dataRootArg = cliValue('--data-root');
+if (dataRootArg) process.env.REPORT_VIEWER_DATA_ROOT = dataRootArg;
+// audit 开关：--audit 开启 / --no-audit 关闭（布尔旗标，覆盖 config 与环境变量）。
+const auditFlag = process.argv.includes('--no-audit') ? false : (process.argv.includes('--audit') ? true : undefined);
+const CFG = loadConfig({ host: cliValue('--host'), port: cliValue('--port'), tenant: cliValue('--tenant'), audit: auditFlag });
 const ACTIVE_CONFIG_FILE = resolveConfigFile();
 
-// 收藏夹服务端持久化（多用户共享，非管理员账号也可写）。
-// 优先存放于 src 根目录；若应用目录只读（如安装到 Program Files），回退到服务账号主目录。
-// 回退路径按实例目录哈希区分，避免同一账号下多实例共用同一收藏文件导致窜数据。
+// 收藏夹服务端持久化：每个租户在自身数据根下拥有独立 favorites.json（多用户互不干扰）。
 function resolveFavoritesFile() {
-  const primary = path.join(DIR, 'favorites.json');
-  try {
-    fs.accessSync(DIR, fs.constants.W_OK);
-    return primary;
-  } catch (e) {
-    const instId = crypto.createHash('sha1').update(DIR).digest('hex').slice(0, 12);
-    const fallbackDir = path.join(os.homedir(), '.report-viewer');
-    try { fs.mkdirSync(fallbackDir, { recursive: true }); } catch (e2) {}
-    return path.join(fallbackDir, 'favorites-' + instId + '.json');
-  }
+  return path.join(CFG.tenant.dataRoot, 'favorites.json');
 }
 const FAVORITES_FILE = resolveFavoritesFile();
 
@@ -278,6 +288,12 @@ function handleStatus(res) {
       ignore: CFG.scan.ignore,
       env: CFG.scan.env || null,
     },
+    tenant: {
+      id: CFG.tenant.id,
+      dataRoot: CFG.tenant.dataRoot,
+      activeFile: CFG.tenant.activeFile,
+      activityLog: CFG.tenant.activityLog,
+    },
     last: STATE.last,
   });
 }
@@ -289,6 +305,30 @@ function requireVersion() {
   } catch (e) {
     return null;
   }
+}
+
+// 租户数据服务：/tenant 或 /tenant/ -> 租户 batches-index.json；/tenant/<rel> -> 租户数据根下的文件。
+// 文件不在租户数据根时回退到共享 web 根（例如忽略配置）。
+function serveTenantData(req, res, url) {
+  let rel = decodeURIComponent(url.replace(/^\/tenant\/?/, '')).replace(/^\/+/, '');
+  if (!rel) {
+    serveFile(req, res, CFG.scan.outAbs);
+    return;
+  }
+  const dataRoot = CFG.tenant.dataRoot;
+  const candidate = path.resolve(dataRoot, rel);
+  if (candidate === dataRoot || candidate.startsWith(dataRoot + path.sep)) {
+    try {
+      if (fs.statSync(candidate).isFile()) { serveFile(req, res, candidate); return; }
+    } catch (e) {}
+  }
+  const shared = path.resolve(CFG.server.webRootAbs, rel);
+  if (shared === CFG.server.webRootAbs || shared.startsWith(CFG.server.webRootAbs + path.sep)) {
+    try {
+      if (fs.statSync(shared).isFile()) { serveFile(req, res, shared); return; }
+    } catch (e) {}
+  }
+  json(res, 404, { ok: false, error: 'Not Found' });
 }
 
 const server = http.createServer(function (req, res) {
@@ -343,7 +383,20 @@ const server = http.createServer(function (req, res) {
   }
 
   if (url === '/config.json') {
-    serveFile(req, res, ACTIVE_CONFIG_FILE);
+    // 将 urls.batches 重写为租户索引地址：批次索引与批次数据均按租户隔离。
+    try {
+      const servedCfg = JSON.parse(fs.readFileSync(ACTIVE_CONFIG_FILE, 'utf8'));
+      servedCfg.urls = servedCfg.urls || {};
+      servedCfg.urls.batches = '/tenant/';
+      json(res, 200, servedCfg);
+    } catch (e) {
+      serveFile(req, res, ACTIVE_CONFIG_FILE);
+    }
+    return;
+  }
+
+  if (url === '/tenant' || url.startsWith('/tenant/')) {
+    serveTenantData(req, res, url);
     return;
   }
 
@@ -362,17 +415,160 @@ const server = http.createServer(function (req, res) {
   if (fs.existsSync(abs)) {
     const r = validateFile(abs);
     if (!r.ok) {
-      console.warn('[report-viewer] 数据校验失败：' + f);
+      console.warn('[report-viewer] Data validation failed: ' + f);
       r.errors.forEach(function (e) { console.warn('   - ' + e); });
     }
   }
 });
 
-server.listen(CFG.server.port, CFG.server.host, function () {
-  console.log('[report-viewer] 已启动：http://' + CFG.server.host + ':' + CFG.server.port);
-  console.log('[report-viewer] 配置：' + ACTIVE_CONFIG_FILE);
-  console.log('[report-viewer] web 根目录：' + CFG.server.webRootAbs);
-  console.log('[report-viewer] 批次目录：' + CFG.scan.basedirAbs);
-  console.log('[report-viewer] 索引输出：' + CFG.scan.outAbs);
-  console.log('[report-viewer] 接口：POST /scan · GET /status · GET /config.json');
+// 首次启动初始化：为租户创建「兼容的空数据/配置」（空批次目录、空索引、空忽略配置），
+// 不复制共享样例数据（仅在未显式覆盖扫描目录时执行）。
+function initTenantData() {
+  if (process.env.REPORT_VIEWER_BASEDIR || process.env.REPORT_VIEWER_OUT) return;
+  try {
+    fs.mkdirSync(CFG.scan.basedirAbs, { recursive: true });
+    if (!fs.existsSync(CFG.scan.outAbs)) {
+      const emptyIndex = {
+        schemaVersion: 1,
+        generatedAt: new Date().toISOString(),
+        basedir: CFG.scan.basedirAbs.split(path.sep).join('/'),
+        count: 0,
+        batches: [],
+      };
+      writeFileAtomic(CFG.scan.outAbs, JSON.stringify(emptyIndex, null, 2));
+    }
+    const ignorePath = path.join(CFG.tenant.dataRoot, 'ignore-config-by-platform.json');
+    if (!fs.existsSync(ignorePath)) {
+      writeFileAtomic(ignorePath, JSON.stringify({}, null, 2));
+    }
+    console.log('[report-viewer] Initialized empty tenant data: ' + CFG.tenant.dataRoot);
+  } catch (e) {
+    console.warn('[report-viewer] Init tenant data failed: ' + (e && e.message ? e.message : e));
+  }
+}
+
+// 租户 active 追踪：心跳文件实时记录当前活跃租户（供审查），活动日志追加启动/停止记录。
+// 默认关闭，可通过 config `audit: true`、环境变量 REPORT_VIEWER_AUDIT=1 或 --audit 开启。
+const TRACKING_ENABLED = !!CFG.audit;
+function writeActiveTenant(actualPort) {
+  if (!TRACKING_ENABLED) return;
+  try {
+    fs.mkdirSync(path.dirname(CFG.tenant.activeFile), { recursive: true });
+    writeFileAtomic(CFG.tenant.activeFile, JSON.stringify({
+      tenantId: CFG.tenant.id,
+      pid: process.pid,
+      host: CFG.server.host,
+      port: actualPort,
+      startedAt: new Date().toISOString(),
+      lastSeenAt: new Date().toISOString(),
+    }, null, 2));
+  } catch (e) {}
+}
+function refreshActiveTenant(actualPort) {
+  if (!TRACKING_ENABLED) return;
+  try {
+    const cur = JSON.parse(fs.readFileSync(CFG.tenant.activeFile, 'utf8') || '{}');
+    cur.lastSeenAt = new Date().toISOString();
+    cur.port = actualPort;
+    writeFileAtomic(CFG.tenant.activeFile, JSON.stringify(cur, null, 2));
+  } catch (e) {}
+}
+function clearActiveTenant() {
+  if (!TRACKING_ENABLED) return;
+  try { fs.unlinkSync(CFG.tenant.activeFile); } catch (e) {}
+}
+function appendActivity(event) {
+  if (!TRACKING_ENABLED) return;
+  try {
+    fs.mkdirSync(path.dirname(CFG.tenant.activityLog), { recursive: true });
+    fs.appendFileSync(CFG.tenant.activityLog, '[' + new Date().toISOString() + '] tenant=' + CFG.tenant.id + ' ' + event + '\n', 'utf8');
+  } catch (e) {}
+}
+
+let SHUTDOWN_DONE = false;
+function shutdown() {
+  if (SHUTDOWN_DONE) return;
+  SHUTDOWN_DONE = true;
+  clearActiveTenant();
+  appendActivity('stopped pid=' + process.pid);
+  process.exit(0);
+}
+process.once('SIGINT', shutdown);
+process.once('SIGTERM', shutdown);
+process.on('exit', function (code) {
+  // 进程退出（含异常退出）时同步清理 active 文件；若尚未走 shutdown 则补记一条退出日志。
+  try { fs.unlinkSync(CFG.tenant.activeFile); } catch (e) {}
+  if (!SHUTDOWN_DONE) {
+    try { appendActivity('exited pid=' + process.pid + ' code=' + code); } catch (e) {}
+  }
 });
+
+// 启动前先通过 /status API 探测目标地址是否已存在服务；若已启动则不重复监听。
+function checkAlreadyRunning(host, port, timeoutMs) {
+  return new Promise(function (resolve) {
+    const req = http.request({
+      host: host,
+      port: port,
+      path: '/status',
+      method: 'GET',
+      timeout: timeoutMs,
+    }, function (res) {
+      let data = '';
+      res.on('data', function (c) { data += c; });
+      res.on('end', function () {
+        try {
+          const obj = JSON.parse(data);
+          resolve(res.statusCode === 200 && obj && obj.ok === true);
+        } catch (e) {
+          resolve(false);
+        }
+      });
+    });
+    req.on('timeout', function () { req.destroy(); resolve(false); });
+    req.on('error', function () { resolve(false); });
+    req.end();
+  });
+}
+
+function startServer() {
+  server.on('error', function (err) {
+    if (err && err.code === 'EADDRINUSE') {
+      console.log('[report-viewer] Port already in use: http://' + CFG.server.host + ':' + CFG.server.port);
+      process.exit(0);
+    }
+    console.error('[report-viewer] Failed to start: ' + (err && err.message ? err.message : err));
+    process.exit(1);
+  });
+  // port=0 表示随机端口：由操作系统分配空闲端口，启动后从 server.address() 读取实际端口。
+  server.listen(CFG.server.port, CFG.server.host, function () {
+    const actualPort = server.address().port;
+    writeActiveTenant(actualPort);
+    appendActivity('started pid=' + process.pid + ' url=http://' + CFG.server.host + ':' + actualPort);
+    // 心跳：每 10 秒刷新 lastSeenAt，实时反映该租户仍处于活跃状态。
+    setInterval(function () { refreshActiveTenant(server.address().port); }, 10000).unref();
+    console.log('[report-viewer] Started: http://' + CFG.server.host + ':' + actualPort);
+    console.log('[report-viewer] Tenant: ' + CFG.tenant.id);
+    console.log('[report-viewer] Data root: ' + CFG.tenant.dataRoot);
+    console.log('[report-viewer] Config: ' + ACTIVE_CONFIG_FILE);
+    console.log('[report-viewer] Web root: ' + CFG.server.webRootAbs);
+    console.log('[report-viewer] Batches dir: ' + CFG.scan.basedirAbs);
+    console.log('[report-viewer] Index output: ' + CFG.scan.outAbs);
+    console.log('[report-viewer] Endpoints: POST /scan · GET /status · GET /config.json');
+  });
+}
+
+const HOST = CFG.server.host;
+const PORT = CFG.server.port;
+initTenantData();
+if (PORT === 0) {
+  // 随机端口：无法预知端口，直接启动（端口冲突概率极低，由 EADDRINUSE 兜底）。
+  startServer();
+} else {
+  checkAlreadyRunning(HOST, PORT, 1000).then(function (already) {
+    if (already) {
+      console.log('[report-viewer] Already running: http://' + HOST + ':' + PORT);
+      return;
+    }
+    startServer();
+  });
+}

@@ -189,21 +189,20 @@ public final class BasicDataGenerator {
         int srcType = csv ? 2 : 1;
         String eoCol = "src_" + f;
         List<Integer> ctxIds = toIds(ctx, ctxIdByKey);
-        Integer firstCtxId = ctxIds.isEmpty() ? null : ctxIds.get(0);
 
         CmpSide cmpLeft = CmpSide.builder()
-                .value(eo).ctx(firstCtxId).ctxs(ctxIds)
+                .value(eo).ctx(ctxExpr(ctx)).ctxs(ctxIds)
                 .elRaw(genMapping(eoCol, ctx)).el(eoCol).srcType(2).build();
         CmpSide cmpRight = CmpSide.builder()
-                .value(ao).ctx(firstCtxId).ctxs(ctxIds)
+                .value(ao).ctx(ctxExpr(ctx)).ctxs(ctxIds)
                 .elRaw(genMapping(target, ctx)).el(target).srcType(srcType).build();
 
         ConversionRule cvtLeft = ConversionRule.builder()
-                .ctx(firstCtxId).ctxs(ctxIds).el(convRule).elRaw(genRule(convRule, ctx)).raw(eoUnconverted).build();
+                .ctx(ctxExpr(ctx)).ctxs(ctxIds).el(convRule).elRaw(genRule(convRule, ctx)).raw(eoUnconverted).build();
         ConversionRule cvtRight = ConversionRule.builder()
-                .ctx(firstCtxId).ctxs(ctxIds).el(convRule).elRaw(genRule(convRule, ctx)).raw(aoUnconverted).build();
+                .ctx(ctxExpr(ctx)).ctxs(ctxIds).el(convRule).elRaw(genRule(convRule, ctx)).raw(aoUnconverted).build();
         ValidationRule vdt = ValidationRule.builder()
-                .ctx(firstCtxId).ctxs(ctxIds).el(valRule).elRaw(genRule(valRule, ctx)).build();
+                .ctx(ctxExpr(ctx)).ctxs(ctxIds).el(valRule).elRaw(genRule(valRule, ctx)).build();
 
         List<ExtraResult> resultDetails = List.of(
                 ExtraResult.builder().label("期望值 (EO, Unconverted)").value(eoUnconverted).build());
@@ -256,6 +255,10 @@ public final class BasicDataGenerator {
             if (id != null) out.add(id);
         }
         return out;
+    }
+
+    private static String ctxExpr(List<String> keys) {
+        return keys == null || keys.isEmpty() ? null : String.join(" and ", keys);
     }
 
     public static void writeTo(Path outDir) throws IOException {

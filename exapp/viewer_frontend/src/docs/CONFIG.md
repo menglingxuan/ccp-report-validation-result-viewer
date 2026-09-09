@@ -30,6 +30,8 @@ REPORT_VIEWER_CONFIG=prod node server.js
 | `server` | 对象 | HTTP 服务配置（仅服务端使用） |
 | `scan` | 对象 | 批次扫描配置（服务端使用） |
 | `runType` | 字符串 | 运行环境（`dev` / `test` / `prod`） |
+| `audit` | 布尔 | 是否启用租户 active 追踪与审查日志（默认 `false`） |
+| `tenants` | 对象 | 租户配置（固定端口 / 数据根），见 §3.1 |
 | `urls` | 对象 | 数据 / 忽略规则 / 批次索引 / 扫描接口的路径 |
 | `ui` | 对象 | 界面默认项 |
 | `features` | 对象 | 19 个功能开关 |
@@ -51,14 +53,17 @@ REPORT_VIEWER_CONFIG=prod node server.js
 
 | 键 | 默认值 | 说明 |
 |---|---|---|
-| `basedir` | `public/batches` | 批次根目录（相对 `src/`） |
-| `out` | `public/batches-index.json` | 索引输出路径（相对 `src/`） |
+| `basedir` | `batches` | 批次根目录（相对**租户数据根**解析，见 §3.1） |
+| `out` | `batches-index.json` | 索引输出路径（相对**租户数据根**解析） |
 | `ignore` | `[]` | 排除目录的正则数组 |
 | `env` | `null` | 仅扫描指定 `reportEnv` 的批次；`null` = 全部 |
 
-> 环境变量覆盖（优先级：环境变量 > `config.json` > 内置默认值）：
+> 环境变量覆盖（优先级：命令行 `--port`/`--host` > 环境变量 > 租户固定端口 > `config.json` > 内置默认值）：
 > `REPORT_VIEWER_HOST` / `REPORT_VIEWER_PORT` / `REPORT_VIEWER_WEBROOT` /
-> `REPORT_VIEWER_BASEDIR` / `REPORT_VIEWER_OUT` / `REPORT_VIEWER_ENV` / `REPORT_VIEWER_IGNORE`（逗号分隔，追加）。
+> `REPORT_VIEWER_BASEDIR` / `REPORT_VIEWER_OUT` / `REPORT_VIEWER_ENV` / `REPORT_VIEWER_IGNORE`（逗号分隔，追加）/
+> `REPORT_VIEWER_TENANT`（租户 id）/ `REPORT_VIEWER_DATA_ROOT`（租户数据根）。
+>
+> 也可用命令行参数覆盖：`node server.js --port 9000 --host 0.0.0.0 --tenant alice --data-root C:/data/alice`。
 
 ## 3. `runType`
 
@@ -67,6 +72,43 @@ REPORT_VIEWER_CONFIG=prod node server.js
 | `dev` | 开发环境：`features` 中未显式配置的项默认 **true** |
 | `test` | 测试环境：同上，默认 **true** |
 | `prod` | 生产环境：`features` 中未显式配置的项默认 **false** |
+
+### 3.1 `tenants`（租户）
+
+多用户同时使用时，每个租户拥有独立的批次目录、批次索引与收藏夹；键为租户 id
+（由 `--tenant` / `REPORT_VIEWER_TENANT` 指定，缺省为系统用户名）。
+
+```json
+"tenants": {
+  "alice": { "port": 9001 },
+  "bob":   { "port": 9002, "dataRoot": "C:/data/bob" }
+}
+```
+
+| 键 | 默认值 | 说明 |
+|---|---|---|
+| `port` | 无 | 该租户的**固定监听端口**（避免随机端口/共享端口；`0` 表示随机端口） |
+| `dataRoot` | `~/.report-viewer/<租户>` | 该租户的数据根目录 |
+
+- 端口优先级：命令行 `--port` > `REPORT_VIEWER_PORT` > 租户 `port` > `server.port` > 默认 `8123`。
+- 数据根存放：`batches/`（批次夹具）、`batches-index.json`（扫描输出）、`favorites.json`（收藏夹）。
+- 首次启动时自动创建兼容的空数据/配置：空批次目录、空 `batches-index.json`、空忽略配置（不复制共享样例数据）。
+
+### 3.2 `audit`（租户 active 追踪 / 审查日志）
+
+默认关闭。开启后，活跃租户信息实时写入**程序自身目录**（`server.js` 同级目录）下的
+`.report-viewer/active/<租户>.json`（心跳刷新 `lastSeenAt`），启动/停止记录追加到同目录
+`.report-viewer/activity.log`（程序目录只读时回退 `~/.report-viewer/`）。
+部署时若直接把 `server.js`/`lib/`/`public/` 部署到目标目录，审计文件就在该目标目录的
+`.report-viewer/` 内，不会额外套一层 `src`。
+
+| 方式 | 说明 |
+|---|---|
+| config `"audit": true` | 配置文件开启 |
+| 环境变量 `REPORT_VIEWER_AUDIT=1` | 环境变量开启（`0` 关闭） |
+| `--audit` / `--no-audit` | 命令行覆盖（优先级最高） |
+
+优先级：命令行 `--audit`/`--no-audit` > 环境变量 `REPORT_VIEWER_AUDIT` > config `audit` > 默认 `false`。
 
 ## 4. `urls`
 

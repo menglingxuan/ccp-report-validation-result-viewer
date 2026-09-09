@@ -436,20 +436,20 @@ public final class ValidationJsonGenerator {
         List<Integer> valCtxIds = toIds(valCtxs, ctxIdByKey);
 
         CmpSide cmpLeft = CmpSide.builder()
-                .value(eo).ctx(firstIdOrNull(mapCtxIds)).ctxs(mapCtxIds)
+                .value(eo).ctx(ctxExpr(mapCtxs)).ctxs(mapCtxIds)
                 .elRaw(eoMapping).el(eoCol).srcType(2).build();
         CmpSide cmpRight = CmpSide.builder()
-                .value(ao).ctx(firstIdOrNull(mapCtxIds)).ctxs(mapCtxIds)
+                .value(ao).ctx(ctxExpr(mapCtxs)).ctxs(mapCtxIds)
                 .elRaw(excelMapping).el(rawTarget).srcType(srcType).build();
 
         ConversionRule cvtLeft = convCtxs == null ? null : ConversionRule.builder()
-                .ctx(firstIdOrNull(convCtxIds)).ctxs(convCtxIds)
+                .ctx(ctxExpr(convCtxs)).ctxs(convCtxIds)
                 .el(convValue).elRaw(excelConversionRule).raw(eoUnconverted).build();
         ConversionRule cvtRight = aoConvCtxs == null ? null : ConversionRule.builder()
-                .ctx(firstIdOrNull(aoConvCtxIds)).ctxs(aoConvCtxIds)
+                .ctx(ctxExpr(aoConvCtxs)).ctxs(aoConvCtxIds)
                 .el(aoConvValue).elRaw(genExcelRuleText(aoConvValue, ctx, isSample)).raw(aoUnconverted).build();
         ValidationRule vdt = valCtxs == null ? null : ValidationRule.builder()
-                .ctx(firstIdOrNull(valCtxIds)).ctxs(valCtxIds)
+                .ctx(ctxExpr(valCtxs)).ctxs(valCtxIds)
                 .el(valValue).elRaw(excelValidationRule).build();
 
         List<String> prints = buildPrints(f, rawTarget, ctx, chName, "来源渠道 " + (sn == 1 ? "A" : "B"),
@@ -646,8 +646,8 @@ public final class ValidationJsonGenerator {
         return out;
     }
 
-    private static Integer firstIdOrNull(List<Integer> list) {
-        return list == null || list.isEmpty() ? null : list.get(0);
+    private static String ctxExpr(List<String> keys) {
+        return keys == null || keys.isEmpty() ? null : String.join(" and ", keys);
     }
 
     private static List<String> filterMapCtxs(List<String> ctx) {
