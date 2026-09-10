@@ -339,15 +339,24 @@ public final class ValidationJsonGenerator {
 
         List<Integer> sourceIndexes = sourceCount == 1 ? List.of(1) : List.of(1, 2);
         List<Source> sources = new ArrayList<>();
+        // 记录各来源渠道中 FAILED 的字段名，供错误消息只关联到实际失败字段。
+        List<FailedBySource> failedBySource = new ArrayList<>();
         for (int sn : sourceIndexes) {
             List<Field> fields = new ArrayList<>();
+            List<String> failedFields = new ArrayList<>();
             int idx = 0;
             for (String[] def : fieldsDef) {
-                fields.add(buildField(chName, def, idx, sn, csv, tradeId, rng, failRate,
-                        fr.nameToId, mapPool, convPool, valPool, ctxIdByKey));
+                Field fld = buildField(chName, def, idx, sn, csv, tradeId, rng, failRate,
+                        fr.nameToId, mapPool, convPool, valPool, ctxIdByKey);
+                fields.add(fld);
+                if ("FAILED".equals(fld.getResult())) {
+                    failedFields.add(def[0]);
+                }
                 idx++;
             }
-            sources.add(Source.builder().name("来源渠道 " + (sn == 1 ? "A" : "B")).fields(fields).build());
+            String srcName = "来源渠道 " + (sn == 1 ? "A" : "B");
+            sources.add(Source.builder().name(srcName).fields(fields).build());
+            failedBySource.add(new FailedBySource(srcName, failedFields));
         }
 
         Channel channel = Channel.builder()
@@ -361,8 +370,8 @@ public final class ValidationJsonGenerator {
 
         return new ChannelBuild(
                 channel,
-                buildMessages(false, rng, chName, fieldsDef),
-                buildMessages(true, rng, chName, fieldsDef),
+                buildMessages(rng, chName, fieldsDef, failedBySource),
+                buildErrorMessages(rng, chName, failedBySource),
                 buildUncompared(chName, rng, fieldsDef, csv ? 2 : 1),
                 buildChannelLogs(chName, files));
     }
@@ -470,25 +479,102 @@ public final class ValidationJsonGenerator {
                 .build();
     }
 
-    private static List<Message> buildMessages(boolean error, Random rng, String chName, List<String[]> fieldsDef) {
+    private static List<Message> buildMessages(Random rng, String chName, List<String[]> fieldsDef,
+                                               List<FailedBySource> failedBySource) {
         int count = 2 + rng.nextInt(4);
-        String[] pool = error ? ERR_TEXTS : WARN_TEXTS;
-        String[] typeKeys = error ? ERROR_TYPE_KEYS : TYPE_KEYS;
-        String[] levels = error ? ERR_LEVELS : WARN_LEVELS;
+        // 所有存在失败字段的来源渠道：用于让部分警告关联到失败字段（与错误叠加）。
+        List<FailedBySource> failedSrcs = new ArrayList<>();
+        if (failedBySource != null) {
+            for (FailedBySource s : failedBySource) {
+                if (!s.failedFields.isEmpty()) {
+                    failedSrcs.add(s);
+                }
+            }
+        }
         List<Message> msgs = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            String base = pool[rng.nextInt(pool.length)];
+            String base = WARN_TEXTS[rng.nextInt(WARN_TEXTS.length)];
             String text = rng.nextDouble() < 0.2
                     ? base + "\n详情：该字段的映射配置可能缺失或与当前 context 不匹配。\n建议检查映射表对应 sheet 的配置，确认 XPath 与命中的 context 是否正确，并核对字段类型。"
                     : base;
-            String field = rng.nextDouble() < 0.8 ? fieldsDef.get(rng.nextInt(fieldsDef.size()))[0] : "";
-            String source = rng.nextDouble() < 0.25 ? "" : (rng.nextDouble() < 0.5 ? "来源渠道 A" : "来源渠道 B");
+            String field = "";
+            String source;
+            if (i == 0 && !failedSrcs.isEmpty()) {
+                // 首条警告固定关联到第一个失败字段（与首条错误同字段），保证该失败字段同时有警告+错误。
+                FailedBySource src = failedSrcs.get(0);
+                field = src.failedFields.get(0);
+                source = src.name;
+            } else if (rng.nextDouble() < 0.8) {
+                // 约一半警告关联到失败字段（与错误叠加），其余为随机字段。
+                if (!failedSrcs.isEmpty() && rng.nextDouble() < 0.5) {
+                    FailedBySource src = failedSrcs.get(rng.nextInt(failedSrcs.size()));
+                    field = src.failedFields.get(rng.nextInt(src.failedFields.size()));
+                    source = src.name;
+                } else {
+                    field = fieldsDef.get(rng.nextInt(fieldsDef.size()))[0];
+                    source = rng.nextDouble() < 0.25 ? "" : (rng.nextDouble() < 0.5 ? "来源渠道 A" : "来源渠道 B");
+                }
+            } else {
+                // 渠道级警告：部分来源渠道为空（模拟来源信息缺失的样例数据）。
+                source = rng.nextDouble() < 0.25 ? "" : (rng.nextDouble() < 0.5 ? "来源渠道 A" : "来源渠道 B");
+            }
             msgs.add(Message.builder()
                     .scope(field.isEmpty() ? "channel" : "field")
                     .source(source)
                     .channel(chName)
-                    .type(typeKeys[rng.nextInt(typeKeys.length)])
-                    .level(levels[rng.nextInt(levels.length)])
+                    .type(TYPE_KEYS[rng.nextInt(TYPE_KEYS.length)])
+                    .level(WARN_LEVELS[rng.nextInt(WARN_LEVELS.length)])
+                    .text(text)
+                    .field(field)
+                    .build());
+        }
+        return msgs;
+    }
+
+    /** 来源渠道及其 FAILED 字段名集合。 */
+    private record FailedBySource(String name, List<String> failedFields) {
+    }
+
+    /**
+     * 错误只关联到实际失败的字段：failedBySource 收集各来源渠道中 FAILED 的字段名。
+     * 当整个渠道没有任何失败字段（即该渠道 / item 结果为 PASSED）时不产生任何错误。
+     */
+    private static List<Message> buildErrorMessages(Random rng, String chName, List<FailedBySource> failedBySource) {
+        List<FailedBySource> withFailures = new ArrayList<>();
+        for (FailedBySource s : failedBySource) {
+            if (!s.failedFields.isEmpty()) {
+                withFailures.add(s);
+            }
+        }
+        if (withFailures.isEmpty()) {
+            return List.of();
+        }
+        int count = 2 + rng.nextInt(4);
+        List<Message> msgs = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            FailedBySource src;
+            String field;
+            if (i == 0) {
+                // 首条错误固定关联到第一个失败字段，保证与首条警告叠加（同一失败字段同时有警告+错误）。
+                src = withFailures.get(0);
+                field = src.failedFields.get(0);
+            } else {
+                src = withFailures.get(rng.nextInt(withFailures.size()));
+                // 大部分错误关联到具体失败字段；少数为渠道级错误（无字段归属）。
+                field = rng.nextDouble() < 0.8 ? src.failedFields.get(rng.nextInt(src.failedFields.size())) : "";
+            }
+            String base = ERR_TEXTS[rng.nextInt(ERR_TEXTS.length)];
+            String text = rng.nextDouble() < 0.2
+                    ? base + "\n详情：该字段的映射配置可能缺失或与当前 context 不匹配。\n建议检查映射表对应 sheet 的配置，确认 XPath 与命中的 context 是否正确，并核对字段类型。"
+                    : base;
+            // 字段级错误必须携带失败字段所在的来源渠道；渠道级错误偶尔来源为空（模拟缺失）。
+            String source = field.isEmpty() ? (rng.nextDouble() < 0.3 ? "" : src.name) : src.name;
+            msgs.add(Message.builder()
+                    .scope(field.isEmpty() ? "channel" : "field")
+                    .source(source)
+                    .channel(chName)
+                    .type(ERROR_TYPE_KEYS[rng.nextInt(ERROR_TYPE_KEYS.length)])
+                    .level(ERR_LEVELS[rng.nextInt(ERR_LEVELS.length)])
                     .text(text)
                     .field(field)
                     .build());

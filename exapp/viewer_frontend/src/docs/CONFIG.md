@@ -53,17 +53,18 @@ REPORT_VIEWER_CONFIG=prod node server.js
 
 | 键 | 默认值 | 说明 |
 |---|---|---|
-| `basedir` | `batches` | 批次根目录（相对**租户数据根**解析，见 §3.1） |
-| `out` | `batches-index.json` | 索引输出路径（相对**租户数据根**解析） |
+| `basedir` | `batches` | 批次根目录（相对**数据根**解析：租户模式为租户数据根，非租户模式为 web 根，见 §3.1） |
+| `out` | `batches-index.json` | 索引输出路径（相对**数据根**解析，同上） |
 | `ignore` | `[]` | 排除目录的正则数组 |
 | `env` | `null` | 仅扫描指定 `reportEnv` 的批次；`null` = 全部 |
 
 > 环境变量覆盖（优先级：命令行 `--port`/`--host` > 环境变量 > 租户固定端口 > `config.json` > 内置默认值）：
 > `REPORT_VIEWER_HOST` / `REPORT_VIEWER_PORT` / `REPORT_VIEWER_WEBROOT` /
 > `REPORT_VIEWER_BASEDIR` / `REPORT_VIEWER_OUT` / `REPORT_VIEWER_ENV` / `REPORT_VIEWER_IGNORE`（逗号分隔，追加）/
-> `REPORT_VIEWER_TENANT`（租户 id）/ `REPORT_VIEWER_DATA_ROOT`（租户数据根）。
+> `REPORT_VIEWER_TENANT`（租户 id，非空时开启租户模式）/ `REPORT_VIEWER_DATA_ROOT`（数据根）。
 >
-> 也可用命令行参数覆盖：`node server.js --port 9000 --host 0.0.0.0 --tenant alice --data-root C:/data/alice`。
+> 也可用命令行参数覆盖：`node server.js --port 9000 --host 0.0.0.0 --tenant alice --data-root C:/data/alice`；
+> `--tenant`（不带参数）取当前系统用户名，`--no-tenant` 强制非租户模式。
 
 ## 3. `runType`
 
@@ -75,8 +76,10 @@ REPORT_VIEWER_CONFIG=prod node server.js
 
 ### 3.1 `tenants`（租户）
 
-多用户同时使用时，每个租户拥有独立的批次目录、批次索引与收藏夹；键为租户 id
-（由 `--tenant` / `REPORT_VIEWER_TENANT` 指定，缺省为系统用户名）。
+租户模式**可选**：默认非租户模式（共享 web 根下的批次数据）。
+通过 `--tenant alice`、`--tenant`（不带参数，取当前系统用户名）或环境变量
+`REPORT_VIEWER_TENANT` 开启租户模式；`--no-tenant` 强制回到非租户模式。
+多用户同时使用时，每个租户拥有独立的批次目录、批次索引与收藏夹；键为租户 id。
 
 ```json
 "tenants": {
@@ -92,7 +95,8 @@ REPORT_VIEWER_CONFIG=prod node server.js
 
 - 端口优先级：命令行 `--port` > `REPORT_VIEWER_PORT` > 租户 `port` > `server.port` > 默认 `8123`。
 - 数据根存放：`batches/`（批次夹具）、`batches-index.json`（扫描输出）、`favorites.json`（收藏夹）。
-- 首次启动时自动创建兼容的空数据/配置：空批次目录、空 `batches-index.json`、空忽略配置（不复制共享样例数据）。
+- 非租户模式（默认）数据根 = 程序 web 根（`public/`），直接使用共享批次数据；租户模式数据根 = `~/.report-viewer/<租户>`（或 `tenants.<id>.dataRoot`）。
+- 租户模式首次启动时自动创建兼容的空数据/配置：空批次目录、空 `batches-index.json`、空忽略配置（不复制共享样例数据）。
 
 ### 3.2 `audit`（租户 active 追踪 / 审查日志）
 

@@ -66,8 +66,11 @@ node server.js --port 9000
 node server.js --host 0.0.0.0 --port 9000
 node server.js --port 0        # 由操作系统分配随机空闲端口
 
-# 租户：多用户各自拥有独立的批次/索引/收藏夹（数据根 ~/.report-viewer/<租户>/）
+# 租户模式（可选）：默认非租户模式，共享 web 根下的批次/索引/收藏夹。
+# --tenant alice 开启租户模式并指定 id；--tenant（不带参数）id 取当前系统用户名；--no-tenant 强制非租户。
 node server.js --tenant alice
+node server.js --tenant
+node server.js --no-tenant
 node server.js --tenant alice --data-root C:/data/alice
 
 # 租户 active 追踪 / 审查日志：默认关闭；--audit 开启、--no-audit 关闭（或 config 里 audit: true）
@@ -85,8 +88,10 @@ npm start
 > 启动前会自动通过 `/status` API 探测目标地址是否已有实例在运行：若已启动则打印
 > `Already running` 并退出（不重复监听）；否则正常启动。启动日志统一为英文。
 >
-> 每个租户（默认为系统用户名）拥有独立数据根 `~/.report-viewer/<租户>/`（首次启动会自动创建
-> 兼容的空批次目录 / 空索引 / 空忽略配置），批次索引/批次数据/收藏夹均按租户隔离。
+> 默认**非租户模式**：直接使用程序 web 根（`public/`）下的共享批次目录、批次索引与收藏夹。
+> 通过 `--tenant alice`（或 `--tenant`，缺省取系统用户名）开启**租户模式**：每个租户拥有独立
+> 数据根 `~/.report-viewer/<租户>/`（首次启动自动创建兼容的空批次目录 / 空索引 / 空忽略配置），
+> 批次索引/批次数据/收藏夹均按租户隔离；`--no-tenant` 可强制回到非租户模式。
 > 开启审查（`--audit` 或 config `audit: true`）后，活跃租户信息实时写入**程序自身目录**
 > （`server.js` 同级目录）下的 `.report-viewer/active/<租户>.json`（心跳），启动/停止记录追加到
 > 同目录 `.report-viewer/activity.log`（程序目录只读时回退到 `~/.report-viewer/`）。

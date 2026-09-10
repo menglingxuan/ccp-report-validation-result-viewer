@@ -63,8 +63,41 @@ test('getMsgRows 警告与错误', () => {
   T.setState(msgState({ search: '配置映射缺失' }));
   assert.ok(app.getMsgRows('warnings').every((w) => JSON.stringify(w).includes('配置映射缺失')));
 
-  T.setState(msgState());
+  // items[0] 全 PASSED，不应有错误；改用有失败字段的 item 验证错误筛选。
+  T.setState(msgState({ itemId: DATA.items[2].tradeId }));
   assert.ok(app.getMsgRows('errors').length > 0);
+});
+
+test('全 PASSED 的 item 不产生关联错误', () => {
+  const passedItem = DATA.items[0];
+  assert.equal(passedItem.errors.length, 0, '全 PASSED item 的错误数应为 0');
+  assert.ok(passedItem.channels.every((ch) =>
+    ch.sources.every((s) => s.fields.every((f) => f.result === 'PASSED'))));
+});
+
+test('fieldMsgCount 只统计未忽略的警告', () => {
+  const wItem = {
+    tradeId: 'W-1',
+    platform: 'OTC-PLATFORM-A', product: 'IRS',
+    channels: [{
+      name: 'HKTR',
+      fields: [{ id: '1', name: 'notional', userTag: 'productAssertion', type: 'num' }],
+      sources: [{ name: '来源渠道 A', fields: [] }],
+    }],
+    warnings: [
+      { channel: 'HKTR', source: '来源渠道 A', scope: 'field', field: 'notional', type: 'productAssertion', level: 'WARN', text: 'w1' },
+      { channel: 'HKTR', source: '来源渠道 A', scope: 'field', field: 'notional', type: 'platformAssertion', level: 'WARN', text: 'w2' },
+    ],
+    errors: [],
+  };
+  T.setData({ items: [wItem] });
+  T.setState(fieldsState({ itemId: 'W-1' }));
+  const r = { channel: 'HKTR', source: '来源渠道 A', field: 'notional' };
+  T.setIgnoreConfig({});
+  assert.equal(app.fieldMsgCount('warnings', r), 2, '未忽略时应统计全部 2 条');
+  const key = app.msgIgnoreKey('warnings', { channel: 'HKTR', source: '来源渠道 A', scope: 'field', field: 'notional', type: 'productAssertion', level: 'WARN', platform: 'OTC-PLATFORM-A', product: 'IRS' });
+  T.setIgnoreConfig({ [key]: true });
+  assert.equal(app.fieldMsgCount('warnings', r), 1, '忽略 1 条后应只剩 1 条');
 });
 
 test('diffSegments 基于 LCS 输出删除与新增段', () => {

@@ -23,10 +23,10 @@
         "passed": 78,
         "failed": 0,
         "rate": 100,
-        "warnings": 10,
+        "warnings": 7,
         "warningsIgnored": 0,
-        "errors": 12,
-        "uncompared": 3,
+        "errors": 0,
+        "uncompared": 1,
         "logs": 73
       }
     },
@@ -35,7 +35,7 @@
       "reportDate": "2024-08-10",
       "generatedAt": "2024-08-14 10:23:01.000",
       "platform": "OTC-PLATFORM-B",
-      "product": "FXO",
+      "product": "FXF",
       "productCategory": "FX",
       "counterpartyItemId": "T-20240814-1001",
       "platformTradeId": "PT-20240814-1002",
@@ -47,13 +47,13 @@
       "file": "data/items/T-20240814-1002.json",
       "summary": {
         "total": 72,
-        "passed": 60,
-        "failed": 12,
-        "rate": 83,
-        "warnings": 11,
+        "passed": 59,
+        "failed": 13,
+        "rate": 82,
+        "warnings": 10,
         "warningsIgnored": 0,
-        "errors": 9,
-        "uncompared": 0,
+        "errors": 12,
+        "uncompared": 1,
         "logs": 73
       }
     },
@@ -74,13 +74,13 @@
       "file": "data/items/T-20240814-1003.json",
       "summary": {
         "total": 66,
-        "passed": 13,
-        "failed": 53,
-        "rate": 20,
+        "passed": 16,
+        "failed": 50,
+        "rate": 24,
         "warnings": 10,
         "warningsIgnored": 0,
-        "errors": 12,
-        "uncompared": 2,
+        "errors": 8,
+        "uncompared": 1,
         "logs": 73
       }
     }

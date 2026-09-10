@@ -1,13 +1,22 @@
 // 配置解析纯函数回归测试：租户 id / 端口优先级 / audit 开关。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveTenantId, resolveServerPort, resolveAudit, sanitizeTenant } from '../lib/config.js';
+import { resolveTenant, resolveServerPort, resolveAudit, sanitizeTenant } from '../lib/config.js';
 
-test('resolveTenantId：CLI > 环境变量 > 系统用户名', () => {
-  assert.equal(resolveTenantId('alice', undefined, 'bob'), 'alice');
-  assert.equal(resolveTenantId(undefined, 'alice', 'bob'), 'alice');
-  assert.equal(resolveTenantId(undefined, undefined, 'bob'), 'bob');
-  assert.equal(resolveTenantId('', '', ''), 'default');
+test('resolveTenant：默认非租户；--tenant[=xxx] 开启；--no-tenant 强制关闭', () => {
+  // 默认：非租户模式
+  assert.deepEqual(resolveTenant(undefined, undefined, 'bob'), { enabled: false, id: null });
+  // --no-tenant 强制关闭（覆盖环境变量）
+  assert.deepEqual(resolveTenant(false, 'alice', 'bob'), { enabled: false, id: null });
+  // --tenant alice 开启并指定 id
+  assert.deepEqual(resolveTenant('alice', undefined, 'bob'), { enabled: true, id: 'alice' });
+  // --tenant 不带参数 -> 当前系统用户名
+  assert.deepEqual(resolveTenant('', undefined, 'bob'), { enabled: true, id: 'bob' });
+  assert.deepEqual(resolveTenant('', undefined, ''), { enabled: true, id: 'default' });
+  // 环境变量（非空）开启
+  assert.deepEqual(resolveTenant(undefined, 'alice', 'bob'), { enabled: true, id: 'alice' });
+  // 环境变量空串不开启
+  assert.deepEqual(resolveTenant(undefined, '', 'bob'), { enabled: false, id: null });
 });
 
 test('resolveServerPort：CLI > 环境变量 > 租户固定端口 > 文件端口 > 默认值', () => {

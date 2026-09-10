@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 // 统一 HTTP 服务：静态站点（查看器）+ 批次扫描 API。
 //
-//   node server.js              # 启动（默认读取 config.json）
+//   node server.js              # 启动（默认非租户模式，使用共享数据）
 //   node server.js --port 9000  # 覆盖监听端口（优先级最高）
 //   node server.js --port 0     # 使用操作系统分配的随机空闲端口
 //   node server.js --host 0.0.0.0
 //   node server.js --config dev # 使用 config-dev.json
-//   node server.js --tenant alice            # 指定租户 id（默认取系统用户名）
-//   node server.js --data-root C:/data/alice # 指定租户数据根目录
+//   node server.js --tenant alice            # 开启租户模式，指定租户 id
+//   node server.js --tenant                  # 开启租户模式，租户 id 取当前系统用户名
+//   node server.js --no-tenant               # 强制非租户模式（覆盖环境变量）
+//   node server.js --data-root C:/data/alice # 指定数据根目录
 //   node server.js --audit                   # 启用租户 active 追踪与审查日志
 //   node server.js --no-audit                # 关闭（默认关闭，见 config audit）
 //
@@ -33,7 +35,7 @@ import { validateFile } from './lib/validate.js';
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 // 读取 CLI 参数（--flag value 形式）。
 //   --config/--profile 切换配置文件；--port/--host 覆盖监听地址；
-//   --tenant 指定租户 id；--data-root 指定租户数据根目录。
+//   --tenant[=xxx] 开启租户模式；--data-root 指定数据根目录。
 function cliValue(...names) {
   for (const n of names) {
     const i = process.argv.indexOf(n);
@@ -41,13 +43,22 @@ function cliValue(...names) {
   }
   return undefined;
 }
+// --tenant 后的可选值：不带参数（下一 token 缺失或以 -- 开头）时返回空串（表示取默认用户名）。
+function tenantArgValue() {
+  const i = process.argv.indexOf('--tenant');
+  const next = process.argv[i + 1];
+  if (next === undefined || next.startsWith('--')) return '';
+  return next;
+}
 const cfgName = cliValue('--config', '--profile');
 if (cfgName) process.env.REPORT_VIEWER_CONFIG = cfgName;
 const dataRootArg = cliValue('--data-root');
 if (dataRootArg) process.env.REPORT_VIEWER_DATA_ROOT = dataRootArg;
 // audit 开关：--audit 开启 / --no-audit 关闭（布尔旗标，覆盖 config 与环境变量）。
 const auditFlag = process.argv.includes('--no-audit') ? false : (process.argv.includes('--audit') ? true : undefined);
-const CFG = loadConfig({ host: cliValue('--host'), port: cliValue('--port'), tenant: cliValue('--tenant'), audit: auditFlag });
+// 租户模式开关：--no-tenant 强制关闭；--tenant[=xxx] 开启（缺省值为当前系统用户名）。
+const tenantFlag = process.argv.includes('--no-tenant') ? false : (process.argv.includes('--tenant') ? tenantArgValue() : undefined);
+const CFG = loadConfig({ host: cliValue('--host'), port: cliValue('--port'), tenant: tenantFlag, audit: auditFlag });
 const ACTIVE_CONFIG_FILE = resolveConfigFile();
 
 // 收藏夹服务端持久化：每个租户在自身数据根下拥有独立 favorites.json（多用户互不干扰）。
@@ -289,6 +300,7 @@ function handleStatus(res) {
       env: CFG.scan.env || null,
     },
     tenant: {
+      enabled: CFG.tenant.enabled,
       id: CFG.tenant.id,
       dataRoot: CFG.tenant.dataRoot,
       activeFile: CFG.tenant.activeFile,
@@ -383,12 +395,12 @@ const server = http.createServer(function (req, res) {
   }
 
   if (url === '/config.json') {
-    // 将 urls.batches 重写为租户索引地址：批次索引与批次数据均按租户隔离。
-    // 配置文件损坏/缺失时仍返回带租户索引的配置，避免前端回退到程序自身的 batches-index.json。
+    // 租户模式：将 urls.batches 重写为租户索引地址（批次索引与批次数据均按租户隔离）。
+    // 非租户模式：保持配置中的 urls.batches（相对 web 根，指向共享批次索引）。
     let servedCfg = {};
     try { servedCfg = JSON.parse(fs.readFileSync(ACTIVE_CONFIG_FILE, 'utf8')) || {}; } catch (e) { servedCfg = {}; }
     servedCfg.urls = servedCfg.urls || {};
-    servedCfg.urls.batches = '/tenant/';
+    if (CFG.tenant.enabled) servedCfg.urls.batches = '/tenant/';
     json(res, 200, servedCfg);
     return;
   }
@@ -420,8 +432,9 @@ const server = http.createServer(function (req, res) {
 });
 
 // 首次启动初始化：为租户创建「兼容的空数据/配置」（空批次目录、空索引、空忽略配置），
-// 不复制共享样例数据（仅在未显式覆盖扫描目录时执行）。
+// 不复制共享样例数据（仅在租户模式且未显式覆盖扫描目录时执行）。
 function initTenantData() {
+  if (!CFG.tenant.enabled) return; // 非租户模式：直接使用 web 根下的共享批次数据。
   if (process.env.REPORT_VIEWER_BASEDIR || process.env.REPORT_VIEWER_OUT) return;
   try {
     fs.mkdirSync(CFG.scan.basedirAbs, { recursive: true });
@@ -545,7 +558,7 @@ function startServer() {
     // 心跳：每 10 秒刷新 lastSeenAt，实时反映该租户仍处于活跃状态。
     setInterval(function () { refreshActiveTenant(server.address().port); }, 10000).unref();
     console.log('[report-viewer] Started: http://' + CFG.server.host + ':' + actualPort);
-    console.log('[report-viewer] Tenant: ' + CFG.tenant.id);
+    console.log('[report-viewer] Tenant: ' + (CFG.tenant.enabled ? CFG.tenant.id : '(none)'));
     console.log('[report-viewer] Data root: ' + CFG.tenant.dataRoot);
     console.log('[report-viewer] Config: ' + ACTIVE_CONFIG_FILE);
     console.log('[report-viewer] Web root: ' + CFG.server.webRootAbs);

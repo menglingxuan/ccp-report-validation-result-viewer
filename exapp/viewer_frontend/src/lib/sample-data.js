@@ -219,20 +219,77 @@ import path from 'node:path';
     // warnings / errors 迁移到 item 级别：
     //   - 移除 platform / product（跟随 item）
     //   - 新增 scope（field / channel）与 source（来源渠道，随机分配 A/B，部分为空模拟来源缺失）
-    function buildMessages(level, rng, channelName, fieldsDef) {
+    function buildMessages(rng, channelName, fieldsDef, failedBySource) {
       const count = 2 + Math.floor(rng() * 4);
-      const pool = level === 'warning' ? WARN_TEXTS : ERR_TEXTS;
-      const typeKeys = level === 'error' ? Object.keys(ERROR_TYPE_META) : Object.keys(TYPE_META);
-      const levelPool = level === 'warning' ? ['WARN', 'INFO', 'NOTICE', 'DEBUG'] : ['ERROR', 'FATAL', 'SEVERE'];
+      const typeKeys = Object.keys(TYPE_META);
+      const levelPool = ['WARN', 'INFO', 'NOTICE', 'DEBUG'];
+      // 所有存在失败字段的来源渠道：用于让部分警告关联到失败字段（与错误叠加）。
+      const failedSrcs = (failedBySource || []).filter(function (s) { return s.failedFields.length > 0; });
       const msgs = [];
       for (let i = 0; i < count; i++) {
-        const base = pool[Math.floor(rng() * pool.length)];
+        const base = WARN_TEXTS[Math.floor(rng() * WARN_TEXTS.length)];
         const text = rng() < 0.2
           ? base + '\n详情：该字段的映射配置可能缺失或与当前 context 不匹配。\n建议检查映射表对应 sheet 的配置，确认 XPath 与命中的 context 是否正确，并核对字段类型。'
           : base;
-        const field = rng() < 0.8 ? fieldsDef[Math.floor(rng() * fieldsDef.length)][0] : '';
-        // 部分消息来源渠道为空（模拟来源信息缺失的样例数据）。
-        const source = rng() < 0.25 ? '' : (rng() < 0.5 ? '来源渠道 A' : '来源渠道 B');
+        let field = '';
+        let source;
+        if (i === 0 && failedSrcs.length) {
+          // 首条警告固定关联到第一个失败字段（与首条错误同字段），保证该失败字段同时有警告+错误。
+          field = failedSrcs[0].failedFields[0];
+          source = failedSrcs[0].name;
+        } else if (rng() < 0.8) {
+          // 约一半警告关联到失败字段（与错误叠加），其余为随机字段。
+          if (failedSrcs.length && rng() < 0.5) {
+            const src = failedSrcs[Math.floor(rng() * failedSrcs.length)];
+            field = src.failedFields[Math.floor(rng() * src.failedFields.length)];
+            source = src.name;
+          } else {
+            field = fieldsDef[Math.floor(rng() * fieldsDef.length)][0];
+            source = rng() < 0.25 ? '' : (rng() < 0.5 ? '来源渠道 A' : '来源渠道 B');
+          }
+        } else {
+          // 渠道级警告：部分来源渠道为空（模拟来源信息缺失的样例数据）。
+          source = rng() < 0.25 ? '' : (rng() < 0.5 ? '来源渠道 A' : '来源渠道 B');
+        }
+        msgs.push({
+          scope: field ? 'field' : 'channel',
+          source: source,
+          channel: channelName,
+          type: typeKeys[Math.floor(rng() * typeKeys.length)],
+          level: levelPool[Math.floor(rng() * levelPool.length)],
+          text: text,
+          field: field,
+        });
+      }
+      return msgs;
+    }
+
+    // 错误只关联到实际失败的字段：failedBySource 收集各来源渠道中 FAILED 的字段名。
+    // 当整个渠道没有任何失败字段（即该渠道/ item 结果为 PASSED）时不产生任何错误。
+    function buildErrorMessages(rng, channelName, failedBySource) {
+      const withFailures = failedBySource.filter(function (s) { return s.failedFields.length > 0; });
+      if (withFailures.length === 0) return [];
+      const count = 2 + Math.floor(rng() * 4);
+      const typeKeys = Object.keys(ERROR_TYPE_META);
+      const levelPool = ['ERROR', 'FATAL', 'SEVERE'];
+      const msgs = [];
+      for (let i = 0; i < count; i++) {
+        let src, field;
+        if (i === 0) {
+          // 首条错误固定关联到第一个失败字段，保证与首条警告叠加（同一失败字段同时有警告+错误）。
+          src = withFailures[0];
+          field = src.failedFields[0];
+        } else {
+          src = withFailures[Math.floor(rng() * withFailures.length)];
+          // 大部分错误关联到具体失败字段；少数为渠道级错误（无字段归属）。
+          field = rng() < 0.8 ? src.failedFields[Math.floor(rng() * src.failedFields.length)] : '';
+        }
+        const base = ERR_TEXTS[Math.floor(rng() * ERR_TEXTS.length)];
+        const text = rng() < 0.2
+          ? base + '\n详情：该字段的映射配置可能缺失或与当前 context 不匹配。\n建议检查映射表对应 sheet 的配置，确认 XPath 与命中的 context 是否正确，并核对字段类型。'
+          : base;
+        // 字段级错误必须携带失败字段所在的来源渠道；渠道级错误偶尔来源为空（模拟缺失）。
+        const source = field ? src.name : (rng() < 0.3 ? '' : src.name);
         msgs.push({
           scope: field ? 'field' : 'channel',
           source: source,
@@ -332,12 +389,16 @@ import path from 'node:path';
       };
       // 来源渠道数量：默认为 2（A/B），部分 item 仅有 1 个来源渠道（sourceCount=1）。
       const sourceIndexes = sourceCount === 1 ? [1] : [1, 2];
+      // 记录各来源渠道中 FAILED 的字段名，供错误消息只关联到实际失败字段。
+      const failedBySource = [];
       const sources = sourceIndexes.map(sn => {
+        const failedFields = [];
         const fields = fieldsDef.map(([f, rawTarget, t, k], idx) => {
           const el = rawTarget;
           const srcType = isCsv ? 2 : 1; // 1=xpath（XML），2=csv
           const eo = genValue(k, rng);
           const failed = rng() < failRate;
+          if (failed) failedFields.push(f);
           const ao = failed ? mutateValue(eo, k, rng) : eo;
           const ctx = [];
           // 至少包含一个字段映射（type 1）CtxKey；值转换（type 2）与终值校验（type 3）按概率追加。
@@ -395,7 +456,9 @@ import path from 'node:path';
             prints: buildPrints(f, el, ctx, ch.name, '来源渠道 ' + (sn === 1 ? 'A' : 'B'), eo, ao, result, note, isCsv ? 'CSV字段' : 'XPath'),
           };
         });
-        return { name: '来源渠道 ' + (sn === 1 ? 'A' : 'B'), fields: fields };
+        const srcName = '来源渠道 ' + (sn === 1 ? 'A' : 'B');
+        failedBySource.push({ name: srcName, failedFields: failedFields });
+        return { name: srcName, fields: fields };
       });
 
       const aoExt = isCsv ? '.csv' : '.xml';
@@ -415,8 +478,8 @@ import path from 'node:path';
 
       return {
         channel: { name: ch.name, desc: ch.desc, format: ch.format, files: files, fields: fr.registry, sources: sources },
-        warnings: buildMessages('warning', rng, ch.name, fieldsDef),
-        errors: buildMessages('error', rng, ch.name, fieldsDef),
+        warnings: buildMessages(rng, ch.name, fieldsDef, failedBySource),
+        errors: buildErrorMessages(rng, ch.name, failedBySource),
         uncompared: buildUncompared(ch.name, rng, fieldsDef, isCsv ? 2 : 1),
         logs: buildChannelLogs({ name: ch.name, files: files }, tradeId),
       };

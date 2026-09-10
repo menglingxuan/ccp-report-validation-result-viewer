@@ -51,9 +51,21 @@ function mergeDeep(base, over) {
   return out;
 }
 
-// 租户 id 解析（纯函数，便于测试）：CLI --tenant > 环境变量 > 系统用户名。
-export function resolveTenantId(cliTenant, envTenant, osUsername) {
-  return String(cliTenant || envTenant || osUsername || 'default').trim() || 'default';
+// 租户模式解析（纯函数，便于测试）：返回 { enabled, id }。
+//   - 默认（enabled=false）：非租户模式，共享 web 根下的批次数据。
+//   - CLI --no-tenant（cliTenant === false）：强制非租户模式（最高优先级）。
+//   - CLI --tenant[=xxx]（cliTenant 为字符串）：开启租户模式；空串表示未带参数，id 取当前系统用户名。
+//   - 未给 CLI 旗标时由环境变量 REPORT_VIEWER_TENANT（非空）开启。
+export function resolveTenant(cliTenant, envTenant, osUsername) {
+  if (cliTenant === false) return { enabled: false, id: null };
+  if (cliTenant !== undefined && cliTenant !== null) {
+    const id = String(cliTenant).trim();
+    const fallback = String(osUsername || '').trim() || 'default';
+    return { enabled: true, id: id || fallback };
+  }
+  const env = envTenant === undefined || envTenant === null ? '' : String(envTenant).trim();
+  if (env) return { enabled: true, id: env };
+  return { enabled: false, id: null };
 }
 
 // 端口解析（纯函数，便于测试）：CLI --port > 环境变量 > 租户固定端口 > config 端口 > 默认值。
@@ -97,9 +109,11 @@ export function loadConfig(cli) {
   const cfg = mergeDeep(DEFAULTS, fileCfg);
   const env = process.env;
 
-  // 租户 id：CLI --tenant > 环境变量 > 系统用户名。
-  const tenantId = resolveTenantId(cli && cli.tenant, env.REPORT_VIEWER_TENANT, safeOsUsername());
-  const tenantCfg = (cfg.tenants && cfg.tenants[tenantId]) || {};
+  // 租户模式：默认非租户（共享 web 根数据）；--tenant[=xxx] / REPORT_VIEWER_TENANT 开启，--no-tenant 强制关闭。
+  const tenantRes = resolveTenant(cli && cli.tenant, env.REPORT_VIEWER_TENANT, safeOsUsername());
+  const tenantEnabled = tenantRes.enabled;
+  const tenantId = tenantRes.id;
+  const tenantCfg = tenantEnabled ? ((cfg.tenants && cfg.tenants[tenantId]) || {}) : {};
 
   // 端口优先级：CLI --port > 环境变量 > 租户固定端口 > config.json server.port > 默认值。
   cfg.server.port = resolveServerPort(cli && cli.port, env.REPORT_VIEWER_PORT, tenantCfg.port, cfg.server.port, DEFAULTS.server.port);
@@ -114,9 +128,12 @@ export function loadConfig(cli) {
   if (env.REPORT_VIEWER_ENV !== undefined) cfg.scan.env = env.REPORT_VIEWER_ENV;
   if (!Array.isArray(cfg.scan.ignore)) cfg.scan.ignore = [];
 
-  // 租户数据根：租户配置 dataRoot > 环境变量 > ~/.report-viewer/<tenant>。
+  // 数据根：租户模式 = 租户配置 dataRoot > 环境变量 > ~/.report-viewer/<tenant>；
+  // 非租户模式 = 环境变量 > 程序 web 根（public，共享批次数据）。
   const dataRoot = path.resolve(String(
-    tenantCfg.dataRoot || env.REPORT_VIEWER_DATA_ROOT || path.join(os.homedir(), '.report-viewer', sanitizeTenant(tenantId))
+    tenantEnabled
+      ? (tenantCfg.dataRoot || env.REPORT_VIEWER_DATA_ROOT || path.join(os.homedir(), '.report-viewer', sanitizeTenant(tenantId)))
+      : (env.REPORT_VIEWER_DATA_ROOT || path.resolve(SRC_ROOT, cfg.server.webRoot))
   ));
   // active 追踪与活动日志写入「程序自身目录」，便于审查者统一访问（写在租户主目录会因权限无法审查）。
   // 仅当程序目录只读（如安装到 Program Files）时才回退到当前用户主目录。
@@ -134,9 +151,10 @@ export function loadConfig(cli) {
 
   // 租户运行时信息：数据根 + active 追踪文件（心跳）+ 审查用活动日志。
   cfg.tenant = {
-    id: tenantId,
+    enabled: tenantEnabled,
+    id: tenantEnabled ? tenantId : null,
     dataRoot: dataRoot,
-    activeFile: path.join(reportHome, 'active', sanitizeTenant(tenantId) + '.json'),
+    activeFile: path.join(reportHome, 'active', sanitizeTenant(tenantEnabled ? tenantId : 'shared') + '.json'),
     activityLog: path.join(reportHome, 'activity.log'),
   };
   return cfg;

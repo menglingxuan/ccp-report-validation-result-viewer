@@ -432,6 +432,7 @@
         sidebarPage: 1,
         sidebarPageSize: APP_LIMITS.sidebarPageSize,
         specialFilter: { eo: 'ALL', ao: 'ALL' },
+        showFieldMsg: false,
         msgSort: { key: '', dir: 1 },
         msgFilter: {},
         msgPage: 1,
@@ -2301,8 +2302,14 @@
           }).join('');
       }
 
+      // 「显示警告错误标记」开关：图标式按钮，仅在字段比较 tab 显示，紧邻「列选择」左侧（hover 显示名称）。
+      const fieldMsgBtn = state.tab === 'fields'
+        ? '<button class="field-msg-toggle' + (state.showFieldMsg ? ' active' : '') + '" id="fieldMsgToggle" type="button" aria-pressed="' + (state.showFieldMsg ? 'true' : 'false') + '"' +
+          ' title="' + esc(t(state.showFieldMsg ? 'fieldMsgToggleOn' : 'fieldMsgToggle')) + '" aria-label="' + esc(t(state.showFieldMsg ? 'fieldMsgToggleOn' : 'fieldMsgToggle')) + '">' +
+          '<span class="fmt-glyph" aria-hidden="true"></span></button>'
+        : '';
       const colBtn = state.tab === 'fields' ? '<button class="col-toggle" id="colToggle">' + t('colSelector') + ' ▾</button>' : '';
-      document.getElementById('channelTabs').innerHTML = html + sourceHtml + colBtn;
+      document.getElementById('channelTabs').innerHTML = html + sourceHtml + fieldMsgBtn + colBtn;
     }
 
     function activeFilters() {
@@ -2622,11 +2629,48 @@
       return '<span class="hover-trunc" title="' + esc(s) + '">' + esc(preview(s)) + '</span>';
     }
 
+    // 统计与某字段（报告渠道-来源渠道-关联字段）关联的警告/错误条数。
+    // 警告仅统计未忽略项（错误没有忽略机制，恒计）。
+    function fieldMsgCount(kind, r) {
+      const it = currentItem();
+      if (!it) return 0;
+      const arr = it[kind];
+      if (!Array.isArray(arr)) return 0;
+      const ch = r.channel, src = r.source, f = r.field;
+      if (!ch || !src || !f) return 0;
+      let n = 0;
+      for (let i = 0; i < arr.length; i++) {
+        const m = arr[i];
+        if (m && m.channel === ch && m.source === src && m.field === f) {
+          if (kind === 'warnings' && msgIsIgnored('warnings', enrichMsg(m))) continue;
+          n++;
+        }
+      }
+      return n;
+    }
+
+    function fieldMsgIconHTML(kind, count, r) {
+      const key = kind === 'errors' ? 'fieldErrIconTitle' : 'fieldWarnIconTitle';
+      const cls = kind === 'errors' ? 'err' : 'warn';
+      const tip = t(key).replace('{n}', String(count));
+      // 纯色圆点标记：警告/错误分别以主题 --warn / --fail 色填充（无字形，圆点由 CSS 绘制）。
+      return '<button class="field-msg-ico ' + cls + '" type="button" data-field-msg="' + kind + '"' +
+        ' data-fch="' + esc(r.channel) + '" data-fsrc="' + esc(r.source) + '" data-ffield="' + esc(r.field) + '"' +
+        ' title="' + esc(tip) + '" aria-label="' + esc(tip) + '"></button>';
+    }
+
     function fieldCellHTML(r, key) {
       switch (key) {
         case 'channel': return '<td><span class="chip channel-chip">' + esc(r.channel) + '</span></td>';
         case 'source': return '<td>' + esc(sourceName(r.source)) + '</td>';
-        case 'field': return '<td class="mono"><a class="val-link" data-detail="' + esc(fieldLocKey(r.channel, r.source, r.id)) + '" title="查看比较详情">' + esc(r.field) + '</a></td>';
+        case 'field': {
+          const warnN = fieldMsgCount('warnings', r);
+          const errN = fieldMsgCount('errors', r);
+          let icos = '';
+          if (warnN > 0) icos += fieldMsgIconHTML('warnings', warnN, r);
+          if (errN > 0) icos += fieldMsgIconHTML('errors', errN, r);
+          return '<td class="mono"><a class="val-link" data-detail="' + esc(fieldLocKey(r.channel, r.source, r.id)) + '" title="查看比较详情">' + esc(r.field) + '</a>' + icos + '</td>';
+        }
         case 'userTag': return '<td>' + userTagHTML(r.userTag) + '</td>';
         case 'aoEl': {
           const chip = COL_TAG
@@ -2734,7 +2778,7 @@
     function renderFields() {
       const p = computeFieldPage();
       document.getElementById('content').innerHTML =
-        '<div class="table-wrap"><table>' + fieldsHeaderHTML() +
+        '<div class="table-wrap' + (state.showFieldMsg ? ' show-field-msg' : '') + '"><table>' + fieldsHeaderHTML() +
         '<tbody id="fTbody">' + buildFieldRows(p.pageRows) + '</tbody></table></div>' +
         '<div id="fFooter">' + fieldsFooterHTML(p.total, p.pages) + '</div>';
     }
@@ -2858,7 +2902,11 @@
           return '<td><span class="badge ' + (isWarn ? 'warn' : 'fail') + '">' + esc(m.level || '') + '</span></td>';
         }
         case 'text': return '<td>' + hoverCellHTML(m.text) + '</td>';
-        case 'field': return '<td class="mono">' + esc(m.field || '—') + '</td>';
+        case 'field':
+          if (m.field) {
+            return '<td class="mono"><a class="val-link" data-jump-field="' + esc(m.field) + '" data-jch="' + esc(m.channel || '') + '" data-jsrc="' + esc(m.source || '') + '" title="' + t('jumpToFieldTip') + '">' + esc(m.field) + '</a></td>';
+          }
+          return '<td class="mono">' + esc(m.field || '—') + '</td>';
         case 'ignored': {
           const ignored = msgIsIgnored(tab, m);
           const k = msgIgnoreKey(tab, m);
@@ -2932,6 +2980,71 @@
         renderSidebar(); renderSidebarChips(); renderContent();
       });
       document.body.appendChild(backdrop);
+    }
+
+    // 主列表字段的 警告/错误 图标跳转：切到对应选项卡并填充 报告渠道+来源渠道+关联字段 筛选项。
+    // 无有效值的属性不参与筛选。
+    function jumpToFieldMsg(kind, channel, source, field) {
+      state.tab = kind === 'errors' ? 'errors' : 'warnings';
+      state.page = 1;
+      state.msgPage = 1;
+      state.msgSort = { key: '', dir: 1 };
+      state.msgFilter = {};
+      if (channel) state.channel = channel;
+      if (source) state.source = source;
+      if (field) state.msgFilter.field = field;
+      closePopover();
+      render();
+    }
+
+    // 从警告/错误选项卡点击「关联字段」：跳转到主列表（字段比较）并定位到该字段行。
+    function jumpToFieldRow(channel, source, fieldName) {
+      const it = currentItem();
+      if (!it || !fieldName) return;
+      const ch = (it.channels || []).find(function (c) { return c.name === channel; });
+      if (!ch) return;
+      const fd = (ch.fields || []).find(function (f) { return f.name === fieldName; });
+      if (!fd) return;
+      // 切到字段比较 tab，并清空可能遮挡目标行的筛选/搜索/排序。
+      state.tab = 'fields';
+      state.channel = channel || 'ALL';
+      state.source = source || 'ALL';
+      state.colFilter = { channel: state.channel, source: state.source, field: '', userTag: 'ALL', eoEl: '', aoEl: '', eoCvtEl: '', aoCvtEl: '', vdtEl: '', type: 'ALL', ctxs: '', eoUnconverted: '', eo: '', aoUnconverted: '', ao: '', result: 'ALL', remarks: '' };
+      state.specialFilter = { eo: 'ALL', ao: 'ALL' };
+      state.sort = { key: '', dir: 1 };
+      state.search = '';
+      const searchEl = document.getElementById('search');
+      if (searchEl) searchEl.value = '';
+      // 计算目标行所在页码（分页可能让字段不在第 1 页）。
+      const rows = filteredFields(it);
+      let targetKey = null;
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        if (r.channel === channel && r.field === fieldName && (!source || r.source === source)) {
+          state.page = Math.floor(i / state.pageSize) + 1;
+          targetKey = fieldLocKey(r.channel, r.source, r.id);
+          break;
+        }
+      }
+      if (!targetKey) state.page = 1;
+      closePopover();
+      render();
+      // 渲染完成后滚动到目标行并高亮。
+      const key = targetKey;
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          if (!key) return;
+          const trs = document.querySelectorAll('#fTbody tr[data-fid]');
+          for (let i = 0; i < trs.length; i++) {
+            if (trs[i].getAttribute('data-fid') === key) {
+              trs[i].scrollIntoView({ block: 'center', behavior: 'smooth' });
+              trs[i].classList.add('flash-row');
+              setTimeout(function () { trs[i].classList.remove('flash-row'); }, 1600);
+              return;
+            }
+          }
+        });
+      });
     }
 
     function renderMessages(level) {
@@ -3009,6 +3122,17 @@
       renderContent();
       syncHash();
     }
+
+    // 「显示警告错误标记」开关：开启后显式显示字段列中所有关联警告/错误的图标（无需悬停）。
+    function setFieldMsgShow(on) {
+      state.showFieldMsg = !!on;
+      renderChannelTabs();
+      if (state.tab === 'fields') {
+        const wrap = document.querySelector('#content .table-wrap');
+        if (wrap) wrap.classList.toggle('show-field-msg', state.showFieldMsg);
+      }
+    }
+    function toggleFieldMsg() { setFieldMsgShow(!state.showFieldMsg); }
 
     // 空数据集（0 个 item）时的友好空状态。
     function renderEmptyState() {
@@ -4551,6 +4675,8 @@
       });
 
       document.getElementById('channelTabs').addEventListener('click', function (e) {
+        const fieldMsgBtn = e.target.closest('#fieldMsgToggle');
+        if (fieldMsgBtn) { toggleFieldMsg(); return; }
         const colToggle = e.target.closest('.col-toggle');
         if (colToggle) { openColumnMenu(colToggle); return; }
         const srcEl = e.target.closest('[data-source]');
@@ -4589,6 +4715,10 @@
           renderContent();
           return;
         }
+        const jfield = e.target.closest('[data-jump-field]');
+        if (jfield) { jumpToFieldRow(jfield.getAttribute('data-jch'), jfield.getAttribute('data-jsrc'), jfield.getAttribute('data-jump-field')); return; }
+        const fmsg = e.target.closest('[data-field-msg]');
+        if (fmsg) { jumpToFieldMsg(fmsg.getAttribute('data-field-msg'), fmsg.getAttribute('data-fch'), fmsg.getAttribute('data-fsrc'), fmsg.getAttribute('data-ffield')); return; }
         const detail = e.target.closest('[data-detail]');
         if (detail) { const loc = parseFieldLoc(detail.getAttribute('data-detail')); openModal(loc.channel, loc.source, loc.id); return; }
         const ign = e.target.closest('.ignore-btn');
@@ -4832,6 +4962,7 @@
       groupedToFlat, msgIgnoreKey, msgIsIgnored,
       filteredFields, getMsgRows, diffSegments,
       parseSearchQuery, makeMatcher, matchRow,
+      fieldMsgCount,
     };
     export const __test = {
       setState(s) { state = s; },

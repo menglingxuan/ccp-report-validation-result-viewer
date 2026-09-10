@@ -495,6 +495,47 @@
     .stab-count { color: var(--muted); font-size: 11px; }
     .stab.active .stab-count { color: var(--accent); }
 
+    /* 「显示警告错误标记」开关（图标式按钮，紧邻「列选择」左侧；hover 显示名称） */
+    .field-msg-toggle {
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 5px 8px;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: inherit;
+      margin-left: auto;
+      transition: transform .12s, border-color .12s, color .12s, background .12s;
+    }
+    .field-msg-toggle:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+    .field-msg-toggle .fmt-glyph {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      opacity: .55;
+      transition: opacity .12s;
+    }
+    .field-msg-toggle .fmt-glyph::before,
+    .field-msg-toggle .fmt-glyph::after {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .field-msg-toggle .fmt-glyph::before { background: #f59e0b; }
+    .field-msg-toggle .fmt-glyph::after { background: #ef4444; }
+    .field-msg-toggle:hover .fmt-glyph { opacity: .85; }
+    .field-msg-toggle.active .fmt-glyph { opacity: 1; }
+    .field-msg-toggle.active {
+      background: var(--accent-bg); border-color: var(--accent); color: var(--accent);
+      box-shadow: inset 0 0 0 1px var(--accent);
+    }
+
     .content { padding: 16px 18px 20px; }
 
     /* 表格 */
@@ -607,6 +648,24 @@
     }
     .val-link { color: var(--accent); cursor: pointer; text-decoration: none; }
     .val-link:hover { text-decoration: underline; }
+
+    /* 主列表字段列的 警告/错误 关联标记：纯色圆点（主题 --warn/--fail），悬停显示，点击跳转对应选项卡 */
+    .field-msg-ico {
+      display: none;
+      margin-left: 5px;
+      width: 12px;
+      height: 12px;
+      padding: 0;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      vertical-align: middle;
+    }
+    .field-msg-ico.warn { background: #f59e0b; }
+    .field-msg-ico.err { background: #ef4444; }
+    tr:hover .field-msg-ico, tr:focus-within .field-msg-ico { display: inline-block; }
+    /* 「显示警告错误标记」开启时：显式显示所有关联标记 */
+    .show-field-msg .field-msg-ico { display: inline-block; }
 
     /* 详情弹窗 */
     .modal-backdrop {
@@ -820,7 +879,6 @@
     }
     .side-multi:hover, .side-multi.active { color: var(--accent); border-color: var(--accent); }
     .side-multi.has-filter { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
-    .channel-tabs .col-toggle { margin-left: auto; }
 
     /* 侧栏过滤 chips */
     .sidebar-chips { padding: 8px 12px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1055,6 +1113,10 @@
     .modal-goto:hover { border-color: var(--accent); }
     @keyframes flashRing { 0% { box-shadow: 0 0 0 3px var(--accent); } 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); } }
     .detail.flash { animation: flashRing 1.2s ease; }
+
+    /* 字段定位高亮（从警告/错误选项卡跳转到主列表字段行） */
+    @keyframes fieldRowFlash { 0% { background-color: var(--accent-bg); } 100% { background-color: transparent; } }
+    tr.flash-row td { animation: fieldRowFlash 1.4s ease; }
 
     /* 自定义滚动条 */
     * { scrollbar-width: thin; scrollbar-color: var(--muted) transparent; }

@@ -22,11 +22,11 @@
     "scan": "/scan",
     "help": "batch-help.json",
     "initData": "report-validation-data-init.json",
-    "defaultDataMode": "default"
+    "defaultDataMode": "init"
   },
   "ui": {
-    "lang": "zh-CN",
-    "theme": "light",
+    "lang": "en",
+    "theme": "dark",
     "sidebarMode": "combined",
     "sidebarWidth": 280,
     "reportCatDefault": null,
@@ -34,23 +34,25 @@
     "progressBarStyle": "status"
   },
   "features": {
-    "uncomparedXpath": true,
+    "uncomparedXpath": false,
     "uncomparedItems": true,
-    "uncomparedCsv": true,
+    "uncomparedCsv": false,
     "logs": true,
     "conversionRule": true,
     "validationRule": true,
+    "excelMapping": true,
     "sourceFilter": true,
     "modalRules": true,
+    "columnHover": true,
+    "sidebarSearch": true,
+    "sidebarTradeId": true,
     "compare": true,
     "healthOverview": true,
     "globalSearch": true,
     "keyboardShortcuts": true,
+    "modalPrints": true,
     "recentBatches": true,
-    "columnHover": true,
-    "sidebarSearch": true,
-    "sidebarTradeId": true,
-    "batchHelp": true
+    "batchHelp": false
   },
   "limits": {
     "pageSize": 20,
@@ -91,7 +93,7 @@
       "remarks": false
     },
     "labels": {
-      "aoEl": { "zh-CN": "表达式 (CMP-R)", "zh-HK": "表達式 (CMP-R)", "en": "Expression (CMP-R)" },
+      "aoEl": { "zh-CN": "CCP XML XPath", "zh-HK": "CCP XML XPath", "en": "CCP XML XPath" },
       "eoEl": { "zh-CN": "表达式 (CMP-L)", "zh-HK": "表達式 (CMP-L)", "en": "Expression (CMP-L)" },
       "eoCvtEl": { "zh-CN": "表达式 (CVT-L)", "zh-HK": "表達式 (CVT-L)", "en": "Expression (CVT-L)" },
       "aoCvtEl": { "zh-CN": "表达式 (CVT-R)", "zh-HK": "表達式 (CVT-R)", "en": "Expression (CVT-R)" },
@@ -101,12 +103,12 @@
     },
     "selector": {
       "aoEl": true,
-      "eoEl": true,
-      "eoCvtEl": true,
-      "aoCvtEl": true,
-      "vdtEl": true,
+      "eoEl": false,
+      "eoCvtEl": false,
+      "aoCvtEl": false,
+      "vdtEl": false,
       "eoUnconverted": true,
-      "aoUnconverted": true
+      "aoUnconverted": false
     },
     "tag": false,
     "userTag": {
