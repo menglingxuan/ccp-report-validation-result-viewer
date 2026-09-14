@@ -333,206 +333,165 @@
             {
               "id": "1",
               "cmpLeft": {
-                "value": "TX-2024-626887",
-                "ctx": "hktr.ctx.v3",
+                "value": "TX-2024-424657",
+                "ctx": "hktr.ctx.v2",
                 "ctxs": [
-                  3
+                  2
                 ],
                 "elRaw": "-; src_tradeId",
                 "el": "src_tradeId",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "TX-2024-626887",
-                "ctx": "hktr.ctx.v3",
+                "value": "TX-2024-424657",
+                "ctx": "hktr.ctx.v2",
                 "ctxs": [
-                  3
+                  2
                 ],
                 "elRaw": "-; /HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId",
                 "el": "/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId",
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": "hktr.ctx.conv.default and hktr.ctx.conv.v2",
+                "ctx": "hktr.ctx.conv.v2 and hktr.ctx.conv.default",
                 "ctxs": [
-                  5,
-                  6
+                  6,
+                  5
                 ],
                 "el": "@normalizeId",
                 "elRaw": "-; @normalizeId",
-                "raw": "2024-626887"
+                "raw": "2024-424657"
               },
-              "cvtRight": null,
-              "vdt": null,
-              "result": "PASSED",
-              "remarks": "",
-              "resultText": "比对通过",
-              "resultDetails": [
-                {
-                  "label": "期望值 (EO, Unconverted)",
-                  "value": "2024-626887"
-                }
-              ],
-              "prints": [
-                "[INFO] 比较字段 tradeId（报告渠道 HKTR / 来源渠道 A）",
-                "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.v2,hktr.ctx.val.v2",
-                "[INFO] EO=TX-2024-626887，AO=TX-2024-626887 → PASSED"
-              ]
-            },
-            {
-              "id": "2",
-              "cmpLeft": {
-                "value": "TX-2024-274357",
-                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest and hktr.ctx.v3",
-                "ctxs": [
-                  4,
-                  3
-                ],
-                "elRaw": "-; src_reportId",
-                "el": "src_reportId",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "TX-2024-274354",
-                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest and hktr.ctx.v3",
-                "ctxs": [
-                  4,
-                  3
-                ],
-                "elRaw": "-; /HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId",
-                "el": "/HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId",
-                "srcType": 1
-              },
-              "cvtLeft": null,
-              "cvtRight": null,
-              "vdt": {
-                "ctx": "hktr.ctx.val.default",
-                "ctxs": [
-                  7
-                ],
-                "el": "regex:^TX-\\d{6}$",
-                "elRaw": "-; regex:^TX-\\d{6}$"
-              },
-              "result": "FAILED",
-              "remarks": "值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultText": "比对未通过：值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultDetails": [],
-              "prints": [
-                "[INFO] 比较字段 reportId（报告渠道 HKTR / 来源渠道 A）",
-                "[INFO] XPath=/HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.v3",
-                "[INFO] EO=TX-2024-274357，AO=TX-2024-274354 → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-              ]
-            },
-            {
-              "id": "3",
-              "cmpLeft": {
-                "value": "BSW",
-                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
-                "ctxs": [
-                  4
-                ],
-                "elRaw": "-; src_product",
-                "el": "src_product",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "IRS",
-                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
-                "ctxs": [
-                  4
-                ],
-                "elRaw": "-; /HKTR/Report/Product/ProductDetails/ProductIdentifier",
-                "el": "/HKTR/Report/Product/ProductDetails/ProductIdentifier",
-                "srcType": 1
-              },
-              "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
                 "ctx": "hktr.ctx.val.v2",
                 "ctxs": [
                   8
                 ],
-                "el": "enum: ['IRS', 'OIS', 'BSW', 'CDS', 'FXS', 'FXF']",
-                "elRaw": "-; enum: ['IRS', 'OIS', 'BSW', 'CDS', 'FXS', 'FXF']"
+                "el": "regex:^TX-\\d{6}$",
+                "elRaw": "-; regex:^TX-\\d{6}$"
               },
+              "result": "PASSED",
+              "remarks": "",
+              "resultText": "比对通过",
+              "resultDetails": [
+                {
+                  "label": "期望值 (EO, Unconverted)",
+                  "value": "2024-424657"
+                }
+              ],
+              "prints": [
+                "[INFO] 比较字段 tradeId（报告渠道 HKTR / 来源渠道 A）",
+                "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId，命中Ctx=hktr.ctx.v2",
+                "[INFO] EO=TX-2024-424657，AO=TX-2024-424657 → PASSED"
+              ]
+            },
+            {
+              "id": "2",
+              "cmpLeft": {
+                "value": "TX-2024-258589",
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
+                "ctxs": [
+                  4
+                ],
+                "elRaw": "-; src_reportId",
+                "el": "src_reportId",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "TX-2024-258585",
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
+                "ctxs": [
+                  4
+                ],
+                "elRaw": "-; /HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId",
+                "el": "/HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId",
+                "srcType": 1
+              },
+              "cvtLeft": null,
+              "cvtRight": {
+                "ctx": "hktr.ctx.conv.default",
+                "ctxs": [
+                  5
+                ],
+                "el": "@normalizeId",
+                "elRaw": "-; @normalizeId",
+                "raw": "2024-258585"
+              },
+              "vdt": null,
               "result": "FAILED",
-              "remarks": "码值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultText": "比对未通过：码值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "remarks": "值不一致",
+              "resultText": "比对未通过：值不一致",
+              "resultDetails": [],
+              "prints": [
+                "[INFO] 比较字段 reportId（报告渠道 HKTR / 来源渠道 A）",
+                "[INFO] XPath=/HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.default,hktr.ctx.val.default",
+                "[INFO] EO=TX-2024-258589，AO=TX-2024-258585 → FAILED（值不一致）"
+              ]
+            },
+            {
+              "id": "3",
+              "cmpLeft": {
+                "value": "FXF",
+                "ctx": "hktr.ctx.default",
+                "ctxs": [
+                  1
+                ],
+                "elRaw": "-; src_product",
+                "el": "src_product",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "FXF",
+                "ctx": "hktr.ctx.default",
+                "ctxs": [
+                  1
+                ],
+                "elRaw": "-; /HKTR/Report/Product/ProductDetails/ProductIdentifier",
+                "el": "/HKTR/Report/Product/ProductDetails/ProductIdentifier",
+                "srcType": 1
+              },
+              "cvtLeft": null,
+              "cvtRight": {
+                "ctx": "hktr.ctx.conv.v2",
+                "ctxs": [
+                  6
+                ],
+                "el": "@toUpper",
+                "elRaw": "-; @toUpper",
+                "raw": "fxf"
+              },
+              "vdt": null,
+              "result": "PASSED",
+              "remarks": "",
+              "resultText": "比对通过",
               "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 product（报告渠道 HKTR / 来源渠道 A）",
-                "[INFO] XPath=/HKTR/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.default",
-                "[INFO] EO=BSW，AO=IRS → FAILED（码值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
+                "[INFO] XPath=/HKTR/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=hktr.ctx.default,hktr.ctx.conv.default,hktr.ctx.val.v2",
+                "[INFO] EO=FXF，AO=FXF → PASSED"
               ]
             },
             {
               "id": "4",
               "cmpLeft": {
-                "value": "108084.27",
-                "ctx": "hktr.ctx.v3",
+                "value": "1417542.61",
+                "ctx": "hktr.ctx.v2",
                 "ctxs": [
-                  3
+                  2
                 ],
                 "elRaw": "-; src_notional",
                 "el": "src_notional",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "108012.26",
-                "ctx": "hktr.ctx.v3",
+                "value": "1417587.62",
+                "ctx": "hktr.ctx.v2",
                 "ctxs": [
-                  3
+                  2
                 ],
                 "elRaw": "-; /HKTR/Report/Notional/AmountDetails/NotionalValue",
                 "el": "/HKTR/Report/Notional/AmountDetails/NotionalValue",
-                "srcType": 1
-              },
-              "cvtLeft": {
-                "ctx": "hktr.ctx.conv.default",
-                "ctxs": [
-                  5
-                ],
-                "el": "@scale100",
-                "elRaw": "-; @scale100",
-                "raw": "10808427"
-              },
-              "cvtRight": null,
-              "vdt": null,
-              "result": "FAILED",
-              "remarks": "数值差异",
-              "resultText": "比对未通过：数值差异",
-              "resultDetails": [
-                {
-                  "label": "期望值 (EO, Unconverted)",
-                  "value": "10808427"
-                }
-              ],
-              "prints": [
-                "[INFO] 比较字段 notional（报告渠道 HKTR / 来源渠道 A）",
-                "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/NotionalValue，命中Ctx=hktr.ctx.v3,hktr.ctx.val.v2",
-                "[INFO] EO=108084.27，AO=108012.26 → FAILED（数值差异）"
-              ]
-            },
-            {
-              "id": "5",
-              "cmpLeft": {
-                "value": "HKD",
-                "ctx": "hktr.ctx.default",
-                "ctxs": [
-                  1
-                ],
-                "elRaw": "-; src_currency",
-                "el": "src_currency",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "HKD",
-                "ctx": "hktr.ctx.default",
-                "ctxs": [
-                  1
-                ],
-                "elRaw": "-; /HKTR/Report/Notional/AmountDetails/CurrencyCode",
-                "el": "/HKTR/Report/Notional/AmountDetails/CurrencyCode",
                 "srcType": 1
               },
               "cvtLeft": null,
@@ -542,21 +501,106 @@
                 "ctxs": [
                   7
                 ],
-                "el": "enum: ['USD', 'CNY', 'HKD', 'JPY', 'EUR']",
-                "elRaw": "-; enum: ['USD', 'CNY', 'HKD', 'JPY', 'EUR']"
+                "el": "regex:^\\d+(\\.\\d{2})?$",
+                "elRaw": "-; regex:^\\d+(\\.\\d{2})?$"
+              },
+              "result": "FAILED",
+              "remarks": "数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultText": "比对未通过：数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultDetails": [],
+              "prints": [
+                "[INFO] 比较字段 notional（报告渠道 HKTR / 来源渠道 A）",
+                "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/NotionalValue，命中Ctx=hktr.ctx.v2",
+                "[INFO] EO=1417542.61，AO=1417587.62 → FAILED（数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
+              ]
+            },
+            {
+              "id": "5",
+              "cmpLeft": {
+                "value": "JPY",
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
+                "ctxs": [
+                  4
+                ],
+                "elRaw": "-; src_currency",
+                "el": "src_currency",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "USD",
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
+                "ctxs": [
+                  4
+                ],
+                "elRaw": "-; /HKTR/Report/Notional/AmountDetails/CurrencyCode",
+                "el": "/HKTR/Report/Notional/AmountDetails/CurrencyCode",
+                "srcType": 1
+              },
+              "cvtLeft": null,
+              "cvtRight": {
+                "ctx": "hktr.ctx.conv.v2",
+                "ctxs": [
+                  6
+                ],
+                "el": "@toUpper",
+                "elRaw": "-; @toUpper",
+                "raw": "usd"
+              },
+              "vdt": null,
+              "result": "FAILED",
+              "remarks": "码值差异",
+              "resultText": "比对未通过：码值差异",
+              "resultDetails": [],
+              "prints": [
+                "[INFO] 比较字段 currency（报告渠道 HKTR / 来源渠道 A）",
+                "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.v2,hktr.ctx.val.v2",
+                "[INFO] EO=JPY，AO=USD → FAILED（码值差异）"
+              ]
+            },
+            {
+              "id": "6",
+              "cmpLeft": {
+                "value": "2024-06-06",
+                "ctx": "hktr.ctx.default",
+                "ctxs": [
+                  1
+                ],
+                "elRaw": "-; src_tradeDate",
+                "el": "src_tradeDate",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "2024-06-06",
+                "ctx": "hktr.ctx.default",
+                "ctxs": [
+                  1
+                ],
+                "elRaw": "-; /HKTR/Report/Header/TradeDetails/TradeDate",
+                "el": "/HKTR/Report/Header/TradeDetails/TradeDate",
+                "srcType": 1
+              },
+              "cvtLeft": null,
+              "cvtRight": null,
+              "vdt": {
+                "ctx": "hktr.ctx.val.default",
+                "ctxs": [
+                  7
+                ],
+                "el": "regex:^\\d{4}-\\d{2}-\\d{2}$",
+                "elRaw": "-; regex:^\\d{4}-\\d{2}-\\d{2}$"
               },
               "result": "PASSED",
               "remarks": "",
               "resultText": "比对通过",
               "resultDetails": [],
               "prints": [
-                "[INFO] 比较字段 currency（报告渠道 HKTR / 来源渠道 A）",
-                "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=hktr.ctx.default,hktr.ctx.conv.v2,hktr.ctx.val.default",
-                "[INFO] EO=HKD，AO=HKD → PASSED"
+                "[INFO] 比较字段 tradeDate（报告渠道 HKTR / 来源渠道 A）",
+                "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeDate，命中Ctx=hktr.ctx.default,hktr.ctx.conv.v2,hktr.ctx.val.default",
+                "[INFO] EO=2024-06-06，AO=2024-06-06 → PASSED"
               ]
             },
             {
-              "id": "6",
+              "id": "7",
               "cmpLeft": {
                 "value": "2024-07-03",
                 "ctx": "hktr.ctx.default and hktr.ctx.v2",
@@ -564,8 +608,8 @@
                   1,
                   2
                 ],
-                "elRaw": "-; src_tradeDate",
-                "el": "src_tradeDate",
+                "elRaw": "-; src_maturityDate",
+                "el": "src_maturityDate",
                 "srcType": 2
               },
               "cmpRight": {
@@ -575,8 +619,8 @@
                   1,
                   2
                 ],
-                "elRaw": "-; /HKTR/Report/Header/TradeDetails/TradeDate",
-                "el": "/HKTR/Report/Header/TradeDetails/TradeDate",
+                "elRaw": "-; /HKTR/Report/Header/TradeDetails/MaturityDate",
+                "el": "/HKTR/Report/Header/TradeDetails/MaturityDate",
                 "srcType": 1
               },
               "cvtLeft": {
@@ -608,75 +652,18 @@
                 }
               ],
               "prints": [
-                "[INFO] 比较字段 tradeDate（报告渠道 HKTR / 来源渠道 A）",
-                "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeDate，命中Ctx=hktr.ctx.default,hktr.ctx.val.default,hktr.ctx.v2",
-                "[INFO] EO=2024-07-03，AO=2024-07-08 → FAILED（日期差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-              ]
-            },
-            {
-              "id": "7",
-              "cmpLeft": {
-                "value": "2024-04-20",
-                "ctx": "hktr.ctx.default",
-                "ctxs": [
-                  1
-                ],
-                "elRaw": "-; src_maturityDate",
-                "el": "src_maturityDate",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "2024-04-20",
-                "ctx": "hktr.ctx.default",
-                "ctxs": [
-                  1
-                ],
-                "elRaw": "-; /HKTR/Report/Header/TradeDetails/MaturityDate",
-                "el": "/HKTR/Report/Header/TradeDetails/MaturityDate",
-                "srcType": 1
-              },
-              "cvtLeft": {
-                "ctx": "hktr.ctx.conv.default",
-                "ctxs": [
-                  5
-                ],
-                "el": "@dateFormat(YYYY-MM-DD)",
-                "elRaw": "-; @dateFormat(YYYY-MM-DD)",
-                "raw": "20240420"
-              },
-              "cvtRight": null,
-              "vdt": {
-                "ctx": "hktr.ctx.val.default and hktr.ctx.val.v2",
-                "ctxs": [
-                  7,
-                  8
-                ],
-                "el": "regex:^\\d{4}-\\d{2}-\\d{2}$",
-                "elRaw": "-; regex:^\\d{4}-\\d{2}-\\d{2}$"
-              },
-              "result": "PASSED",
-              "remarks": "",
-              "resultText": "比对通过",
-              "resultDetails": [
-                {
-                  "label": "期望值 (EO, Unconverted)",
-                  "value": "20240420"
-                }
-              ],
-              "prints": [
                 "[INFO] 比较字段 maturityDate（报告渠道 HKTR / 来源渠道 A）",
-                "[INFO] XPath=/HKTR/Report/Header/TradeDetails/MaturityDate，命中Ctx=hktr.ctx.default,hktr.ctx.val.default",
-                "[INFO] EO=2024-04-20，AO=2024-04-20 → PASSED"
+                "[INFO] XPath=/HKTR/Report/Header/TradeDetails/MaturityDate，命中Ctx=hktr.ctx.default,hktr.ctx.val.default,hktr.ctx.v2",
+                "[INFO] EO=2024-07-03，AO=2024-07-08 → FAILED（日期差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
               ]
             },
             {
               "id": "8",
               "cmpLeft": {
-                "value": "HSBC",
-                "ctx": "hktr.ctx.default and hktr.ctx.v3",
+                "value": "Goldman Sachs",
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  1,
-                  3
+                  4
                 ],
                 "elRaw": "-; src_counterparty",
                 "el": "src_counterparty",
@@ -684,10 +671,9 @@
               },
               "cmpRight": {
                 "value": "XYZ Bank",
-                "ctx": "hktr.ctx.default and hktr.ctx.v3",
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  1,
-                  3
+                  4
                 ],
                 "elRaw": "-; /HKTR/Report/Counterparty/PartyDetails/PartyName",
                 "el": "/HKTR/Report/Counterparty/PartyDetails/PartyName",
@@ -700,8 +686,8 @@
                 "ctxs": [
                   8
                 ],
-                "el": "@length<=64",
-                "elRaw": "-; @length<=64"
+                "el": "@notNull",
+                "elRaw": "-; @notNull"
               },
               "result": "FAILED",
               "remarks": "值不一致",
@@ -709,8 +695,569 @@
               "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 counterparty（报告渠道 HKTR / 来源渠道 A）",
-                "[INFO] XPath=/HKTR/Report/Counterparty/PartyDetails/PartyName，命中Ctx=hktr.ctx.default,hktr.ctx.conv.default,hktr.ctx.val.default,hktr.ctx.v3",
-                "[INFO] EO=HSBC，AO=XYZ Bank → FAILED（值不一致）"
+                "[INFO] XPath=/HKTR/Report/Counterparty/PartyDetails/PartyName，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.default",
+                "[INFO] EO=Goldman Sachs，AO=XYZ Bank → FAILED（值不一致）"
+              ]
+            },
+            {
+              "id": "9",
+              "cmpLeft": {
+                "value": "Citi Group",
+                "ctx": "hktr.ctx.v2",
+                "ctxs": [
+                  2
+                ],
+                "elRaw": "-; src_platform",
+                "el": "src_platform",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "XYZ Bank",
+                "ctx": "hktr.ctx.v2",
+                "ctxs": [
+                  2
+                ],
+                "elRaw": "-; /HKTR/Report/Execution/PlatformDetails/PlatformIdentifier",
+                "el": "/HKTR/Report/Execution/PlatformDetails/PlatformIdentifier",
+                "srcType": 1
+              },
+              "cvtLeft": null,
+              "cvtRight": {
+                "ctx": "hktr.ctx.conv.v2",
+                "ctxs": [
+                  6
+                ],
+                "el": "@trim",
+                "elRaw": "-; @trim",
+                "raw": "  XYZ Bank  "
+              },
+              "vdt": null,
+              "result": "FAILED",
+              "remarks": "值不一致",
+              "resultText": "比对未通过：值不一致",
+              "resultDetails": [],
+              "prints": [
+                "[INFO] 比较字段 platform（报告渠道 HKTR / 来源渠道 A）",
+                "[INFO] XPath=/HKTR/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.default,hktr.ctx.val.v2",
+                "[INFO] EO=Citi Group，AO=XYZ Bank → FAILED（值不一致）"
+              ]
+            },
+            {
+              "id": "10",
+              "cmpLeft": {
+                "value": "2966029.97",
+                "ctx": "hktr.ctx.default",
+                "ctxs": [
+                  1
+                ],
+                "elRaw": "-; src_price",
+                "el": "src_price",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "2966009.96",
+                "ctx": "hktr.ctx.default",
+                "ctxs": [
+                  1
+                ],
+                "elRaw": "-; /HKTR/Report/Pricing/PriceDetails/PriceValue",
+                "el": "/HKTR/Report/Pricing/PriceDetails/PriceValue",
+                "srcType": 1
+              },
+              "cvtLeft": {
+                "ctx": "hktr.ctx.conv.default",
+                "ctxs": [
+                  5
+                ],
+                "el": "@round2",
+                "elRaw": "-; @round2",
+                "raw": "296602997"
+              },
+              "cvtRight": null,
+              "vdt": {
+                "ctx": "hktr.ctx.val.v2",
+                "ctxs": [
+                  8
+                ],
+                "el": "regex:^\\d+(\\.\\d{2})?$",
+                "elRaw": "-; regex:^\\d+(\\.\\d{2})?$"
+              },
+              "result": "FAILED",
+              "remarks": "数值差异",
+              "resultText": "比对未通过：数值差异",
+              "resultDetails": [
+                {
+                  "label": "期望值 (EO, Unconverted)",
+                  "value": "296602997"
+                }
+              ],
+              "prints": [
+                "[INFO] 比较字段 price（报告渠道 HKTR / 来源渠道 A）",
+                "[INFO] XPath=/HKTR/Report/Pricing/PriceDetails/PriceValue，命中Ctx=hktr.ctx.default,hktr.ctx.conv.v2,hktr.ctx.val.default",
+                "[INFO] EO=2966029.97，AO=2966009.96 → FAILED（数值差异）"
+              ]
+            },
+            {
+              "id": "11",
+              "cmpLeft": {
+                "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
+                "ctxs": [
+                  4
+                ],
+                "elRaw": "-; src_remarks",
+                "el": "src_remarks",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。",
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
+                "ctxs": [
+                  4
+                ],
+                "elRaw": "-; /HKTR/Report/Header/AdditionalInformation/Remarks",
+                "el": "/HKTR/Report/Header/AdditionalInformation/Remarks",
+                "srcType": 1
+              },
+              "cvtLeft": null,
+              "cvtRight": {
+                "ctx": "hktr.ctx.conv.v2",
+                "ctxs": [
+                  6
+                ],
+                "el": "@trimLines",
+                "elRaw": "-; @trimLines",
+                "raw": "第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。"
+              },
+              "vdt": {
+                "ctx": "hktr.ctx.val.v2",
+                "ctxs": [
+                  8
+                ],
+                "el": "@maxLines<=3",
+                "elRaw": "-; @maxLines<=3"
+              },
+              "result": "FAILED",
+              "remarks": "内容差异",
+              "resultText": "比对未通过：内容差异",
+              "resultDetails": [],
+              "prints": [
+                "[INFO] 比较字段 remarks（报告渠道 HKTR / 来源渠道 A）",
+                "[INFO] XPath=/HKTR/Report/Header/AdditionalInformation/Remarks，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.v2",
+                "[INFO] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。 → FAILED（内容差异）"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "来源渠道 B",
+          "fields": [
+            {
+              "id": "1",
+              "cmpLeft": {
+                "value": "TX-2024-155461",
+                "ctx": "hktr.ctx.default and hktr.ctx.v2",
+                "ctxs": [
+                  1,
+                  2
+                ],
+                "elRaw": "-; src_tradeId",
+                "el": "src_tradeId",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "TX-2024-155466",
+                "ctx": "hktr.ctx.default and hktr.ctx.v2",
+                "ctxs": [
+                  1,
+                  2
+                ],
+                "elRaw": "-; /HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId",
+                "el": "/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId",
+                "srcType": 1
+              },
+              "cvtLeft": {
+                "ctx": "hktr.ctx.conv.v2",
+                "ctxs": [
+                  6
+                ],
+                "el": "@normalizeId",
+                "elRaw": "-; @normalizeId",
+                "raw": "2024-155461"
+              },
+              "cvtRight": null,
+              "vdt": {
+                "ctx": "hktr.ctx.val.v2",
+                "ctxs": [
+                  8
+                ],
+                "el": "regex:^TX-\\d{6}$",
+                "elRaw": "-; regex:^TX-\\d{6}$"
+              },
+              "result": "FAILED",
+              "remarks": "值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultText": "比对未通过：值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultDetails": [
+                {
+                  "label": "期望值 (EO, Unconverted)",
+                  "value": "2024-155461"
+                }
+              ],
+              "prints": [
+                "[INFO] 比较字段 tradeId（报告渠道 HKTR / 来源渠道 B）",
+                "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId，命中Ctx=hktr.ctx.default,hktr.ctx.conv.v2,hktr.ctx.val.default,hktr.ctx.v2",
+                "[INFO] EO=TX-2024-155461，AO=TX-2024-155466 → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
+              ]
+            },
+            {
+              "id": "2",
+              "cmpLeft": {
+                "value": "TX-2024-456576",
+                "ctx": "hktr.ctx.v2",
+                "ctxs": [
+                  2
+                ],
+                "elRaw": "-; src_reportId",
+                "el": "src_reportId",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "TX-2024-456575",
+                "ctx": "hktr.ctx.v2",
+                "ctxs": [
+                  2
+                ],
+                "elRaw": "-; /HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId",
+                "el": "/HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId",
+                "srcType": 1
+              },
+              "cvtLeft": null,
+              "cvtRight": {
+                "ctx": "hktr.ctx.conv.v2",
+                "ctxs": [
+                  6
+                ],
+                "el": "@normalizeId",
+                "elRaw": "-; @normalizeId",
+                "raw": "2024-456575"
+              },
+              "vdt": null,
+              "result": "FAILED",
+              "remarks": "值不一致",
+              "resultText": "比对未通过：值不一致",
+              "resultDetails": [],
+              "prints": [
+                "[INFO] 比较字段 reportId（报告渠道 HKTR / 来源渠道 B）",
+                "[INFO] XPath=/HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.v2,hktr.ctx.val.v2",
+                "[INFO] EO=TX-2024-456576，AO=TX-2024-456575 → FAILED（值不一致）"
+              ]
+            },
+            {
+              "id": "3",
+              "cmpLeft": {
+                "value": "OIS",
+                "ctx": "hktr.ctx.v2",
+                "ctxs": [
+                  2
+                ],
+                "elRaw": "-; src_product",
+                "el": "src_product",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "IRS",
+                "ctx": "hktr.ctx.v2",
+                "ctxs": [
+                  2
+                ],
+                "elRaw": "-; /HKTR/Report/Product/ProductDetails/ProductIdentifier",
+                "el": "/HKTR/Report/Product/ProductDetails/ProductIdentifier",
+                "srcType": 1
+              },
+              "cvtLeft": null,
+              "cvtRight": {
+                "ctx": "hktr.ctx.conv.default",
+                "ctxs": [
+                  5
+                ],
+                "el": "@toUpper",
+                "elRaw": "-; @toUpper",
+                "raw": "irs"
+              },
+              "vdt": {
+                "ctx": "hktr.ctx.val.default and hktr.ctx.val.v2",
+                "ctxs": [
+                  7,
+                  8
+                ],
+                "el": "enum: ['IRS', 'OIS', 'BSW', 'CDS', 'FXS', 'FXF']",
+                "elRaw": "-; enum: ['IRS', 'OIS', 'BSW', 'CDS', 'FXS', 'FXF']"
+              },
+              "result": "FAILED",
+              "remarks": "码值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultText": "比对未通过：码值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultDetails": [],
+              "prints": [
+                "[INFO] 比较字段 product（报告渠道 HKTR / 来源渠道 B）",
+                "[INFO] XPath=/HKTR/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.v2,hktr.ctx.val.default",
+                "[INFO] EO=OIS，AO=IRS → FAILED（码值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
+              ]
+            },
+            {
+              "id": "4",
+              "cmpLeft": {
+                "value": "300036.03",
+                "ctx": "hktr.ctx.v2",
+                "ctxs": [
+                  2
+                ],
+                "elRaw": "-; src_notional",
+                "el": "src_notional",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "299973.02",
+                "ctx": "hktr.ctx.v2",
+                "ctxs": [
+                  2
+                ],
+                "elRaw": "-; /HKTR/Report/Notional/AmountDetails/NotionalValue",
+                "el": "/HKTR/Report/Notional/AmountDetails/NotionalValue",
+                "srcType": 1
+              },
+              "cvtLeft": {
+                "ctx": "hktr.ctx.conv.v2",
+                "ctxs": [
+                  6
+                ],
+                "el": "@round2",
+                "elRaw": "-; @round2",
+                "raw": "30003603"
+              },
+              "cvtRight": {
+                "ctx": "hktr.ctx.conv.default",
+                "ctxs": [
+                  5
+                ],
+                "el": "@scale100",
+                "elRaw": "-; @scale100",
+                "raw": "29997302"
+              },
+              "vdt": null,
+              "result": "FAILED",
+              "remarks": "数值差异",
+              "resultText": "比对未通过：数值差异",
+              "resultDetails": [
+                {
+                  "label": "期望值 (EO, Unconverted)",
+                  "value": "30003603"
+                }
+              ],
+              "prints": [
+                "[INFO] 比较字段 notional（报告渠道 HKTR / 来源渠道 B）",
+                "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/NotionalValue，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.default,hktr.ctx.val.v2",
+                "[INFO] EO=300036.03，AO=299973.02 → FAILED（数值差异）"
+              ]
+            },
+            {
+              "id": "5",
+              "cmpLeft": {
+                "value": "JPY",
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
+                "ctxs": [
+                  4
+                ],
+                "elRaw": "-; src_currency",
+                "el": "src_currency",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "USD",
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
+                "ctxs": [
+                  4
+                ],
+                "elRaw": "-; /HKTR/Report/Notional/AmountDetails/CurrencyCode",
+                "el": "/HKTR/Report/Notional/AmountDetails/CurrencyCode",
+                "srcType": 1
+              },
+              "cvtLeft": null,
+              "cvtRight": {
+                "ctx": "hktr.ctx.conv.default",
+                "ctxs": [
+                  5
+                ],
+                "el": "@toUpper",
+                "elRaw": "-; @toUpper",
+                "raw": "usd"
+              },
+              "vdt": {
+                "ctx": "hktr.ctx.val.v2 and hktr.ctx.val.default",
+                "ctxs": [
+                  8,
+                  7
+                ],
+                "el": "enum: ['USD', 'CNY', 'HKD', 'JPY', 'EUR']",
+                "elRaw": "-; enum: ['USD', 'CNY', 'HKD', 'JPY', 'EUR']"
+              },
+              "result": "FAILED",
+              "remarks": "码值差异",
+              "resultText": "比对未通过：码值差异",
+              "resultDetails": [],
+              "prints": [
+                "[INFO] 比较字段 currency（报告渠道 HKTR / 来源渠道 B）",
+                "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.v2,hktr.ctx.val.v2",
+                "[INFO] EO=JPY，AO=USD → FAILED（码值差异）"
+              ]
+            },
+            {
+              "id": "6",
+              "cmpLeft": {
+                "value": "2024-03-16",
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
+                "ctxs": [
+                  4
+                ],
+                "elRaw": "-; src_tradeDate",
+                "el": "src_tradeDate",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "2024-03-25",
+                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
+                "ctxs": [
+                  4
+                ],
+                "elRaw": "-; /HKTR/Report/Header/TradeDetails/TradeDate",
+                "el": "/HKTR/Report/Header/TradeDetails/TradeDate",
+                "srcType": 1
+              },
+              "cvtLeft": {
+                "ctx": "hktr.ctx.conv.default",
+                "ctxs": [
+                  5
+                ],
+                "el": "@dateFormat(YYYY-MM-DD)",
+                "elRaw": "-; @dateFormat(YYYY-MM-DD)",
+                "raw": "20240316"
+              },
+              "cvtRight": {
+                "ctx": "hktr.ctx.conv.v2 and hktr.ctx.conv.default",
+                "ctxs": [
+                  6,
+                  5
+                ],
+                "el": "@dateFormat(YYYY-MM-DD)",
+                "elRaw": "-; @dateFormat(YYYY-MM-DD)",
+                "raw": "20240325"
+              },
+              "vdt": {
+                "ctx": "hktr.ctx.val.v2",
+                "ctxs": [
+                  8
+                ],
+                "el": "regex:^\\d{4}-\\d{2}-\\d{2}$",
+                "elRaw": "-; regex:^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "result": "FAILED",
+              "remarks": "日期差异",
+              "resultText": "比对未通过：日期差异",
+              "resultDetails": [
+                {
+                  "label": "期望值 (EO, Unconverted)",
+                  "value": "20240316"
+                }
+              ],
+              "prints": [
+                "[INFO] 比较字段 tradeDate（报告渠道 HKTR / 来源渠道 B）",
+                "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeDate，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.val.default",
+                "[INFO] EO=2024-03-16，AO=2024-03-25 → FAILED（日期差异）"
+              ]
+            },
+            {
+              "id": "7",
+              "cmpLeft": {
+                "value": "2024-11-12",
+                "ctx": "hktr.ctx.v3",
+                "ctxs": [
+                  3
+                ],
+                "elRaw": "-; src_maturityDate",
+                "el": "src_maturityDate",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "2024-11-19",
+                "ctx": "hktr.ctx.v3",
+                "ctxs": [
+                  3
+                ],
+                "elRaw": "-; /HKTR/Report/Header/TradeDetails/MaturityDate",
+                "el": "/HKTR/Report/Header/TradeDetails/MaturityDate",
+                "srcType": 1
+              },
+              "cvtLeft": null,
+              "cvtRight": null,
+              "vdt": {
+                "ctx": "hktr.ctx.val.v2",
+                "ctxs": [
+                  8
+                ],
+                "el": "regex:^\\d{4}-\\d{2}-\\d{2}$",
+                "elRaw": "-; regex:^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "result": "FAILED",
+              "remarks": "日期差异",
+              "resultText": "比对未通过：日期差异",
+              "resultDetails": [],
+              "prints": [
+                "[INFO] 比较字段 maturityDate（报告渠道 HKTR / 来源渠道 B）",
+                "[INFO] XPath=/HKTR/Report/Header/TradeDetails/MaturityDate，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.v2",
+                "[INFO] EO=2024-11-12，AO=2024-11-19 → FAILED（日期差异）"
+              ]
+            },
+            {
+              "id": "8",
+              "cmpLeft": {
+                "value": "",
+                "ctx": "hktr.ctx.v3 and hktr.ctx.v2",
+                "ctxs": [
+                  3,
+                  2
+                ],
+                "elRaw": "-; src_counterparty",
+                "el": "src_counterparty",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "XYZ Bank",
+                "ctx": "hktr.ctx.v3 and hktr.ctx.v2",
+                "ctxs": [
+                  3,
+                  2
+                ],
+                "elRaw": "-; /HKTR/Report/Counterparty/PartyDetails/PartyName",
+                "el": "/HKTR/Report/Counterparty/PartyDetails/PartyName",
+                "srcType": 1
+              },
+              "cvtLeft": null,
+              "cvtRight": null,
+              "vdt": {
+                "ctx": "hktr.ctx.val.default",
+                "ctxs": [
+                  7
+                ],
+                "el": "@notNull",
+                "elRaw": "-; @notNull"
+              },
+              "result": "FAILED",
+              "remarks": "值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultText": "比对未通过：值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultDetails": [],
+              "prints": [
+                "[INFO] 比较字段 counterparty（报告渠道 HKTR / 来源渠道 B）",
+                "[INFO] XPath=/HKTR/Report/Counterparty/PartyDetails/PartyName，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.v2,hktr.ctx.v2",
+                "[INFO] EO=，AO=XYZ Bank → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
               ]
             },
             {
@@ -744,620 +1291,69 @@
                 "elRaw": "-; @normalizeSpace",
                 "raw": "  Citi Group  "
               },
-              "cvtRight": {
-                "ctx": "hktr.ctx.conv.v2",
-                "ctxs": [
-                  6
-                ],
-                "el": "@trim",
-                "elRaw": "-; @trim",
-                "raw": "  XYZ Bank  "
-              },
-              "vdt": {
-                "ctx": "hktr.ctx.val.default",
-                "ctxs": [
-                  7
-                ],
-                "el": "@notNull",
-                "elRaw": "-; @notNull"
-              },
+              "cvtRight": null,
+              "vdt": null,
               "result": "FAILED",
-              "remarks": "值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultText": "比对未通过：值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "remarks": "值不一致",
+              "resultText": "比对未通过：值不一致",
               "resultDetails": [
                 {
                   "label": "期望值 (EO, Unconverted)",
                   "value": "  Citi Group  "
                 }
               ],
-              "prints": [
-                "[INFO] 比较字段 platform（报告渠道 HKTR / 来源渠道 A）",
-                "[INFO] XPath=/HKTR/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=hktr.ctx.default,hktr.ctx.conv.default,hktr.ctx.val.v2",
-                "[INFO] EO=Citi Group，AO=XYZ Bank → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-              ]
-            },
-            {
-              "id": "10",
-              "cmpLeft": {
-                "value": "4835450.69",
-                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest and hktr.ctx.v3",
-                "ctxs": [
-                  4,
-                  3
-                ],
-                "elRaw": "-; src_price",
-                "el": "src_price",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "4835450.69",
-                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest and hktr.ctx.v3",
-                "ctxs": [
-                  4,
-                  3
-                ],
-                "elRaw": "-; /HKTR/Report/Pricing/PriceDetails/PriceValue",
-                "el": "/HKTR/Report/Pricing/PriceDetails/PriceValue",
-                "srcType": 1
-              },
-              "cvtLeft": null,
-              "cvtRight": {
-                "ctx": "hktr.ctx.conv.v2",
-                "ctxs": [
-                  6
-                ],
-                "el": "@round2",
-                "elRaw": "-; @round2",
-                "raw": "483545069"
-              },
-              "vdt": {
-                "ctx": "hktr.ctx.val.default",
-                "ctxs": [
-                  7
-                ],
-                "el": "regex:^\\d+(\\.\\d{2})?$",
-                "elRaw": "-; regex:^\\d+(\\.\\d{2})?$"
-              },
-              "result": "PASSED",
-              "remarks": "",
-              "resultText": "比对通过",
-              "resultDetails": [],
-              "prints": [
-                "[INFO] 比较字段 price（报告渠道 HKTR / 来源渠道 A）",
-                "[INFO] XPath=/HKTR/Report/Pricing/PriceDetails/PriceValue，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.v2,hktr.ctx.v3",
-                "[INFO] EO=4835450.69，AO=4835450.69 → PASSED"
-              ]
-            },
-            {
-              "id": "11",
-              "cmpLeft": {
-                "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": "hktr.ctx.v3 and hktr.ctx.default",
-                "ctxs": [
-                  3,
-                  1
-                ],
-                "elRaw": "-; src_remarks",
-                "el": "src_remarks",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。",
-                "ctx": "hktr.ctx.v3 and hktr.ctx.default",
-                "ctxs": [
-                  3,
-                  1
-                ],
-                "elRaw": "-; /HKTR/Report/Header/AdditionalInformation/Remarks",
-                "el": "/HKTR/Report/Header/AdditionalInformation/Remarks",
-                "srcType": 1
-              },
-              "cvtLeft": null,
-              "cvtRight": null,
-              "vdt": {
-                "ctx": "hktr.ctx.val.v2",
-                "ctxs": [
-                  8
-                ],
-                "el": "@maxLines<=3",
-                "elRaw": "-; @maxLines<=3"
-              },
-              "result": "FAILED",
-              "remarks": "内容差异",
-              "resultText": "比对未通过：内容差异",
-              "resultDetails": [],
-              "prints": [
-                "[INFO] 比较字段 remarks（报告渠道 HKTR / 来源渠道 A）",
-                "[INFO] XPath=/HKTR/Report/Header/AdditionalInformation/Remarks，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.default,hktr.ctx.val.default,hktr.ctx.default",
-                "[INFO] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。 → FAILED（内容差异）"
-              ]
-            }
-          ]
-        },
-        {
-          "name": "来源渠道 B",
-          "fields": [
-            {
-              "id": "1",
-              "cmpLeft": {
-                "value": "TX-2024-456576",
-                "ctx": "hktr.ctx.v2",
-                "ctxs": [
-                  2
-                ],
-                "elRaw": "-; src_tradeId",
-                "el": "src_tradeId",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "TX-2024-456575",
-                "ctx": "hktr.ctx.v2",
-                "ctxs": [
-                  2
-                ],
-                "elRaw": "-; /HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId",
-                "el": "/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId",
-                "srcType": 1
-              },
-              "cvtLeft": null,
-              "cvtRight": {
-                "ctx": "hktr.ctx.conv.v2",
-                "ctxs": [
-                  6
-                ],
-                "el": "@normalizeId",
-                "elRaw": "-; @normalizeId",
-                "raw": "2024-456575"
-              },
-              "vdt": null,
-              "result": "FAILED",
-              "remarks": "值不一致",
-              "resultText": "比对未通过：值不一致",
-              "resultDetails": [],
-              "prints": [
-                "[INFO] 比较字段 tradeId（报告渠道 HKTR / 来源渠道 B）",
-                "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.v2,hktr.ctx.val.v2",
-                "[INFO] EO=TX-2024-456576，AO=TX-2024-456575 → FAILED（值不一致）"
-              ]
-            },
-            {
-              "id": "2",
-              "cmpLeft": {
-                "value": "TX-2024-267095",
-                "ctx": "hktr.ctx.default and hktr.ctx.v3",
-                "ctxs": [
-                  1,
-                  3
-                ],
-                "elRaw": "-; src_reportId",
-                "el": "src_reportId",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "TX-2024-267093",
-                "ctx": "hktr.ctx.default and hktr.ctx.v3",
-                "ctxs": [
-                  1,
-                  3
-                ],
-                "elRaw": "-; /HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId",
-                "el": "/HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId",
-                "srcType": 1
-              },
-              "cvtLeft": null,
-              "cvtRight": {
-                "ctx": "hktr.ctx.conv.default",
-                "ctxs": [
-                  5
-                ],
-                "el": "@normalizeId",
-                "elRaw": "-; @normalizeId",
-                "raw": "2024-267093"
-              },
-              "vdt": {
-                "ctx": "hktr.ctx.val.default",
-                "ctxs": [
-                  7
-                ],
-                "el": "regex:^TX-\\d{6}$",
-                "elRaw": "-; regex:^TX-\\d{6}$"
-              },
-              "result": "FAILED",
-              "remarks": "值不一致",
-              "resultText": "比对未通过：值不一致",
-              "resultDetails": [],
-              "prints": [
-                "[INFO] 比较字段 reportId（报告渠道 HKTR / 来源渠道 B）",
-                "[INFO] XPath=/HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=hktr.ctx.default,hktr.ctx.conv.default,hktr.ctx.val.v2,hktr.ctx.v3",
-                "[INFO] EO=TX-2024-267095，AO=TX-2024-267093 → FAILED（值不一致）"
-              ]
-            },
-            {
-              "id": "3",
-              "cmpLeft": {
-                "value": "BSW",
-                "ctx": "hktr.ctx.v3",
-                "ctxs": [
-                  3
-                ],
-                "elRaw": "-; src_product",
-                "el": "src_product",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "IRS",
-                "ctx": "hktr.ctx.v3",
-                "ctxs": [
-                  3
-                ],
-                "elRaw": "-; /HKTR/Report/Product/ProductDetails/ProductIdentifier",
-                "el": "/HKTR/Report/Product/ProductDetails/ProductIdentifier",
-                "srcType": 1
-              },
-              "cvtLeft": null,
-              "cvtRight": null,
-              "vdt": {
-                "ctx": "hktr.ctx.val.v2",
-                "ctxs": [
-                  8
-                ],
-                "el": "enum: ['IRS', 'OIS', 'BSW', 'CDS', 'FXS', 'FXF']",
-                "elRaw": "-; enum: ['IRS', 'OIS', 'BSW', 'CDS', 'FXS', 'FXF']"
-              },
-              "result": "FAILED",
-              "remarks": "码值差异",
-              "resultText": "比对未通过：码值差异",
-              "resultDetails": [],
-              "prints": [
-                "[INFO] 比较字段 product（报告渠道 HKTR / 来源渠道 B）",
-                "[INFO] XPath=/HKTR/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.default,hktr.ctx.val.default",
-                "[INFO] EO=BSW，AO=IRS → FAILED（码值差异）"
-              ]
-            },
-            {
-              "id": "4",
-              "cmpLeft": {
-                "value": "4653964.49",
-                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
-                "ctxs": [
-                  4
-                ],
-                "elRaw": "-; src_notional",
-                "el": "src_notional",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "4654008.50",
-                "ctx": "hktr.ctx.extended.production.region.east.v2024.latest",
-                "ctxs": [
-                  4
-                ],
-                "elRaw": "-; /HKTR/Report/Notional/AmountDetails/NotionalValue",
-                "el": "/HKTR/Report/Notional/AmountDetails/NotionalValue",
-                "srcType": 1
-              },
-              "cvtLeft": {
-                "ctx": "hktr.ctx.conv.v2",
-                "ctxs": [
-                  6
-                ],
-                "el": "@round2",
-                "elRaw": "-; @round2",
-                "raw": "465396449"
-              },
-              "cvtRight": null,
-              "vdt": {
-                "ctx": "hktr.ctx.val.default",
-                "ctxs": [
-                  7
-                ],
-                "el": "regex:^\\d+(\\.\\d{2})?$",
-                "elRaw": "-; regex:^\\d+(\\.\\d{2})?$"
-              },
-              "result": "FAILED",
-              "remarks": "数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultText": "比对未通过：数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultDetails": [
-                {
-                  "label": "期望值 (EO, Unconverted)",
-                  "value": "465396449"
-                }
-              ],
-              "prints": [
-                "[INFO] 比较字段 notional（报告渠道 HKTR / 来源渠道 B）",
-                "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/NotionalValue，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest",
-                "[INFO] EO=4653964.49，AO=4654008.50 → FAILED（数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-              ]
-            },
-            {
-              "id": "5",
-              "cmpLeft": {
-                "value": "JPY",
-                "ctx": "hktr.ctx.v3",
-                "ctxs": [
-                  3
-                ],
-                "elRaw": "-; src_currency",
-                "el": "src_currency",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "USD",
-                "ctx": "hktr.ctx.v3",
-                "ctxs": [
-                  3
-                ],
-                "elRaw": "-; /HKTR/Report/Notional/AmountDetails/CurrencyCode",
-                "el": "/HKTR/Report/Notional/AmountDetails/CurrencyCode",
-                "srcType": 1
-              },
-              "cvtLeft": null,
-              "cvtRight": {
-                "ctx": "hktr.ctx.conv.v2 and hktr.ctx.conv.default",
-                "ctxs": [
-                  6,
-                  5
-                ],
-                "el": "@toUpper",
-                "elRaw": "-; @toUpper",
-                "raw": "usd"
-              },
-              "vdt": {
-                "ctx": "hktr.ctx.val.default",
-                "ctxs": [
-                  7
-                ],
-                "el": "enum: ['USD', 'CNY', 'HKD', 'JPY', 'EUR']",
-                "elRaw": "-; enum: ['USD', 'CNY', 'HKD', 'JPY', 'EUR']"
-              },
-              "result": "FAILED",
-              "remarks": "码值差异",
-              "resultText": "比对未通过：码值差异",
-              "resultDetails": [],
-              "prints": [
-                "[INFO] 比较字段 currency（报告渠道 HKTR / 来源渠道 B）",
-                "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.default,hktr.ctx.val.v2",
-                "[INFO] EO=JPY，AO=USD → FAILED（码值差异）"
-              ]
-            },
-            {
-              "id": "6",
-              "cmpLeft": {
-                "value": "2024-05-13",
-                "ctx": "hktr.ctx.default",
-                "ctxs": [
-                  1
-                ],
-                "elRaw": "-; src_tradeDate",
-                "el": "src_tradeDate",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "2024-05-18",
-                "ctx": "hktr.ctx.default",
-                "ctxs": [
-                  1
-                ],
-                "elRaw": "-; /HKTR/Report/Header/TradeDetails/TradeDate",
-                "el": "/HKTR/Report/Header/TradeDetails/TradeDate",
-                "srcType": 1
-              },
-              "cvtLeft": null,
-              "cvtRight": {
-                "ctx": "hktr.ctx.conv.v2",
-                "ctxs": [
-                  6
-                ],
-                "el": "@dateFormat(YYYY-MM-DD)",
-                "elRaw": "-; @dateFormat(YYYY-MM-DD)",
-                "raw": "20240518"
-              },
-              "vdt": {
-                "ctx": "hktr.ctx.val.v2",
-                "ctxs": [
-                  8
-                ],
-                "el": "regex:^\\d{4}-\\d{2}-\\d{2}$",
-                "elRaw": "-; regex:^\\d{4}-\\d{2}-\\d{2}$"
-              },
-              "result": "FAILED",
-              "remarks": "日期差异",
-              "resultText": "比对未通过：日期差异",
-              "resultDetails": [],
-              "prints": [
-                "[INFO] 比较字段 tradeDate（报告渠道 HKTR / 来源渠道 B）",
-                "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeDate，命中Ctx=hktr.ctx.default,hktr.ctx.conv.v2",
-                "[INFO] EO=2024-05-13，AO=2024-05-18 → FAILED（日期差异）"
-              ]
-            },
-            {
-              "id": "7",
-              "cmpLeft": {
-                "value": "2024-05-26",
-                "ctx": "hktr.ctx.v3",
-                "ctxs": [
-                  3
-                ],
-                "elRaw": "-; src_maturityDate",
-                "el": "src_maturityDate",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "2024-06-04",
-                "ctx": "hktr.ctx.v3",
-                "ctxs": [
-                  3
-                ],
-                "elRaw": "-; /HKTR/Report/Header/TradeDetails/MaturityDate",
-                "el": "/HKTR/Report/Header/TradeDetails/MaturityDate",
-                "srcType": 1
-              },
-              "cvtLeft": null,
-              "cvtRight": {
-                "ctx": "hktr.ctx.conv.default and hktr.ctx.conv.v2",
-                "ctxs": [
-                  5,
-                  6
-                ],
-                "el": "@dateFormat(YYYY-MM-DD)",
-                "elRaw": "-; @dateFormat(YYYY-MM-DD)",
-                "raw": "20240604"
-              },
-              "vdt": null,
-              "result": "FAILED",
-              "remarks": "日期差异",
-              "resultText": "比对未通过：日期差异",
-              "resultDetails": [],
-              "prints": [
-                "[INFO] 比较字段 maturityDate（报告渠道 HKTR / 来源渠道 B）",
-                "[INFO] XPath=/HKTR/Report/Header/TradeDetails/MaturityDate，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.default",
-                "[INFO] EO=2024-05-26，AO=2024-06-04 → FAILED（日期差异）"
-              ]
-            },
-            {
-              "id": "8",
-              "cmpLeft": {
-                "value": "Citi Group",
-                "ctx": "hktr.ctx.v2",
-                "ctxs": [
-                  2
-                ],
-                "elRaw": "-; src_counterparty",
-                "el": "src_counterparty",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "XYZ Bank",
-                "ctx": "hktr.ctx.v2",
-                "ctxs": [
-                  2
-                ],
-                "elRaw": "-; /HKTR/Report/Counterparty/PartyDetails/PartyName",
-                "el": "/HKTR/Report/Counterparty/PartyDetails/PartyName",
-                "srcType": 1
-              },
-              "cvtLeft": {
-                "ctx": "hktr.ctx.conv.default",
-                "ctxs": [
-                  5
-                ],
-                "el": "@trim",
-                "elRaw": "-; @trim",
-                "raw": "  Citi Group  "
-              },
-              "cvtRight": null,
-              "vdt": {
-                "ctx": "hktr.ctx.val.v2 and hktr.ctx.val.default",
-                "ctxs": [
-                  8,
-                  7
-                ],
-                "el": "@notNull",
-                "elRaw": "-; @notNull"
-              },
-              "result": "FAILED",
-              "remarks": "值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultText": "比对未通过：值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultDetails": [
-                {
-                  "label": "期望值 (EO, Unconverted)",
-                  "value": "  Citi Group  "
-                }
-              ],
-              "prints": [
-                "[INFO] 比较字段 counterparty（报告渠道 HKTR / 来源渠道 B）",
-                "[INFO] XPath=/HKTR/Report/Counterparty/PartyDetails/PartyName，命中Ctx=hktr.ctx.v2",
-                "[INFO] EO=Citi Group，AO=XYZ Bank → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-              ]
-            },
-            {
-              "id": "9",
-              "cmpLeft": {
-                "value": "Goldman Sachs",
-                "ctx": "hktr.ctx.v3",
-                "ctxs": [
-                  3
-                ],
-                "elRaw": "-; src_platform",
-                "el": "src_platform",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "Goldman Sachs",
-                "ctx": "hktr.ctx.v3",
-                "ctxs": [
-                  3
-                ],
-                "elRaw": "-; /HKTR/Report/Execution/PlatformDetails/PlatformIdentifier",
-                "el": "/HKTR/Report/Execution/PlatformDetails/PlatformIdentifier",
-                "srcType": 1
-              },
-              "cvtLeft": null,
-              "cvtRight": null,
-              "vdt": {
-                "ctx": "hktr.ctx.val.v2",
-                "ctxs": [
-                  8
-                ],
-                "el": "@length<=64",
-                "elRaw": "-; @length<=64"
-              },
-              "result": "PASSED",
-              "remarks": "",
-              "resultText": "比对通过",
-              "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 platform（报告渠道 HKTR / 来源渠道 B）",
-                "[INFO] XPath=/HKTR/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=hktr.ctx.v3",
-                "[INFO] EO=Goldman Sachs，AO=Goldman Sachs → PASSED"
+                "[INFO] XPath=/HKTR/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=hktr.ctx.default,hktr.ctx.val.default",
+                "[INFO] EO=Citi Group，AO=XYZ Bank → FAILED（值不一致）"
               ]
             },
             {
               "id": "10",
               "cmpLeft": {
-                "value": "8413715.75",
-                "ctx": "hktr.ctx.default",
+                "value": "8550470.83",
+                "ctx": "hktr.ctx.default and hktr.ctx.v3",
                 "ctxs": [
-                  1
+                  1,
+                  3
                 ],
                 "elRaw": "-; src_price",
                 "el": "src_price",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "8413737.76",
-                "ctx": "hktr.ctx.default",
+                "value": "8550542.84",
+                "ctx": "hktr.ctx.default and hktr.ctx.v3",
                 "ctxs": [
-                  1
+                  1,
+                  3
                 ],
                 "elRaw": "-; /HKTR/Report/Pricing/PriceDetails/PriceValue",
                 "el": "/HKTR/Report/Pricing/PriceDetails/PriceValue",
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": "hktr.ctx.conv.v2 and hktr.ctx.conv.default",
+                "ctx": "hktr.ctx.conv.default",
                 "ctxs": [
-                  6,
                   5
                 ],
                 "el": "@scale100",
                 "elRaw": "-; @scale100",
-                "raw": "841371575"
+                "raw": "855047083"
               },
               "cvtRight": {
-                "ctx": "hktr.ctx.conv.v2 and hktr.ctx.conv.default",
+                "ctx": "hktr.ctx.conv.v2",
                 "ctxs": [
-                  6,
-                  5
+                  6
                 ],
                 "el": "@scale100",
                 "elRaw": "-; @scale100",
-                "raw": "841373776"
+                "raw": "855054284"
               },
               "vdt": {
-                "ctx": "hktr.ctx.val.v2",
+                "ctx": "hktr.ctx.val.default",
                 "ctxs": [
-                  8
+                  7
                 ],
                 "el": "regex:^\\d+(\\.\\d{2})?$",
                 "elRaw": "-; regex:^\\d+(\\.\\d{2})?$"
@@ -1368,32 +1364,32 @@
               "resultDetails": [
                 {
                   "label": "期望值 (EO, Unconverted)",
-                  "value": "841371575"
+                  "value": "855047083"
                 }
               ],
               "prints": [
                 "[INFO] 比较字段 price（报告渠道 HKTR / 来源渠道 B）",
-                "[INFO] XPath=/HKTR/Report/Pricing/PriceDetails/PriceValue，命中Ctx=hktr.ctx.default",
-                "[INFO] EO=8413715.75，AO=8413737.76 → FAILED（数值差异）"
+                "[INFO] XPath=/HKTR/Report/Pricing/PriceDetails/PriceValue，命中Ctx=hktr.ctx.default,hktr.ctx.conv.v2,hktr.ctx.v3",
+                "[INFO] EO=8550470.83，AO=8550542.84 → FAILED（数值差异）"
               ]
             },
             {
               "id": "11",
               "cmpLeft": {
                 "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": "hktr.ctx.v3",
+                "ctx": "hktr.ctx.v2",
                 "ctxs": [
-                  3
+                  2
                 ],
                 "elRaw": "-; src_remarks",
                 "el": "src_remarks",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": "hktr.ctx.v3",
+                "value": "第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。",
+                "ctx": "hktr.ctx.v2",
                 "ctxs": [
-                  3
+                  2
                 ],
                 "elRaw": "-; /HKTR/Report/Header/AdditionalInformation/Remarks",
                 "el": "/HKTR/Report/Header/AdditionalInformation/Remarks",
@@ -1402,14 +1398,14 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": null,
-              "result": "PASSED",
-              "remarks": "",
-              "resultText": "比对通过",
+              "result": "FAILED",
+              "remarks": "内容差异",
+              "resultText": "比对未通过：内容差异",
               "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 remarks（报告渠道 HKTR / 来源渠道 B）",
-                "[INFO] XPath=/HKTR/Report/Header/AdditionalInformation/Remarks，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.default,hktr.ctx.val.v2",
-                "[INFO] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。 → PASSED"
+                "[INFO] XPath=/HKTR/Report/Header/AdditionalInformation/Remarks，命中Ctx=hktr.ctx.v2,hktr.ctx.val.default",
+                "[INFO] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。 → FAILED（内容差异）"
               ]
             }
           ]
@@ -1522,35 +1518,27 @@
             {
               "id": "1",
               "cmpLeft": {
-                "value": "TX-2024-946060",
-                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
+                "value": "TX-2024-611587",
+                "ctx": "jsfa.ctx.v3",
                 "ctxs": [
-                  12
+                  11
                 ],
                 "elRaw": "-; src_tradeId",
                 "el": "src_tradeId",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "TX-2024-946069",
-                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
+                "value": "TX-2024-611588",
+                "ctx": "jsfa.ctx.v3",
                 "ctxs": [
-                  12
+                  11
                 ],
                 "elRaw": "-; /JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId",
                 "el": "/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId",
                 "srcType": 1
               },
               "cvtLeft": null,
-              "cvtRight": {
-                "ctx": "jsfa.ctx.conv.default",
-                "ctxs": [
-                  13
-                ],
-                "el": "@normalizeId",
-                "elRaw": "-; @normalizeId",
-                "raw": "2024-946069"
-              },
+              "cvtRight": null,
               "vdt": {
                 "ctx": "jsfa.ctx.val.default",
                 "ctxs": [
@@ -1560,22 +1548,21 @@
                 "elRaw": "-; regex:^TX-\\d{6}$"
               },
               "result": "FAILED",
-              "remarks": "值不一致",
-              "resultText": "比对未通过：值不一致",
+              "remarks": "值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultText": "比对未通过：值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
               "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 tradeId（报告渠道 JSFA / 来源渠道 A）",
-                "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.v2,jsfa.ctx.val.v2",
-                "[INFO] EO=TX-2024-946060，AO=TX-2024-946069 → FAILED（值不一致）"
+                "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.v2,jsfa.ctx.val.default",
+                "[INFO] EO=TX-2024-611587，AO=TX-2024-611588 → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
               ]
             },
             {
               "id": "2",
               "cmpLeft": {
-                "value": "TX-2024-879351",
-                "ctx": "jsfa.ctx.default and jsfa.ctx.v2",
+                "value": "TX-2024-534788",
+                "ctx": "jsfa.ctx.v2",
                 "ctxs": [
-                  9,
                   10
                 ],
                 "elRaw": "-; src_reportId",
@@ -1583,10 +1570,9 @@
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "TX-2024-879356",
-                "ctx": "jsfa.ctx.default and jsfa.ctx.v2",
+                "value": "TX-2024-534781",
+                "ctx": "jsfa.ctx.v2",
                 "ctxs": [
-                  9,
                   10
                 ],
                 "elRaw": "-; /JSFA/Report/Header/ReportDetails/ReportIdentifier/ReportId",
@@ -1594,41 +1580,32 @@
                 "srcType": 1
               },
               "cvtLeft": null,
-              "cvtRight": {
-                "ctx": "jsfa.ctx.conv.v2",
-                "ctxs": [
-                  14
-                ],
-                "el": "@normalizeId",
-                "elRaw": "-; @normalizeId",
-                "raw": "2024-879356"
-              },
+              "cvtRight": null,
               "vdt": {
-                "ctx": "jsfa.ctx.val.v2 and jsfa.ctx.val.default",
+                "ctx": "jsfa.ctx.val.v2",
                 "ctxs": [
-                  16,
-                  15
+                  16
                 ],
                 "el": "regex:^TX-\\d{6}$",
                 "elRaw": "-; regex:^TX-\\d{6}$"
               },
               "result": "FAILED",
-              "remarks": "值不一致",
-              "resultText": "比对未通过：值不一致",
+              "remarks": "值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultText": "比对未通过：值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
               "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 reportId（报告渠道 JSFA / 来源渠道 A）",
-                "[INFO] XPath=/JSFA/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=jsfa.ctx.default,jsfa.ctx.conv.default,jsfa.ctx.val.default,jsfa.ctx.v2",
-                "[INFO] EO=TX-2024-879351，AO=TX-2024-879356 → FAILED（值不一致）"
+                "[INFO] XPath=/JSFA/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.default",
+                "[INFO] EO=TX-2024-534788，AO=TX-2024-534781 → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
               ]
             },
             {
               "id": "3",
               "cmpLeft": {
-                "value": "OIS",
-                "ctx": "jsfa.ctx.v3",
+                "value": "BSW",
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  11
+                  12
                 ],
                 "elRaw": "-; src_product",
                 "el": "src_product",
@@ -1636,16 +1613,33 @@
               },
               "cmpRight": {
                 "value": "IRS",
-                "ctx": "jsfa.ctx.v3",
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  11
+                  12
                 ],
                 "elRaw": "-; /JSFA/Report/Product/ProductDetails/ProductIdentifier",
                 "el": "/JSFA/Report/Product/ProductDetails/ProductIdentifier",
                 "srcType": 1
               },
-              "cvtLeft": null,
-              "cvtRight": null,
+              "cvtLeft": {
+                "ctx": "jsfa.ctx.conv.v2",
+                "ctxs": [
+                  14
+                ],
+                "el": "@toUpper",
+                "elRaw": "-; @toUpper",
+                "raw": "bsw"
+              },
+              "cvtRight": {
+                "ctx": "jsfa.ctx.conv.default and jsfa.ctx.conv.v2",
+                "ctxs": [
+                  13,
+                  14
+                ],
+                "el": "@toUpper",
+                "elRaw": "-; @toUpper",
+                "raw": "irs"
+              },
               "vdt": {
                 "ctx": "jsfa.ctx.val.default",
                 "ctxs": [
@@ -1657,69 +1651,77 @@
               "result": "FAILED",
               "remarks": "码值差异",
               "resultText": "比对未通过：码值差异",
-              "resultDetails": [],
+              "resultDetails": [
+                {
+                  "label": "期望值 (EO, Unconverted)",
+                  "value": "bsw"
+                }
+              ],
               "prints": [
                 "[INFO] 比较字段 product（报告渠道 JSFA / 来源渠道 A）",
-                "[INFO] XPath=/JSFA/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.default",
-                "[INFO] EO=OIS，AO=IRS → FAILED（码值差异）"
+                "[INFO] XPath=/JSFA/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.v2,jsfa.ctx.val.v2",
+                "[INFO] EO=BSW，AO=IRS → FAILED（码值差异）"
               ]
             },
             {
               "id": "4",
               "cmpLeft": {
-                "value": "8709390.74",
-                "ctx": "jsfa.ctx.default",
+                "value": "987210.43",
+                "ctx": "jsfa.ctx.v2 and jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  9
+                  10,
+                  12
                 ],
                 "elRaw": "-; src_notional",
                 "el": "src_notional",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "8709356.73",
-                "ctx": "jsfa.ctx.default",
+                "value": "987233.44",
+                "ctx": "jsfa.ctx.v2 and jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  9
+                  10,
+                  12
                 ],
                 "elRaw": "-; /JSFA/Report/Notional/AmountDetails/NotionalValue",
                 "el": "/JSFA/Report/Notional/AmountDetails/NotionalValue",
                 "srcType": 1
               },
-              "cvtLeft": {
+              "cvtLeft": null,
+              "cvtRight": {
                 "ctx": "jsfa.ctx.conv.default",
                 "ctxs": [
                   13
                 ],
-                "el": "@round2",
-                "elRaw": "-; @round2",
-                "raw": "870939074"
+                "el": "@scale100",
+                "elRaw": "-; @scale100",
+                "raw": "98723344"
               },
-              "cvtRight": null,
-              "vdt": null,
+              "vdt": {
+                "ctx": "jsfa.ctx.val.v2",
+                "ctxs": [
+                  16
+                ],
+                "el": "regex:^\\d+(\\.\\d{2})?$",
+                "elRaw": "-; regex:^\\d+(\\.\\d{2})?$"
+              },
               "result": "FAILED",
               "remarks": "数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
               "resultText": "比对未通过：数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultDetails": [
-                {
-                  "label": "期望值 (EO, Unconverted)",
-                  "value": "870939074"
-                }
-              ],
+              "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 notional（报告渠道 JSFA / 来源渠道 A）",
-                "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/NotionalValue，命中Ctx=jsfa.ctx.default,jsfa.ctx.val.v2",
-                "[INFO] EO=8709390.74，AO=8709356.73 → FAILED（数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
+                "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/NotionalValue，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.default,jsfa.ctx.extended.production.region.east.v2024.latest",
+                "[INFO] EO=987210.43，AO=987233.44 → FAILED（数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
               ]
             },
             {
               "id": "5",
               "cmpLeft": {
-                "value": "HKD",
-                "ctx": "jsfa.ctx.default and jsfa.ctx.v2",
+                "value": "EUR",
+                "ctx": "jsfa.ctx.v3",
                 "ctxs": [
-                  9,
-                  10
+                  11
                 ],
                 "elRaw": "-; src_currency",
                 "el": "src_currency",
@@ -1727,16 +1729,23 @@
               },
               "cmpRight": {
                 "value": "USD",
-                "ctx": "jsfa.ctx.default and jsfa.ctx.v2",
+                "ctx": "jsfa.ctx.v3",
                 "ctxs": [
-                  9,
-                  10
+                  11
                 ],
                 "elRaw": "-; /JSFA/Report/Notional/AmountDetails/CurrencyCode",
                 "el": "/JSFA/Report/Notional/AmountDetails/CurrencyCode",
                 "srcType": 1
               },
-              "cvtLeft": null,
+              "cvtLeft": {
+                "ctx": "jsfa.ctx.conv.v2",
+                "ctxs": [
+                  14
+                ],
+                "el": "@toUpper",
+                "elRaw": "-; @toUpper",
+                "raw": "eur"
+              },
               "cvtRight": null,
               "vdt": {
                 "ctx": "jsfa.ctx.val.v2",
@@ -1747,80 +1756,30 @@
                 "elRaw": "-; enum: ['USD', 'CNY', 'HKD', 'JPY', 'EUR']"
               },
               "result": "FAILED",
-              "remarks": "码值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultText": "比对未通过：码值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultDetails": [],
+              "remarks": "码值差异",
+              "resultText": "比对未通过：码值差异",
+              "resultDetails": [
+                {
+                  "label": "期望值 (EO, Unconverted)",
+                  "value": "eur"
+                }
+              ],
               "prints": [
                 "[INFO] 比较字段 currency（报告渠道 JSFA / 来源渠道 A）",
-                "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=jsfa.ctx.default,jsfa.ctx.val.v2,jsfa.ctx.v2",
-                "[INFO] EO=HKD，AO=USD → FAILED（码值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
+                "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.v2,jsfa.ctx.val.default",
+                "[INFO] EO=EUR，AO=USD → FAILED（码值差异）"
               ]
             },
             {
               "id": "6",
-              "cmpLeft": {
-                "value": "2024-06-29",
-                "ctx": "jsfa.ctx.v3",
-                "ctxs": [
-                  11
-                ],
-                "elRaw": "-; src_tradeDate",
-                "el": "src_tradeDate",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "2024-07-02",
-                "ctx": "jsfa.ctx.v3",
-                "ctxs": [
-                  11
-                ],
-                "elRaw": "-; /JSFA/Report/Header/TransactionDetails/TradeDate",
-                "el": "/JSFA/Report/Header/TransactionDetails/TradeDate",
-                "srcType": 1
-              },
-              "cvtLeft": {
-                "ctx": "jsfa.ctx.conv.v2",
-                "ctxs": [
-                  14
-                ],
-                "el": "@dateFormat(YYYY-MM-DD)",
-                "elRaw": "-; @dateFormat(YYYY-MM-DD)",
-                "raw": "20240629"
-              },
-              "cvtRight": null,
-              "vdt": {
-                "ctx": "jsfa.ctx.val.v2",
-                "ctxs": [
-                  16
-                ],
-                "el": "regex:^\\d{4}-\\d{2}-\\d{2}$",
-                "elRaw": "-; regex:^\\d{4}-\\d{2}-\\d{2}$"
-              },
-              "result": "FAILED",
-              "remarks": "日期差异",
-              "resultText": "比对未通过：日期差异",
-              "resultDetails": [
-                {
-                  "label": "期望值 (EO, Unconverted)",
-                  "value": "20240629"
-                }
-              ],
-              "prints": [
-                "[INFO] 比较字段 tradeDate（报告渠道 JSFA / 来源渠道 A）",
-                "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeDate，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.default",
-                "[INFO] EO=2024-06-29，AO=2024-07-02 → FAILED（日期差异）"
-              ]
-            },
-            {
-              "id": "7",
               "cmpLeft": {
                 "value": "2024-02-25",
                 "ctx": "jsfa.ctx.v2",
                 "ctxs": [
                   10
                 ],
-                "elRaw": "-; src_settlementDate",
-                "el": "src_settlementDate",
+                "elRaw": "-; src_tradeDate",
+                "el": "src_tradeDate",
                 "srcType": 2
               },
               "cmpRight": {
@@ -1829,8 +1788,8 @@
                 "ctxs": [
                   10
                 ],
-                "elRaw": "-; /JSFA/Report/Header/SettlementDetails/SettlementDate",
-                "el": "/JSFA/Report/Header/SettlementDetails/SettlementDate",
+                "elRaw": "-; /JSFA/Report/Header/TransactionDetails/TradeDate",
+                "el": "/JSFA/Report/Header/TransactionDetails/TradeDate",
                 "srcType": 1
               },
               "cvtLeft": {
@@ -1855,31 +1814,31 @@
                 }
               ],
               "prints": [
-                "[INFO] 比较字段 settlementDate（报告渠道 JSFA / 来源渠道 A）",
-                "[INFO] XPath=/JSFA/Report/Header/SettlementDetails/SettlementDate，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.default",
+                "[INFO] 比较字段 tradeDate（报告渠道 JSFA / 来源渠道 A）",
+                "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeDate，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.default",
                 "[INFO] EO=2024-02-25，AO=2024-03-01 → FAILED（日期差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
               ]
             },
             {
-              "id": "8",
+              "id": "7",
               "cmpLeft": {
-                "value": "",
+                "value": "2024-01-23",
                 "ctx": "jsfa.ctx.v3",
                 "ctxs": [
                   11
                 ],
-                "elRaw": "-; src_counterparty",
-                "el": "src_counterparty",
+                "elRaw": "-; src_settlementDate",
+                "el": "src_settlementDate",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "",
+                "value": "2024-01-23",
                 "ctx": "jsfa.ctx.v3",
                 "ctxs": [
                   11
                 ],
-                "elRaw": "-; /JSFA/Report/Counterparty/PartyDetails/PartyName",
-                "el": "/JSFA/Report/Counterparty/PartyDetails/PartyName",
+                "elRaw": "-; /JSFA/Report/Header/SettlementDetails/SettlementDate",
+                "el": "/JSFA/Report/Header/SettlementDetails/SettlementDate",
                 "srcType": 1
               },
               "cvtLeft": {
@@ -1887,9 +1846,9 @@
                 "ctxs": [
                   14
                 ],
-                "el": "@normalizeSpace",
-                "elRaw": "-; @normalizeSpace",
-                "raw": "    "
+                "el": "@dateFormat(YYYY-MM-DD)",
+                "elRaw": "-; @dateFormat(YYYY-MM-DD)",
+                "raw": "20240123"
               },
               "cvtRight": null,
               "vdt": null,
@@ -1899,53 +1858,51 @@
               "resultDetails": [
                 {
                   "label": "期望值 (EO, Unconverted)",
-                  "value": "    "
+                  "value": "20240123"
                 }
               ],
               "prints": [
-                "[INFO] 比较字段 counterparty（报告渠道 JSFA / 来源渠道 A）",
-                "[INFO] XPath=/JSFA/Report/Counterparty/PartyDetails/PartyName，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.v2",
-                "[INFO] EO=，AO= → PASSED"
+                "[INFO] 比较字段 settlementDate（报告渠道 JSFA / 来源渠道 A）",
+                "[INFO] XPath=/JSFA/Report/Header/SettlementDetails/SettlementDate，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.v2",
+                "[INFO] EO=2024-01-23，AO=2024-01-23 → PASSED"
               ]
             },
             {
-              "id": "9",
+              "id": "8",
               "cmpLeft": {
-                "value": "Nomura",
-                "ctx": "jsfa.ctx.v3",
+                "value": "Citi Group",
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  11
+                  12
                 ],
-                "elRaw": "-; src_platform",
-                "el": "src_platform",
+                "elRaw": "-; src_counterparty",
+                "el": "src_counterparty",
                 "srcType": 2
               },
               "cmpRight": {
                 "value": "XYZ Bank",
-                "ctx": "jsfa.ctx.v3",
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  11
+                  12
                 ],
-                "elRaw": "-; /JSFA/Report/Execution/PlatformDetails/PlatformIdentifier",
-                "el": "/JSFA/Report/Execution/PlatformDetails/PlatformIdentifier",
+                "elRaw": "-; /JSFA/Report/Counterparty/PartyDetails/PartyName",
+                "el": "/JSFA/Report/Counterparty/PartyDetails/PartyName",
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": "jsfa.ctx.conv.v2 and jsfa.ctx.conv.default",
+                "ctx": "jsfa.ctx.conv.default",
                 "ctxs": [
-                  14,
                   13
                 ],
-                "el": "@normalizeSpace",
-                "elRaw": "-; @normalizeSpace",
-                "raw": "  Nomura  "
+                "el": "@trim",
+                "elRaw": "-; @trim",
+                "raw": "  Citi Group  "
               },
               "cvtRight": null,
               "vdt": {
-                "ctx": "jsfa.ctx.val.v2 and jsfa.ctx.val.default",
+                "ctx": "jsfa.ctx.val.v2",
                 "ctxs": [
-                  16,
-                  15
+                  16
                 ],
                 "el": "@length<=64",
                 "elRaw": "-; @length<=64"
@@ -1956,70 +1913,127 @@
               "resultDetails": [
                 {
                   "label": "期望值 (EO, Unconverted)",
-                  "value": "  Nomura  "
+                  "value": "  Citi Group  "
+                }
+              ],
+              "prints": [
+                "[INFO] 比较字段 counterparty（报告渠道 JSFA / 来源渠道 A）",
+                "[INFO] XPath=/JSFA/Report/Counterparty/PartyDetails/PartyName，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.v2",
+                "[INFO] EO=Citi Group，AO=XYZ Bank → FAILED（值不一致）"
+              ]
+            },
+            {
+              "id": "9",
+              "cmpLeft": {
+                "value": "ABC​Bank",
+                "ctx": "jsfa.ctx.v2",
+                "ctxs": [
+                  10
+                ],
+                "elRaw": "-; src_platform",
+                "el": "src_platform",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "ABC​Bank",
+                "ctx": "jsfa.ctx.v2",
+                "ctxs": [
+                  10
+                ],
+                "elRaw": "-; /JSFA/Report/Execution/PlatformDetails/PlatformIdentifier",
+                "el": "/JSFA/Report/Execution/PlatformDetails/PlatformIdentifier",
+                "srcType": 1
+              },
+              "cvtLeft": {
+                "ctx": "jsfa.ctx.conv.default and jsfa.ctx.conv.v2",
+                "ctxs": [
+                  13,
+                  14
+                ],
+                "el": "@normalizeSpace",
+                "elRaw": "-; @normalizeSpace",
+                "raw": "  ABC​Bank  "
+              },
+              "cvtRight": null,
+              "vdt": {
+                "ctx": "jsfa.ctx.val.default",
+                "ctxs": [
+                  15
+                ],
+                "el": "@length<=64",
+                "elRaw": "-; @length<=64"
+              },
+              "result": "PASSED",
+              "remarks": "",
+              "resultText": "比对通过",
+              "resultDetails": [
+                {
+                  "label": "期望值 (EO, Unconverted)",
+                  "value": "  ABC​Bank  "
                 }
               ],
               "prints": [
                 "[INFO] 比较字段 platform（报告渠道 JSFA / 来源渠道 A）",
-                "[INFO] XPath=/JSFA/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.v2,jsfa.ctx.val.default",
-                "[INFO] EO=Nomura，AO=XYZ Bank → FAILED（值不一致）"
+                "[INFO] XPath=/JSFA/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.default,jsfa.ctx.val.v2",
+                "[INFO] EO=ABC​Bank，AO=ABC​Bank → PASSED"
               ]
             },
             {
               "id": "10",
               "cmpLeft": {
-                "value": "813221.92",
-                "ctx": "jsfa.ctx.default",
+                "value": "5738969.39",
+                "ctx": "jsfa.ctx.v2",
                 "ctxs": [
-                  9
+                  10
                 ],
                 "elRaw": "-; src_price",
                 "el": "src_price",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "813313.93",
-                "ctx": "jsfa.ctx.default",
+                "value": "5738894.38",
+                "ctx": "jsfa.ctx.v2",
                 "ctxs": [
-                  9
+                  10
                 ],
                 "elRaw": "-; /JSFA/Report/Pricing/PriceDetails/PriceValue",
                 "el": "/JSFA/Report/Pricing/PriceDetails/PriceValue",
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": "jsfa.ctx.conv.default",
+                "ctx": "jsfa.ctx.conv.default and jsfa.ctx.conv.v2",
                 "ctxs": [
-                  13
+                  13,
+                  14
                 ],
-                "el": "@round2",
-                "elRaw": "-; @round2",
-                "raw": "81322192"
+                "el": "@scale100",
+                "elRaw": "-; @scale100",
+                "raw": "573896939"
               },
               "cvtRight": null,
               "vdt": null,
               "result": "FAILED",
-              "remarks": "数值差异",
-              "resultText": "比对未通过：数值差异",
+              "remarks": "数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultText": "比对未通过：数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
               "resultDetails": [
                 {
                   "label": "期望值 (EO, Unconverted)",
-                  "value": "81322192"
+                  "value": "573896939"
                 }
               ],
               "prints": [
                 "[INFO] 比较字段 price（报告渠道 JSFA / 来源渠道 A）",
-                "[INFO] XPath=/JSFA/Report/Pricing/PriceDetails/PriceValue，命中Ctx=jsfa.ctx.default,jsfa.ctx.conv.default",
-                "[INFO] EO=813221.92，AO=813313.93 → FAILED（数值差异）"
+                "[INFO] XPath=/JSFA/Report/Pricing/PriceDetails/PriceValue，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.v2",
+                "[INFO] EO=5738969.39，AO=5738894.38 → FAILED（数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
               ]
             },
             {
               "id": "11",
               "cmpLeft": {
                 "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
+                "ctx": "jsfa.ctx.v3",
                 "ctxs": [
-                  12
+                  11
                 ],
                 "elRaw": "-; src_remarks",
                 "el": "src_remarks",
@@ -2027,23 +2041,15 @@
               },
               "cmpRight": {
                 "value": "第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。",
-                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
+                "ctx": "jsfa.ctx.v3",
                 "ctxs": [
-                  12
+                  11
                 ],
                 "elRaw": "-; /JSFA/Report/Header/AdditionalInformation/Remarks",
                 "el": "/JSFA/Report/Header/AdditionalInformation/Remarks",
                 "srcType": 1
               },
-              "cvtLeft": {
-                "ctx": "jsfa.ctx.conv.default",
-                "ctxs": [
-                  13
-                ],
-                "el": "@trimLines",
-                "elRaw": "-; @trimLines",
-                "raw": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。"
-              },
+              "cvtLeft": null,
               "cvtRight": {
                 "ctx": "jsfa.ctx.conv.v2",
                 "ctxs": [
@@ -2053,26 +2059,14 @@
                 "elRaw": "-; @trimLines",
                 "raw": "第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。"
               },
-              "vdt": {
-                "ctx": "jsfa.ctx.val.v2",
-                "ctxs": [
-                  16
-                ],
-                "el": "@maxLines<=3",
-                "elRaw": "-; @maxLines<=3"
-              },
+              "vdt": null,
               "result": "FAILED",
               "remarks": "内容差异",
               "resultText": "比对未通过：内容差异",
-              "resultDetails": [
-                {
-                  "label": "期望值 (EO, Unconverted)",
-                  "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。"
-                }
-              ],
+              "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 remarks（报告渠道 JSFA / 来源渠道 A）",
-                "[INFO] XPath=/JSFA/Report/Header/AdditionalInformation/Remarks，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.default,jsfa.ctx.val.default",
+                "[INFO] XPath=/JSFA/Report/Header/AdditionalInformation/Remarks，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.default,jsfa.ctx.val.v2",
                 "[INFO] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。 → FAILED（内容差异）"
               ]
             }
@@ -2084,85 +2078,79 @@
             {
               "id": "1",
               "cmpLeft": {
-                "value": "TX-2024-771337",
-                "ctx": "jsfa.ctx.v2",
+                "value": "TX-2024-340388",
+                "ctx": "jsfa.ctx.default",
                 "ctxs": [
-                  10
+                  9
                 ],
                 "elRaw": "-; src_tradeId",
                 "el": "src_tradeId",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "TX-2024-771330",
-                "ctx": "jsfa.ctx.v2",
+                "value": "TX-2024-340385",
+                "ctx": "jsfa.ctx.default",
                 "ctxs": [
-                  10
+                  9
                 ],
                 "elRaw": "-; /JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId",
                 "el": "/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId",
                 "srcType": 1
               },
-              "cvtLeft": {
-                "ctx": "jsfa.ctx.conv.v2",
+              "cvtLeft": null,
+              "cvtRight": {
+                "ctx": "jsfa.ctx.conv.default and jsfa.ctx.conv.v2",
                 "ctxs": [
+                  13,
                   14
                 ],
                 "el": "@normalizeId",
                 "elRaw": "-; @normalizeId",
-                "raw": "2024-771337"
+                "raw": "2024-340385"
               },
-              "cvtRight": null,
-              "vdt": {
-                "ctx": "jsfa.ctx.val.v2 and jsfa.ctx.val.default",
-                "ctxs": [
-                  16,
-                  15
-                ],
-                "el": "regex:^TX-\\d{6}$",
-                "elRaw": "-; regex:^TX-\\d{6}$"
-              },
+              "vdt": null,
               "result": "FAILED",
-              "remarks": "值不一致",
-              "resultText": "比对未通过：值不一致",
-              "resultDetails": [
-                {
-                  "label": "期望值 (EO, Unconverted)",
-                  "value": "2024-771337"
-                }
-              ],
+              "remarks": "值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultText": "比对未通过：值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 tradeId（报告渠道 JSFA / 来源渠道 B）",
-                "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId，命中Ctx=jsfa.ctx.v2",
-                "[INFO] EO=TX-2024-771337，AO=TX-2024-771330 → FAILED（值不一致）"
+                "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId，命中Ctx=jsfa.ctx.default,jsfa.ctx.conv.default,jsfa.ctx.val.default",
+                "[INFO] EO=TX-2024-340388，AO=TX-2024-340385 → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
               ]
             },
             {
               "id": "2",
               "cmpLeft": {
-                "value": "TX-2024-717290",
-                "ctx": "jsfa.ctx.v2 and jsfa.ctx.default",
+                "value": "TX-2024-661242",
+                "ctx": "jsfa.ctx.v2",
                 "ctxs": [
-                  10,
-                  9
+                  10
                 ],
                 "elRaw": "-; src_reportId",
                 "el": "src_reportId",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "TX-2024-717294",
-                "ctx": "jsfa.ctx.v2 and jsfa.ctx.default",
+                "value": "TX-2024-661245",
+                "ctx": "jsfa.ctx.v2",
                 "ctxs": [
-                  10,
-                  9
+                  10
                 ],
                 "elRaw": "-; /JSFA/Report/Header/ReportDetails/ReportIdentifier/ReportId",
                 "el": "/JSFA/Report/Header/ReportDetails/ReportIdentifier/ReportId",
                 "srcType": 1
               },
               "cvtLeft": null,
-              "cvtRight": null,
+              "cvtRight": {
+                "ctx": "jsfa.ctx.conv.v2",
+                "ctxs": [
+                  14
+                ],
+                "el": "@normalizeId",
+                "elRaw": "-; @normalizeId",
+                "raw": "2024-661245"
+              },
               "vdt": {
                 "ctx": "jsfa.ctx.val.default",
                 "ctxs": [
@@ -2177,17 +2165,17 @@
               "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 reportId（报告渠道 JSFA / 来源渠道 B）",
-                "[INFO] XPath=/JSFA/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.default,jsfa.ctx.val.default,jsfa.ctx.default",
-                "[INFO] EO=TX-2024-717290，AO=TX-2024-717294 → FAILED（值不一致）"
+                "[INFO] XPath=/JSFA/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.v2",
+                "[INFO] EO=TX-2024-661242，AO=TX-2024-661245 → FAILED（值不一致）"
               ]
             },
             {
               "id": "3",
               "cmpLeft": {
-                "value": "OIS",
-                "ctx": "jsfa.ctx.default",
+                "value": "FXF",
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  9
+                  12
                 ],
                 "elRaw": "-; src_product",
                 "el": "src_product",
@@ -2195,15 +2183,24 @@
               },
               "cmpRight": {
                 "value": "IRS",
-                "ctx": "jsfa.ctx.default",
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  9
+                  12
                 ],
                 "elRaw": "-; /JSFA/Report/Product/ProductDetails/ProductIdentifier",
                 "el": "/JSFA/Report/Product/ProductDetails/ProductIdentifier",
                 "srcType": 1
               },
-              "cvtLeft": null,
+              "cvtLeft": {
+                "ctx": "jsfa.ctx.conv.v2 and jsfa.ctx.conv.default",
+                "ctxs": [
+                  14,
+                  13
+                ],
+                "el": "@toUpper",
+                "elRaw": "-; @toUpper",
+                "raw": "fxf"
+              },
               "cvtRight": {
                 "ctx": "jsfa.ctx.conv.v2",
                 "ctxs": [
@@ -2214,9 +2211,9 @@
                 "raw": "irs"
               },
               "vdt": {
-                "ctx": "jsfa.ctx.val.default",
+                "ctx": "jsfa.ctx.val.v2",
                 "ctxs": [
-                  15
+                  16
                 ],
                 "el": "enum: ['IRS', 'OIS', 'BSW', 'CDS', 'FXS', 'FXF']",
                 "elRaw": "-; enum: ['IRS', 'OIS', 'BSW', 'CDS', 'FXS', 'FXF']"
@@ -2224,30 +2221,37 @@
               "result": "FAILED",
               "remarks": "码值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
               "resultText": "比对未通过：码值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultDetails": [],
+              "resultDetails": [
+                {
+                  "label": "期望值 (EO, Unconverted)",
+                  "value": "fxf"
+                }
+              ],
               "prints": [
                 "[INFO] 比较字段 product（报告渠道 JSFA / 来源渠道 B）",
-                "[INFO] XPath=/JSFA/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=jsfa.ctx.default",
-                "[INFO] EO=OIS，AO=IRS → FAILED（码值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
+                "[INFO] XPath=/JSFA/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.default",
+                "[INFO] EO=FXF，AO=IRS → FAILED（码值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
               ]
             },
             {
               "id": "4",
               "cmpLeft": {
-                "value": "9772882.35",
-                "ctx": "jsfa.ctx.default",
+                "value": "2346496.36",
+                "ctx": "jsfa.ctx.default and jsfa.ctx.v2",
                 "ctxs": [
-                  9
+                  9,
+                  10
                 ],
                 "elRaw": "-; src_notional",
                 "el": "src_notional",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "9772930.36",
-                "ctx": "jsfa.ctx.default",
+                "value": "2346474.35",
+                "ctx": "jsfa.ctx.default and jsfa.ctx.v2",
                 "ctxs": [
-                  9
+                  9,
+                  10
                 ],
                 "elRaw": "-; /JSFA/Report/Notional/AmountDetails/NotionalValue",
                 "el": "/JSFA/Report/Notional/AmountDetails/NotionalValue",
@@ -2260,47 +2264,33 @@
                 ],
                 "el": "@scale100",
                 "elRaw": "-; @scale100",
-                "raw": "977288235"
+                "raw": "234649636"
               },
-              "cvtRight": {
-                "ctx": "jsfa.ctx.conv.v2",
-                "ctxs": [
-                  14
-                ],
-                "el": "@round2",
-                "elRaw": "-; @round2",
-                "raw": "977293036"
-              },
-              "vdt": {
-                "ctx": "jsfa.ctx.val.default",
-                "ctxs": [
-                  15
-                ],
-                "el": "regex:^\\d+(\\.\\d{2})?$",
-                "elRaw": "-; regex:^\\d+(\\.\\d{2})?$"
-              },
+              "cvtRight": null,
+              "vdt": null,
               "result": "FAILED",
               "remarks": "数值差异",
               "resultText": "比对未通过：数值差异",
               "resultDetails": [
                 {
                   "label": "期望值 (EO, Unconverted)",
-                  "value": "977288235"
+                  "value": "234649636"
                 }
               ],
               "prints": [
                 "[INFO] 比较字段 notional（报告渠道 JSFA / 来源渠道 B）",
-                "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/NotionalValue，命中Ctx=jsfa.ctx.default,jsfa.ctx.val.default",
-                "[INFO] EO=9772882.35，AO=9772930.36 → FAILED（数值差异）"
+                "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/NotionalValue，命中Ctx=jsfa.ctx.default,jsfa.ctx.v2",
+                "[INFO] EO=2346496.36，AO=2346474.35 → FAILED（数值差异）"
               ]
             },
             {
               "id": "5",
               "cmpLeft": {
-                "value": "EUR",
-                "ctx": "jsfa.ctx.default",
+                "value": "CNY",
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest and jsfa.ctx.v3",
                 "ctxs": [
-                  9
+                  12,
+                  11
                 ],
                 "elRaw": "-; src_currency",
                 "el": "src_currency",
@@ -2308,108 +2298,93 @@
               },
               "cmpRight": {
                 "value": "USD",
-                "ctx": "jsfa.ctx.default",
+                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest and jsfa.ctx.v3",
                 "ctxs": [
-                  9
+                  12,
+                  11
                 ],
                 "elRaw": "-; /JSFA/Report/Notional/AmountDetails/CurrencyCode",
                 "el": "/JSFA/Report/Notional/AmountDetails/CurrencyCode",
                 "srcType": 1
               },
-              "cvtLeft": {
-                "ctx": "jsfa.ctx.conv.default",
-                "ctxs": [
-                  13
-                ],
-                "el": "@toUpper",
-                "elRaw": "-; @toUpper",
-                "raw": "eur"
-              },
+              "cvtLeft": null,
               "cvtRight": null,
               "vdt": null,
               "result": "FAILED",
               "remarks": "码值差异",
               "resultText": "比对未通过：码值差异",
-              "resultDetails": [
-                {
-                  "label": "期望值 (EO, Unconverted)",
-                  "value": "eur"
-                }
-              ],
+              "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 currency（报告渠道 JSFA / 来源渠道 B）",
-                "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=jsfa.ctx.default,jsfa.ctx.conv.default,jsfa.ctx.val.v2",
-                "[INFO] EO=EUR，AO=USD → FAILED（码值差异）"
+                "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.v2,jsfa.ctx.val.default,jsfa.ctx.v3",
+                "[INFO] EO=CNY，AO=USD → FAILED（码值差异）"
               ]
             },
             {
               "id": "6",
               "cmpLeft": {
-                "value": "2024-05-24",
-                "ctx": "jsfa.ctx.v2",
+                "value": "2024-11-19",
+                "ctx": "jsfa.ctx.v3",
                 "ctxs": [
-                  10
+                  11
                 ],
                 "elRaw": "-; src_tradeDate",
                 "el": "src_tradeDate",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "2024-05-27",
-                "ctx": "jsfa.ctx.v2",
+                "value": "2024-11-24",
+                "ctx": "jsfa.ctx.v3",
                 "ctxs": [
-                  10
+                  11
                 ],
                 "elRaw": "-; /JSFA/Report/Header/TransactionDetails/TradeDate",
                 "el": "/JSFA/Report/Header/TransactionDetails/TradeDate",
                 "srcType": 1
               },
-              "cvtLeft": null,
-              "cvtRight": {
+              "cvtLeft": {
                 "ctx": "jsfa.ctx.conv.v2",
                 "ctxs": [
                   14
                 ],
                 "el": "@dateFormat(YYYY-MM-DD)",
                 "elRaw": "-; @dateFormat(YYYY-MM-DD)",
-                "raw": "20240527"
+                "raw": "20241119"
               },
-              "vdt": {
-                "ctx": "jsfa.ctx.val.v2 and jsfa.ctx.val.default",
-                "ctxs": [
-                  16,
-                  15
-                ],
-                "el": "regex:^\\d{4}-\\d{2}-\\d{2}$",
-                "elRaw": "-; regex:^\\d{4}-\\d{2}-\\d{2}$"
-              },
+              "cvtRight": null,
+              "vdt": null,
               "result": "FAILED",
               "remarks": "日期差异",
               "resultText": "比对未通过：日期差异",
-              "resultDetails": [],
+              "resultDetails": [
+                {
+                  "label": "期望值 (EO, Unconverted)",
+                  "value": "20241119"
+                }
+              ],
               "prints": [
                 "[INFO] 比较字段 tradeDate（报告渠道 JSFA / 来源渠道 B）",
-                "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeDate，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.v2",
-                "[INFO] EO=2024-05-24，AO=2024-05-27 → FAILED（日期差异）"
+                "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeDate，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.default",
+                "[INFO] EO=2024-11-19，AO=2024-11-24 → FAILED（日期差异）"
               ]
             },
             {
               "id": "7",
               "cmpLeft": {
-                "value": "2024-07-20",
-                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
+                "value": "2024-01-31",
+                "ctx": "jsfa.ctx.default",
                 "ctxs": [
-                  12
+                  9
                 ],
                 "elRaw": "-; src_settlementDate",
                 "el": "src_settlementDate",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "2024-07-23",
-                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
+                "value": "2024-02-06",
+                "ctx": "jsfa.ctx.default",
                 "ctxs": [
-                  12
+                  9
                 ],
                 "elRaw": "-; /JSFA/Report/Header/SettlementDetails/SettlementDate",
                 "el": "/JSFA/Report/Header/SettlementDetails/SettlementDate",
@@ -2426,19 +2401,19 @@
                 "elRaw": "-; regex:^\\d{4}-\\d{2}-\\d{2}$"
               },
               "result": "FAILED",
-              "remarks": "日期差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultText": "比对未通过：日期差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "remarks": "日期差异",
+              "resultText": "比对未通过：日期差异",
               "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 settlementDate（报告渠道 JSFA / 来源渠道 B）",
-                "[INFO] XPath=/JSFA/Report/Header/SettlementDetails/SettlementDate，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest",
-                "[INFO] EO=2024-07-20，AO=2024-07-23 → FAILED（日期差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
+                "[INFO] XPath=/JSFA/Report/Header/SettlementDetails/SettlementDate，命中Ctx=jsfa.ctx.default,jsfa.ctx.val.v2",
+                "[INFO] EO=2024-01-31，AO=2024-02-06 → FAILED（日期差异）"
               ]
             },
             {
               "id": "8",
               "cmpLeft": {
-                "value": "Citi Group",
+                "value": "HSBC",
                 "ctx": "jsfa.ctx.v3",
                 "ctxs": [
                   11
@@ -2457,16 +2432,7 @@
                 "el": "/JSFA/Report/Counterparty/PartyDetails/PartyName",
                 "srcType": 1
               },
-              "cvtLeft": {
-                "ctx": "jsfa.ctx.conv.v2 and jsfa.ctx.conv.default",
-                "ctxs": [
-                  14,
-                  13
-                ],
-                "el": "@normalizeSpace",
-                "elRaw": "-; @normalizeSpace",
-                "raw": "  Citi Group  "
-              },
+              "cvtLeft": null,
               "cvtRight": {
                 "ctx": "jsfa.ctx.conv.v2",
                 "ctxs": [
@@ -2476,81 +2442,78 @@
                 "elRaw": "-; @normalizeSpace",
                 "raw": "  XYZ Bank  "
               },
-              "vdt": {
-                "ctx": "jsfa.ctx.val.v2",
-                "ctxs": [
-                  16
-                ],
-                "el": "@notNull",
-                "elRaw": "-; @notNull"
-              },
+              "vdt": null,
               "result": "FAILED",
               "remarks": "值不一致",
               "resultText": "比对未通过：值不一致",
-              "resultDetails": [
-                {
-                  "label": "期望值 (EO, Unconverted)",
-                  "value": "  Citi Group  "
-                }
-              ],
+              "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 counterparty（报告渠道 JSFA / 来源渠道 B）",
-                "[INFO] XPath=/JSFA/Report/Counterparty/PartyDetails/PartyName，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.default,jsfa.ctx.val.v2",
-                "[INFO] EO=Citi Group，AO=XYZ Bank → FAILED（值不一致）"
+                "[INFO] XPath=/JSFA/Report/Counterparty/PartyDetails/PartyName，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.v2,jsfa.ctx.val.default",
+                "[INFO] EO=HSBC，AO=XYZ Bank → FAILED（值不一致）"
               ]
             },
             {
               "id": "9",
               "cmpLeft": {
-                "value": "Nomura",
-                "ctx": "jsfa.ctx.default",
+                "value": "Goldman Sachs",
+                "ctx": "jsfa.ctx.v2 and jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  9
+                  10,
+                  12
                 ],
                 "elRaw": "-; src_platform",
                 "el": "src_platform",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "Nomura",
-                "ctx": "jsfa.ctx.default",
+                "value": "XYZ Bank",
+                "ctx": "jsfa.ctx.v2 and jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  9
+                  10,
+                  12
                 ],
                 "elRaw": "-; /JSFA/Report/Execution/PlatformDetails/PlatformIdentifier",
                 "el": "/JSFA/Report/Execution/PlatformDetails/PlatformIdentifier",
                 "srcType": 1
               },
               "cvtLeft": {
-                "ctx": "jsfa.ctx.conv.default",
+                "ctx": "jsfa.ctx.conv.v2",
                 "ctxs": [
-                  13
+                  14
                 ],
                 "el": "@trim",
                 "elRaw": "-; @trim",
-                "raw": "  Nomura  "
+                "raw": "  Goldman Sachs  "
               },
               "cvtRight": null,
-              "vdt": null,
-              "result": "PASSED",
-              "remarks": "",
-              "resultText": "比对通过",
+              "vdt": {
+                "ctx": "jsfa.ctx.val.v2",
+                "ctxs": [
+                  16
+                ],
+                "el": "@length<=64",
+                "elRaw": "-; @length<=64"
+              },
+              "result": "FAILED",
+              "remarks": "值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultText": "比对未通过：值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
               "resultDetails": [
                 {
                   "label": "期望值 (EO, Unconverted)",
-                  "value": "  Nomura  "
+                  "value": "  Goldman Sachs  "
                 }
               ],
               "prints": [
                 "[INFO] 比较字段 platform（报告渠道 JSFA / 来源渠道 B）",
-                "[INFO] XPath=/JSFA/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=jsfa.ctx.default,jsfa.ctx.conv.default,jsfa.ctx.val.v2",
-                "[INFO] EO=Nomura，AO=Nomura → PASSED"
+                "[INFO] XPath=/JSFA/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.v2,jsfa.ctx.extended.production.region.east.v2024.latest",
+                "[INFO] EO=Goldman Sachs，AO=XYZ Bank → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
               ]
             },
             {
               "id": "10",
               "cmpLeft": {
-                "value": "4968148.67",
+                "value": "4071675.37",
                 "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   12
@@ -2560,7 +2523,7 @@
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "4968077.66",
+                "value": "4071751.38",
                 "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   12
@@ -2569,59 +2532,80 @@
                 "el": "/JSFA/Report/Pricing/PriceDetails/PriceValue",
                 "srcType": 1
               },
-              "cvtLeft": null,
-              "cvtRight": null,
-              "vdt": null,
+              "cvtLeft": {
+                "ctx": "jsfa.ctx.conv.v2",
+                "ctxs": [
+                  14
+                ],
+                "el": "@round2",
+                "elRaw": "-; @round2",
+                "raw": "407167537"
+              },
+              "cvtRight": {
+                "ctx": "jsfa.ctx.conv.v2 and jsfa.ctx.conv.default",
+                "ctxs": [
+                  14,
+                  13
+                ],
+                "el": "@round2",
+                "elRaw": "-; @round2",
+                "raw": "407175138"
+              },
+              "vdt": {
+                "ctx": "jsfa.ctx.val.v2 and jsfa.ctx.val.default",
+                "ctxs": [
+                  16,
+                  15
+                ],
+                "el": "regex:^\\d+(\\.\\d{2})?$",
+                "elRaw": "-; regex:^\\d+(\\.\\d{2})?$"
+              },
               "result": "FAILED",
               "remarks": "数值差异",
               "resultText": "比对未通过：数值差异",
-              "resultDetails": [],
+              "resultDetails": [
+                {
+                  "label": "期望值 (EO, Unconverted)",
+                  "value": "407167537"
+                }
+              ],
               "prints": [
                 "[INFO] 比较字段 price（报告渠道 JSFA / 来源渠道 B）",
-                "[INFO] XPath=/JSFA/Report/Pricing/PriceDetails/PriceValue，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.default",
-                "[INFO] EO=4968148.67，AO=4968077.66 → FAILED（数值差异）"
+                "[INFO] XPath=/JSFA/Report/Pricing/PriceDetails/PriceValue，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest",
+                "[INFO] EO=4071675.37，AO=4071751.38 → FAILED（数值差异）"
               ]
             },
             {
               "id": "11",
               "cmpLeft": {
                 "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
+                "ctx": "jsfa.ctx.default",
                 "ctxs": [
-                  12
+                  9
                 ],
                 "elRaw": "-; src_remarks",
                 "el": "src_remarks",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": "jsfa.ctx.extended.production.region.east.v2024.latest",
+                "value": "第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。",
+                "ctx": "jsfa.ctx.default",
                 "ctxs": [
-                  12
+                  9
                 ],
                 "elRaw": "-; /JSFA/Report/Header/AdditionalInformation/Remarks",
                 "el": "/JSFA/Report/Header/AdditionalInformation/Remarks",
                 "srcType": 1
               },
-              "cvtLeft": {
+              "cvtLeft": null,
+              "cvtRight": {
                 "ctx": "jsfa.ctx.conv.default",
                 "ctxs": [
                   13
                 ],
                 "el": "@trimLines",
                 "elRaw": "-; @trimLines",
-                "raw": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。"
-              },
-              "cvtRight": {
-                "ctx": "jsfa.ctx.conv.default and jsfa.ctx.conv.v2",
-                "ctxs": [
-                  13,
-                  14
-                ],
-                "el": "@trimLines",
-                "elRaw": "-; @trimLines",
-                "raw": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。"
+                "raw": "第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。"
               },
               "vdt": {
                 "ctx": "jsfa.ctx.val.default",
@@ -2631,19 +2615,14 @@
                 "el": "@maxLines<=3",
                 "elRaw": "-; @maxLines<=3"
               },
-              "result": "PASSED",
-              "remarks": "",
-              "resultText": "比对通过",
-              "resultDetails": [
-                {
-                  "label": "期望值 (EO, Unconverted)",
-                  "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。"
-                }
-              ],
+              "result": "FAILED",
+              "remarks": "内容差异",
+              "resultText": "比对未通过：内容差异",
+              "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 remarks（报告渠道 JSFA / 来源渠道 B）",
-                "[INFO] XPath=/JSFA/Report/Header/AdditionalInformation/Remarks，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.v2,jsfa.ctx.val.default",
-                "[INFO] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。 → PASSED"
+                "[INFO] XPath=/JSFA/Report/Header/AdditionalInformation/Remarks，命中Ctx=jsfa.ctx.default,jsfa.ctx.conv.default,jsfa.ctx.val.v2",
+                "[INFO] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。 → FAILED（内容差异）"
               ]
             }
           ]
@@ -2756,76 +2735,23 @@
             {
               "id": "1",
               "cmpLeft": {
-                "value": "TX-2024-729759",
-                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
+                "value": "TX-2024-789826",
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
-                  20
+                  19
                 ],
                 "elRaw": "-; src_tradeId",
                 "el": "src_tradeId",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "TX-2024-729752",
-                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
+                "value": "TX-2024-789820",
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
-                  20
+                  19
                 ],
                 "elRaw": "-; trade_id",
                 "el": "trade_id",
-                "srcType": 2
-              },
-              "cvtLeft": null,
-              "cvtRight": {
-                "ctx": "cftc.ctx.conv.v2 and cftc.ctx.conv.default",
-                "ctxs": [
-                  22,
-                  21
-                ],
-                "el": "@normalizeId",
-                "elRaw": "-; @normalizeId",
-                "raw": "2024-729752"
-              },
-              "vdt": {
-                "ctx": "cftc.ctx.val.v2",
-                "ctxs": [
-                  24
-                ],
-                "el": "regex:^TX-\\d{6}$",
-                "elRaw": "-; regex:^TX-\\d{6}$"
-              },
-              "result": "FAILED",
-              "remarks": "值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultText": "比对未通过：值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultDetails": [],
-              "prints": [
-                "[INFO] 比较字段 tradeId（报告渠道 CFTC / 来源渠道 A）",
-                "[INFO] CSV字段=trade_id，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest",
-                "[INFO] EO=TX-2024-729759，AO=TX-2024-729752 → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-              ]
-            },
-            {
-              "id": "2",
-              "cmpLeft": {
-                "value": "TX-2024-817936",
-                "ctx": "cftc.ctx.v3 and cftc.ctx.extended.production.region.east.v2024.latest",
-                "ctxs": [
-                  19,
-                  20
-                ],
-                "elRaw": "-; src_reportId",
-                "el": "src_reportId",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "TX-2024-817936",
-                "ctx": "cftc.ctx.v3 and cftc.ctx.extended.production.region.east.v2024.latest",
-                "ctxs": [
-                  19,
-                  20
-                ],
-                "elRaw": "-; report_id",
-                "el": "report_id",
                 "srcType": 2
               },
               "cvtLeft": {
@@ -2835,17 +2761,9 @@
                 ],
                 "el": "@normalizeId",
                 "elRaw": "-; @normalizeId",
-                "raw": "2024-817936"
+                "raw": "2024-789826"
               },
-              "cvtRight": {
-                "ctx": "cftc.ctx.conv.v2",
-                "ctxs": [
-                  22
-                ],
-                "el": "@normalizeId",
-                "elRaw": "-; @normalizeId",
-                "raw": "2024-817936"
-              },
+              "cvtRight": null,
               "vdt": {
                 "ctx": "cftc.ctx.val.default and cftc.ctx.val.v2",
                 "ctxs": [
@@ -2855,19 +2773,62 @@
                 "el": "regex:^TX-\\d{6}$",
                 "elRaw": "-; regex:^TX-\\d{6}$"
               },
-              "result": "PASSED",
-              "remarks": "",
-              "resultText": "比对通过",
+              "result": "FAILED",
+              "remarks": "值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultText": "比对未通过：值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
               "resultDetails": [
                 {
                   "label": "期望值 (EO, Unconverted)",
-                  "value": "2024-817936"
+                  "value": "2024-789826"
                 }
               ],
               "prints": [
+                "[INFO] 比较字段 tradeId（报告渠道 CFTC / 来源渠道 A）",
+                "[INFO] CSV字段=trade_id，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default,cftc.ctx.val.v2",
+                "[INFO] EO=TX-2024-789826，AO=TX-2024-789820 → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
+              ]
+            },
+            {
+              "id": "2",
+              "cmpLeft": {
+                "value": "TX-2024-470157",
+                "ctx": "cftc.ctx.default",
+                "ctxs": [
+                  17
+                ],
+                "elRaw": "-; src_reportId",
+                "el": "src_reportId",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "TX-2024-470157",
+                "ctx": "cftc.ctx.default",
+                "ctxs": [
+                  17
+                ],
+                "elRaw": "-; report_id",
+                "el": "report_id",
+                "srcType": 2
+              },
+              "cvtLeft": null,
+              "cvtRight": {
+                "ctx": "cftc.ctx.conv.default",
+                "ctxs": [
+                  21
+                ],
+                "el": "@normalizeId",
+                "elRaw": "-; @normalizeId",
+                "raw": "2024-470157"
+              },
+              "vdt": null,
+              "result": "FAILED",
+              "remarks": "值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultText": "比对未通过：值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultDetails": [],
+              "prints": [
                 "[INFO] 比较字段 reportId（报告渠道 CFTC / 来源渠道 A）",
-                "[INFO] CSV字段=report_id，命中Ctx=cftc.ctx.v3,cftc.ctx.extended.production.region.east.v2024.latest",
-                "[INFO] EO=TX-2024-817936，AO=TX-2024-817936 → PASSED"
+                "[INFO] CSV字段=report_id，命中Ctx=cftc.ctx.default",
+                "[INFO] EO=TX-2024-470157，AO=TX-2024-470157 → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
               ]
             },
             {
@@ -2893,87 +2854,85 @@
                 "srcType": 2
               },
               "cvtLeft": null,
-              "cvtRight": null,
-              "vdt": {
-                "ctx": "cftc.ctx.val.v2 and cftc.ctx.val.default",
+              "cvtRight": {
+                "ctx": "cftc.ctx.conv.default",
                 "ctxs": [
-                  24,
+                  21
+                ],
+                "el": "@toUpper",
+                "elRaw": "-; @toUpper",
+                "raw": "irs"
+              },
+              "vdt": {
+                "ctx": "cftc.ctx.val.default",
+                "ctxs": [
                   23
                 ],
                 "el": "enum: ['IRS', 'OIS', 'BSW', 'CDS', 'FXS', 'FXF']",
                 "elRaw": "-; enum: ['IRS', 'OIS', 'BSW', 'CDS', 'FXS', 'FXF']"
               },
               "result": "FAILED",
-              "remarks": "码值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultText": "比对未通过：码值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "remarks": "码值差异",
+              "resultText": "比对未通过：码值差异",
               "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 product（报告渠道 CFTC / 来源渠道 A）",
-                "[INFO] CSV字段=product_code，命中Ctx=cftc.ctx.default,cftc.ctx.conv.v2,cftc.ctx.val.default",
-                "[INFO] EO=FXS，AO=IRS → FAILED（码值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
+                "[INFO] CSV字段=product_code，命中Ctx=cftc.ctx.default,cftc.ctx.conv.default",
+                "[INFO] EO=FXS，AO=IRS → FAILED（码值差异）"
               ]
             },
             {
               "id": "4",
               "cmpLeft": {
-                "value": "3165901.54",
-                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
+                "value": "9285201.54",
+                "ctx": "cftc.ctx.default",
                 "ctxs": [
-                  20
+                  17
                 ],
                 "elRaw": "-; src_notional",
                 "el": "src_notional",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "3165816.53",
-                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
+                "value": "9285285.55",
+                "ctx": "cftc.ctx.default",
                 "ctxs": [
-                  20
+                  17
                 ],
                 "elRaw": "-; notional_amount",
                 "el": "notional_amount",
                 "srcType": 2
               },
               "cvtLeft": {
-                "ctx": "cftc.ctx.conv.default",
+                "ctx": "cftc.ctx.conv.v2",
                 "ctxs": [
-                  21
+                  22
                 ],
                 "el": "@scale100",
                 "elRaw": "-; @scale100",
-                "raw": "316590154"
+                "raw": "928520154"
               },
-              "cvtRight": {
-                "ctx": "cftc.ctx.conv.v2 and cftc.ctx.conv.default",
-                "ctxs": [
-                  22,
-                  21
-                ],
-                "el": "@scale100",
-                "elRaw": "-; @scale100",
-                "raw": "316581653"
-              },
+              "cvtRight": null,
               "vdt": null,
               "result": "FAILED",
-              "remarks": "数值差异",
-              "resultText": "比对未通过：数值差异",
+              "remarks": "数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultText": "比对未通过：数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
               "resultDetails": [
                 {
                   "label": "期望值 (EO, Unconverted)",
-                  "value": "316590154"
+                  "value": "928520154"
                 }
               ],
               "prints": [
                 "[INFO] 比较字段 notional（报告渠道 CFTC / 来源渠道 A）",
-                "[INFO] CSV字段=notional_amount，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.default,cftc.ctx.val.default",
-                "[INFO] EO=3165901.54，AO=3165816.53 → FAILED（数值差异）"
+                "[INFO] CSV字段=notional_amount，命中Ctx=cftc.ctx.default,cftc.ctx.conv.v2",
+                "[INFO] EO=9285201.54，AO=9285285.55 → FAILED（数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
               ]
             },
             {
               "id": "5",
               "cmpLeft": {
-                "value": "JPY",
+                "value": "EUR",
                 "ctx": "cftc.ctx.default",
                 "ctxs": [
                   17
@@ -2983,7 +2942,7 @@
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "JPY",
+                "value": "USD",
                 "ctx": "cftc.ctx.default",
                 "ctxs": [
                   17
@@ -2999,29 +2958,44 @@
                 ],
                 "el": "@toUpper",
                 "elRaw": "-; @toUpper",
-                "raw": "jpy"
+                "raw": "eur"
               },
-              "cvtRight": null,
-              "vdt": null,
-              "result": "PASSED",
-              "remarks": "",
-              "resultText": "比对通过",
+              "cvtRight": {
+                "ctx": "cftc.ctx.conv.v2",
+                "ctxs": [
+                  22
+                ],
+                "el": "@toUpper",
+                "elRaw": "-; @toUpper",
+                "raw": "usd"
+              },
+              "vdt": {
+                "ctx": "cftc.ctx.val.default",
+                "ctxs": [
+                  23
+                ],
+                "el": "enum: ['USD', 'CNY', 'HKD', 'JPY', 'EUR']",
+                "elRaw": "-; enum: ['USD', 'CNY', 'HKD', 'JPY', 'EUR']"
+              },
+              "result": "FAILED",
+              "remarks": "码值差异",
+              "resultText": "比对未通过：码值差异",
               "resultDetails": [
                 {
                   "label": "期望值 (EO, Unconverted)",
-                  "value": "jpy"
+                  "value": "eur"
                 }
               ],
               "prints": [
                 "[INFO] 比较字段 currency（报告渠道 CFTC / 来源渠道 A）",
-                "[INFO] CSV字段=ccy，命中Ctx=cftc.ctx.default,cftc.ctx.conv.v2",
-                "[INFO] EO=JPY，AO=JPY → PASSED"
+                "[INFO] CSV字段=ccy，命中Ctx=cftc.ctx.default,cftc.ctx.conv.v2,cftc.ctx.val.default",
+                "[INFO] EO=EUR，AO=USD → FAILED（码值差异）"
               ]
             },
             {
               "id": "6",
               "cmpLeft": {
-                "value": "2024-07-15",
+                "value": "2024-05-07",
                 "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   20
@@ -3031,7 +3005,7 @@
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "2024-07-15",
+                "value": "2024-05-07",
                 "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
                   20
@@ -3041,19 +3015,11 @@
                 "srcType": 2
               },
               "cvtLeft": null,
-              "cvtRight": {
-                "ctx": "cftc.ctx.conv.v2",
-                "ctxs": [
-                  22
-                ],
-                "el": "@dateFormat(YYYY-MM-DD)",
-                "elRaw": "-; @dateFormat(YYYY-MM-DD)",
-                "raw": "20240715"
-              },
+              "cvtRight": null,
               "vdt": {
-                "ctx": "cftc.ctx.val.v2",
+                "ctx": "cftc.ctx.val.default",
                 "ctxs": [
-                  24
+                  23
                 ],
                 "el": "regex:^\\d{4}-\\d{2}-\\d{2}$",
                 "elRaw": "-; regex:^\\d{4}-\\d{2}-\\d{2}$"
@@ -3064,27 +3030,27 @@
               "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 tradeDate（报告渠道 CFTC / 来源渠道 A）",
-                "[INFO] CSV字段=exec_timestamp，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.val.default",
-                "[INFO] EO=2024-07-15，AO=2024-07-15 → PASSED"
+                "[INFO] CSV字段=exec_timestamp，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.default,cftc.ctx.val.default",
+                "[INFO] EO=2024-05-07，AO=2024-05-07 → PASSED"
               ]
             },
             {
               "id": "7",
               "cmpLeft": {
-                "value": "2024-05-12",
-                "ctx": "cftc.ctx.v3",
+                "value": "2024-11-10",
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
-                  19
+                  18
                 ],
                 "elRaw": "-; src_maturityDate",
                 "el": "src_maturityDate",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "2024-05-17",
-                "ctx": "cftc.ctx.v3",
+                "value": "2024-11-14",
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
-                  19
+                  18
                 ],
                 "elRaw": "-; expiration_date",
                 "el": "expiration_date",
@@ -3098,40 +3064,40 @@
                 ],
                 "el": "@dateFormat(YYYY-MM-DD)",
                 "elRaw": "-; @dateFormat(YYYY-MM-DD)",
-                "raw": "20240512"
+                "raw": "20241110"
               },
-              "cvtRight": null,
-              "vdt": {
-                "ctx": "cftc.ctx.val.v2 and cftc.ctx.val.default",
+              "cvtRight": {
+                "ctx": "cftc.ctx.conv.v2",
                 "ctxs": [
-                  24,
-                  23
+                  22
                 ],
-                "el": "regex:^\\d{4}-\\d{2}-\\d{2}$",
-                "elRaw": "-; regex:^\\d{4}-\\d{2}-\\d{2}$"
+                "el": "@dateFormat(YYYY-MM-DD)",
+                "elRaw": "-; @dateFormat(YYYY-MM-DD)",
+                "raw": "20241114"
               },
+              "vdt": null,
               "result": "FAILED",
-              "remarks": "日期差异",
-              "resultText": "比对未通过：日期差异",
+              "remarks": "日期差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultText": "比对未通过：日期差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
               "resultDetails": [
                 {
                   "label": "期望值 (EO, Unconverted)",
-                  "value": "20240512"
+                  "value": "20241110"
                 }
               ],
               "prints": [
                 "[INFO] 比较字段 maturityDate（报告渠道 CFTC / 来源渠道 A）",
-                "[INFO] CSV字段=expiration_date，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default,cftc.ctx.val.v2",
-                "[INFO] EO=2024-05-12，AO=2024-05-17 → FAILED（日期差异）"
+                "[INFO] CSV字段=expiration_date，命中Ctx=cftc.ctx.v2,cftc.ctx.conv.default,cftc.ctx.val.default",
+                "[INFO] EO=2024-11-10，AO=2024-11-14 → FAILED（日期差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
               ]
             },
             {
               "id": "8",
               "cmpLeft": {
-                "value": "HSBC",
-                "ctx": "cftc.ctx.v2",
+                "value": "ABC Bank",
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
-                  18
+                  19
                 ],
                 "elRaw": "-; src_counterparty",
                 "el": "src_counterparty",
@@ -3139,63 +3105,12 @@
               },
               "cmpRight": {
                 "value": "XYZ Bank",
-                "ctx": "cftc.ctx.v2",
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
-                  18
+                  19
                 ],
                 "elRaw": "-; cp_name",
                 "el": "cp_name",
-                "srcType": 2
-              },
-              "cvtLeft": {
-                "ctx": "cftc.ctx.conv.default and cftc.ctx.conv.v2",
-                "ctxs": [
-                  21,
-                  22
-                ],
-                "el": "@trim",
-                "elRaw": "-; @trim",
-                "raw": "  HSBC  "
-              },
-              "cvtRight": null,
-              "vdt": null,
-              "result": "FAILED",
-              "remarks": "值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultText": "比对未通过：值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultDetails": [
-                {
-                  "label": "期望值 (EO, Unconverted)",
-                  "value": "  HSBC  "
-                }
-              ],
-              "prints": [
-                "[INFO] 比较字段 counterparty（报告渠道 CFTC / 来源渠道 A）",
-                "[INFO] CSV字段=cp_name，命中Ctx=cftc.ctx.v2,cftc.ctx.conv.default,cftc.ctx.val.default",
-                "[INFO] EO=HSBC，AO=XYZ Bank → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-              ]
-            },
-            {
-              "id": "9",
-              "cmpLeft": {
-                "value": "HSBC",
-                "ctx": "cftc.ctx.v2 and cftc.ctx.v3",
-                "ctxs": [
-                  18,
-                  19
-                ],
-                "elRaw": "-; src_platform",
-                "el": "src_platform",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "XYZ Bank",
-                "ctx": "cftc.ctx.v2 and cftc.ctx.v3",
-                "ctxs": [
-                  18,
-                  19
-                ],
-                "elRaw": "-; platform_id",
-                "el": "platform_id",
                 "srcType": 2
               },
               "cvtLeft": null,
@@ -3213,53 +3128,121 @@
               "resultText": "比对未通过：值不一致",
               "resultDetails": [],
               "prints": [
+                "[INFO] 比较字段 counterparty（报告渠道 CFTC / 来源渠道 A）",
+                "[INFO] CSV字段=cp_name，命中Ctx=cftc.ctx.v3,cftc.ctx.val.default",
+                "[INFO] EO=ABC Bank，AO=XYZ Bank → FAILED（值不一致）"
+              ]
+            },
+            {
+              "id": "9",
+              "cmpLeft": {
+                "value": "HSBC",
+                "ctx": "cftc.ctx.v2",
+                "ctxs": [
+                  18
+                ],
+                "elRaw": "-; src_platform",
+                "el": "src_platform",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "HSBC",
+                "ctx": "cftc.ctx.v2",
+                "ctxs": [
+                  18
+                ],
+                "elRaw": "-; platform_id",
+                "el": "platform_id",
+                "srcType": 2
+              },
+              "cvtLeft": {
+                "ctx": "cftc.ctx.conv.v2",
+                "ctxs": [
+                  22
+                ],
+                "el": "@normalizeSpace",
+                "elRaw": "-; @normalizeSpace",
+                "raw": "  HSBC  "
+              },
+              "cvtRight": null,
+              "vdt": null,
+              "result": "PASSED",
+              "remarks": "",
+              "resultText": "比对通过",
+              "resultDetails": [
+                {
+                  "label": "期望值 (EO, Unconverted)",
+                  "value": "  HSBC  "
+                }
+              ],
+              "prints": [
                 "[INFO] 比较字段 platform（报告渠道 CFTC / 来源渠道 A）",
-                "[INFO] CSV字段=platform_id，命中Ctx=cftc.ctx.v2,cftc.ctx.conv.v2,cftc.ctx.val.default,cftc.ctx.v3",
-                "[INFO] EO=HSBC，AO=XYZ Bank → FAILED（值不一致）"
+                "[INFO] CSV字段=platform_id，命中Ctx=cftc.ctx.v2,cftc.ctx.conv.default",
+                "[INFO] EO=HSBC，AO=HSBC → PASSED"
               ]
             },
             {
               "id": "10",
               "cmpLeft": {
-                "value": "5623241.84",
-                "ctx": "cftc.ctx.v3",
+                "value": "1926290.35",
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
-                  19
+                  18
                 ],
                 "elRaw": "-; src_price",
                 "el": "src_price",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "5623272.85",
-                "ctx": "cftc.ctx.v3",
+                "value": "1926346.36",
+                "ctx": "cftc.ctx.v2",
                 "ctxs": [
-                  19
+                  18
                 ],
                 "elRaw": "-; price_amt",
                 "el": "price_amt",
                 "srcType": 2
               },
-              "cvtLeft": null,
+              "cvtLeft": {
+                "ctx": "cftc.ctx.conv.v2",
+                "ctxs": [
+                  22
+                ],
+                "el": "@scale100",
+                "elRaw": "-; @scale100",
+                "raw": "192629035"
+              },
               "cvtRight": null,
-              "vdt": null,
+              "vdt": {
+                "ctx": "cftc.ctx.val.default",
+                "ctxs": [
+                  23
+                ],
+                "el": "regex:^\\d+(\\.\\d{2})?$",
+                "elRaw": "-; regex:^\\d+(\\.\\d{2})?$"
+              },
               "result": "FAILED",
               "remarks": "数值差异",
               "resultText": "比对未通过：数值差异",
-              "resultDetails": [],
+              "resultDetails": [
+                {
+                  "label": "期望值 (EO, Unconverted)",
+                  "value": "192629035"
+                }
+              ],
               "prints": [
                 "[INFO] 比较字段 price（报告渠道 CFTC / 来源渠道 A）",
-                "[INFO] CSV字段=price_amt，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.v2,cftc.ctx.val.default",
-                "[INFO] EO=5623241.84，AO=5623272.85 → FAILED（数值差异）"
+                "[INFO] CSV字段=price_amt，命中Ctx=cftc.ctx.v2",
+                "[INFO] EO=1926290.35，AO=1926346.36 → FAILED（数值差异）"
               ]
             },
             {
               "id": "11",
               "cmpLeft": {
                 "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": "cftc.ctx.default",
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
-                  17
+                  19
                 ],
                 "elRaw": "-; src_remarks",
                 "el": "src_remarks",
@@ -3267,15 +3250,23 @@
               },
               "cmpRight": {
                 "value": "第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。",
-                "ctx": "cftc.ctx.default",
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
-                  17
+                  19
                 ],
                 "elRaw": "-; remarks",
                 "el": "remarks",
                 "srcType": 2
               },
-              "cvtLeft": null,
+              "cvtLeft": {
+                "ctx": "cftc.ctx.conv.v2",
+                "ctxs": [
+                  22
+                ],
+                "el": "@trimLines",
+                "elRaw": "-; @trimLines",
+                "raw": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。"
+              },
               "cvtRight": {
                 "ctx": "cftc.ctx.conv.v2",
                 "ctxs": [
@@ -3285,14 +3276,26 @@
                 "elRaw": "-; @trimLines",
                 "raw": "第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。"
               },
-              "vdt": null,
+              "vdt": {
+                "ctx": "cftc.ctx.val.default",
+                "ctxs": [
+                  23
+                ],
+                "el": "@maxLines<=3",
+                "elRaw": "-; @maxLines<=3"
+              },
               "result": "FAILED",
               "remarks": "内容差异",
               "resultText": "比对未通过：内容差异",
-              "resultDetails": [],
+              "resultDetails": [
+                {
+                  "label": "期望值 (EO, Unconverted)",
+                  "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。"
+                }
+              ],
               "prints": [
                 "[INFO] 比较字段 remarks（报告渠道 CFTC / 来源渠道 A）",
-                "[INFO] CSV字段=remarks，命中Ctx=cftc.ctx.default,cftc.ctx.conv.v2,cftc.ctx.val.v2",
+                "[INFO] CSV字段=remarks，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.v2,cftc.ctx.val.default",
                 "[INFO] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。 → FAILED（内容差异）"
               ]
             }
@@ -3304,41 +3307,39 @@
             {
               "id": "1",
               "cmpLeft": {
-                "value": "TX-2024-745584",
-                "ctx": "cftc.ctx.default and cftc.ctx.v2",
+                "value": "TX-2024-184455",
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
-                  17,
-                  18
+                  19
                 ],
                 "elRaw": "-; src_tradeId",
                 "el": "src_tradeId",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "TX-2024-745588",
-                "ctx": "cftc.ctx.default and cftc.ctx.v2",
+                "value": "TX-2024-184454",
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
-                  17,
-                  18
+                  19
                 ],
                 "elRaw": "-; trade_id",
                 "el": "trade_id",
                 "srcType": 2
               },
-              "cvtLeft": null,
-              "cvtRight": {
-                "ctx": "cftc.ctx.conv.v2",
+              "cvtLeft": {
+                "ctx": "cftc.ctx.conv.default",
                 "ctxs": [
-                  22
+                  21
                 ],
                 "el": "@normalizeId",
                 "elRaw": "-; @normalizeId",
-                "raw": "2024-745588"
+                "raw": "2024-184455"
               },
+              "cvtRight": null,
               "vdt": {
-                "ctx": "cftc.ctx.val.v2",
+                "ctx": "cftc.ctx.val.default",
                 "ctxs": [
-                  24
+                  23
                 ],
                 "el": "regex:^TX-\\d{6}$",
                 "elRaw": "-; regex:^TX-\\d{6}$"
@@ -3346,30 +3347,35 @@
               "result": "FAILED",
               "remarks": "值不一致",
               "resultText": "比对未通过：值不一致",
-              "resultDetails": [],
+              "resultDetails": [
+                {
+                  "label": "期望值 (EO, Unconverted)",
+                  "value": "2024-184455"
+                }
+              ],
               "prints": [
                 "[INFO] 比较字段 tradeId（报告渠道 CFTC / 来源渠道 B）",
-                "[INFO] CSV字段=trade_id，命中Ctx=cftc.ctx.default,cftc.ctx.conv.v2,cftc.ctx.val.v2,cftc.ctx.v2",
-                "[INFO] EO=TX-2024-745584，AO=TX-2024-745588 → FAILED（值不一致）"
+                "[INFO] CSV字段=trade_id，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.v2,cftc.ctx.val.v2",
+                "[INFO] EO=TX-2024-184455，AO=TX-2024-184454 → FAILED（值不一致）"
               ]
             },
             {
               "id": "2",
               "cmpLeft": {
-                "value": "TX-2024-225077",
-                "ctx": "cftc.ctx.default",
+                "value": "TX-2024-845097",
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
-                  17
+                  19
                 ],
                 "elRaw": "-; src_reportId",
                 "el": "src_reportId",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "TX-2024-225074",
-                "ctx": "cftc.ctx.default",
+                "value": "TX-2024-845093",
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
-                  17
+                  19
                 ],
                 "elRaw": "-; report_id",
                 "el": "report_id",
@@ -3378,8 +3384,9 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": "cftc.ctx.val.v2",
+                "ctx": "cftc.ctx.val.default and cftc.ctx.val.v2",
                 "ctxs": [
+                  23,
                   24
                 ],
                 "el": "regex:^TX-\\d{6}$",
@@ -3391,18 +3398,17 @@
               "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 reportId（报告渠道 CFTC / 来源渠道 B）",
-                "[INFO] CSV字段=report_id，命中Ctx=cftc.ctx.default,cftc.ctx.conv.default,cftc.ctx.val.v2",
-                "[INFO] EO=TX-2024-225077，AO=TX-2024-225074 → FAILED（值不一致）"
+                "[INFO] CSV字段=report_id，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default",
+                "[INFO] EO=TX-2024-845097，AO=TX-2024-845093 → FAILED（值不一致）"
               ]
             },
             {
               "id": "3",
               "cmpLeft": {
-                "value": "IRS",
-                "ctx": "cftc.ctx.default and cftc.ctx.extended.production.region.east.v2024.latest",
+                "value": "FXF",
+                "ctx": "cftc.ctx.default",
                 "ctxs": [
-                  17,
-                  20
+                  17
                 ],
                 "elRaw": "-; src_product",
                 "el": "src_product",
@@ -3410,10 +3416,9 @@
               },
               "cmpRight": {
                 "value": "IRS",
-                "ctx": "cftc.ctx.default and cftc.ctx.extended.production.region.east.v2024.latest",
+                "ctx": "cftc.ctx.default",
                 "ctxs": [
-                  17,
-                  20
+                  17
                 ],
                 "elRaw": "-; product_code",
                 "el": "product_code",
@@ -3421,9 +3426,10 @@
               },
               "cvtLeft": null,
               "cvtRight": {
-                "ctx": "cftc.ctx.conv.default",
+                "ctx": "cftc.ctx.conv.default and cftc.ctx.conv.v2",
                 "ctxs": [
-                  21
+                  21,
+                  22
                 ],
                 "el": "@toUpper",
                 "elRaw": "-; @toUpper",
@@ -3437,20 +3443,20 @@
                 "el": "enum: ['IRS', 'OIS', 'BSW', 'CDS', 'FXS', 'FXF']",
                 "elRaw": "-; enum: ['IRS', 'OIS', 'BSW', 'CDS', 'FXS', 'FXF']"
               },
-              "result": "PASSED",
-              "remarks": "",
-              "resultText": "比对通过",
+              "result": "FAILED",
+              "remarks": "码值差异",
+              "resultText": "比对未通过：码值差异",
               "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 product（报告渠道 CFTC / 来源渠道 B）",
-                "[INFO] CSV字段=product_code，命中Ctx=cftc.ctx.default,cftc.ctx.conv.default,cftc.ctx.extended.production.region.east.v2024.latest",
-                "[INFO] EO=IRS，AO=IRS → PASSED"
+                "[INFO] CSV字段=product_code，命中Ctx=cftc.ctx.default,cftc.ctx.conv.default,cftc.ctx.val.default",
+                "[INFO] EO=FXF，AO=IRS → FAILED（码值差异）"
               ]
             },
             {
               "id": "4",
               "cmpLeft": {
-                "value": "6329533.02",
+                "value": "8824975.78",
                 "ctx": "cftc.ctx.v2",
                 "ctxs": [
                   18
@@ -3460,7 +3466,7 @@
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "6329564.03",
+                "value": "8825032.79",
                 "ctx": "cftc.ctx.v2",
                 "ctxs": [
                   18
@@ -3469,113 +3475,102 @@
                 "el": "notional_amount",
                 "srcType": 2
               },
-              "cvtLeft": {
-                "ctx": "cftc.ctx.conv.v2 and cftc.ctx.conv.default",
-                "ctxs": [
-                  22,
-                  21
-                ],
-                "el": "@scale100",
-                "elRaw": "-; @scale100",
-                "raw": "632953302"
-              },
+              "cvtLeft": null,
               "cvtRight": null,
-              "vdt": null,
+              "vdt": {
+                "ctx": "cftc.ctx.val.v2",
+                "ctxs": [
+                  24
+                ],
+                "el": "regex:^\\d+(\\.\\d{2})?$",
+                "elRaw": "-; regex:^\\d+(\\.\\d{2})?$"
+              },
               "result": "FAILED",
-              "remarks": "数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultText": "比对未通过：数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultDetails": [
-                {
-                  "label": "期望值 (EO, Unconverted)",
-                  "value": "632953302"
-                }
-              ],
+              "remarks": "数值差异",
+              "resultText": "比对未通过：数值差异",
+              "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 notional（报告渠道 CFTC / 来源渠道 B）",
-                "[INFO] CSV字段=notional_amount，命中Ctx=cftc.ctx.v2,cftc.ctx.conv.v2",
-                "[INFO] EO=6329533.02，AO=6329564.03 → FAILED（数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
+                "[INFO] CSV字段=notional_amount，命中Ctx=cftc.ctx.v2,cftc.ctx.val.default",
+                "[INFO] EO=8824975.78，AO=8825032.79 → FAILED（数值差异）"
               ]
             },
             {
               "id": "5",
               "cmpLeft": {
-                "value": "USD",
-                "ctx": "cftc.ctx.v2",
+                "value": "EUR",
+                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  18
+                  20
                 ],
                 "elRaw": "-; src_currency",
                 "el": "src_currency",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "CNY",
-                "ctx": "cftc.ctx.v2",
+                "value": "EUR",
+                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  18
+                  20
                 ],
                 "elRaw": "-; ccy",
                 "el": "ccy",
                 "srcType": 2
               },
               "cvtLeft": {
-                "ctx": "cftc.ctx.conv.v2",
+                "ctx": "cftc.ctx.conv.default and cftc.ctx.conv.v2",
                 "ctxs": [
+                  21,
                   22
                 ],
                 "el": "@toUpper",
                 "elRaw": "-; @toUpper",
-                "raw": "usd"
+                "raw": "eur"
               },
-              "cvtRight": {
-                "ctx": "cftc.ctx.conv.default",
-                "ctxs": [
-                  21
-                ],
-                "el": "@toUpper",
-                "elRaw": "-; @toUpper",
-                "raw": "cny"
-              },
+              "cvtRight": null,
               "vdt": {
-                "ctx": "cftc.ctx.val.v2",
+                "ctx": "cftc.ctx.val.default and cftc.ctx.val.v2",
                 "ctxs": [
+                  23,
                   24
                 ],
                 "el": "enum: ['USD', 'CNY', 'HKD', 'JPY', 'EUR']",
                 "elRaw": "-; enum: ['USD', 'CNY', 'HKD', 'JPY', 'EUR']"
               },
-              "result": "FAILED",
-              "remarks": "码值差异",
-              "resultText": "比对未通过：码值差异",
+              "result": "PASSED",
+              "remarks": "",
+              "resultText": "比对通过",
               "resultDetails": [
                 {
                   "label": "期望值 (EO, Unconverted)",
-                  "value": "usd"
+                  "value": "eur"
                 }
               ],
               "prints": [
                 "[INFO] 比较字段 currency（报告渠道 CFTC / 来源渠道 B）",
-                "[INFO] CSV字段=ccy，命中Ctx=cftc.ctx.v2,cftc.ctx.val.v2",
-                "[INFO] EO=USD，AO=CNY → FAILED（码值差异）"
+                "[INFO] CSV字段=ccy，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.default,cftc.ctx.val.default",
+                "[INFO] EO=EUR，AO=EUR → PASSED"
               ]
             },
             {
               "id": "6",
               "cmpLeft": {
-                "value": "2024-09-24",
-                "ctx": "cftc.ctx.v2",
+                "value": "2024-12-28",
+                "ctx": "cftc.ctx.default and cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  18
+                  17,
+                  20
                 ],
                 "elRaw": "-; src_tradeDate",
                 "el": "src_tradeDate",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "2024-09-24",
-                "ctx": "cftc.ctx.v2",
+                "value": "2024-12-29",
+                "ctx": "cftc.ctx.default and cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  18
+                  17,
+                  20
                 ],
                 "elRaw": "-; exec_timestamp",
                 "el": "exec_timestamp",
@@ -3584,61 +3579,9 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": "cftc.ctx.val.default and cftc.ctx.val.v2",
+                "ctx": "cftc.ctx.val.v2",
                 "ctxs": [
-                  23,
                   24
-                ],
-                "el": "regex:^\\d{4}-\\d{2}-\\d{2}$",
-                "elRaw": "-; regex:^\\d{4}-\\d{2}-\\d{2}$"
-              },
-              "result": "PASSED",
-              "remarks": "",
-              "resultText": "比对通过",
-              "resultDetails": [],
-              "prints": [
-                "[INFO] 比较字段 tradeDate（报告渠道 CFTC / 来源渠道 B）",
-                "[INFO] CSV字段=exec_timestamp，命中Ctx=cftc.ctx.v2,cftc.ctx.conv.v2,cftc.ctx.val.v2",
-                "[INFO] EO=2024-09-24，AO=2024-09-24 → PASSED"
-              ]
-            },
-            {
-              "id": "7",
-              "cmpLeft": {
-                "value": "2024-02-08",
-                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
-                "ctxs": [
-                  20
-                ],
-                "elRaw": "-; src_maturityDate",
-                "el": "src_maturityDate",
-                "srcType": 2
-              },
-              "cmpRight": {
-                "value": "2024-02-10",
-                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
-                "ctxs": [
-                  20
-                ],
-                "elRaw": "-; expiration_date",
-                "el": "expiration_date",
-                "srcType": 2
-              },
-              "cvtLeft": null,
-              "cvtRight": {
-                "ctx": "cftc.ctx.conv.default and cftc.ctx.conv.v2",
-                "ctxs": [
-                  21,
-                  22
-                ],
-                "el": "@dateFormat(YYYY-MM-DD)",
-                "elRaw": "-; @dateFormat(YYYY-MM-DD)",
-                "raw": "20240210"
-              },
-              "vdt": {
-                "ctx": "cftc.ctx.val.default",
-                "ctxs": [
-                  23
                 ],
                 "el": "regex:^\\d{4}-\\d{2}-\\d{2}$",
                 "elRaw": "-; regex:^\\d{4}-\\d{2}-\\d{2}$"
@@ -3648,43 +3591,88 @@
               "resultText": "比对未通过：日期差异",
               "resultDetails": [],
               "prints": [
+                "[INFO] 比较字段 tradeDate（报告渠道 CFTC / 来源渠道 B）",
+                "[INFO] CSV字段=exec_timestamp，命中Ctx=cftc.ctx.default,cftc.ctx.conv.v2,cftc.ctx.val.v2,cftc.ctx.extended.production.region.east.v2024.latest",
+                "[INFO] EO=2024-12-28，AO=2024-12-29 → FAILED（日期差异）"
+              ]
+            },
+            {
+              "id": "7",
+              "cmpLeft": {
+                "value": "2024-04-12",
+                "ctx": "cftc.ctx.v3",
+                "ctxs": [
+                  19
+                ],
+                "elRaw": "-; src_maturityDate",
+                "el": "src_maturityDate",
+                "srcType": 2
+              },
+              "cmpRight": {
+                "value": "2024-04-12",
+                "ctx": "cftc.ctx.v3",
+                "ctxs": [
+                  19
+                ],
+                "elRaw": "-; expiration_date",
+                "el": "expiration_date",
+                "srcType": 2
+              },
+              "cvtLeft": null,
+              "cvtRight": {
+                "ctx": "cftc.ctx.conv.v2",
+                "ctxs": [
+                  22
+                ],
+                "el": "@dateFormat(YYYY-MM-DD)",
+                "elRaw": "-; @dateFormat(YYYY-MM-DD)",
+                "raw": "20240412"
+              },
+              "vdt": {
+                "ctx": "cftc.ctx.val.default and cftc.ctx.val.v2",
+                "ctxs": [
+                  23,
+                  24
+                ],
+                "el": "regex:^\\d{4}-\\d{2}-\\d{2}$",
+                "elRaw": "-; regex:^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "result": "PASSED",
+              "remarks": "",
+              "resultText": "比对通过",
+              "resultDetails": [],
+              "prints": [
                 "[INFO] 比较字段 maturityDate（报告渠道 CFTC / 来源渠道 B）",
-                "[INFO] CSV字段=expiration_date，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.val.default",
-                "[INFO] EO=2024-02-08，AO=2024-02-10 → FAILED（日期差异）"
+                "[INFO] CSV字段=expiration_date，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.v2,cftc.ctx.val.default",
+                "[INFO] EO=2024-04-12，AO=2024-04-12 → PASSED"
               ]
             },
             {
               "id": "8",
               "cmpLeft": {
-                "value": "Citi Group",
-                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
+                "value": "ABC Bank",
+                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest and cftc.ctx.v2",
                 "ctxs": [
-                  20
+                  20,
+                  18
                 ],
                 "elRaw": "-; src_counterparty",
                 "el": "src_counterparty",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "Citi Group",
-                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
+                "value": "XYZ Bank",
+                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest and cftc.ctx.v2",
                 "ctxs": [
-                  20
+                  20,
+                  18
                 ],
                 "elRaw": "-; cp_name",
                 "el": "cp_name",
                 "srcType": 2
               },
               "cvtLeft": null,
-              "cvtRight": {
-                "ctx": "cftc.ctx.conv.default",
-                "ctxs": [
-                  21
-                ],
-                "el": "@trim",
-                "elRaw": "-; @trim",
-                "raw": "  Citi Group  "
-              },
+              "cvtRight": null,
               "vdt": {
                 "ctx": "cftc.ctx.val.v2",
                 "ctxs": [
@@ -3693,23 +3681,22 @@
                 "el": "@length<=64",
                 "elRaw": "-; @length<=64"
               },
-              "result": "PASSED",
-              "remarks": "",
-              "resultText": "比对通过",
+              "result": "FAILED",
+              "remarks": "值不一致",
+              "resultText": "比对未通过：值不一致",
               "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 counterparty（报告渠道 CFTC / 来源渠道 B）",
-                "[INFO] CSV字段=cp_name，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.default,cftc.ctx.val.default",
-                "[INFO] EO=Citi Group，AO=Citi Group → PASSED"
+                "[INFO] CSV字段=cp_name，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.v2,cftc.ctx.val.default,cftc.ctx.v2",
+                "[INFO] EO=ABC Bank，AO=XYZ Bank → FAILED（值不一致）"
               ]
             },
             {
               "id": "9",
               "cmpLeft": {
-                "value": "Goldman Sachs",
-                "ctx": "cftc.ctx.v2 and cftc.ctx.extended.production.region.east.v2024.latest",
+                "value": "Citi Group",
+                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  18,
                   20
                 ],
                 "elRaw": "-; src_platform",
@@ -3718,9 +3705,8 @@
               },
               "cmpRight": {
                 "value": "XYZ Bank",
-                "ctx": "cftc.ctx.v2 and cftc.ctx.extended.production.region.east.v2024.latest",
+                "ctx": "cftc.ctx.extended.production.region.east.v2024.latest",
                 "ctxs": [
-                  18,
                   20
                 ],
                 "elRaw": "-; platform_id",
@@ -3728,43 +3714,50 @@
                 "srcType": 2
               },
               "cvtLeft": null,
-              "cvtRight": null,
-              "vdt": {
-                "ctx": "cftc.ctx.val.default and cftc.ctx.val.v2",
+              "cvtRight": {
+                "ctx": "cftc.ctx.conv.v2",
                 "ctxs": [
-                  23,
+                  22
+                ],
+                "el": "@normalizeSpace",
+                "elRaw": "-; @normalizeSpace",
+                "raw": "  XYZ Bank  "
+              },
+              "vdt": {
+                "ctx": "cftc.ctx.val.v2",
+                "ctxs": [
                   24
                 ],
                 "el": "@notNull",
                 "elRaw": "-; @notNull"
               },
               "result": "FAILED",
-              "remarks": "值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
-              "resultText": "比对未通过：值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "remarks": "值不一致",
+              "resultText": "比对未通过：值不一致",
               "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 platform（报告渠道 CFTC / 来源渠道 B）",
-                "[INFO] CSV字段=platform_id，命中Ctx=cftc.ctx.v2,cftc.ctx.conv.v2,cftc.ctx.val.default,cftc.ctx.extended.production.region.east.v2024.latest",
-                "[INFO] EO=Goldman Sachs，AO=XYZ Bank → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
+                "[INFO] CSV字段=platform_id，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.val.v2",
+                "[INFO] EO=Citi Group，AO=XYZ Bank → FAILED（值不一致）"
               ]
             },
             {
               "id": "10",
               "cmpLeft": {
-                "value": "4465121.19",
-                "ctx": "cftc.ctx.default",
+                "value": "3397605.56",
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
-                  17
+                  19
                 ],
                 "elRaw": "-; src_price",
                 "el": "src_price",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "4465176.20",
-                "ctx": "cftc.ctx.default",
+                "value": "3397551.55",
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
-                  17
+                  19
                 ],
                 "elRaw": "-; price_amt",
                 "el": "price_amt",
@@ -3774,32 +3767,32 @@
               "cvtRight": null,
               "vdt": null,
               "result": "FAILED",
-              "remarks": "数值差异",
-              "resultText": "比对未通过：数值差异",
+              "remarks": "数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
+              "resultText": "比对未通过：数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。",
               "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 price（报告渠道 CFTC / 来源渠道 B）",
-                "[INFO] CSV字段=price_amt，命中Ctx=cftc.ctx.default,cftc.ctx.conv.default,cftc.ctx.val.v2",
-                "[INFO] EO=4465121.19，AO=4465176.20 → FAILED（数值差异）"
+                "[INFO] CSV字段=price_amt，命中Ctx=cftc.ctx.v3,cftc.ctx.val.v2",
+                "[INFO] EO=3397605.56，AO=3397551.55 → FAILED（数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
               ]
             },
             {
               "id": "11",
               "cmpLeft": {
                 "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": "cftc.ctx.default",
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
-                  17
+                  19
                 ],
                 "elRaw": "-; src_remarks",
                 "el": "src_remarks",
                 "srcType": 2
               },
               "cmpRight": {
-                "value": "第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。",
-                "ctx": "cftc.ctx.default",
+                "value": "第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。",
+                "ctx": "cftc.ctx.v3",
                 "ctxs": [
-                  17
+                  19
                 ],
                 "elRaw": "-; remarks",
                 "el": "remarks",
@@ -3808,22 +3801,21 @@
               "cvtLeft": null,
               "cvtRight": null,
               "vdt": {
-                "ctx": "cftc.ctx.val.default and cftc.ctx.val.v2",
+                "ctx": "cftc.ctx.val.default",
                 "ctxs": [
-                  23,
-                  24
+                  23
                 ],
                 "el": "@maxLines<=3",
                 "elRaw": "-; @maxLines<=3"
               },
-              "result": "PASSED",
-              "remarks": "",
-              "resultText": "比对通过",
+              "result": "FAILED",
+              "remarks": "内容差异",
+              "resultText": "比对未通过：内容差异",
               "resultDetails": [],
               "prints": [
                 "[INFO] 比较字段 remarks（报告渠道 CFTC / 来源渠道 B）",
-                "[INFO] CSV字段=remarks，命中Ctx=cftc.ctx.default,cftc.ctx.conv.v2,cftc.ctx.val.default",
-                "[INFO] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。 → PASSED"
+                "[INFO] CSV字段=remarks，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default,cftc.ctx.val.v2",
+                "[INFO] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。 → FAILED（内容差异）"
               ]
             }
           ]
@@ -3839,81 +3831,76 @@
     {
       "itemId": "T-20240810-091",
       "channel": "JSFA",
-      "reason": "在 JSFA 渠道中未找到该 item 的对应记录，已跳过该渠道的比较。\n详情：该 item 在来源 CSV 与报送 XML 中均未出现对应记录，可能因数据采集或报送延迟导致。\n建议核对上游系统是否已产生该 item 的数据。"
+      "reason": "在 JSFA 渠道中未找到该 item 的对应记录，已跳过该渠道的比较。"
     },
     {
       "itemId": "T-20240810-092",
       "channel": "CFTC",
-      "reason": "在 CFTC 渠道中未找到该 item 的对应记录，已跳过该渠道的比较。\n详情：该 item 在来源 CSV 与报送 XML 中均未出现对应记录，可能因数据采集或报送延迟导致。\n建议核对上游系统是否已产生该 item 的数据。"
-    },
-    {
-      "itemId": "T-20240810-093",
-      "channel": "ALL",
-      "reason": "未在任一报告渠道中找到对应记录，该 item 未能参与比较。"
+      "reason": "在 CFTC 渠道中未找到该 item 的对应记录，已跳过该渠道的比较。"
     }
   ],
   "warnings": [
     {
       "scope": "field",
+      "source": "来源渠道 A",
+      "channel": "HKTR",
+      "type": "productAssertion",
+      "level": "INFO",
+      "text": "关键字段重复，仅保留首条记录",
+      "field": "reportId"
+    },
+    {
+      "scope": "field",
+      "source": "来源渠道 A",
+      "channel": "HKTR",
+      "type": "productAssertion",
+      "level": "NOTICE",
+      "text": "配置映射缺失：CSV 字段未找到对应 XPath，已跳过",
+      "field": "price"
+    },
+    {
+      "scope": "field",
       "source": "来源渠道 B",
       "channel": "HKTR",
       "type": "contextAssertion",
-      "level": "NOTICE",
-      "text": "日期格式异常，已自动规范化处理",
-      "field": "reportId"
-    },
-    {
-      "scope": "channel",
-      "source": "来源渠道 B",
-      "channel": "HKTR",
-      "type": "platformAssertion",
-      "level": "INFO",
-      "text": "日期格式异常，已自动规范化处理",
-      "field": ""
-    },
-    {
-      "scope": "field",
-      "source": "来源渠道 B",
-      "channel": "HKTR",
-      "type": "productAssertion",
-      "level": "WARN",
-      "text": "日期格式异常，已自动规范化处理\n详情：该字段的映射配置可能缺失或与当前 context 不匹配。\n建议检查映射表对应 sheet 的配置，确认 XPath 与命中的 context 是否正确，并核对字段类型。",
-      "field": "currency"
-    },
-    {
-      "scope": "field",
-      "source": "来源渠道 B",
-      "channel": "JSFA",
-      "type": "platformAssertion",
-      "level": "WARN",
-      "text": "字段格式与映射配置不一致，使用默认校验规则",
-      "field": "reportId"
-    },
-    {
-      "scope": "field",
-      "source": "来源渠道 A",
-      "channel": "JSFA",
-      "type": "productAssertion",
       "level": "DEBUG",
-      "text": "配置映射缺失：CSV 字段未找到对应 XPath，已跳过\n详情：该字段的映射配置可能缺失或与当前 context 不匹配。\n建议检查映射表对应 sheet 的配置，确认 XPath 与命中的 context 是否正确，并核对字段类型。",
-      "field": "remarks"
+      "text": "日期格式异常，已自动规范化处理\n详情：该字段的映射配置可能缺失或与当前 context 不匹配。\n建议检查映射表对应 sheet 的配置，确认 XPath 与命中的 context 是否正确，并核对字段类型。",
+      "field": "price"
+    },
+    {
+      "scope": "field",
+      "source": "来源渠道 B",
+      "channel": "HKTR",
+      "type": "productAssertion",
+      "level": "INFO",
+      "text": "关键字段重复，仅保留首条记录",
+      "field": "product"
     },
     {
       "scope": "field",
       "source": "来源渠道 A",
       "channel": "JSFA",
-      "type": "productAssertion",
-      "level": "WARN",
+      "type": "platformAssertion",
+      "level": "DEBUG",
       "text": "字段格式与映射配置不一致，使用默认校验规则",
       "field": "tradeId"
     },
     {
+      "scope": "field",
+      "source": "来源渠道 A",
+      "channel": "JSFA",
+      "type": "platformAssertion",
+      "level": "INFO",
+      "text": "空值处理：期望值为空，按容错策略判定通过\n详情：该字段的映射配置可能缺失或与当前 context 不匹配。\n建议检查映射表对应 sheet 的配置，确认 XPath 与命中的 context 是否正确，并核对字段类型。",
+      "field": "reportId"
+    },
+    {
       "scope": "channel",
       "source": "来源渠道 A",
-      "channel": "CFTC",
-      "type": "contextAssertion",
-      "level": "DEBUG",
-      "text": "空值处理：期望值为空，按容错策略判定通过",
+      "channel": "JSFA",
+      "type": "platformAssertion",
+      "level": "NOTICE",
+      "text": "字段格式与映射配置不一致，使用默认校验规则",
       "field": ""
     },
     {
@@ -3921,38 +3908,38 @@
       "source": "来源渠道 A",
       "channel": "CFTC",
       "type": "contextAssertion",
-      "level": "DEBUG",
-      "text": "空值处理：期望值为空，按容错策略判定通过",
-      "field": "product"
-    },
-    {
-      "scope": "channel",
-      "source": "来源渠道 B",
-      "channel": "CFTC",
-      "type": "productAssertion",
-      "level": "WARN",
-      "text": "日期格式异常，已自动规范化处理",
-      "field": ""
-    },
-    {
-      "scope": "channel",
-      "source": "来源渠道 B",
-      "channel": "CFTC",
-      "type": "productAssertion",
-      "level": "NOTICE",
+      "level": "INFO",
       "text": "字段格式与映射配置不一致，使用默认校验规则",
-      "field": ""
+      "field": "tradeId"
+    },
+    {
+      "scope": "field",
+      "source": "来源渠道 A",
+      "channel": "CFTC",
+      "type": "contextAssertion",
+      "level": "INFO",
+      "text": "关键字段重复，仅保留首条记录",
+      "field": "remarks"
     }
   ],
   "errors": [
     {
       "scope": "field",
+      "source": "来源渠道 A",
+      "channel": "HKTR",
+      "type": "xpathError",
+      "level": "ERROR",
+      "text": "映射配置错误：XPath 语法非法",
+      "field": "reportId"
+    },
+    {
+      "scope": "field",
       "source": "来源渠道 B",
       "channel": "HKTR",
       "type": "xpathError",
       "level": "ERROR",
-      "text": "XPath 解析失败：节点不存在\n详情：该字段的映射配置可能缺失或与当前 context 不匹配。\n建议检查映射表对应 sheet 的配置，确认 XPath 与命中的 context 是否正确，并核对字段类型。",
-      "field": "product"
+      "text": "XPath 解析失败：节点不存在",
+      "field": "tradeId"
     },
     {
       "scope": "field",
@@ -3960,70 +3947,103 @@
       "channel": "HKTR",
       "type": "conversionError",
       "level": "ERROR",
-      "text": "类型转换异常：无法转换为数值",
-      "field": "product"
+      "text": "映射配置错误：XPath 语法非法",
+      "field": "platform"
     },
     {
-      "scope": "field",
+      "scope": "channel",
       "source": "来源渠道 B",
       "channel": "HKTR",
       "type": "conversionError",
       "level": "FATAL",
-      "text": "日志缓冲达到上限，部分日志被丢弃\n详情：该字段的映射配置可能缺失或与当前 context 不匹配。\n建议检查映射表对应 sheet 的配置，确认 XPath 与命中的 context 是否正确，并核对字段类型。",
-      "field": "maturityDate"
+      "text": "XPath 解析失败：节点不存在\n详情：该字段的映射配置可能缺失或与当前 context 不匹配。\n建议检查映射表对应 sheet 的配置，确认 XPath 与命中的 context 是否正确，并核对字段类型。",
+      "field": ""
     },
     {
       "scope": "channel",
       "source": "来源渠道 A",
+      "channel": "HKTR",
+      "type": "conversionError",
+      "level": "SEVERE",
+      "text": "XPath 解析失败：节点不存在",
+      "field": ""
+    },
+    {
+      "scope": "field",
+      "source": "来源渠道 A",
+      "channel": "JSFA",
+      "type": "mappingError",
+      "level": "FATAL",
+      "text": "XPath 解析失败：节点不存在",
+      "field": "tradeId"
+    },
+    {
+      "scope": "field",
+      "source": "来源渠道 B",
+      "channel": "JSFA",
+      "type": "bufferError",
+      "level": "SEVERE",
+      "text": "类型转换异常：无法转换为数值",
+      "field": "counterparty"
+    },
+    {
+      "scope": "channel",
+      "source": "",
       "channel": "JSFA",
       "type": "xpathError",
-      "level": "ERROR",
+      "level": "SEVERE",
       "text": "类型转换异常：无法转换为数值",
       "field": ""
     },
     {
       "scope": "field",
-      "source": "来源渠道 B",
+      "source": "来源渠道 A",
       "channel": "JSFA",
+      "type": "bufferError",
+      "level": "FATAL",
+      "text": "日志缓冲达到上限，部分日志被丢弃",
+      "field": "currency"
+    },
+    {
+      "scope": "field",
+      "source": "来源渠道 A",
+      "channel": "CFTC",
       "type": "mappingError",
       "level": "SEVERE",
-      "text": "映射配置错误：XPath 语法非法\n详情：该字段的映射配置可能缺失或与当前 context 不匹配。\n建议检查映射表对应 sheet 的配置，确认 XPath 与命中的 context 是否正确，并核对字段类型。",
-      "field": "tradeDate"
+      "text": "类型转换异常：无法转换为数值",
+      "field": "tradeId"
     },
     {
       "scope": "field",
       "source": "来源渠道 A",
       "channel": "CFTC",
-      "type": "conversionError",
+      "type": "bufferError",
       "level": "SEVERE",
-      "text": "日志缓冲达到上限，部分日志被丢弃",
-      "field": "maturityDate"
-    },
-    {
-      "scope": "field",
-      "source": "来源渠道 A",
-      "channel": "CFTC",
-      "type": "conversionError",
-      "level": "ERROR",
-      "text": "运行时异常：字段比较过程被中断",
+      "text": "类型转换异常：无法转换为数值",
       "field": "notional"
     },
     {
       "scope": "field",
-      "source": "来源渠道 B",
+      "source": "来源渠道 A",
       "channel": "CFTC",
-      "type": "xpathError",
-      "level": "SEVERE",
-      "text": "运行时异常：字段比较过程被中断\n详情：该字段的映射配置可能缺失或与当前 context 不匹配。\n建议检查映射表对应 sheet 的配置，确认 XPath 与命中的 context 是否正确，并核对字段类型。",
+      "type": "runtimeError",
+      "level": "ERROR",
+      "text": "XPath 解析失败：节点不存在",
       "field": "maturityDate"
     }
   ],
   "uncompared": [
     {
+      "type": 1,
+      "channel": "JSFA",
+      "value": "/JSFA/Report/Execution/PlatformDetails/PlatformIdentifier",
+      "note": "未在映射配置中匹配到对应 CSV 字段\n详情：Excel 映射配置中未找到与该 XPath 对应的条目，可能因 context 定义变化导致。\n请检查映射表并确认该 XPath 是否仍需要参与比较。"
+    },
+    {
       "type": 2,
       "channel": "CFTC",
-      "value": "product_code",
-      "note": "未在映射配置中匹配到对应来源字段"
+      "value": "remarks",
+      "note": "未在映射配置中匹配到对应来源字段\n详情：Excel 映射配置中未找到与该 AO CSV 字段对应的条目，可能因 context 定义变化导致。\n请检查映射表并确认该 CSV 字段是否仍需要参与比较。"
     }
   ],
   "logs": [

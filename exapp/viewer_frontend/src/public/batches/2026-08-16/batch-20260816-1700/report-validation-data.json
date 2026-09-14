@@ -47,13 +47,13 @@
       "file": "data/items/T-20240814-1002.json",
       "summary": {
         "total": 72,
-        "passed": 59,
-        "failed": 13,
-        "rate": 82,
+        "passed": 60,
+        "failed": 12,
+        "rate": 83,
         "warnings": 10,
         "warningsIgnored": 0,
-        "errors": 12,
-        "uncompared": 1,
+        "errors": 10,
+        "uncompared": 2,
         "logs": 73
       }
     },
@@ -74,12 +74,40 @@
       "file": "data/items/T-20240814-1003.json",
       "summary": {
         "total": 66,
-        "passed": 16,
-        "failed": 50,
-        "rate": 24,
-        "warnings": 10,
+        "passed": 9,
+        "failed": 57,
+        "rate": 14,
+        "warnings": 9,
         "warningsIgnored": 0,
-        "errors": 8,
+        "errors": 12,
+        "uncompared": 2,
+        "logs": 73
+      }
+    },
+    {
+      "tradeId": "T-20240814-1004",
+      "reportDate": "2024-08-11",
+      "generatedAt": "2024-08-14 10:23:03.000",
+      "platform": "OTC-PLATFORM-A",
+      "product": "CDX",
+      "productCategory": "CD",
+      "counterpartyItemId": "T-20240814-1003",
+      "platformTradeId": "PT-20240814-1004",
+      "platformDealId": "PD-20240814-1004",
+      "enabledChannels": [
+        "HKTR",
+        "JSFA",
+        "CFTC"
+      ],
+      "file": "data/items/T-20240814-1004.json",
+      "summary": {
+        "total": 66,
+        "passed": 55,
+        "failed": 11,
+        "rate": 83,
+        "warnings": 11,
+        "warningsIgnored": 0,
+        "errors": 13,
         "uncompared": 1,
         "logs": 73
       }

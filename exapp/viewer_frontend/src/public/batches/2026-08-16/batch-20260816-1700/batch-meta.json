@@ -8,7 +8,7 @@
   "dataUrl": "report-validation-data.json",
   "ignoreUrl": "ignore-config-by-platform.json",
   "summary": {
-    "items": 3,
+    "items": 4,
     "channels": 3
   },
   "description": "多文件模式演示批次：清单 + 每 item 一个独立文件"

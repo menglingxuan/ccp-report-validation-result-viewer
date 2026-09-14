@@ -2142,23 +2142,46 @@
 
     function openItemInfoPopover(anchor, item) {
       if (anchor.classList.contains('active')) { closePopover(); return; }
-      const cp = (item.counterpartyItemId && DATA.items.some(function (x) { return x.tradeId === item.counterpartyItemId; }))
-        ? '<a class="cp-link" data-cp-item="' + esc(item.counterpartyItemId) + '" title="' + t('jumpToItem') + '">' + esc(item.counterpartyItemId) + '</a>'
-        : '<span class="num-muted">' + t('counterpartyNone') + '</span>';
+      const cpId = item.counterpartyItemId;
+      const cpInData = !!cpId && DATA.items.some(function (x) { return x.tradeId === cpId; });
+      const cp = cpInData
+        ? '<a class="cp-link" data-cp-item="' + esc(cpId) + '" title="' + t('jumpToItem') + '">' + esc(cpId) + '</a>'
+        : (cpId
+          ? '<span class="cp-link cp-static" data-cp-missing="1" title="' + t('counterpartyNotInDataTip') + '">' + esc(cpId) + '</span>'
+          : '<span class="num-muted">' + t('counterpartyNone') + '</span>');
+      const cpNote = (!cpInData && cpId)
+        ? '<div class="cp-static-note" data-cp-missing="1"></div>'
+        : '';
       const copyBtn = function (v) {
         return v ? '<button class="copy-btn" data-copy="' + esc(v) + '" title="' + t('copyValue') + '" aria-label="' + t('copyValue') + '">⧉</button>' : '';
       };
       const html =
         '<div class="item-info-row"><span class="iir-label">' + t('counterpartyLabel') + '</span>' + cp + copyBtn(item.counterpartyItemId) + '</div>' +
+        cpNote +
         '<div class="item-info-row"><span class="iir-label">' + t('platformTradeIdLabel') + '</span><span class="mono">' + esc(item.platformTradeId || t('counterpartyNone')) + '</span>' + copyBtn(item.platformTradeId) + '</div>' +
         '<div class="item-info-row"><span class="iir-label">' + t('platformDealIdLabel') + '</span><span class="mono">' + esc(item.platformDealId || t('counterpartyNone')) + '</span>' + copyBtn(item.platformDealId) + '</div>';
-      const pop = openPopover(anchor, html, item.tradeId);
+      const pop = openPopover(anchor, html, item.tradeId, 340);
       pop.addEventListener('click', function (e) {
         const cb = e.target.closest('.copy-btn');
         if (cb) {
           copyText(cb.getAttribute('data-copy'));
           cb.classList.add('copied');
           setTimeout(function () { cb.classList.remove('copied'); }, 1200);
+          return;
+        }
+        const miss = e.target.closest('[data-cp-missing]');
+        if (miss) {
+          const note = pop.querySelector('.cp-static-note');
+          if (note) {
+            const old = note.textContent;
+            note.textContent = t('counterpartyNotInDataTip');
+            note.classList.add('cp-note-flash');
+            clearTimeout(note._cpT);
+            note._cpT = setTimeout(function () {
+              note.textContent = old;
+              note.classList.remove('cp-note-flash');
+            }, 2200);
+          }
           return;
         }
         const a = e.target.closest('[data-cp-item]');
@@ -2363,7 +2386,24 @@
         '<span class="filter-chip">' + esc(f.label) +
         '<button data-clear="' + i + '" title="清除此过滤">✕</button></span>'
       ).join('');
-      document.getElementById('filterChips').innerHTML = html;
+      const clearAll = ACTIVE_FILTERS.length > 1
+        ? '<button class="filter-clear-all" data-clear-all="1" title="' + t('clearAllFilters') + '">' + t('clearAllFilters') + '</button>'
+        : '';
+      document.getElementById('filterChips').innerHTML = html + clearAll;
+    }
+
+    // 清除全部过滤标签，并把主列表的报告渠道/来源渠道重置为「全部」。
+    function clearAllFilters() {
+      state.channel = 'ALL';
+      state.source = 'ALL';
+      state.colFilter = { channel: 'ALL', source: 'ALL', field: '', userTag: 'ALL', eoEl: '', aoEl: '', eoCvtEl: '', aoCvtEl: '', vdtEl: '', type: 'ALL', ctxs: '', eoUnconverted: '', eo: '', aoUnconverted: '', ao: '', result: 'ALL', remarks: '' };
+      state.specialFilter = { eo: 'ALL', ao: 'ALL' };
+      state.msgFilter = {};
+      state.search = '';
+      state.page = 1;
+      const searchEl = document.getElementById('search');
+      if (searchEl) searchEl.value = '';
+      render();
     }
 
     function renderPagination(total, pages) {
@@ -2392,14 +2432,14 @@
       document.querySelectorAll('.hf-toggle.active, .col-toggle.active, .side-multi.active, .cal-btn.active, .bp-cal.active, .item-meta-link.active').forEach(b => b.classList.remove('active'));
     }
 
-    function openPopover(anchor, contentHTML, title) {
+    function openPopover(anchor, contentHTML, title, width) {
       closePopover();
       const pop = document.createElement('div');
       pop.className = 'popover';
       pop.innerHTML = (title ? '<p class="popover-title">' + esc(title) + '</p>' : '') + contentHTML;
       document.body.appendChild(pop);
       const r = anchor.getBoundingClientRect();
-      const w = Math.min(260, window.innerWidth - 16);
+      const w = width ? Math.min(width, window.innerWidth - 16) : Math.min(260, window.innerWidth - 16);
       pop.style.width = w + 'px';
       pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
       // 选项过多时：限高 + 内部滚动，保证能滚动看到全部选项；优先向下，下方空间不足则向上展开。
@@ -2653,7 +2693,7 @@
       const key = kind === 'errors' ? 'fieldErrIconTitle' : 'fieldWarnIconTitle';
       const cls = kind === 'errors' ? 'err' : 'warn';
       const tip = t(key).replace('{n}', String(count));
-      // 纯色圆点标记：警告/错误分别以主题 --warn / --fail 色填充（无字形，圆点由 CSS 绘制）。
+      // 纯色圆点标记：警告/错误分别以琥珀 #f59e0b / 红 #ef4444 填充（无字形，圆点由 CSS 绘制）。
       return '<button class="field-msg-ico ' + cls + '" type="button" data-field-msg="' + kind + '"' +
         ' data-fch="' + esc(r.channel) + '" data-fsrc="' + esc(r.source) + '" data-ffield="' + esc(r.field) + '"' +
         ' title="' + esc(tip) + '" aria-label="' + esc(tip) + '"></button>';
@@ -2990,8 +3030,12 @@
       state.msgPage = 1;
       state.msgSort = { key: '', dir: 1 };
       state.msgFilter = {};
-      if (channel) state.channel = channel;
-      if (source) state.source = source;
+      // 清空全局搜索，避免遗留搜索词过滤掉目标消息；同步列筛选，保持筛选 chips 一致。
+      state.search = '';
+      const searchEl = document.getElementById('search');
+      if (searchEl) searchEl.value = '';
+      if (channel) { state.channel = channel; state.colFilter.channel = channel; }
+      if (source) { state.source = source; state.colFilter.source = source; }
       if (field) state.msgFilter.field = field;
       closePopover();
       render();
@@ -3039,7 +3083,7 @@
             if (trs[i].getAttribute('data-fid') === key) {
               trs[i].scrollIntoView({ block: 'center', behavior: 'smooth' });
               trs[i].classList.add('flash-row');
-              setTimeout(function () { trs[i].classList.remove('flash-row'); }, 1600);
+              setTimeout(function () { trs[i].classList.remove('flash-row'); }, 1800);
               return;
             }
           }
@@ -4599,6 +4643,7 @@
       });
 
       document.getElementById('filterChips').addEventListener('click', function (e) {
+        if (e.target.closest('[data-clear-all]')) { clearAllFilters(); return; }
         const btn = e.target.closest('[data-clear]');
         if (!btn) return;
         const idx = parseInt(btn.getAttribute('data-clear'), 10);

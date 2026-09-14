@@ -90,17 +90,18 @@ function main() {
     const dirs = collectBatchDirs(BATCHES_DIR)
       .filter((d) => path.resolve(d) !== path.resolve(multiBatchDir));
     dirs.forEach((dir, i) => {
-      // 每个批次取数据集的不同切片（2..5 个 item），确保不同批次展示不同数据。
-      const n = 2 + (i % 4);
-      const start = (i * 3) % dataset.items.length;
+      // 每个批次取数据集的不同切片：从偶数下标开始、取 2 或 4 个 item，
+      // 使互为对手方的 item（(0,1)(2,3)… 成对）始终在同一批次内，避免「对手方 item」显示为无。
+      const n = (i % 2 === 0) ? 2 : 4;
+      const start = (i * 2) % dataset.items.length;
       const items = [];
       for (let k = 0; k < n; k++) items.push(dataset.items[(start + k) % dataset.items.length]);
       const file = path.join(dir, 'report-validation-data.json');
       writeJSON(file, { mode: 'single', reportEnv: dataset.reportEnv, items });
       console.log('批次数据 -> ' + path.relative(PUBLIC_DIR, file) + '（' + items.length + ' items）');
     });
-    writeMultiBatch(multiBatchDir, { mode: 'single', reportEnv: dataset.reportEnv, items: dataset.items.slice(0, 3) });
-    console.log('多文件批次 -> ' + path.relative(PUBLIC_DIR, multiBatchDir) + '（清单 + data/items/*.json，3 items）');
+    writeMultiBatch(multiBatchDir, { mode: 'single', reportEnv: dataset.reportEnv, items: dataset.items.slice(0, 4) });
+    console.log('多文件批次 -> ' + path.relative(PUBLIC_DIR, multiBatchDir) + '（清单 + data/items/*.json，4 items）');
     if (!dirs.length) {
       console.log('未发现批次目录（需先有 public/batches/<date>/<batch>/batch-meta.json）');
     }
