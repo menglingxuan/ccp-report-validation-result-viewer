@@ -169,12 +169,13 @@ REPORT_VIEWER_CONFIG=prod node server.js
 
 ## 9. `columns`
 
-字段比较表列配置，包含 5 个子项：
+字段比较表列配置，包含 6 个子项：
 
 - `default`：列名 → 布尔（`true` 显示 / `false` 隐藏），即各列的默认可见性。
 - `labels`：列显示名覆盖（键为列名，值为字面量或 `{语言: 显示名}` 多语对象），未配置时回退到 i18n 默认标签。
 - `selector`：列是否出现在「列选择」菜单中（`true` / `false`），未配置的列默认出现。
 - `tag`：是否在 `aoEl` 单元格显示 XPath/CSV 标签（默认 `false`）。
+- `widths`：列宽配置（键为列名，值为 `{def,min,max,resizable}`，单位 px，`def`=默认宽 / `min`=最小宽 / `max`=最大宽 / `resizable`=是否允许拖拽调整列宽，默认 `true`），未配置的列使用内置默认值。
 - `userTag`：用户标签「值 → 显示」配置，含 `raw`（是否只显示原值，普通文本）与 `labels`（值 → 显示标签映射，值为字面量或 `{语言: 显示标签}` 多语对象，标签样式）。
 
 可用列名（对应新数据结构）：

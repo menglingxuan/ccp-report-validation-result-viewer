@@ -111,6 +111,25 @@
       "aoUnconverted": true
     },
     "tag": false,
+    "widths": {
+      "channel": { "def": 110, "min": 80, "max": 280, "resizable": false },
+      "source": { "def": 110, "min": 80, "max": 280, "resizable": false },
+      "field": { "def": 150, "min": 80, "max": 420 },
+      "userTag": { "def": 110, "min": 80, "max": 280, "resizable": false },
+      "eoEl": { "def": 200, "min": 120, "max": 600 },
+      "aoEl": { "def": 200, "min": 120, "max": 600 },
+      "eoCvtEl": { "def": 200, "min": 120, "max": 600 },
+      "aoCvtEl": { "def": 200, "min": 120, "max": 600 },
+      "vdtEl": { "def": 200, "min": 120, "max": 600 },
+      "type": { "def": 110, "min": 80, "max": 240, "resizable": false },
+      "ctxs": { "def": 260, "min": 140, "max": 560 },
+      "eoUnconverted": { "def": 200, "min": 120, "max": 600 },
+      "eo": { "def": 240, "min": 120, "max": 600 },
+      "aoUnconverted": { "def": 200, "min": 120, "max": 600 },
+      "ao": { "def": 240, "min": 120, "max": 600 },
+      "result": { "def": 100, "min": 80, "max": 240 },
+      "remarks": { "def": 200, "min": 120, "max": 600 }
+    },
     "userTag": {
       "raw": false,
       "labels": {

@@ -715,9 +715,9 @@
     .modal-nav:disabled { opacity: .35; cursor: default; }
     .modal-nav:focus, .modal-nav:focus-visible { outline: none !important; outline-offset: 0; box-shadow: none; }
     .modal-body { padding: 16px 18px; overflow: auto; }
-    .kv { display: grid; grid-template-columns: 110px 1fr; gap: 6px 10px; margin-bottom: 14px; font-size: 13px; }
-    .kv .k { color: var(--muted); }
-    .kv .v { font-family: var(--mono); font-size: 12px; word-break: break-all; }
+    .kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; margin-bottom: 14px; font-size: 13px; }
+    .kv .k { color: var(--muted); white-space: nowrap; }
+    .kv .v { font-family: var(--mono); font-size: 12px; word-break: break-all; white-space: pre-wrap; }
     .ri-label { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
     .ri-value { font-family: var(--mono); font-size: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; white-space: pre-wrap; word-break: break-word; color: var(--print-fg); max-height: 280px; overflow: auto; }
     .result-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -760,7 +760,7 @@
     .ctx-def-key { font-family: var(--mono); font-weight: 600; color: var(--accent); margin-bottom: 6px; word-break: break-all; }
     .ctx-def-row { margin-top: 5px; display: flex; gap: 6px; align-items: flex-start; }
     .ctx-def-label { color: var(--muted); margin-right: 6px; font-weight: 600; flex: 0 0 auto; padding-top: 1px; }
-    .ctx-def-value { color: var(--text); flex: 1; min-width: 0; white-space: pre-wrap; word-break: break-word; max-height: 180px; overflow-y: auto; padding-right: 4px; }
+    .ctx-def-value { color: var(--text); flex: 1; min-width: 0; white-space: pre-wrap; word-break: break-word; max-height: 180px; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
     .ctx-def-type { margin-bottom: 2px; }
     .ctx-type-badge, .ctx-origin-badge { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 500; }
     .ctx-type-badge.t1 { background: var(--chip-ctx-bg); color: var(--chip-ctx-fg); }
@@ -813,7 +813,7 @@
       margin: 0; padding: 8px 10px; background: var(--surface-2);
       border: 1px solid var(--border); border-radius: 6px;
       font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-all;
-      color: var(--print-fg); max-height: 240px; overflow: auto;
+      color: var(--print-fg); max-height: 240px; overflow: auto; overscroll-behavior: contain;
     }
     .copy-btn { margin-left: 6px; border: none; background: transparent; color: var(--num-muted); border-radius: 4px; padding: 0 4px; cursor: pointer; font-size: 12px; line-height: 18px; vertical-align: middle; }
     .copy-btn:hover { color: var(--accent); background: var(--accent-bg); }
@@ -905,23 +905,47 @@
     .sidebar-chips { padding: 8px 12px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 6px; }
     .sidebar-chips:empty { display: none; }
 
-    /* 值单元格展开 */
+    /* 值单元格展开（点击打开可自由拉伸宽高的浮层面板） */
     .val-full { font-family: var(--mono); font-size: 12px; word-break: break-word; }
-    .val-details { display: inline-block; max-width: 300px; vertical-align: middle; }
-    .val-details summary {
+    .val-expand {
       cursor: pointer; color: var(--accent); font-family: var(--mono); font-size: 12px;
-      list-style: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px;
+      background: none; border: none; padding: 0; text-align: left;
+      display: inline-block; vertical-align: middle;
+      max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .val-details summary::marker { content: ''; }
-    .val-details summary::-webkit-details-marker { display: none; } /* 旧版 WebKit 兜底 */
-    .val-details summary::before { content: '▸ '; }
-    .val-details[open] summary::before { content: '▾ '; }
-    .val-details pre {
-      margin: 4px 0 0; padding: 6px 8px; background: var(--surface-2);
-      border: 1px solid var(--border); border-radius: 6px;
-      font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-word;
-      max-height: 220px; overflow: auto; max-width: 420px;
+    .val-expand::before { content: '▸ '; }
+    .val-expand:hover { text-decoration: underline; }
+
+    /* 长文本浮层面板：position:fixed + resize:both，右下角手柄自由拉伸宽高；高度按内容自适应 */
+    .val-panel {
+      position: fixed; z-index: 80;
+      display: flex; flex-direction: column;
+      width: 460px;
+      height: auto;
+      min-width: 200px;
+      min-height: 48px;
+      max-width: calc(100vw - 16px); max-height: calc(100vh - 16px);
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 12px 32px rgba(0,0,0,.25);
+      overflow: hidden; resize: both;
     }
+    .val-panel-pre {
+      margin: 0; padding: 10px 12px; flex: 1 1 auto; min-height: 0;
+      font-family: var(--mono); font-size: 12px;
+      white-space: pre-wrap; word-break: break-word;
+      overflow: auto; color: var(--print-fg);
+    }
+    /* 复制按钮：悬停于面板右上角时显示 */
+    .val-panel-copy {
+      position: absolute; top: 6px; right: 6px; z-index: 1;
+      border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+      border-radius: 6px; padding: 3px 8px; cursor: pointer; font-size: 13px; line-height: 1;
+      box-shadow: 0 1px 4px rgba(0,0,0,.12);
+      opacity: 0; transition: opacity .12s ease;
+    }
+    .val-panel:hover .val-panel-copy, .val-panel-copy.copied { opacity: 1; }
+    .val-panel-copy:hover { color: var(--accent); border-color: var(--accent); }
+    .val-panel-copy.copied { color: var(--pass); }
 
     /* 高亮 */
     mark { background: var(--mark-bg); color: inherit; padding: 0 1px; border-radius: 2px; }
@@ -1138,13 +1162,11 @@
 
     /* 字段定位高亮（从警告/错误选项卡跳转到主列表字段行）。
        兼容性：Chrome 不在 <tr> 上绘制 outline（Firefox 可以），因此 outline 环在 Chrome 中完全不可见；
-       改为在 td 上使用 background-color（亮黄）+ box-shadow（accent 左右描边），跨浏览器可靠。 */
-    @keyframes fieldRowFlash { 0% { background-color: var(--mark-bg); } 40% { background-color: var(--mark-bg); } 100% { background-color: transparent; } }
-    @keyframes fieldRowEdgeL { 0% { box-shadow: inset 3px 0 0 0 var(--accent); } 40% { box-shadow: inset 3px 0 0 0 var(--accent); } 100% { box-shadow: inset 3px 0 0 0 transparent; } }
-    @keyframes fieldRowEdgeR { 0% { box-shadow: inset -3px 0 0 0 var(--accent); } 40% { box-shadow: inset -3px 0 0 0 var(--accent); } 100% { box-shadow: inset -3px 0 0 0 transparent; } }
+       改为在 td 上使用 background-color（亮黄）闪烁即可。四边描边统一由聚焦态
+       （.table-wrap tbody tr[tabindex="0"]:focus td 的 box-shadow inset）绘制，
+       避免闪烁动画用左右 box-shadow 覆盖首/末列，导致聚焦的上下边框在首/末列断掉。 */
+    @keyframes fieldRowFlash { 0% { background-color: var(--mark-bg); } 40% { background-color: var(--mark-bg); } 100% { background-color: var(--accent-bg); } }
     tr.flash-row td { animation: fieldRowFlash 1.8s ease-in-out; }
-    tr.flash-row td:first-child { animation: fieldRowFlash 1.8s ease-in-out, fieldRowEdgeL 1.8s ease-in-out; }
-    tr.flash-row td:last-child { animation: fieldRowFlash 1.8s ease-in-out, fieldRowEdgeR 1.8s ease-in-out; }
 
     /* 自定义滚动条 */
     * { scrollbar-width: thin; scrollbar-color: var(--muted) transparent; }
@@ -1250,7 +1272,7 @@
     /* Ctx 列拖拽调宽 */
     th.col-resizable { position: relative; }
     .col-resize { position: absolute; top: 0; right: 0; width: 9px; height: 100%; cursor: col-resize; z-index: 2; }
-    .col-resize::after { content: ''; position: absolute; right: 3px; top: 22%; height: 56%; width: 2px; background: var(--border); border-radius: 2px; }
+    .col-resize::after { content: ''; position: absolute; right: 3px; top: 22%; height: 56%; width: 2px; background: transparent; border-radius: 2px; transition: background .12s ease; }
     .col-resize:hover::after, body.col-resizing .col-resize::after { background: var(--accent); }
     body.col-resizing { cursor: col-resize; user-select: none; }
     .col-resize-guide { position: fixed; top: 0; bottom: 0; width: 2px; background: var(--accent); z-index: 45; pointer-events: none; display: none; }

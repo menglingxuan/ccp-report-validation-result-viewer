@@ -200,6 +200,17 @@
             Object.keys(cfg.columns.selector).forEach(function (k) { COL_SELECTOR[k] = !!cfg.columns.selector[k]; });
           }
           if (cfg.columns.tag !== undefined) COL_TAG = !!cfg.columns.tag;
+          if (cfg.columns.widths && typeof cfg.columns.widths === 'object') {
+            Object.keys(cfg.columns.widths).forEach(function (k) {
+              const cw = COL_WIDTHS[k];
+              const w = cfg.columns.widths[k];
+              if (!cw || !w || typeof w !== 'object') return;
+              if (typeof w.def === 'number' && w.def > 0) cw.def = Math.floor(w.def);
+              if (typeof w.min === 'number' && w.min > 0) cw.min = Math.floor(w.min);
+              if (typeof w.max === 'number' && w.max > 0) cw.max = Math.floor(w.max);
+              if (typeof w.resizable === 'boolean') cw.resizable = w.resizable;
+            });
+          }
           if (cfg.columns.userTag && typeof cfg.columns.userTag === 'object') {
             if (cfg.columns.userTag.raw !== undefined) USER_TAG_RAW = !!cfg.columns.userTag.raw;
             if (cfg.columns.userTag.labels && typeof cfg.columns.userTag.labels === 'object') {
@@ -410,6 +421,7 @@
     function initState() {
       state = {
         itemId: DATA.items.length ? DATA.items[0].tradeId : '',
+        rowId: -1,
         tab: 'fields',
         channel: 'ALL',
         source: 'ALL',
@@ -418,11 +430,8 @@
         sort: { key: '', dir: 1 },
         page: 1,
         pageSize: APP_LIMITS.pageSize,
-        columns: Object.assign({}, DEFAULT_COLUMNS),
-        ctxColWidth: 260,
-        eoColWidth: 240,
-        aoColWidth: 240,
-        noteColWidth: 200,
+        columns: Object.assign({}, DEFAULT_COLUMNS, PREF_COLUMNS),
+        colWidths: {},
         itemSearch: '',
         itemFilter: 'ALL',
         itemPlatforms: [],
@@ -437,14 +446,16 @@
         msgFilter: {},
         msgPage: 1,
         msgPageSize: APP_LIMITS.msgPageSize,
-        reportDateFilter: (function () { const ds = DATA.items.map(function (i) { return i.reportDate; }).sort(); return ds.length ? ds[ds.length - 1] : ''; })(),
+        reportDateFilter: '',
         compare: { mode: 'channel', channelA: 'HKTR', channelB: 'JSFA', itemB: '', sort: { key: '', dir: 1 }, filter: { f: '', source: 'ALL', aResult: 'ALL', bResult: 'ALL', diff: 'ALL' }, page: 1, pageSize: 20 },
       };
     }
     let ACTIVE_FILTERS = [];
     let SIDEBAR_FILTERS = [];
     let POPOVER = { el: null, cleanup: null };
+    let VAL_PANEL = null;
     let HASH_SYNC = { applying: false };
+    let RESTORE_ROW = false;
     let SEARCH_TIMER = null;
     let ITEM_SEARCH_TIMER = null;
 
@@ -469,6 +480,7 @@
     let THEME = 'light';
     let SIDEBAR_WIDTH = 280;
     const PREF_STORAGE_KEY = 'reportValidationPrefs.v1';
+    let PREF_COLUMNS = null;
     function loadPrefs() {
       try {
         const p = JSON.parse(localStorage.getItem(PREF_STORAGE_KEY) || '{}');
@@ -478,10 +490,22 @@
         if (p.batchDockSide === 'left' || p.batchDockSide === 'right') BATCH_STATE.side = p.batchDockSide;
         if (typeof p.dockY === 'number') BATCH_STATE.dockY = p.dockY;
         if (typeof p.listH === 'number') BATCH_STATE.listH = p.listH;
+        if (p.columns && typeof p.columns === 'object') {
+          PREF_COLUMNS = {};
+          Object.keys(p.columns).forEach(function (k) {
+            if (Object.prototype.hasOwnProperty.call(DEFAULT_COLUMNS, k)) PREF_COLUMNS[k] = !!p.columns[k];
+          });
+        }
       } catch (e) {}
     }
     function savePrefs() {
-      try { localStorage.setItem(PREF_STORAGE_KEY, JSON.stringify({ theme: THEME, lang: LANG, sidebarWidth: SIDEBAR_WIDTH, batchDockSide: BATCH_STATE.side, dockY: BATCH_STATE.dockY, listH: BATCH_STATE.listH })); } catch (e) {}
+      const cols = {};
+      if (state && state.columns) {
+        Object.keys(state.columns).forEach(function (k) {
+          if (state.columns[k] !== DEFAULT_COLUMNS[k]) cols[k] = !!state.columns[k];
+        });
+      }
+      try { localStorage.setItem(PREF_STORAGE_KEY, JSON.stringify({ theme: THEME, lang: LANG, sidebarWidth: SIDEBAR_WIDTH, batchDockSide: BATCH_STATE.side, dockY: BATCH_STATE.dockY, listH: BATCH_STATE.listH, columns: cols })); } catch (e) {}
     }
     function applySidebarWidth() {
       document.documentElement.style.setProperty('--side-w', SIDEBAR_WIDTH + 'px');
@@ -1203,6 +1227,10 @@
       } catch (e) {}
       return null;
     }
+    function batchById(id) {
+      if (!id) return null;
+      return BATCHES_INDEX.batches.find(function (x) { return x.batchId === id; }) || null;
+    }
     function isPinned(b) { return !!(b && PINNED_BATCH_ID === b.batchId); }
     function loadPinnedId() {
       try {
@@ -1409,7 +1437,8 @@
       saveBatchActive();
       return true;
     }
-    async function loadBatch(b, forced) {
+    async function loadBatch(b, forced, applyUrlAfter) {
+      if (BATCH_STATE.loading) return;
       BATCH_STATE.loading = true;
       renderBatchPanel(); renderBatchDock();
       const dataUrl = resolveUrl(indexBaseUrl(), b.dataUrl || '');
@@ -1420,7 +1449,7 @@
       if (NEW_BATCH_IDS[b.batchId]) delete NEW_BATCH_IDS[b.batchId];
       initState();
       if (isMultiMode()) await ensureItemLoaded(DATA.items[0].tradeId);
-      clearHash();
+      if (applyUrlAfter) applyHash(); else clearHash();
       applyDateFilterVisibility();
       render();
       preloadAllItems();
@@ -1435,7 +1464,6 @@
       DATA = await loadData();
       initState();
       if (isMultiMode()) await ensureItemLoaded(DATA.items[0].tradeId);
-      clearHash();
       applyDateFilterVisibility();
       render();
       preloadAllItems();
@@ -1669,6 +1697,7 @@
 
     async function selectItem(id) {
       state.itemId = id;
+      state.rowId = -1;
       state.page = 1;
       state.channel = 'ALL';
       state.source = 'ALL';
@@ -1758,26 +1787,29 @@
       const it = currentItem();
       if (!it) return [];
       const names = scopeChannels().map(function (c) { return c.name; });
-      return (it.warnings || []).filter(function (w) { return names.indexOf(w.channel) !== -1 && sourceMatches(w.source); }).map(enrichMsg);
+      return (it.warnings || []).map(function (w, i) { return Object.assign({}, w, { _idx: i }); })
+        .filter(function (w) { return names.indexOf(w.channel) !== -1 && sourceMatches(w.source); }).map(enrichMsg);
     }
     function scopeErrors() {
       const it = currentItem();
       if (!it) return [];
       const names = scopeChannels().map(function (c) { return c.name; });
-      return (it.errors || []).filter(function (e) { return names.indexOf(e.channel) !== -1 && sourceMatches(e.source); });
+      return (it.errors || []).map(function (e, i) { return Object.assign({}, e, { _idx: i }); })
+        .filter(function (e) { return names.indexOf(e.channel) !== -1 && sourceMatches(e.source); });
     }
     function scopeUncompared() {
       const it = currentItem();
       if (!it) return [];
       const names = scopeChannels().map(function (c) { return c.name; });
-      return (it.uncompared || []).filter(function (u) {
-        const chOk = u.channel == null || names.indexOf(u.channel) !== -1;
-        return chOk && sourceMatches(u.source);
-      }).map(enrichMsg);
+      return (it.uncompared || []).map(function (u, i) { return Object.assign({}, u, { _idx: i }); })
+        .filter(function (u) {
+          const chOk = u.channel == null || names.indexOf(u.channel) !== -1;
+          return chOk && sourceMatches(u.source);
+        }).map(enrichMsg);
     }
     function scopeSkippedItems() {
       const list = DATA.skippedItems || [];
-      return list.filter(function (s) {
+      return list.map(function (s, i) { return Object.assign({}, s, { _idx: i }); }).filter(function (s) {
         const chOk = state.channel === 'ALL' || s.channel == null || s.channel === state.channel;
         return chOk && sourceMatches(s.source);
       });
@@ -1815,7 +1847,7 @@
     }
 
     function filteredFields(item) {
-      let rows = flatFields(item);
+      let rows = flatFields(item).map(function (r, i) { r._idx = i; return r; });
       if (state.channel !== 'ALL') rows = rows.filter(r => r.channel === state.channel);
       if (state.source && state.source !== 'ALL') rows = rows.filter(r => r.source === state.source);
       COLUMNS.forEach(c => {
@@ -1950,11 +1982,11 @@
     function pagerHTML(p, pages) {
       const from = Math.max(1, p - 1), to = Math.min(pages, p + 1);
       let parts = [];
-      if (pages > 3) parts.push('<button class="pg" data-sidepage="1"' + (p === 1 ? ' disabled' : '') + ' title="首页">«</button>');
-      parts.push('<button class="pg" data-sidepage="' + (p - 1) + '"' + (p === 1 ? ' disabled' : '') + ' title="上一页">‹</button>');
+      if (pages > 3) parts.push('<button class="pg" data-sidepage="1"' + (p === 1 ? ' disabled' : '') + ' title="' + t('pageFirst') + '">«</button>');
+      parts.push('<button class="pg" data-sidepage="' + (p - 1) + '"' + (p === 1 ? ' disabled' : '') + ' title="' + t('pagePrev') + '">‹</button>');
       for (let i = from; i <= to; i++) parts.push('<button class="pg' + (i === p ? ' cur' : '') + '" data-sidepage="' + i + '">' + i + '</button>');
-      parts.push('<button class="pg" data-sidepage="' + (p + 1) + '"' + (p === pages ? ' disabled' : '') + ' title="下一页">›</button>');
-      if (pages > 3) parts.push('<button class="pg" data-sidepage="' + pages + '"' + (p === pages ? ' disabled' : '') + ' title="尾页">»</button>');
+      parts.push('<button class="pg" data-sidepage="' + (p + 1) + '"' + (p === pages ? ' disabled' : '') + ' title="' + t('pageNext') + '">›</button>');
+      if (pages > 3) parts.push('<button class="pg" data-sidepage="' + pages + '"' + (p === pages ? ' disabled' : '') + ' title="' + t('pageLast') + '">»</button>');
       return parts.join('') + '<span class="pg-info">' + p + '/' + pages + '</span>';
     }
 
@@ -2017,6 +2049,7 @@
       itemCountEl.innerHTML = '<span class="num-pass">' + passedItems + '</span>/<span class="num-fail">' + failedItems + '</span>/<span class="num-pass">' + pct + '%</span>';
       itemCountEl.title = t('passed') + ' ' + passedItems + ' / ' + t('failed') + ' ' + failedItems + ' / ' + t('passRate') + ' ' + pct + '%';
       updateReportDateHint();
+      syncHash();
       if (SIDEBAR_MODE === 'combined') {
         renderSidebarVirtual(all);
         return;
@@ -2080,7 +2113,7 @@
       });
       SIDEBAR_FILTERS = chips;
       document.getElementById('sidebarChips').innerHTML = chips.map((c, i) =>
-        '<span class="filter-chip">' + esc(c.label) + '<button data-sideclear="' + i + '" title="清除">✕</button></span>'
+        '<span class="filter-chip">' + esc(c.label) + '<button data-sideclear="' + i + '" title="' + t('filterClear') + '">✕</button></span>'
       ).join('');
       document.getElementById('platformFilterBtn').classList.toggle('has-filter', state.itemPlatforms.length > 0);
       document.getElementById('productFilterBtn').classList.toggle('has-filter', state.itemProducts.length > 0);
@@ -2336,7 +2369,7 @@
         const disabled = k !== 'ALL' && it.enabledChannels.indexOf(k) === -1;
         const cls = 'ctab' + (state.channel === k ? ' active' : '') + (disabled ? ' disabled' : '');
         const count = disabled ? '—' : channelCount(k, state.tab);
-        return '<button class="' + cls + '" data-channel="' + k + '" title="' + (disabled ? '该渠道未启用' : '') + '">' + esc(label) +
+        return '<button class="' + cls + '" data-channel="' + k + '" title="' + (disabled ? t('channelDisabled') : '') + '">' + esc(label) +
           '<span class="ctab-count">' + count + '</span></button>';
       }).join('');
 
@@ -2366,10 +2399,23 @@
 
     function activeFilters() {
       const list = [];
-      if (state.channel !== 'ALL') list.push({ label: '渠道: ' + state.channel, clear: function () { state.channel = 'ALL'; } });
+      // 报告渠道/来源渠道统一由作用域 chip 表示（标签取列名），避免与列头过滤器 chip 重复。
+      if (state.channel !== 'ALL') {
+        list.push({
+          label: t('colChannel') + ': ' + state.channel,
+          clear: function () { state.channel = 'ALL'; state.colFilter.channel = 'ALL'; state.msgFilter.channel = 'ALL'; },
+        });
+      }
+      if (state.source && state.source !== 'ALL') {
+        list.push({
+          label: t('colSource') + ': ' + state.source,
+          clear: function () { state.source = 'ALL'; state.colFilter.source = 'ALL'; state.msgFilter.source = 'ALL'; },
+        });
+      }
       if (state.search.trim()) list.push({ label: '搜索: ' + state.search.trim(), clear: function () { state.search = ''; document.getElementById('search').value = ''; } });
       if (state.tab === 'fields') {
         COLUMNS.forEach(function (c) {
+          if (c.key === 'channel' || c.key === 'source') return; // 已由上面的作用域 chip 表示
           const v = state.colFilter[c.key];
           if (v && v !== 'ALL') {
             const shown = c.key === 'type' ? valueTypeLabel(v) : v;
@@ -2394,6 +2440,7 @@
         });
       } else if (MSG_COLUMNS[state.tab]) {
         MSG_COLUMNS[state.tab].forEach(function (c) {
+          if (c.key === 'channel' || c.key === 'source') return; // 已由上面的作用域 chip 表示
           const v = state.msgFilter[c.key];
           if (v && v !== 'ALL') {
             const shown = c.key === 'type' ? (state.tab === 'errors' ? errorTypeLabel(v) : typeLabel(v)) : v;
@@ -2413,7 +2460,7 @@
       ACTIVE_FILTERS = activeFilters();
       const html = ACTIVE_FILTERS.map((f, i) =>
         '<span class="filter-chip">' + esc(f.label) +
-        '<button data-clear="' + i + '" title="清除此过滤">✕</button></span>'
+        '<button data-clear="' + i + '" title="' + t('filterClearThis') + '">✕</button></span>'
       ).join('');
       const clearAll = ACTIVE_FILTERS.length > 1
         ? '<button class="filter-clear-all" data-clear-all="1" title="' + t('clearAllFilters') + '">' + t('clearAllFilters') + '</button>'
@@ -2440,13 +2487,13 @@
       const p = state.page;
       const from = Math.max(1, p - 2), to = Math.min(pages, p + 2);
       let parts = [];
-      if (pages > 3) parts.push('<button class="pg" data-page="1"' + (p === 1 ? ' disabled' : '') + ' title="首页">«</button>');
-      parts.push('<button class="pg" data-page="' + (p - 1) + '"' + (p === 1 ? ' disabled' : '') + ' title="上一页">‹</button>');
+      if (pages > 3) parts.push('<button class="pg" data-page="1"' + (p === 1 ? ' disabled' : '') + ' title="' + t('pageFirst') + '">«</button>');
+      parts.push('<button class="pg" data-page="' + (p - 1) + '"' + (p === 1 ? ' disabled' : '') + ' title="' + t('pagePrev') + '">‹</button>');
       for (let i = from; i <= to; i++) {
         parts.push('<button class="pg' + (i === p ? ' cur' : '') + '" data-page="' + i + '">' + i + '</button>');
       }
-      parts.push('<button class="pg" data-page="' + (p + 1) + '"' + (p === pages ? ' disabled' : '') + ' title="下一页">›</button>');
-      if (pages > 3) parts.push('<button class="pg" data-page="' + pages + '"' + (p === pages ? ' disabled' : '') + ' title="尾页">»</button>');
+      parts.push('<button class="pg" data-page="' + (p + 1) + '"' + (p === pages ? ' disabled' : '') + ' title="' + t('pageNext') + '">›</button>');
+      if (pages > 3) parts.push('<button class="pg" data-page="' + pages + '"' + (p === pages ? ' disabled' : '') + ' title="' + t('pageLast') + '">»</button>');
       return '<div class="pagination">' + parts.join('') +
         '<span class="pg-info">' + p + ' / ' + pages + ' ' + t('pageOf') + '</span>' +
         '<select id="pageSize">' +
@@ -2458,6 +2505,7 @@
     function closePopover() {
       if (POPOVER.el) { POPOVER.el.remove(); POPOVER.el = null; }
       if (POPOVER.cleanup) { POPOVER.cleanup(); POPOVER.cleanup = null; }
+      closeValPanel();
       document.querySelectorAll('.hf-toggle.active, .col-toggle.active, .side-multi.active, .cal-btn.active, .bp-cal.active, .item-meta-link.active').forEach(b => b.classList.remove('active'));
     }
 
@@ -2489,6 +2537,38 @@
       document.addEventListener('click', docClick);
       POPOVER.cleanup = function () { document.removeEventListener('click', docClick); };
       return pop;
+    }
+
+    /* 值/说明长文本浮层面板：position:fixed + resize:both，右下角手柄可自由拉伸宽高。 */
+    function closeValPanel() {
+      if (VAL_PANEL) { VAL_PANEL.remove(); VAL_PANEL = null; }
+    }
+    function openValPanel(anchor, text) {
+      if (VAL_PANEL && VAL_PANEL.__anchor === anchor) { closeValPanel(); return; }
+      closeValPanel();
+      closePopover();
+      closeCtxDefPopup();
+      closeRulePopup();
+      const panel = document.createElement('div');
+      panel.className = 'val-panel';
+      panel.innerHTML =
+        '<pre class="val-panel-pre">' + esc(text) + '</pre>' +
+        '<button class="val-panel-copy" type="button" data-val-copy="1" title="' + t('copyValue') + '" aria-label="' + t('copyValue') + '">⧉</button>';
+      document.body.appendChild(panel);
+      const r = anchor.getBoundingClientRect();
+      const pw = panel.offsetWidth, ph = panel.offsetHeight;
+      let left = r.left, top = r.bottom + 6;
+      if (left + pw > window.innerWidth - 8) left = Math.max(8, window.innerWidth - pw - 8);
+      if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 6);
+      panel.style.left = left + 'px';
+      panel.style.top = top + 'px';
+      panel.__anchor = anchor;
+      panel.__text = text;
+      panel.addEventListener('click', function (e) {
+        const cp = e.target.closest('[data-val-copy]');
+        if (cp) { copyText(panel.__text); cp.classList.add('copied'); setTimeout(function () { cp.classList.remove('copied'); }, 1200); return; }
+      });
+      VAL_PANEL = panel;
     }
 
     function selectOptionsFor(col, table) {
@@ -2526,7 +2606,7 @@
         control = '<select class="pop-control">' +
           opts.map(function (o) { return '<option value="' + o[0] + '"' + (filterObj[col] === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
       } else {
-        control = '<input class="pop-control" placeholder="' + esc(placeholder || '搜索') + '" value="' + esc(filterObj[col] || '') + '">';
+        control = '<input class="pop-control" placeholder="' + esc(placeholder || t('search')) + '" value="' + esc(filterObj[col] || '') + '">';
       }
       const pop = openPopover(btn, control);
       const ctrl = pop.querySelector('.pop-control');
@@ -2554,7 +2634,11 @@
     function openMsgFilterPopover(btn) {
       const col = btn.getAttribute('data-hf');
       const kind = btn.getAttribute('data-kind');
-      openFilterPopover(btn, state.msgFilter, col, kind, btn.getAttribute('data-title') || '搜索', function () { renderContent(); renderFilterChips(); }, 'msg');
+      openFilterPopover(btn, state.msgFilter, col, kind, btn.getAttribute('data-title') || '搜索', function () {
+        if (col === 'channel') { state.channel = state.msgFilter.channel; state.colFilter.channel = state.channel; renderChannelTabs(); }
+        else if (col === 'source') { state.source = state.msgFilter.source; state.colFilter.source = state.source; renderChannelTabs(); }
+        renderContent(); renderFilterChips();
+      }, 'msg');
     }
 
     function openSpecialPopover(btn) {
@@ -2590,6 +2674,8 @@
             if (key === '__ALL__') COLUMNS.forEach(function (c) { state.columns[c.key] = cb.checked; });
             else state.columns[key] = cb.checked;
             renderFields();
+            savePrefs();
+            syncHash();
             pop.innerHTML = buildContent();
             bind();
           });
@@ -2688,14 +2774,14 @@
       const s = String(v);
       const long = s.length > 32 || /\r?\n/.test(s);
       if (!long) return '<span class="val-full">' + esc(s) + '</span>';
-      return '<details class="val-details"><summary>' + esc(preview(s)) + '</summary><pre>' + esc(s) + '</pre></details>';
+      return '<button class="val-expand" type="button" data-val-expand="1" data-val="' + esc(s) + '" title="' + t('expandValue') + '">' + esc(preview(s)) + '</button>';
     }
 
     function hoverCellHTML(v) {
       const s = String(v);
       const long = s.length > 40 || /\r?\n/.test(s);
       if (!long) return '<span class="text-full">' + esc(s) + '</span>';
-      return '<span class="hover-trunc" title="' + esc(s) + '">' + esc(preview(s)) + '</span>';
+      return '<button class="val-expand" type="button" data-val-expand="1" data-val="' + esc(s) + '" title="' + t('expandValue') + '">' + esc(preview(s)) + '</button>';
     }
 
     // 统计与某字段（报告渠道-来源渠道-关联字段）关联的警告/错误条数。
@@ -2738,7 +2824,7 @@
           let icos = '';
           if (warnN > 0) icos += fieldMsgIconHTML('warnings', warnN, r);
           if (errN > 0) icos += fieldMsgIconHTML('errors', errN, r);
-          return '<td class="mono"><a class="val-link" data-detail="' + esc(fieldLocKey(r.channel, r.source, r.id)) + '" title="查看比较详情">' + esc(r.field) + '</a>' + icos + '</td>';
+          return '<td class="mono"><a class="val-link" data-detail="' + esc(fieldLocKey(r.channel, r.source, r.id)) + '" title="' + t('viewCompareDetail') + '">' + esc(r.field) + '</a>' + icos + '</td>';
         }
         case 'userTag': return '<td>' + userTagHTML(r.userTag) + '</td>';
         case 'aoEl': {
@@ -2756,14 +2842,14 @@
         case 'eoUnconverted': return '<td>' + valueCellHTML(r.eoUnconverted || '—') + '</td>';
         case 'aoUnconverted': return '<td>' + valueCellHTML(r.aoUnconverted || '—') + '</td>';
         case 'type': return '<td><span class="vt-plain">' + esc(valueTypeLabel(r.type)) + '</span></td>';
-        case 'ctxs': return '<td data-col="ctxs" style="width:' + state.ctxColWidth + 'px; min-width:' + state.ctxColWidth + 'px;"><div class="ctx-tags">' + (ctxTagsHTML(r.ctxs) || '') + '</div></td>';
-        case 'eo': return '<td data-col="eo" style="width:' + state.eoColWidth + 'px; min-width:' + state.eoColWidth + 'px;">' + valueCellHTML(r.eo) + '</td>';
-        case 'ao': return '<td data-col="ao" style="width:' + state.aoColWidth + 'px; min-width:' + state.aoColWidth + 'px;">' + valueCellHTML(r.ao) + '</td>';
+        case 'ctxs': return '<td><div class="ctx-tags">' + (ctxTagsHTML(r.ctxs) || '') + '</div></td>';
+        case 'eo': return '<td>' + valueCellHTML(r.eo) + '</td>';
+        case 'ao': return '<td>' + valueCellHTML(r.ao) + '</td>';
         case 'result': {
           const pass = r.result === 'PASSED';
           return '<td><span class="badge ' + (pass ? 'pass' : 'fail') + '">' + r.result + '</span></td>';
         }
-        case 'remarks': return '<td data-col="remarks" style="width:' + state.noteColWidth + 'px; min-width:' + state.noteColWidth + 'px;">' + hoverCellHTML(r.remarks || '—') + '</td>';
+        case 'remarks': return '<td>' + hoverCellHTML(r.remarks || '—') + '</td>';
         default: return '<td></td>';
       }
     }
@@ -2781,23 +2867,47 @@
       const visible = COLUMNS.filter(isFieldColVisible);
       const trs = pageRows.map(r => {
         const pass = r.result === 'PASSED';
-        return '<tr class="' + (pass ? '' : 'row-fail') + '" tabindex="0" data-fid="' + esc(fieldLocKey(r.channel, r.source, r.id)) + '">' +
-          visible.map(c => fieldCellHTML(r, c.key)).join('') + '</tr>';
+        return '<tr class="' + (pass ? '' : 'row-fail') + '" tabindex="0" data-fid="' + esc(fieldLocKey(r.channel, r.source, r.id)) + '" data-rid="' + r._idx + '">' +
+          visible.map(c => cellWithWidth(c.key, fieldCellHTML(r, c.key))).join('') + '</tr>';
       }).join('');
       return trs || '<tr><td colspan="' + visible.length + '" class="empty">无匹配记录</td></tr>';
     }
 
-    const RESIZABLE_COLS = {
-      ctxs:    { stateKey: 'ctxColWidth',  min: 140, max: 560 },
-      eo:      { stateKey: 'eoColWidth',   min: 120, max: 600 },
-      ao:      { stateKey: 'aoColWidth',   min: 120, max: 600 },
-      remarks: { stateKey: 'noteColWidth', min: 120, max: 600 },
+    const COL_WIDTHS = {
+      channel: { def: 110, min: 80,  max: 280, resizable: false },
+      source:  { def: 110, min: 80,  max: 280, resizable: false },
+      field:   { def: 150, min: 80,  max: 420 },
+      userTag: { def: 110, min: 80,  max: 280, resizable: false },
+      eoEl:    { def: 200, min: 120, max: 600 },
+      aoEl:    { def: 200, min: 120, max: 600 },
+      eoCvtEl: { def: 200, min: 120, max: 600 },
+      aoCvtEl: { def: 200, min: 120, max: 600 },
+      vdtEl:   { def: 200, min: 120, max: 600 },
+      type:    { def: 110, min: 80,  max: 240, resizable: false },
+      ctxs:    { def: 260, min: 140, max: 560 },
+      eoUnconverted: { def: 200, min: 120, max: 600 },
+      eo:      { def: 240, min: 120, max: 600 },
+      aoUnconverted: { def: 200, min: 120, max: 600 },
+      ao:      { def: 240, min: 120, max: 600 },
+      result:  { def: 100, min: 80,  max: 240 },
+      remarks: { def: 200, min: 120, max: 600 },
     };
 
+    function colWidth(key) {
+      const w = state.colWidths[key];
+      if (w != null) return w;
+      const cfg = COL_WIDTHS[key];
+      return cfg ? cfg.def : 120;
+    }
+
+    function cellWithWidth(key, tdHTML) {
+      const w = colWidth(key);
+      const gt = tdHTML.indexOf('>');
+      return tdHTML.slice(0, gt) + ' data-col="' + key + '" style="width:' + w + 'px; min-width:' + w + 'px;">' + tdHTML.slice(gt + 1);
+    }
+
     function applyColWidth(key) {
-      const rc = RESIZABLE_COLS[key];
-      if (!rc) return;
-      const w = state[rc.stateKey];
+      const w = colWidth(key);
       document.querySelectorAll('[data-col="' + key + '"]').forEach(function (el) {
         el.style.width = w + 'px';
         el.style.minWidth = w + 'px';
@@ -2808,22 +2918,23 @@
       const cells = COLUMNS.filter(isFieldColVisible).map(c => {
         let cls = c.sortable ? 'sortable' : '';
         let extra = '';
-        const rc = RESIZABLE_COLS[c.key];
-        if (rc) {
-          cls += (cls ? ' ' : '') + 'col-resizable';
-          const w = state[rc.stateKey];
+        const cw = COL_WIDTHS[c.key];
+        if (cw) {
+          const w = colWidth(c.key);
           extra = ' data-col="' + c.key + '" style="width:' + w + 'px; min-width:' + w + 'px;"';
         }
+        const resizable = cw && cw.resizable !== false;
+        if (resizable) cls += (cls ? ' ' : '') + 'col-resizable';
         const sortAttr = cls ? ' class="' + cls + '"' + (c.sortable ? ' data-sort="' + c.key + '"' : '') : '';
         let btn = '';
         if (c.filterable) {
-          btn = '<button class="hf-toggle" data-hf="' + c.key + '" data-kind="' + c.filterable + '" title="过滤">⚲</button>';
+          btn = '<button class="hf-toggle" data-hf="' + c.key + '" data-kind="' + c.filterable + '" title="' + t('filterTitle') + '">⚲</button>';
         }
         let specialBtn = '';
         if (c.key === 'eo' || c.key === 'ao') {
-          specialBtn = '<button class="special-toggle" data-special="' + c.key + '" title="空值/空白/含特殊字符过滤">∅</button>';
+          specialBtn = '<button class="special-toggle" data-special="' + c.key + '" title="' + t('specialFilterTitle') + '">∅</button>';
         }
-        const handle = rc ? '<span class="col-resize" data-resize="' + c.key + '" title="拖动调整列宽"></span>' : '';
+        const handle = resizable ? '<span class="col-resize" data-resize="' + c.key + '" title="' + t('colResizeTitle') + '"></span>' : '';
         return '<th' + sortAttr + extra + ' scope="col">' + colLabel(c) +
           (c.sortable ? ' <span class="sort-arrow">' + sortArrow(c.key) + '</span>' : '') +
           btn + specialBtn + handle + '</th>';
@@ -2850,6 +2961,45 @@
         '<div class="table-wrap' + (state.showFieldMsg ? ' show-field-msg' : '') + '"><table>' + fieldsHeaderHTML() +
         '<tbody id="fTbody">' + buildFieldRows(p.pageRows) + '</tbody></table></div>' +
         '<div id="fFooter">' + fieldsFooterHTML(p.total, p.pages) + '</div>';
+      restoreRowSelection();
+    }
+
+    // 深链接恢复：渲染后聚焦并滚动到 URL 指定的选中行（字段/警告/错误/未比较/未比较Item），仅应用 hash 时触发一次。
+    function restoreRowSelection() {
+      if (state.rowId < 0 || !RESTORE_ROW) return;
+      const msgTabs = ['warnings', 'errors', 'uncompared', 'uncomparedItems'];
+      if (state.tab !== 'fields' && msgTabs.indexOf(state.tab) === -1) return;
+      RESTORE_ROW = false;
+      const sel = state.tab === 'fields' ? '#fTbody tr[data-rid]' : '#mTbody tr[data-rid]';
+      requestAnimationFrame(function () {
+        const trs = document.querySelectorAll(sel);
+        for (let i = 0; i < trs.length; i++) {
+          if (parseInt(trs[i].getAttribute('data-rid'), 10) === state.rowId) {
+            trs[i].scrollIntoView({ block: 'nearest' });
+            try { trs[i].focus({ preventScroll: true }); } catch (e) { trs[i].focus(); }
+            return;
+          }
+        }
+      });
+    }
+
+    // 计算深链接行ID（源数组下标）在指定 tab 列表中的页码。
+    function rowPageFor(tab, rid) {
+      if (rid < 0) return null;
+      if (tab === 'fields') {
+        const list = filteredFields(currentItem());
+        for (let i = 0; i < list.length; i++) {
+          if (list[i]._idx === rid) return Math.floor(i / state.pageSize) + 1;
+        }
+        return null;
+      }
+      if (['warnings', 'errors', 'uncompared', 'uncomparedItems'].indexOf(tab) !== -1) {
+        const list = getMsgRows(tab);
+        for (let i = 0; i < list.length; i++) {
+          if (list[i]._idx === rid) return Math.floor(i / state.msgPageSize) + 1;
+        }
+      }
+      return null;
     }
 
     /* ---- 消息类列表通用引擎（警告/错误/未比较/未比较Item） ---- */
@@ -2947,9 +3097,9 @@
       const cells = MSG_COLUMNS[tab].map(function (c) {
         const sortAttr = c.sortable ? ' class="sortable" data-sort="' + c.key + '"' : '';
         let filterBtn = '';
-        if (c.filter) filterBtn = '<button class="mhf-toggle" data-hf="' + c.key + '" data-kind="' + c.filter + '" data-title="' + t(c.label) + '" title="过滤">⚲</button>';
+        if (c.filter) filterBtn = '<button class="mhf-toggle" data-hf="' + c.key + '" data-kind="' + c.filter + '" data-title="' + t(c.label) + '" title="' + t('filterTitle') + '">⚲</button>';
         let bulkBtn = '';
-        if (c.bulk) bulkBtn = '<button class="bulk-toggle" data-bulk-open="1" title="批量忽略/取消忽略（作用于当前过滤结果集）">☰</button>';
+        if (c.bulk) bulkBtn = '<button class="bulk-toggle" data-bulk-open="1" title="' + t('bulkToggleTitle') + '">☰</button>';
         return '<th' + sortAttr + ' scope="col">' + t(c.label) +
           (c.sortable ? ' <span class="sort-arrow">' + msgSortArrow(c.key) + '</span>' : '') +
           filterBtn + bulkBtn + '</th>';
@@ -3002,7 +3152,7 @@
       const pageRows = list.slice(start, start + state.msgPageSize);
       const rows = pageRows.map(function (m) {
         const ignoredRow = msgIsIgnored(tab, m);
-        return '<tr class="' + (ignoredRow ? 'row-ignored' : '') + '" tabindex="0">' +
+        return '<tr class="' + (ignoredRow ? 'row-ignored' : '') + '" tabindex="0" data-rid="' + m._idx + '">' +
           cols.map(function (c) { return msgCellHTML(tab, m, c); }).join('') + '</tr>';
       }).join('');
       let pagerHtml = '';
@@ -3019,9 +3169,10 @@
       document.getElementById('content').innerHTML =
         ((tab === 'warnings' || tab === 'uncompared') ? '<div class="warn-toolbar"><button class="export-btn" id="importIgnoreBtn">' + t('importIgnore') + '</button><button class="export-btn" id="exportIgnoreBtn">' + t('export') + '</button></div>' : '') +
         '<div class="table-wrap"><table>' + msgHeaderHTML(tab) +
-        '<tbody>' + (rows || '<tr><td colspan="' + cols.length + '" class="empty">无记录</td></tr>') + '</tbody></table></div>' +
+        '<tbody id="mTbody">' + (rows || '<tr><td colspan="' + cols.length + '" class="empty">无记录</td></tr>') + '</tbody></table></div>' +
         pagerHtml +
         '<div class="meta-note">' + metaText + '</div>';
+      restoreRowSelection();
     }
 
     function openBulkIgnoreDialog() {
@@ -3059,6 +3210,7 @@
     // 无有效值的属性不参与筛选。
     function jumpToFieldMsg(kind, channel, source, field) {
       state.tab = kind === 'errors' ? 'errors' : 'warnings';
+      state.rowId = -1;
       state.page = 1;
       state.msgPage = 1;
       state.msgSort = { key: '', dir: 1 };
@@ -3095,15 +3247,18 @@
       // 计算目标行所在页码（分页可能让字段不在第 1 页）。
       const rows = filteredFields(it);
       let targetKey = null;
+      let targetIdx = -1;
       for (let i = 0; i < rows.length; i++) {
         const r = rows[i];
         if (r.channel === channel && r.field === fieldName && (!source || r.source === source)) {
           state.page = Math.floor(i / state.pageSize) + 1;
           targetKey = fieldLocKey(r.channel, r.source, r.id);
+          targetIdx = r._idx;
           break;
         }
       }
       if (!targetKey) state.page = 1;
+      state.rowId = targetIdx;
       closePopover();
       render();
       // 渲染完成后滚动到目标行并高亮。
@@ -3117,6 +3272,8 @@
               trs[i].scrollIntoView({ block: 'center', behavior: 'smooth' });
               trs[i].classList.add('flash-row');
               setTimeout(function () { trs[i].classList.remove('flash-row'); }, 1800);
+              // 选中该行：聚焦使其进入选中态（蓝框），focusin 会同步 fr 到 URL。
+              try { trs[i].focus({ preventScroll: true }); } catch (e) { trs[i].focus(); }
               return;
             }
           }
@@ -3246,6 +3403,7 @@
       if (b) b.remove();
       closeCtxDefPopup();
       closeRulePopup();
+      closeValPanel();
       if (LAST_FOCUS && document.body.contains(LAST_FOCUS)) { try { LAST_FOCUS.focus(); } catch (e) {} }
       LAST_FOCUS = null;
     }
@@ -3286,7 +3444,8 @@
     }
 
     function ruleValueHTML(value) {
-      return '<span class="rule-value-text">' + esc(value == null ? '' : value) + '</span>';
+      const s = value == null ? '' : String(value);
+      return valueCellHTML(s || '—');
     }
 
     function extraResultsHTML(f) {
@@ -3441,8 +3600,10 @@
           ? ruleSectionHTML('validation', t('modalValidationRule'), vdt ? ruleValueHTML(vdt.el || '—') : noneHtml, ruleCtxHTML(vdt ? vdt.ctx : null, vdt ? vdt.ctxs : null))
           : '';
 
-        const xpathLabel = right.srcType === 2 ? t('modalAoCsvField') : t('modalXPath');
-        const xpathValue = right.el || '—';
+        const eoElLabel = t('sourceChannelRule');
+        const aoElLabel = t('reportChannelRule');
+        const eoElValue = left.el || '—';
+        const aoElValue = right.el || '—';
         const navBtns = (!isGlobal && navInfo)
           ? '<button class="modal-nav" data-modal-nav="prev" title="' + t('modalPrevField') + '"' + (navInfo.prev ? '' : ' disabled') + '>←</button>' +
             '<button class="modal-nav" data-modal-nav="next" title="' + t('modalNextField') + '"' + (navInfo.next ? '' : ' disabled') + '>→</button>'
@@ -3457,10 +3618,11 @@
           '<span class="k">' + t('modalChannel') + '</span><span class="v">' + esc(found.channel) + '</span>' +
           '<span class="k">' + t('modalSource') + '</span><span class="v">' + esc(sourceName(found.source)) + '</span>' +
           '<span class="k">' + t('modalField') + '</span><span class="v">' + esc(def.name) + '</span>' +
-          '<span class="k">' + xpathLabel + '</span><span class="v">' + esc(xpathValue) + '</span>' +
+          '<span class="k">' + eoElLabel + '</span><span class="v">' + esc(eoElValue) + '</span>' +
+          '<span class="k">' + aoElLabel + '</span><span class="v">' + esc(aoElValue) + '</span>' +
           '<span class="k">' + t('modalUserTag') + '</span><span class="v">' + userTagHTML(def.userTag) + '</span>' +
           '<span class="k">' + t('modalResult') + '</span><span class="v"><span class="badge ' + (pass ? 'pass' : 'fail') + '">' + f.result + '</span>' +
-          (f.resultText ? '　' + esc(f.resultText) : '') + '</span>' +
+          (f.resultText ? '　' + hoverCellHTML(f.resultText) : '') + '</span>' +
           '</div>' +
           '<div class="modal-part">' +
           '<div class="result-pair">' + eoBox + aoBox + '</div>' +
@@ -3515,6 +3677,7 @@
         if (!target) return;
         closeCtxDefPopup();
         closeRulePopup();
+        closeValPanel();
         navState.channel = target.channel;
         navState.source = target.source;
         navState.id = target.id;
@@ -3525,6 +3688,8 @@
       backdrop.addEventListener('click', function (e) {
         const tag = e.target.closest('.ctx-tag');
         if (tag) { showCtxDefPopup(tag, tag.getAttribute('data-ctx')); return; }
+        const valExp = e.target.closest('[data-val-expand]');
+        if (valExp) { openValPanel(valExp, valExp.getAttribute('data-val')); return; }
         const rp = e.target.closest('[data-rule-popup]');
         if (rp) { showRulePopup(rp, rp.getAttribute('data-rule-popup')); return; }
         const rt = e.target.closest('[data-rules-toggle]');
@@ -3592,11 +3757,14 @@
       return p;
     }
     function stateToHash() {
-      const parts = ['item=' + encodeURIComponent(state.itemId)];
+      const parts = [];
+      if (BATCH_STATE.active) parts.push('batch=' + encodeURIComponent(BATCH_STATE.active.batchId));
+      parts.push('item=' + encodeURIComponent(state.itemId));
       if (state.channel !== 'ALL') parts.push('ch=' + encodeURIComponent(state.channel));
       if (state.tab !== 'fields') parts.push('tab=' + encodeURIComponent(state.tab));
       if (state.search) parts.push('q=' + encodeURIComponent(state.search));
       if (state.tab === 'fields' && state.colFilter.result && state.colFilter.result !== 'ALL') parts.push('result=' + encodeURIComponent(state.colFilter.result));
+      if (state.rowId >= 0) parts.push('fr=' + state.rowId);
       if (state.page > 1) parts.push('page=' + state.page);
       if (state.sort.key) parts.push('sort=' + encodeURIComponent(state.sort.key) + (state.sort.dir < 0 ? ':d' : ''));
       // 列可见性：仅编码与默认值不同的键，减小 URL 体积。
@@ -3609,6 +3777,14 @@
         if (v && v !== 'ALL') filters[k] = v;
       });
       if (Object.keys(filters).length) parts.push('filters=' + encodeURIComponent(JSON.stringify(filters)));
+      // 侧栏 item 筛选器
+      if (state.itemSearch) parts.push('is=' + encodeURIComponent(state.itemSearch));
+      if (state.itemFilter !== 'ALL') parts.push('st=' + encodeURIComponent(state.itemFilter));
+      if (state.itemPlatforms.length) parts.push('pf=' + encodeURIComponent(state.itemPlatforms.join(',')));
+      if (state.itemProducts.length) parts.push('pd=' + encodeURIComponent(state.itemProducts.join(',')));
+      if (state.itemTradeIds.length) parts.push('td=' + encodeURIComponent(state.itemTradeIds.join(',')));
+      if (state.reportDateFilter) parts.push('dt=' + encodeURIComponent(state.reportDateFilter));
+      if (state.sidebarPage > 1) parts.push('sp=' + state.sidebarPage);
       return '#' + parts.join('&');
     }
     function syncHash() {
@@ -3648,9 +3824,52 @@
             });
           } catch (e) {}
         }
+        // 来源渠道作用域与列筛选在 UI 中始终同步：由 colFilter.source 回写 state.source（URL 未单列 source 参数）。
+        state.source = state.colFilter.source;
+        // 行选中（fr 行ID）必须在排序/筛选/列解析之后处理，rowPageFor 才能按最终列表定位页码。
+        if (p.fr !== undefined) {
+          state.rowId = parseInt(p.fr, 10);
+          if (isNaN(state.rowId)) state.rowId = -1;
+          else {
+            RESTORE_ROW = true;
+            const rp = rowPageFor(state.tab, state.rowId);
+            if (rp != null) {
+              if (state.tab === 'fields') state.page = rp;
+              else state.msgPage = rp;
+            }
+          }
+        }
+        // 侧栏 item 筛选器
+        if (p.is !== undefined) state.itemSearch = p.is;
+        if (p.st === 'PASSED' || p.st === 'FAILED' || p.st === 'WARN') state.itemFilter = p.st;
+        else if (p.st === 'ALL') state.itemFilter = 'ALL';
+        if (p.pf !== undefined) state.itemPlatforms = String(p.pf).split(',').filter(Boolean);
+        if (p.pd !== undefined) state.itemProducts = String(p.pd).split(',').filter(Boolean);
+        if (p.td !== undefined) state.itemTradeIds = String(p.td).split(',').filter(Boolean);
+        if (p.dt !== undefined) state.reportDateFilter = p.dt;
+        if (p.sp) state.sidebarPage = parseInt(p.sp, 10) || 1;
       } finally { HASH_SYNC.applying = false; }
       const searchEl = document.getElementById('search');
       if (searchEl) searchEl.value = state.search || '';
+      const itemSearchEl = document.getElementById('itemSearch');
+      if (itemSearchEl) itemSearchEl.value = state.itemSearch || '';
+      const dateInput = document.getElementById('reportDateFilter');
+      if (dateInput) { dateInput.value = state.reportDateFilter || ''; dateInput.parentElement.classList.toggle('has-value', !!state.reportDateFilter); }
+    }
+
+    async function onHashChange() {
+      const p = hashParams();
+      const cur = BATCH_STATE.active && BATCH_STATE.active.batchId;
+      if (p.batch && p.batch !== cur) {
+        const b = batchById(p.batch);
+        if (b && batchCompatible(b)) { loadBatch(b, false, true); return; }
+        const msg = b ? t('batchUrlIncompat') : t('batchUrlMissing');
+        await loadDefaultReport();
+        setBatchNotice(msg);
+        return;
+      }
+      applyHash();
+      render();
     }
 
     /* ---------- 字段差异高亮（FAILED 字段逐字符 diff，核心算法见 core.js） ---------- */
@@ -3812,7 +4031,7 @@
       const headerB = state.compare.mode === 'channel' ? (esc(it.tradeId) + ' · ' + esc(state.compare.channelB)) : (esc(state.compare.itemB) + ' · ' + esc(state.compare.channelA));
       function hdr(key, label, kind) {
         const sortAttr = key ? ' class="sortable" data-sort="' + key + '"' : '';
-        const filterBtn = kind ? '<button class="hf-toggle" data-cf="' + key + '" data-kind="' + kind + '" title="过滤">⚲</button>' : '';
+        const filterBtn = kind ? '<button class="hf-toggle" data-cf="' + key + '" data-kind="' + kind + '" title="' + t('filterTitle') + '">⚲</button>' : '';
         return '<th' + sortAttr + ' scope="col">' + label + (key ? ' <span class="sort-arrow">' + compareSortArrow(key) + '</span>' : '') + filterBtn + '</th>';
       }
       const trs = pageRows.map(function (r) {
@@ -4552,7 +4771,16 @@
         document.addEventListener('mousemove', onMove);
         document.addEventListener('mouseup', onUp);
       });
-      window.addEventListener('hashchange', function () { applyHash(); render(); });
+      window.addEventListener('hashchange', function () { onHashChange(); });
+      // 主列表行选中状态（data-rid = 源数组下标，稳定短ID）→ 同步到 URL 深链接（fr 参数）。
+      document.addEventListener('focusin', function (e) {
+        const el = e.target;
+        if (!el || !el.closest) return;
+        const tr = el.closest('#fTbody tr[data-rid], #mTbody tr[data-rid]');
+        if (!tr) return;
+        const rid = parseInt(tr.getAttribute('data-rid'), 10);
+        if (!isNaN(rid) && rid !== state.rowId) { state.rowId = rid; syncHash(); }
+      });
       window.addEventListener('scroll', syncMiniSummary);
 
       const dateInput = document.getElementById('reportDateFilter');
@@ -4672,6 +4900,7 @@
           return;
         }
         state.page = 1;
+        state.rowId = -1;
         if (action === 'fields') { state.tab = 'fields'; state.colFilter.result = 'ALL'; }
         else if (action === 'passed') { state.tab = 'fields'; state.colFilter.result = 'PASSED'; }
         else if (action === 'failed') { state.tab = 'fields'; state.colFilter.result = 'FAILED'; }
@@ -4750,7 +4979,7 @@
       document.getElementById('tabs').addEventListener('click', function (e) {
         const el = e.target.closest('[data-tab]');
         if (!el) return;
-        state.tab = el.getAttribute('data-tab'); state.page = 1;
+        state.tab = el.getAttribute('data-tab'); state.page = 1; state.rowId = -1;
         state.msgSort = { key: '', dir: 1 };
         state.msgFilter = {};
         closePopover();
@@ -4780,6 +5009,8 @@
       document.getElementById('content').addEventListener('click', function (e) {
         const ctxTag = e.target.closest('.ctx-tag');
         if (ctxTag) { showCtxDefPopup(ctxTag, ctxTag.getAttribute('data-ctx')); return; }
+        const valExp = e.target.closest('[data-val-expand]');
+        if (valExp) { openValPanel(valExp, valExp.getAttribute('data-val')); return; }
         const pg = e.target.closest('[data-page]');
         if (pg && !pg.disabled) {
           state.page = parseInt(pg.getAttribute('data-page'), 10);
@@ -4840,11 +5071,11 @@
         const handle = e.target.closest('.col-resize');
         if (!handle) return;
         const colKey = handle.getAttribute('data-resize');
-        const rc = RESIZABLE_COLS[colKey];
-        if (!rc) return;
+        const cw = COL_WIDTHS[colKey];
+        if (!cw || cw.resizable === false) return;
         e.preventDefault();
         const startX = e.clientX;
-        const startW = state[rc.stateKey];
+        const startW = colWidth(colKey);
         const guide = document.createElement('div');
         guide.className = 'col-resize-guide';
         document.body.appendChild(guide);
@@ -4852,8 +5083,8 @@
         if (header) header.classList.add('resizing');
         document.body.classList.add('col-resizing');
         function onMove(ev) {
-          const w = Math.max(rc.min, Math.min(rc.max, startW + (ev.clientX - startX)));
-          state[rc.stateKey] = w;
+          const w = Math.max(cw.min, Math.min(cw.max, startW + (ev.clientX - startX)));
+          state.colWidths[colKey] = w;
           applyColWidth(colKey);
           guide.style.left = ev.clientX + 'px';
         }
@@ -4909,6 +5140,7 @@
         if (e.key === 'Escape') {
           if (CTX_DEF_POPUP) { closeCtxDefPopup(); return; }
           if (RULE_POPUP) { closeRulePopup(); return; }
+          if (VAL_PANEL) { closeValPanel(); return; }
           if (document.querySelector('.modal-backdrop')) { closeModal(); return; }
           if (POPOVER.el) { closePopover(); return; }
           return;
@@ -4956,6 +5188,7 @@
       document.addEventListener('click', function (e) {
         if (CTX_DEF_POPUP && !e.target.closest('.ctx-def-popup') && !e.target.closest('.ctx-tag')) closeCtxDefPopup();
         if (RULE_POPUP && !e.target.closest('.rule-popup') && !e.target.closest('[data-rule-popup]')) closeRulePopup();
+        if (VAL_PANEL && !e.target.closest('.val-panel') && !e.target.closest('[data-val-expand]')) closeValPanel();
         if (BATCH_QD && !e.target.closest('#batchPanel') && !e.target.closest('.batch-qd') && !e.target.closest('#batchBadge')) hideBatchQuickDetail();
         const cp = e.target.closest('[data-copy]');
         if (cp) {
@@ -4967,8 +5200,13 @@
         }
       });
 
-      // 列表/页面滚动时关闭 Ctx 详情弹框（捕获阶段，覆盖嵌套滚动容器）。
-      document.addEventListener('scroll', function () { if (CTX_DEF_POPUP) closeCtxDefPopup(); if (RULE_POPUP) closeRulePopup(); }, true);
+      // 列表/页面滚动时关闭 Ctx 详情弹框（捕获阶段，覆盖嵌套滚动容器）；
+      // 弹框自身内部滚动（命中情况/规则原始配置）不关闭。
+      document.addEventListener('scroll', function (e) {
+        if (CTX_DEF_POPUP && !CTX_DEF_POPUP.contains(e.target)) closeCtxDefPopup();
+        if (RULE_POPUP && !RULE_POPUP.contains(e.target)) closeRulePopup();
+        if (VAL_PANEL && !VAL_PANEL.contains(e.target)) closeValPanel();
+      }, true);
     }
 
     function applyFeatureVisibility() {
@@ -5005,15 +5243,33 @@
       applyBatchListH();
       await loadBatchesIndex();
       applyFeatureVisibility();
-      const pinned = restorePinnedBatch();
-      const restored = restoreActiveBatch();
-      if (pinned) {
-        const ok = await loadBatchData(pinned.batch, pinned.forced, resolveUrl(indexBaseUrl(), pinned.batch.dataUrl || ''));
-        if (!ok) { DATA = await loadData(); await loadIgnoreConfig(); }
-      } else if (restored) {
-        const ok = await loadBatchData(restored.batch, restored.forced, resolveUrl(indexBaseUrl(), restored.batch.dataUrl || ''));
-        if (!ok) { DATA = await loadData(); await loadIgnoreConfig(); }
-      } else {
+      // 启动加载优先级：URL batch > 置顶 > 上次 > 默认数据。
+      const urlBatch = hashParams().batch;
+      let loaded = false;
+      if (urlBatch) {
+        const b = batchById(urlBatch);
+        if (b && batchCompatible(b)) {
+          const ok = await loadBatchData(b, false, resolveUrl(indexBaseUrl(), b.dataUrl || ''));
+          if (ok) loaded = true;
+        } else {
+          setBatchNotice(b ? t('batchUrlIncompat') : t('batchUrlMissing'));
+        }
+      }
+      if (!loaded) {
+        const pinned = restorePinnedBatch();
+        if (pinned) {
+          const ok = await loadBatchData(pinned.batch, pinned.forced, resolveUrl(indexBaseUrl(), pinned.batch.dataUrl || ''));
+          if (ok) loaded = true;
+        }
+      }
+      if (!loaded) {
+        const restored = restoreActiveBatch();
+        if (restored) {
+          const ok = await loadBatchData(restored.batch, restored.forced, resolveUrl(indexBaseUrl(), restored.batch.dataUrl || ''));
+          if (ok) loaded = true;
+        }
+      }
+      if (!loaded) {
         await loadIgnoreConfig();
         DATA = await loadData();
       }
@@ -5047,7 +5303,7 @@
       groupedToFlat, msgIgnoreKey, msgIsIgnored,
       filteredFields, getMsgRows, diffSegments,
       parseSearchQuery, makeMatcher, matchRow,
-      fieldMsgCount,
+      fieldMsgCount, rowPageFor,
     };
     export const __test = {
       setState(s) { state = s; },

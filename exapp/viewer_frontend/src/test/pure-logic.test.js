@@ -178,3 +178,13 @@ test('ctx 引用：id 引用 + 各规则 ctxs 并集 + key 解析', () => {
   assert.deepEqual(rows[0].ctxs, [1, 2, 3], 'ctxs 为各规则 ctxs 的 id 并集');
   assert.deepEqual(rows[0].ctxKeys, ['a.ctx.map', 'a.ctx.conv', 'a.ctx.val'], 'ctxKeys 解析为可读 key');
 });
+
+test('rowPageFor 按行ID定位消息行所在页码', () => {
+  T.setData(DATA); // 前面测试用 setData 替换过内部 DATA，先还原。
+  const rich = DATA.items.slice().sort((a, b) => (b.errors || []).length - (a.errors || []).length)[0];
+  T.setState(msgState({ itemId: rich.tradeId, msgPageSize: 5 }));
+  const errs = app.getMsgRows('errors');
+  assert.ok(errs.length > 6, '应有超过 6 条错误以验证翻页: ' + errs.length);
+  const rid = errs[6]._idx; // 稳定行ID = 源数组下标
+  assert.equal(app.rowPageFor('errors', rid), 2, '第 7 条错误（0-based 6）应在第 2 页');
+});

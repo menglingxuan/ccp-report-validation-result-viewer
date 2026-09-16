@@ -218,6 +218,19 @@
           "description": "是否在 aoEl 单元格中显示 XPath/CSV 标签（默认 false）。",
           "default": false
         },
+        "widths": {
+          "type": "object",
+          "description": "列宽配置（键为列名，值为 {def,min,max}，单位 px）。未配置的列使用内置默认值。",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "def": { "type": "number", "description": "默认宽度（px）" },
+              "min": { "type": "number", "description": "最小宽度（px）" },
+              "max": { "type": "number", "description": "最大宽度（px）" },
+              "resizable": { "type": "boolean", "description": "是否允许拖拽调整列宽（默认 true）" }
+            }
+          }
+        },
         "userTag": {
           "type": "object",
           "description": "用户标签列显示配置：raw 为 true 时直接显示原值（普通文本）；否则按 labels 的「值 → 显示标签」映射显示为标签样式。",
