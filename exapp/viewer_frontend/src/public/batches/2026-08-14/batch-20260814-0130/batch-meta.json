@@ -4,6 +4,7 @@
   "date": "2026-08-14",
   "executedAt": "2026-08-14T01:30:00+08:00",
   "formatVersion": 2,
+  "creationType": "sample",
   "dataUrl": "report-validation-data.json",
   "commandLine": [
     "java",

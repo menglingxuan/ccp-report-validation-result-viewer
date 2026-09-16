@@ -5,6 +5,7 @@
   "date": "2026-08-16",
   "executedAt": "2026-08-16T04:00:00+08:00",
   "formatVersion": 2,
+  "creationType": "sample",
   "cwd": "E:\\repos\\otcc-testing\\app\\ccp-report-validation-result-viewer",
   "commandLine": [
     "java",

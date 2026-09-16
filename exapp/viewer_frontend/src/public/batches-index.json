@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-07T19:26:48.220Z",
+  "generatedAt": "2026-09-15T15:58:28.172Z",
   "basedir": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/src/public/batches",
   "count": 21,
   "batches": [
@@ -22,10 +22,11 @@
       ],
       "description": "日终批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：当日全部数据\n- 模式：终值校验",
       "summary": {
-        "items": 5,
+        "items": 4,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260816-1700",
@@ -39,10 +40,11 @@
       "dataMode": "multi",
       "description": "多文件模式演示批次：清单 + 每 item 一个独立文件",
       "summary": {
-        "items": 3,
+        "items": 4,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260816-1400",
@@ -62,10 +64,11 @@
       ],
       "description": "下午补充批处理：\n- 渠道：HKTR\n- 范围：下午新增交易",
       "summary": {
-        "items": 4,
+        "items": 2,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260816-0930",
@@ -87,10 +90,11 @@
       ],
       "description": "盘中增量批处理：\n- 渠道：HKTR / CFTC\n- 范围：盘中新成交\n- 模式：快速比对",
       "summary": {
-        "items": 3,
+        "items": 4,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260816-0400",
@@ -121,7 +125,8 @@
         "items": 2,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260815-1800",
@@ -142,10 +147,11 @@
       ],
       "description": "每日例行批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：T+0 全部成交\n- 模式：增量比对",
       "summary": {
-        "items": 5,
+        "items": 4,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260815-1200",
@@ -165,10 +171,11 @@
       ],
       "description": "盘中增量批处理：\n- 渠道：HKTR / CFTC\n- 范围：盘中新成交\n- 模式：快速比对",
       "summary": {
-        "items": 4,
+        "items": 2,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260815-0900",
@@ -190,10 +197,11 @@
       ],
       "description": "每日例行批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：T+0 全部成交\n- 模式：增量比对",
       "summary": {
-        "items": 3,
+        "items": 4,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260814-2230",
@@ -217,7 +225,8 @@
         "items": 2,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260814-1500",
@@ -237,10 +246,11 @@
       ],
       "description": "历史版本批次（v1）：\n- 由旧版扫描器生成\n- 字段结构存在差异",
       "summary": {
-        "items": 5,
+        "items": 4,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260814-0800",
@@ -260,10 +270,11 @@
       ],
       "description": "早间批处理：\n- 渠道：JSFA / CFTC\n- 范围：隔夜成交",
       "summary": {
-        "items": 4,
+        "items": 2,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260814-0130",
@@ -285,10 +296,11 @@
       ],
       "description": "夜间全量批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：当日全部交易\n- 模式：全量比对 + 汇总报表",
       "summary": {
-        "items": 3,
+        "items": 4,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260813-1900",
@@ -311,7 +323,8 @@
         "items": 2,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260813-1100",
@@ -331,10 +344,11 @@
       ],
       "description": "每日例行批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：T+0 全部成交\n- 模式：增量比对",
       "summary": {
-        "items": 5,
+        "items": 4,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260813-0300",
@@ -354,10 +368,11 @@
       ],
       "description": "夜间全量批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：当日全部交易\n- 模式：全量比对 + 汇总报表",
       "summary": {
-        "items": 4,
+        "items": 2,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260812-1600",
@@ -377,10 +392,11 @@
       ],
       "description": "每日例行批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：T+0 全部成交\n- 模式：增量比对",
       "summary": {
-        "items": 3,
+        "items": 4,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260812-0600",
@@ -403,7 +419,8 @@
         "items": 2,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260811-2100",
@@ -423,10 +440,11 @@
       ],
       "description": "历史版本批次（v1）：\n- 由旧版扫描器生成\n- 字段结构存在差异",
       "summary": {
-        "items": 5,
+        "items": 4,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260811-0900",
@@ -446,10 +464,11 @@
       ],
       "description": "每日例行批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：T+0 全部成交\n- 模式：增量比对",
       "summary": {
-        "items": 4,
+        "items": 2,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260810-1200",
@@ -469,10 +488,11 @@
       ],
       "description": "每日例行批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：T+0 全部成交\n- 模式：增量比对",
       "summary": {
-        "items": 3,
+        "items": 4,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     },
     {
       "batchId": "batch-20260810-0800",
@@ -495,7 +515,8 @@
         "items": 2,
         "channels": 3
       },
-      "reportEnv": "OTCXXX"
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
     }
   ]
 }

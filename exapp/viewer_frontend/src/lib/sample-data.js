@@ -306,17 +306,36 @@ import path from 'node:path';
     // uncompared 与 uncomparedCsv 合并为 uncompared：
     //   - 新增 type：1 = xpath（XML 渠道）/ 2 = csv（CSV 渠道）
     //   - 元素统一存 value；移除 platform / product / ctx
-    function buildUncompared(channelName, rng, fieldsDef, type) {
+    //   - 新增 source（来源渠道）：可为 null（渠道级未比较）；channel 可为 null（全局未比较，见 buildGlobalUncompared），
+    //     source 非空时 channel 必非空。
+    function buildUncompared(channelName, sourceNames, rng, fieldsDef, type) {
       const list = [];
       const n = Math.floor(rng() * 2);
       for (let i = 0; i < n; i++) {
         const d = fieldsDef[Math.floor(rng() * fieldsDef.length)];
+        const source = (sourceNames.length && rng() < 0.5) ? sourceNames[Math.floor(rng() * sourceNames.length)] : null;
         const note = rng() < 0.35
           ? (type === 1
             ? '未在映射配置中匹配到对应 CSV 字段\n详情：Excel 映射配置中未找到与该 XPath 对应的条目，可能因 context 定义变化导致。\n请检查映射表并确认该 XPath 是否仍需要参与比较。'
             : '未在映射配置中匹配到对应来源字段\n详情：Excel 映射配置中未找到与该 AO CSV 字段对应的条目，可能因 context 定义变化导致。\n请检查映射表并确认该 CSV 字段是否仍需要参与比较。')
           : (type === 1 ? '未在映射配置中匹配到对应 CSV 字段' : '未在映射配置中匹配到对应来源字段');
-        list.push({ type: type, channel: channelName, value: d[1], note: note });
+        list.push({ type: type, channel: channelName, source: source, value: d[1], note: note });
+      }
+      return list;
+    }
+
+    // 全局未比较条目：channel=null、source=null（未关联到具体报告渠道）。
+    function buildGlobalUncompared(rng) {
+      const list = [];
+      const n = rng() < 0.5 ? 1 : 0;
+      for (let i = 0; i < n; i++) {
+        list.push({
+          type: rng() < 0.5 ? 1 : 2,
+          channel: null,
+          source: null,
+          value: ['/Common/Header/TradeId', '/Common/Header/DealId', '/Common/Header/ReportDate'][Math.floor(rng() * 3)],
+          note: '未在任一报告渠道的映射配置中匹配到对应字段',
+        });
       }
       return list;
     }
@@ -480,24 +499,28 @@ import path from 'node:path';
         channel: { name: ch.name, desc: ch.desc, format: ch.format, files: files, fields: fr.registry, sources: sources },
         warnings: buildMessages(rng, ch.name, fieldsDef, failedBySource),
         errors: buildErrorMessages(rng, ch.name, failedBySource),
-        uncompared: buildUncompared(ch.name, rng, fieldsDef, isCsv ? 2 : 1),
+        uncompared: buildUncompared(ch.name, sources.map(function (s) { return s.name; }), rng, fieldsDef, isCsv ? 2 : 1),
         logs: buildChannelLogs({ name: ch.name, files: files }, tradeId),
       };
     }
 
-    function buildSkippedItems(reportDate, rng) {
+    // 顶层 skippedItems：记录未能参与比较的 item（与 reportEnv 同级）。
+    //   channel / source 均可为 null：null 表示「未关联到具体渠道 / 来源」。
+    function buildSkippedItems(rng) {
       const list = [];
-      const n = 1 + Math.floor(rng() * 3);
+      const n = 2 + Math.floor(rng() * 3);
       const chNames = ['HKTR', 'JSFA', 'CFTC'];
+      const srcNames = ['来源渠道 A', '来源渠道 B'];
       for (let i = 0; i < n; i++) {
-        const withChannel = rng() < 0.55;
-        const ch = withChannel ? chNames[Math.floor(rng() * chNames.length)] : 'ALL';
-        const itemId = 'T-' + reportDate.replace(/-/g, '') + '-0' + (91 + i);
+        const channel = rng() < 0.6 ? chNames[Math.floor(rng() * chNames.length)] : null;
+        const source = channel && rng() < 0.7 ? srcNames[Math.floor(rng() * srcNames.length)] : null;
+        const itemId = 'T-20240810-0' + (91 + i);
         let reason;
-        if (ch === 'ALL') reason = '未在任一报告渠道中找到对应记录，该 item 未能参与比较。';
-        else reason = '在 ' + ch + ' 渠道中未找到该 item 的对应记录，已跳过该渠道的比较。';
+        if (channel === null) reason = '未在任一报告渠道中找到对应记录，该 item 未能参与比较。';
+        else if (source === null) reason = '在 ' + channel + ' 渠道中未找到该 item 的对应记录，已跳过该渠道的比较。';
+        else reason = '在 ' + channel + ' 渠道的 ' + source + ' 中未找到该 item 的对应记录，已跳过该来源渠道的比较。';
         if (rng() < 0.35) reason += '\n详情：该 item 在来源 CSV 与报送 XML 中均未出现对应记录，可能因数据采集或报送延迟导致。\n建议核对上游系统是否已产生该 item 的数据。';
-        list.push({ itemId: itemId, channel: ch, reason: reason });
+        list.push({ itemId: itemId, channel: channel, source: source, reason: reason });
       }
       return list;
     }
@@ -586,6 +609,7 @@ import path from 'node:path';
           uncompared.push.apply(uncompared, built.uncompared);
           channelLogs.push.apply(channelLogs, built.logs);
         });
+        uncompared.push.apply(uncompared, buildGlobalUncompared(rng));
 
         items.push({
           tradeId: tradeId,
@@ -600,14 +624,13 @@ import path from 'node:path';
           ctxDefs: ctxDefsRes.defs,
           channels: channels,
           enabledChannels: (i % 3 === 0) ? ['HKTR', 'JSFA', 'CFTC'] : (i % 3 === 1 ? ['HKTR', 'JSFA'] : ['HKTR', 'CFTC']),
-          skippedItems: buildSkippedItems(reportDate, rng),
           warnings: warnings,
           errors: errors,
           uncompared: uncompared,
           logs: buildOverviewLogs(tradeId, reportDate, channels, channelLogs),
         });
       }
-      return { mode: 'single', items: items, reportEnv: 'OTCXXX' };
+      return { mode: 'single', items: items, reportEnv: 'OTCXXX', creationType: 'sample', skippedItems: buildSkippedItems(rng) };
     }
 
 
@@ -661,7 +684,7 @@ import path from 'node:path';
           summary: itemStats(it),
         };
       });
-      const manifest = { mode: 'multi', reportEnv: dataset.reportEnv, items: manifestItems };
+      const manifest = { mode: 'multi', reportEnv: dataset.reportEnv, creationType: dataset.creationType || 'sample', skippedItems: dataset.skippedItems, items: manifestItems };
       fs.writeFileSync(path.join(outDir, 'report-validation-data.json'), JSON.stringify(manifest, null, 2));
       return manifest;
     }

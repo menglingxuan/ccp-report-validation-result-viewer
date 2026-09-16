@@ -15,6 +15,8 @@
 {
   "mode": "single",
   "reportEnv": "OTCXXX",
+  "creationType": "sample",
+  "skippedItems": [ { "itemId": "...", "channel": "HKTR", "source": "来源渠道 A", "reason": "..." } ],
   "items": [ { "tradeId": "...", "ctxDefs": { }, "channels": [ ] } ]
 }
 ```
@@ -23,6 +25,8 @@
 |---|---|---|
 | `mode` | 字符串 | `"single"` |
 | `reportEnv` | 字符串 | 运行环境标识（可选） |
+| `creationType` | 字符串 | 数据来源：`"sample"`（内置样例）/ `"user"`（真实用户数据） |
+| `skippedItems` | 数组 | 未能参与比较的 item 记录（顶层，`channel`/`source` 可为 null） |
 | `items` | 数组 | 完整 item 列表（每个 item 内联 `ctxDefs`） |
 
 ## 2. 多文件模式（`mode: "multi"`）
@@ -33,6 +37,8 @@
 {
   "mode": "multi",
   "reportEnv": "OTCXXX",
+  "creationType": "sample",
+  "skippedItems": [ { "itemId": "...", "channel": null, "source": null, "reason": "..." } ],
   "items": [
     {
       "tradeId": "T-20240814-1001",
@@ -63,7 +69,7 @@
 | `file` | 字符串 | 该 item 完整数据文件的路径（相对 web 根目录） |
 | `summary` | 对象 | 预计算统计摘要（侧栏与统计卡无需加载完整 item） |
 
-每个 item 文件内容与单文件模式中的 item 结构相同（含 `ctxDefs`、`channels`、`skippedItems`、`logs`；字段注册表在各 channel 内）。
+每个 item 文件内容与单文件模式中的 item 结构相同（含 `ctxDefs`、`channels`、`logs`；字段注册表在各 channel 内）。
 
 > 多文件模式下：查看器先加载清单（轻量），点击 item 时按需加载完整文件；搜索/筛选/统计对全部 item 的合并数据生效。
 
@@ -81,10 +87,25 @@
 | `ctxDefs` | 对象 | **命中上下文定义（每个 item 独立）** |
 | `channels` | 数组 | 各渠道比较结果（字段定义注册表在各 channel 内） |
 | `enabledChannels` | 字符串数组 | 启用渠道名 |
-| `skippedItems` | 数组 | 未比较 item 记录 |
 | `warnings` / `errors` | 数组 | item 级警告 / 错误（含 scope / source；source 可能为空） |
-| `uncompared` | 数组 | item 级未比较条目（合并 XPath 与 CSV，含 type） |
+| `uncompared` | 数组 | item 级未比较条目（合并 XPath 与 CSV，含 type / source；channel、source 可为 null，source 非空时 channel 不可为空） |
 | `logs` | 数组 | item 级日志（对象式 `{scope, channel, source, text}`） |
+
+### `skippedItems`（顶层，与 `reportEnv` 同级）
+
+```json
+"skippedItems": [
+  { "itemId": "T-20240810-091", "channel": "HKTR", "source": "来源渠道 A", "reason": "在 HKTR 渠道的来源渠道 A 中未找到该 item 的对应记录，已跳过该来源渠道的比较。" },
+  { "itemId": "T-20240810-092", "channel": null, "source": null, "reason": "未在任一报告渠道中找到对应记录，该 item 未能参与比较。" }
+]
+```
+
+| 键 | 类型 | 说明 |
+|---|---|---|
+| `itemId` | 字符串 | 被跳过 item 的标识 |
+| `channel` | 字符串\|null | 报告渠道；`null` 表示未关联到具体渠道（涵盖全部渠道） |
+| `source` | 字符串\|null | 来源渠道；`null` 表示未关联到具体来源 |
+| `reason` | 字符串 | 跳过原因 |
 
 ### `item.ctxDefs`
 

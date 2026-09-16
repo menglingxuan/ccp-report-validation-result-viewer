@@ -1,5 +1,6 @@
 {
   "reportEnv": "OTCXXX",
+  "creationType": "sample",
   "batchId": "batch-20260816-1700",
   "batchName": "split-20260816",
   "date": "2026-08-16",

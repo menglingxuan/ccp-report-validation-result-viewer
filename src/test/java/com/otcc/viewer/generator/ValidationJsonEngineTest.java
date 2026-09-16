@@ -159,7 +159,12 @@ class ValidationJsonEngineTest {
                 for (UncomparedEntry u : item.getUncompared()) {
                     c.check(u.getType() != null && (u.getType() == 1 || u.getType() == 2),
                             it + ".uncompared.type in {1,2}: " + u.getType());
-                    c.check(nonBlank(u.getChannel()), it + ".uncompared.channel non-blank");
+                    c.check(u.getChannel() == null || Set.of("HKTR", "JSFA", "CFTC").contains(u.getChannel()),
+                            it + ".uncompared.channel valid or null: " + u.getChannel());
+                    c.check(u.getSource() == null || Set.of("来源渠道 A", "来源渠道 B").contains(u.getSource()),
+                            it + ".uncompared.source valid or null: " + u.getSource());
+                    c.check(u.getSource() == null || u.getChannel() != null,
+                            it + ".uncompared.source requires non-null channel");
                     c.check(nonBlank(u.getValue()), it + ".uncompared.value non-blank");
                     c.check(nonBlank(u.getNote()), it + ".uncompared.note non-blank");
                 }
@@ -171,14 +176,15 @@ class ValidationJsonEngineTest {
                     c.check(nonBlank(l.getText()), it + ".logs.text non-blank");
                 }
             }
-
-            if (item.getSkippedItems() != null) {
-                for (SkippedItem s : item.getSkippedItems()) {
-                    c.check(nonBlank(s.getItemId()), it + ".skippedItems.itemId non-blank");
-                    c.check(nonBlank(s.getReason()), it + ".skippedItems.reason non-blank");
-                    c.check("ALL".equals(s.getChannel()) || Set.of("HKTR", "JSFA", "CFTC").contains(s.getChannel()),
-                            it + ".skippedItems.channel valid: " + s.getChannel());
-                }
+        }
+        if (dataset.getSkippedItems() != null) {
+            for (SkippedItem s : dataset.getSkippedItems()) {
+                c.check(nonBlank(s.getItemId()), "skippedItems.itemId non-blank");
+                c.check(nonBlank(s.getReason()), "skippedItems.reason non-blank");
+                c.check(s.getChannel() == null || Set.of("HKTR", "JSFA", "CFTC").contains(s.getChannel()),
+                        "skippedItems.channel valid or null: " + s.getChannel());
+                c.check(s.getSource() == null || Set.of("来源渠道 A", "来源渠道 B").contains(s.getSource()),
+                        "skippedItems.source valid or null: " + s.getSource());
             }
         }
         c.done();

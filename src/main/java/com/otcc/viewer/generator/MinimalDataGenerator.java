@@ -101,7 +101,6 @@ public final class MinimalDataGenerator {
                 .enabledChannels(List.of("HKTR"))
                 .ctxDefs(new LinkedHashMap<>())
                 .channels(List.of(channel))
-                .skippedItems(List.of())
                 .warnings(List.of())
                 .errors(List.of())
                 .uncompared(List.of())
@@ -110,8 +109,10 @@ public final class MinimalDataGenerator {
 
         return ValidationDataset.builder()
                 .mode("single")
-                .items(List.of(item))
                 .reportEnv("OTCXXX")
+                .creationType("sample")
+                .skippedItems(List.of())
+                .items(List.of(item))
                 .build();
     }
 

@@ -4,6 +4,7 @@
   "date": "2026-08-13",
   "executedAt": "2026-08-13T19:00:00+08:00",
   "formatVersion": 1,
+  "creationType": "sample",
   "dataUrl": "report-validation-data.json",
   "ignoreUrl": "ignore-config-by-platform.json",
   "commandLine": [

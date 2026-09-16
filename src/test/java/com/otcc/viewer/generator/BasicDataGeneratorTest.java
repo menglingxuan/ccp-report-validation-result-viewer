@@ -46,11 +46,12 @@ class BasicDataGeneratorTest {
 
     @Test
     void everyNecessaryFieldIsFilled() {
-        ValidationItem item = BasicDataGenerator.generate().getItems().get(0);
+        ValidationDataset ds = BasicDataGenerator.generate();
+        ValidationItem item = ds.getItems().get(0);
 
         assertFalse(item.getChannels().isEmpty(), "channels filled");
         assertEquals(3, item.getChannels().size(), "HKTR / JSFA / CFTC");
-        assertFalse(item.getSkippedItems().isEmpty(), "skippedItems filled");
+        assertFalse(ds.getSkippedItems().isEmpty(), "skippedItems filled");
         assertFalse(item.getLogs().isEmpty(), "logs filled");
         assertFalse(item.getWarnings().isEmpty(), "warnings filled");
         assertFalse(item.getErrors().isEmpty(), "errors filled");

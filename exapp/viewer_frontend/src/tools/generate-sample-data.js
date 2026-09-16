@@ -45,6 +45,7 @@ function collectBatchDirs(root) {
 function writeMultiBatch(dir, dataset) {
   writeJSON(path.join(dir, 'batch-meta.json'), {
     reportEnv: dataset.reportEnv,
+    creationType: 'sample',
     batchId: path.basename(dir),
     batchName: 'split-20260816',
     date: '2026-08-16',
@@ -97,10 +98,10 @@ function main() {
       const items = [];
       for (let k = 0; k < n; k++) items.push(dataset.items[(start + k) % dataset.items.length]);
       const file = path.join(dir, 'report-validation-data.json');
-      writeJSON(file, { mode: 'single', reportEnv: dataset.reportEnv, items });
+      writeJSON(file, { mode: 'single', reportEnv: dataset.reportEnv, creationType: 'sample', skippedItems: dataset.skippedItems, items });
       console.log('批次数据 -> ' + path.relative(PUBLIC_DIR, file) + '（' + items.length + ' items）');
     });
-    writeMultiBatch(multiBatchDir, { mode: 'single', reportEnv: dataset.reportEnv, items: dataset.items.slice(0, 4) });
+    writeMultiBatch(multiBatchDir, { mode: 'single', reportEnv: dataset.reportEnv, skippedItems: dataset.skippedItems, items: dataset.items.slice(0, 4) });
     console.log('多文件批次 -> ' + path.relative(PUBLIC_DIR, multiBatchDir) + '（清单 + data/items/*.json，4 items）');
     if (!dirs.length) {
       console.log('未发现批次目录（需先有 public/batches/<date>/<batch>/batch-meta.json）');

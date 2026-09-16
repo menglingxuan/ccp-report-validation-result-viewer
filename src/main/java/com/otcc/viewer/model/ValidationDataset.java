@@ -28,5 +28,14 @@ public class ValidationDataset {
      * Running environment label (e.g. {@code OTCXXX}); optional.
      */
     private String reportEnv;
+    /**
+     * Data origin: {@code "sample"} (built-in sample) or {@code "user"} (real user data).
+     */
+    private String creationType;
+    /**
+     * Items skipped during comparison (top level, sibling of {@code reportEnv});
+     * each entry has {@code channel}/{@code source} which may be {@code null}.
+     */
+    private List<SkippedItem> skippedItems;
     private List<ValidationItem> items;
 }

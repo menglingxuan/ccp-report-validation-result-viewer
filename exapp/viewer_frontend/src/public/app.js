@@ -747,6 +747,7 @@
         descHTML +
         '<div class="bi-badges">' +
         '<span class="b-badge bv">v' + esc(String(b.formatVersion)) + '</span>' +
+        (b.creationType === 'sample' ? '<span class="b-badge sample">Sample</span>' : '') +
         (isNewBatch(b) ? '<span class="b-badge new">' + t('batchNew') + '</span>' : '') +
         (pinned ? '<span class="b-badge pin" title="' + t('pinTitle') + '">📌 ' + t('pinLabel') + '</span>' : '') +
         (compat ? '<span class="b-badge ok">✓ ' + t('batchCompat') + '</span>' : '<span class="b-badge bad">⚠ ' + t('batchIncompat') + '</span>') +
@@ -1160,6 +1161,7 @@
         '<div class="bdc-name">' + esc(b.batchName || b.batchId) + '</div>' +
         '<div class="bdc-time">' + esc(formatBatchTime(b.executedAt)) + '</div>' +
         '<div class="bdc-badges"><span class="b-badge bv">v' + esc(String(b.formatVersion)) + '</span>' +
+        (b.creationType === 'sample' ? '<span class="b-badge sample">Sample</span>' : '') +
         (batchCompatible(b) ? '<span class="b-badge ok">✓ ' + t('batchCompat') + '</span>' : '<span class="b-badge bad">⚠ ' + t('batchIncompat') + '</span>') +
         (b.reportEnv ? '<span class="b-badge benv">' + esc(b.reportEnv) + '</span>' : '') +
         '</div>';
@@ -1768,14 +1770,17 @@
       const it = currentItem();
       if (!it) return [];
       const names = scopeChannels().map(function (c) { return c.name; });
-      return (it.uncompared || []).filter(function (u) { return names.indexOf(u.channel) !== -1; }).map(enrichMsg);
+      return (it.uncompared || []).filter(function (u) {
+        const chOk = u.channel == null || names.indexOf(u.channel) !== -1;
+        return chOk && sourceMatches(u.source);
+      }).map(enrichMsg);
     }
     function scopeSkippedItems() {
-      const it = currentItem();
-      if (!it) return [];
-      if (state.channel === 'ALL') return it.skippedItems;
-      if (it.enabledChannels.indexOf(state.channel) === -1) return [];
-      return it.skippedItems.filter(s => s.channel === 'ALL' || s.channel === state.channel);
+      const list = DATA.skippedItems || [];
+      return list.filter(function (s) {
+        const chOk = state.channel === 'ALL' || s.channel == null || s.channel === state.channel;
+        return chOk && sourceMatches(s.source);
+      });
     }
     function scopeLogs() {
       const it = currentItem();
@@ -1929,11 +1934,12 @@
     function sidebarItemHTML(it, q) {
       const s = itemStatsAll(it);
       const cls = it.tradeId === state.itemId ? 'item active' : 'item';
+      const isSample = currentCreationType() === 'sample';
       const barCls = 'bar-fill' + (APP_PROGRESS_STYLE === 'status' && s.failed === 0 && s.warnings > 0 ? ' bar-warn' : '');
       const warnNote = s.warnings > 0 ? ' · ' + s.warnings + ' ' + t('sidebarUnconfirmedWarnings') : '';
       const barTitle = t('passRate') + ' ' + s.rate + '% · ' + t('passed') + ' ' + s.passed + ' / ' + t('failed') + ' ' + s.failed + (s.warnings ? ' · ' + t('warnings') + ' ' + s.warnings : '');
       return '<div class="' + cls + '" data-id="' + it.tradeId + '" tabindex="0">' +
-        '<div class="item-id">' + highlight(it.tradeId, q) + '</div>' +
+        '<div class="item-id">' + highlight(it.tradeId, q) + (isSample ? '<span class="item-sample-badge">Sample</span>' : '') + '</div>' +
         '<div class="item-sub">' + s.total + ' ' + t('sidebarFields') + ' · <span class="num-fail">' + s.failed + '</span> ' + t('sidebarFailures') + ' · <span class="num-pass">' + s.rate + '%</span> ' + t('sidebarPassRate') + warnNote + '</div>' +
         '<div class="item-sub">' + t('sidebarReportDate') + ' ' + esc(it.reportDate) + '</div>' +
         '<div class="item-sub">' + esc(it.platform) + ' · ' + esc(it.productCategory) + ' · ' + esc(it.product) + '</div>' +
@@ -2254,6 +2260,19 @@
         '<div class="task-note-text">' + esc(desc).replace(/\n/g, '<br>') + '</div>';
     }
 
+    // creationType：batch-meta.json 优先（经扫描器写入索引），回退到数据文件顶层；缺省视为 sample。
+    function currentCreationType() {
+      if (BATCH_STATE.active && BATCH_STATE.active.creationType) return BATCH_STATE.active.creationType;
+      if (DATA && DATA.creationType) return DATA.creationType;
+      return 'sample';
+    }
+    // 示例数据提示：creationType === 'user' 时不展示；'sample'（或缺省）时展示。
+    function applyCreationType() {
+      const el = document.getElementById('sampleDataNote');
+      if (!el) return;
+      el.style.display = currentCreationType() === 'user' ? 'none' : '';
+    }
+
     function renderTabs() {
       const s = scopeStats();
       const tabs = [
@@ -2280,8 +2299,11 @@
       if (tab === 'fields') return flatFields(it).filter(r => activeNames.indexOf(r.channel) !== -1 && sourceMatches(r.source)).length;
       if (tab === 'warnings') return (it.warnings || []).filter(w => activeNames.indexOf(w.channel) !== -1 && sourceMatches(w.source) && !msgIsIgnored('warnings', enrichMsg(w))).length;
       if (tab === 'errors') return (it.errors || []).filter(e => activeNames.indexOf(e.channel) !== -1 && sourceMatches(e.source)).length;
-      if (tab === 'uncompared') return (it.uncompared || []).filter(u => activeNames.indexOf(u.channel) !== -1 && !msgIsIgnored('uncompared', enrichMsg(u))).length;
-      if (tab === 'uncomparedItems') return chName === 'ALL' ? it.skippedItems.length : it.skippedItems.filter(s => s.channel === chName).length;
+      if (tab === 'uncompared') return (it.uncompared || []).filter(u => (u.channel == null || activeNames.indexOf(u.channel) !== -1) && sourceMatches(u.source) && !msgIsIgnored('uncompared', enrichMsg(u))).length;
+      if (tab === 'uncomparedItems') {
+        const list = DATA.skippedItems || [];
+        return list.filter(s => (chName === 'ALL' || s.channel == null || s.channel === chName) && sourceMatches(s.source)).length;
+      }
       if (tab === 'logs') return (it.logs || []).filter(l => (chName === 'ALL' || l.channel === chName) && sourceMatches(l.source)).length;
       return 0;
     }
@@ -2295,7 +2317,14 @@
       if (tab === 'fields') return flatFields(it).filter(r => chNames.indexOf(r.channel) !== -1 && srcMatch(r.source)).length;
       if (tab === 'warnings') return (it.warnings || []).filter(w => chNames.indexOf(w.channel) !== -1 && srcMatch(w.source) && !msgIsIgnored('warnings', enrichMsg(w))).length;
       if (tab === 'errors') return (it.errors || []).filter(e => chNames.indexOf(e.channel) !== -1 && srcMatch(e.source)).length;
-      if (tab === 'uncompared') return srcName === 'ALL' ? (it.uncompared || []).filter(u => chNames.indexOf(u.channel) !== -1 && !msgIsIgnored('uncompared', enrichMsg(u))).length : 0;
+      if (tab === 'uncompared') {
+        const list = it.uncompared || [];
+        return list.filter(u => (u.channel == null || chNames.indexOf(u.channel) !== -1) && srcMatch(u.source) && !msgIsIgnored('uncompared', enrichMsg(u))).length;
+      }
+      if (tab === 'uncomparedItems') {
+        const list = DATA.skippedItems || [];
+        return list.filter(s => (s.channel == null || chNames.indexOf(s.channel) !== -1) && srcMatch(s.source)).length;
+      }
       if (tab === 'logs') return (it.logs || []).filter(l => chNames.indexOf(l.channel) !== -1 && srcMatch(l.source)).length;
       return 0;
     }
@@ -2844,6 +2873,7 @@
       ],
       uncompared: [
         { key: 'channel', label: 'colChannel', sortable: true, filter: 'select' },
+        { key: 'source',  label: 'colSource',  sortable: true, filter: 'select' },
         { key: 'type',    label: 'colType',    sortable: true, filter: 'select' },
         { key: 'value',   label: 'colElement', sortable: true, filter: 'text', title: '搜索元素' },
         { key: 'note',    label: 'colNote',    sortable: true, filter: 'text', title: '搜索说明' },
@@ -2852,6 +2882,7 @@
       uncomparedItems: [
         { key: 'itemId',  label: 'colItemId',  sortable: true, filter: 'text', title: '搜索 Item ID' },
         { key: 'channel', label: 'colChannel', sortable: true, filter: 'select' },
+        { key: 'source',  label: 'colSource',  sortable: true, filter: 'select' },
         { key: 'reason',  label: 'colReason',  sortable: true, filter: 'text', title: '搜索原因' },
       ],
     };
@@ -2931,8 +2962,10 @@
     }
     function msgCellHTML(tab, m, c) {
       switch (c.key) {
-        case 'channel':
-          return '<td>' + (m.channel === 'ALL' ? '<span class="chip channel-chip">ALL</span>' : '<span class="chip channel-chip">' + esc(m.channel) + '</span>') + '</td>';
+        case 'channel': {
+          const ch = (m.channel == null || m.channel === 'ALL') ? 'ALL' : m.channel;
+          return '<td><span class="chip channel-chip">' + esc(ch) + '</span></td>';
+        }
         case 'source': return '<td>' + esc(m.source || '—') + '</td>';
         case 'type':
           if (tab === 'uncompared') return '<td>' + uncomparedTypeChip(m.type) + '</td>';
@@ -3158,6 +3191,7 @@
       renderMeta();
       renderFiles();
       renderTaskNote();
+      applyCreationType();
       renderCharts();
       renderReportCats();
       renderTabs();
@@ -3946,13 +3980,15 @@
     function renderHealthAggTable(kind, agg, isErr, title) {
       const entries = healthAggEntries(agg);
       const sort = HEALTH_SORT[kind];
-      entries.sort(function (a, b) {
-        const key = sort.key;
-        const va = a[key], vb = b[key];
-        if (va < vb) return -1 * sort.dir;
-        if (va > vb) return 1 * sort.dir;
-        return 0;
-      });
+      if (sort.key) {
+        entries.sort(function (a, b) {
+          const key = sort.key;
+          const va = a[key], vb = b[key];
+          if (va < vb) return -1 * sort.dir;
+          if (va > vb) return 1 * sort.dir;
+          return 0;
+        });
+      }
       const pages = Math.max(1, Math.ceil(entries.length / HEALTH_PAGE_SIZE));
       if (HEALTH_PAGE[kind] > pages) HEALTH_PAGE[kind] = pages;
       const start = (HEALTH_PAGE[kind] - 1) * HEALTH_PAGE_SIZE;
@@ -4075,8 +4111,10 @@
           const kind = hs.getAttribute('data-kind');
           const key = hs.getAttribute('data-sort');
           const s = HEALTH_SORT[kind];
-          if (s.key === key) s.dir = s.dir === 1 ? -1 : 1;
-          else { s.key = key; s.dir = key === 'count' ? -1 : 1; }
+          if (s.key === key) {
+            if (s.dir === 1) s.dir = -1;
+            else if (s.dir === -1) { s.key = ''; s.dir = 1; }
+          } else { s.key = key; s.dir = key === 'count' ? -1 : 1; }
           HEALTH_PAGE[kind] = 1;
           renderHealthBody(HEALTH_DATE, HEALTH_CHANNEL);
           return;
@@ -4788,8 +4826,10 @@
         if (th && !e.target.closest('.hf-toggle') && !e.target.closest('.mhf-toggle') && !e.target.closest('.special-toggle') && !e.target.closest('.bulk-toggle') && !e.target.closest('.col-resize')) {
           const key = th.getAttribute('data-sort');
           const sort = state.tab === 'fields' ? state.sort : (state.tab === 'compare' ? state.compare.sort : state.msgSort);
-          if (sort.key === key) sort.dir = sort.dir === 1 ? -1 : 1;
-          else { sort.key = key; sort.dir = 1; }
+          if (sort.key === key) {
+            if (sort.dir === 1) sort.dir = -1;
+            else if (sort.dir === -1) { sort.key = ''; sort.dir = 1; }
+          } else { sort.key = key; sort.dir = 1; }
           state.page = 1;
           state.msgPage = 1;
           renderContent();

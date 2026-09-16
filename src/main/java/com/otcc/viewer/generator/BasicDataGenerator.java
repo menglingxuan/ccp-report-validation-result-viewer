@@ -111,11 +111,6 @@ public final class BasicDataGenerator {
                 .enabledChannels(List.of("HKTR", "JSFA", "CFTC"))
                 .ctxDefs(ctxDefs)
                 .channels(channels)
-                .skippedItems(List.of(SkippedItem.builder()
-                        .itemId("T-" + date.replace("-", "") + "-0001")
-                        .channel("JSFA")
-                        .reason("在 JSFA 渠道中未找到该 item 的对应记录，已跳过该渠道的比较。")
-                        .build()))
                 .warnings(List.of(Message.builder()
                         .scope("channel").source("").channel("HKTR")
                         .type("productAssertion").level("WARN")
@@ -125,7 +120,7 @@ public final class BasicDataGenerator {
                         .type("mappingError").level("ERROR")
                         .text("映射配置错误：XPath 语法非法").field("tradeId").build()))
                 .uncompared(List.of(UncomparedEntry.builder()
-                        .type(1).channel("HKTR")
+                        .type(1).channel("HKTR").source("来源渠道 A")
                         .value("/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId")
                         .note("未在映射配置中匹配到对应 CSV 字段").build()))
                 .logs(List.of(
@@ -137,8 +132,15 @@ public final class BasicDataGenerator {
 
         return ValidationDataset.builder()
                 .mode("single")
-                .items(List.of(item))
                 .reportEnv("OTCXXX")
+                .creationType("sample")
+                .skippedItems(List.of(SkippedItem.builder()
+                        .itemId("T-" + date.replace("-", "") + "-0001")
+                        .channel("JSFA")
+                        .source("来源渠道 A")
+                        .reason("在 JSFA 渠道的来源渠道 A 中未找到该 item 的对应记录，已跳过该来源渠道的比较。")
+                        .build()))
+                .items(List.of(item))
                 .build();
     }
 

@@ -173,8 +173,10 @@ public final class ValidationJsonGenerator {
         }
         return ValidationDataset.builder()
                 .mode("single")
-                .items(items)
                 .reportEnv("OTCXXX")
+                .creationType("sample")
+                .skippedItems(buildSkippedItems(rng))
+                .items(items)
                 .build();
     }
 
@@ -212,6 +214,7 @@ public final class ValidationJsonGenerator {
             uncompared.addAll(built.uncompared);
             channelLogs.addAll(built.logs);
         }
+        uncompared.addAll(buildGlobalUncompared(rng));
 
         List<String> enabledChannels = switch (i % 3) {
             case 0 -> List.of("HKTR", "JSFA", "CFTC");
@@ -232,7 +235,6 @@ public final class ValidationJsonGenerator {
                 .ctxDefs(ctxDefs)
                 .channels(channels)
                 .enabledChannels(enabledChannels)
-                .skippedItems(buildSkippedItems(reportDate, rng))
                 .warnings(warnings)
                 .errors(errors)
                 .uncompared(uncompared)
@@ -368,11 +370,12 @@ public final class ValidationJsonGenerator {
                 .sources(sources)
                 .build();
 
+        List<String> sourceNames = sources.stream().map(Source::getName).toList();
         return new ChannelBuild(
                 channel,
                 buildMessages(rng, chName, fieldsDef, failedBySource),
                 buildErrorMessages(rng, chName, failedBySource),
-                buildUncompared(chName, rng, fieldsDef, csv ? 2 : 1),
+                buildUncompared(chName, sourceNames, rng, fieldsDef, csv ? 2 : 1),
                 buildChannelLogs(chName, files));
     }
 
@@ -582,11 +585,12 @@ public final class ValidationJsonGenerator {
         return msgs;
     }
 
-    private static List<UncomparedEntry> buildUncompared(String chName, Random rng, List<String[]> fieldsDef, int type) {
+    private static List<UncomparedEntry> buildUncompared(String chName, List<String> sourceNames, Random rng, List<String[]> fieldsDef, int type) {
         List<UncomparedEntry> list = new ArrayList<>();
         int n = rng.nextInt(2);
         for (int i = 0; i < n; i++) {
             String[] d = fieldsDef.get(rng.nextInt(fieldsDef.size()));
+            String source = (!sourceNames.isEmpty() && rng.nextDouble() < 0.5) ? sourceNames.get(rng.nextInt(sourceNames.size())) : null;
             String note;
             if (rng.nextDouble() < 0.35) {
                 note = type == 1
@@ -595,26 +599,45 @@ public final class ValidationJsonGenerator {
             } else {
                 note = type == 1 ? "未在映射配置中匹配到对应 CSV 字段" : "未在映射配置中匹配到对应来源字段";
             }
-            list.add(UncomparedEntry.builder().type(type).channel(chName).value(d[1]).note(note).build());
+            list.add(UncomparedEntry.builder().type(type).channel(chName).source(source).value(d[1]).note(note).build());
         }
         return list;
     }
 
-    private static List<SkippedItem> buildSkippedItems(String reportDate, Random rng) {
+    /** 全局未比较条目：channel=null、source=null（未关联到具体报告渠道）。 */
+    private static List<UncomparedEntry> buildGlobalUncompared(Random rng) {
+        List<UncomparedEntry> list = new ArrayList<>();
+        if (rng.nextDouble() < 0.5) {
+            String[] vals = {"/Common/Header/TradeId", "/Common/Header/DealId", "/Common/Header/ReportDate"};
+            list.add(UncomparedEntry.builder()
+                    .type(rng.nextDouble() < 0.5 ? 1 : 2)
+                    .channel(null)
+                    .source(null)
+                    .value(vals[rng.nextInt(vals.length)])
+                    .note("未在任一报告渠道的映射配置中匹配到对应字段")
+                    .build());
+        }
+        return list;
+    }
+
+    private static List<SkippedItem> buildSkippedItems(Random rng) {
         List<SkippedItem> list = new ArrayList<>();
-        int n = 1 + rng.nextInt(3);
+        String[] srcNames = {"来源渠道 A", "来源渠道 B"};
+        int n = 2 + rng.nextInt(3);
         for (int i = 0; i < n; i++) {
-            boolean withChannel = rng.nextDouble() < 0.55;
-            String ch = withChannel ? CHANNEL_NAMES[rng.nextInt(CHANNEL_NAMES.length)] : "ALL";
-            String reason = "ALL".equals(ch)
-                    ? "未在任一报告渠道中找到对应记录，该 item 未能参与比较。"
-                    : "在 " + ch + " 渠道中未找到该 item 的对应记录，已跳过该渠道的比较。";
+            String channel = rng.nextDouble() < 0.6 ? CHANNEL_NAMES[rng.nextInt(CHANNEL_NAMES.length)] : null;
+            String source = (channel != null && rng.nextDouble() < 0.7) ? srcNames[rng.nextInt(srcNames.length)] : null;
+            String reason;
+            if (channel == null) reason = "未在任一报告渠道中找到对应记录，该 item 未能参与比较。";
+            else if (source == null) reason = "在 " + channel + " 渠道中未找到该 item 的对应记录，已跳过该渠道的比较。";
+            else reason = "在 " + channel + " 渠道的 " + source + " 中未找到该 item 的对应记录，已跳过该来源渠道的比较。";
             if (rng.nextDouble() < 0.35) {
                 reason += "\n详情：该 item 在来源 CSV 与报送 XML 中均未出现对应记录，可能因数据采集或报送延迟导致。\n建议核对上游系统是否已产生该 item 的数据。";
             }
             list.add(SkippedItem.builder()
-                    .itemId("T-" + reportDate.replace("-", "") + "-0" + (91 + i))
-                    .channel(ch)
+                    .itemId("T-20240810-0" + (91 + i))
+                    .channel(channel)
+                    .source(source)
                     .reason(reason)
                     .build());
         }
@@ -982,6 +1005,7 @@ public final class ValidationJsonGenerator {
         Map<String, Object> manifest = new LinkedHashMap<>();
         manifest.put("mode", "multi");
         manifest.put("reportEnv", dataset.getReportEnv());
+        manifest.put("skippedItems", dataset.getSkippedItems());
         manifest.put("items", manifestItems);
         writeJson(outDir.resolve("report-validation-data.json"), manifest);
         return manifestItems;
@@ -1065,6 +1089,7 @@ public final class ValidationJsonGenerator {
                 .summary(summary)
                 .description("夜间全量批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：当日全部交易\n- 模式：全量比对 + 汇总报表")
                 .reportEnv("OTCXXX")
+                .creationType("sample")
                 .dataUrl(dataUrl)
                 .dataMode(dataMode)
                 .build();

@@ -29,7 +29,6 @@ public class ValidationItem {
     /** Per-item hit-context definitions ({@code item.ctxDefs}). */
     private Map<String, CtxDef> ctxDefs;
     private List<Channel> channels;
-    private List<SkippedItem> skippedItems;
     /** Item-level warnings (aggregated from channels). */
     private List<Message> warnings;
     /** Item-level errors (aggregated from channels). */

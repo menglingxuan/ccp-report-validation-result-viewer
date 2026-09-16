@@ -45,14 +45,15 @@ function readJSON(p) {
   }
 }
 
-// 从数据文件（单文件或多文件清单）中解析 reportEnv 与 item 数量。
+// 从数据文件（单文件或多文件清单）中解析 reportEnv / item 数量 / creationType。
 function readDataInfo(dataPath, indexDir) {
-  const info = { reportEnv: null, itemCount: 0, mode: 'single' };
+  const info = { reportEnv: null, itemCount: 0, mode: 'single', creationType: null };
   const data = readJSON(dataPath);
   if (!data || typeof data !== 'object') return info;
   if (typeof data.reportEnv === 'string' && data.reportEnv) info.reportEnv = data.reportEnv;
   if (Array.isArray(data.items)) info.itemCount = data.items.length;
   info.mode = data.mode === 'multi' ? 'multi' : 'single';
+  if (data.creationType === 'sample' || data.creationType === 'user') info.creationType = data.creationType;
   return info;
 }
 
@@ -140,6 +141,11 @@ export async function scan(opts) {
       : dataInfo.reportEnv;
     if (envFilter && reportEnv !== envFilter) { skipped++; continue; }
 
+    // creationType：batch-meta.json 优先，回退到数据文件（单/多文件清单）顶层 creationType。
+    const creationType = (meta.creationType === 'sample' || meta.creationType === 'user')
+      ? meta.creationType
+      : dataInfo.creationType;
+
     const statSrc = hasData ? dataPath : metaPath;
     const st = fs.statSync(statSrc);
     const executedAt = meta.executedAt || st.mtime.toISOString();
@@ -170,6 +176,7 @@ export async function scan(opts) {
       entry.summary = { items: dataInfo.itemCount };
     }
     if (reportEnv) entry.reportEnv = reportEnv;
+    if (creationType) entry.creationType = creationType;
     if (meta.extra && typeof meta.extra === 'object') Object.assign(entry, meta.extra);
 
     if (validationErrors) {
