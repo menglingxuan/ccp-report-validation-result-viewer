@@ -573,12 +573,16 @@ import path from 'node:path';
       return { defs: defs, idByKey: idByKey };
     }
 
+    // opts：
+    //   itemCount    生成的 item 数量（默认 18）
+    //   singleSource true 时全部 item 仅含 1 个来源渠道（默认仅最后一个 item 为单来源）
     function buildDataset(opts) {
       const rng = mulberry32(20240814);
       const singleSource = !!(opts && opts.singleSource);
+      const itemCount = (opts && opts.itemCount > 0) ? Math.floor(opts.itemCount) : 18;
       const items = [];
       const platforms = ['OTC-PLATFORM-A', 'OTC-PLATFORM-B', 'OTC-PLATFORM-C'];
-      for (let i = 0; i < 18; i++) {
+      for (let i = 0; i < itemCount; i++) {
         const tradeId = 'T-20240814-' + String(1001 + i);
         const reportDate = '2024-08-' + String(10 + Math.floor(i / 3)).padStart(2, '0');
         const generatedAt = '2024-08-14 10:23:0' + (i % 10) + '.000';
@@ -591,7 +595,7 @@ import path from 'node:path';
         const counterpartyItemId = (Math.floor(i / 2) === 5) ? '' : (i % 2 === 0 ? 'T-20240814-' + String(1002 + i) : 'T-20240814-' + String(1000 + i));
 
         // 默认：最后一个 item 仅含 1 个来源渠道（演示单一来源渠道场景）；singleSource 模式下全部 item 均为单来源。
-        const sourceCount = singleSource ? 1 : (i === 17 ? 1 : 2);
+        const sourceCount = singleSource ? 1 : (i === itemCount - 1 ? 1 : 2);
 
         const channels = [];
         const warnings = [];

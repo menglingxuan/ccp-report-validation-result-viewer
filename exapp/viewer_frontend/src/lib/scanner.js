@@ -45,6 +45,27 @@ function readJSON(p) {
   }
 }
 
+// 批次元数据限制（数量 / 长度）：扫描器与写接口共用。
+export const MAX_BATCH_TAGS = 12;
+export const MAX_BATCH_TAG_LEN = 24;
+export const MAX_BATCH_NAME_LEN = 200;
+export const MAX_BATCH_DESC_LEN = 4000;
+
+// 批次标签清洗：接受字符串数组（或 { label } 对象数组），去空白、去重、限长、限量。
+// 扫描器（读元数据 -> 索引）与写接口（回写元数据）共用，作为唯一的标签规范化入口。
+export function sanitizeTags(v) {
+  if (!Array.isArray(v)) return [];
+  const out = [];
+  for (const raw of v) {
+    const s = String(raw == null ? '' : (typeof raw === 'object' ? (raw.label == null ? '' : raw.label) : raw)).trim();
+    if (!s) continue;
+    const tag = s.slice(0, MAX_BATCH_TAG_LEN);
+    if (out.indexOf(tag) === -1) out.push(tag);
+    if (out.length >= MAX_BATCH_TAGS) break;
+  }
+  return out;
+}
+
 // 从数据文件（单文件或多文件清单）中解析 reportEnv / item 数量 / creationType。
 function readDataInfo(dataPath, indexDir) {
   const info = { reportEnv: null, itemCount: 0, mode: 'single', creationType: null };
@@ -117,7 +138,10 @@ export async function scan(opts) {
     const dataPath = path.join(dir, 'report-validation-data.json');
     const hasData = fs.existsSync(dataPath);
     const meta = readJSON(metaPath) || {};
-    if (meta.deleted) { skipped++; continue; }
+    // 软删除批次（batch-meta.json 的 deleted 标记）不再跳过，而是带上 deleted 标记写入索引：
+    // 前端「全部批次(含已删除)」范围需要展示它们（仅供查看，不可加载/收藏/删除/钉住），
+    // 同时保留服务端恢复（POST /api/batch { deleted: false }）的可能。
+    const deleted = !!meta.deleted;
     if (!hasData && !meta.dataUrl) continue;
 
     // 运行环境：batch-meta.json 的 reportEnv 优先，回退到数据文件（单/多文件清单）顶层 reportEnv。
@@ -164,6 +188,10 @@ export async function scan(opts) {
       path: toWeb(dir),
     };
     if (dataInfo.mode) entry.dataMode = dataInfo.mode;
+    if (deleted) entry.deleted = true;
+    // 批次标签（batch-meta.json 的 tags）：用于列表展示与按标签筛选。
+    const tags = sanitizeTags(meta.tags);
+    if (tags.length) entry.tags = tags;
     if (typeof meta.favorite === 'boolean') entry.favorite = meta.favorite;
     if (typeof meta.commandLine !== 'undefined') entry.commandLine = meta.commandLine;
     if (typeof meta.argv !== 'undefined') entry.argv = meta.argv;

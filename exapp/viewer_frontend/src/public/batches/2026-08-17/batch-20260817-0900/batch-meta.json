@@ -1,0 +1,25 @@
+{
+  "batchId": "batch-20260817-0900",
+  "batchName": "single-source-20260817-单一来源渠道测试",
+  "date": "2026-08-17",
+  "executedAt": "2026-08-17T09:00:00+08:00",
+  "formatVersion": 2,
+  "creationType": "sample",
+  "dataUrl": "report-validation-data.json",
+  "ignoreUrl": "ignore-config-by-platform.json",
+  "commandLine": [
+    "java",
+    "-jar",
+    "ccp-report.jar",
+    "--date=2026-08-17"
+  ],
+  "summary": {
+    "items": 18,
+    "channels": 3
+  },
+  "description": "单一来源渠道测试：全部 item 仅含 1 个来源渠道（sourceCount=1），用于验证「来源渠道」相关展示与筛选在单来源场景下的表现。",
+  "tags": [
+    "单一来源",
+    "渠道测试"
+  ]
+}

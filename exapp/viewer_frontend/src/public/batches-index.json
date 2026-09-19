@@ -1,9 +1,95 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-15T15:58:28.172Z",
+  "generatedAt": "2026-09-19T04:17:39.846Z",
   "basedir": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/src/public/batches",
-  "count": 21,
+  "count": 24,
   "batches": [
+    {
+      "batchId": "batch-20260817-1500",
+      "batchName": "deleted-20260817-批次软删除测试",
+      "date": "2026-08-17",
+      "executedAt": "2026-08-17T15:00:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "batches/2026-08-17/batch-20260817-1500/report-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/src/public/batches/2026-08-17/batch-20260817-1500",
+      "dataMode": "single",
+      "deleted": true,
+      "tags": [
+        "软删除",
+        "分页测试"
+      ],
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--date=2026-08-17"
+      ],
+      "description": "批次软删除测试：batch-meta.json 默认带 deleted 标记；默认范围不展示该批次，需切到「全部批次(含已删除)」范围查看（仅供查看，不可加载 / 收藏 / 删除 / 钉住），用于验证软删除标记与删除 / 恢复流程。",
+      "summary": {
+        "items": 1,
+        "channels": 3
+      },
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
+    },
+    {
+      "batchId": "batch-20260817-1200",
+      "batchName": "paging-20260817-批次分页测试-28items",
+      "date": "2026-08-17",
+      "executedAt": "2026-08-17T12:00:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "batches/2026-08-17/batch-20260817-1200/report-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/src/public/batches/2026-08-17/batch-20260817-1200",
+      "dataMode": "single",
+      "tags": [
+        "分页测试",
+        "28items"
+      ],
+      "favorite": false,
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--date=2026-08-17"
+      ],
+      "description": "批次分页测试：本批次含 28 个 item，用于验证 item 列表分页（每页 8 → 4 页）与字段 / 消息表分页（每页 20 → 多页）。",
+      "summary": {
+        "items": 28,
+        "channels": 3
+      },
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
+    },
+    {
+      "batchId": "batch-20260817-0900",
+      "batchName": "single-source-20260817-单一来源渠道测试",
+      "date": "2026-08-17",
+      "executedAt": "2026-08-17T09:00:00+08:00",
+      "formatVersion": 2,
+      "dataUrl": "batches/2026-08-17/batch-20260817-0900/report-validation-data.json",
+      "ignoreUrl": "ignore-config-by-platform.json",
+      "path": "E:/repos/otcc-testing/app/ccp-report-validation-result-viewer/exapp/viewer_frontend/src/public/batches/2026-08-17/batch-20260817-0900",
+      "dataMode": "single",
+      "tags": [
+        "单一来源",
+        "渠道测试"
+      ],
+      "commandLine": [
+        "java",
+        "-jar",
+        "ccp-report.jar",
+        "--date=2026-08-17"
+      ],
+      "description": "单一来源渠道测试：全部 item 仅含 1 个来源渠道（sourceCount=1），用于验证「来源渠道」相关展示与筛选在单来源场景下的表现。",
+      "summary": {
+        "items": 18,
+        "channels": 3
+      },
+      "reportEnv": "OTCXXX",
+      "creationType": "sample"
+    },
     {
       "batchId": "batch-20260816-2000",
       "batchName": "eod-20260816-日终全量比对与汇总报表-多渠道HKTR-JSFA-CFTC-夜间批量任务-版本v2-生产环境",

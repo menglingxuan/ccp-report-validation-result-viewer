@@ -1,5 +1,21 @@
 {
   "mode": "single",
+  "reportEnv": "OTCXXX",
+  "creationType": "sample",
+  "skippedItems": [
+    {
+      "itemId": "T-20240810-091",
+      "channel": null,
+      "source": null,
+      "reason": "未在任一报告渠道中找到对应记录，该 item 未能参与比较。\n详情：该 item 在来源 CSV 与报送 XML 中均未出现对应记录，可能因数据采集或报送延迟导致。\n建议核对上游系统是否已产生该 item 的数据。"
+    },
+    {
+      "itemId": "T-20240810-092",
+      "channel": "HKTR",
+      "source": "来源渠道 A",
+      "reason": "在 HKTR 渠道的 来源渠道 A 中未找到该 item 的对应记录，已跳过该来源渠道的比较。"
+    }
+  ],
   "items": [
     {
       "tradeId": "T-20240814-1001",
@@ -53210,22 +53226,6 @@
           "text": "2024-08-14 10:23:00.400 INFO  [CFTC] 完成字段比较，渠道结果已生成"
         }
       ]
-    }
-  ],
-  "reportEnv": "OTCXXX",
-  "creationType": "sample",
-  "skippedItems": [
-    {
-      "itemId": "T-20240810-091",
-      "channel": null,
-      "source": null,
-      "reason": "未在任一报告渠道中找到对应记录，该 item 未能参与比较。\n详情：该 item 在来源 CSV 与报送 XML 中均未出现对应记录，可能因数据采集或报送延迟导致。\n建议核对上游系统是否已产生该 item 的数据。"
-    },
-    {
-      "itemId": "T-20240810-092",
-      "channel": "HKTR",
-      "source": "来源渠道 A",
-      "reason": "在 HKTR 渠道的 来源渠道 A 中未找到该 item 的对应记录，已跳过该来源渠道的比较。"
     }
   ]
 }

@@ -139,13 +139,14 @@ REPORT_VIEWER_CONFIG=prod node server.js
 | `batchDockSide` | `left` / `right` | `left` |
 | `progressBarStyle` | `status` / `uniform` | `status` |
 
-## 6. `features`（19 项，布尔）
+## 6. `features`（20 项，布尔）
 
 `uncomparedXpath` / `uncomparedCsv` / `uncomparedItems` / `logs` /
 `conversionRule` / `validationRule` / `excelMapping` / `sourceFilter` / `modalRules` /
 `columnHover` / `sidebarSearch` / `sidebarTradeId` / `compare` /
 `healthOverview` / `globalSearch` / `keyboardShortcuts` / `modalPrints` / `recentBatches` /
-`batchHelp`（docker 帮助图标入口）
+`batchHelp`（docker 帮助图标入口）/ `revealPath`（批次详情「批次目录」双击在系统文件管理器中打开；
+默认仅在 `runType` 为 `dev` / `test` 时开启，生产环境需显式设为 `true`）
 
 ## 7. `limits`
 

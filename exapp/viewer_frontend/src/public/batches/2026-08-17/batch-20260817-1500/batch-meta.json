@@ -1,0 +1,26 @@
+{
+  "batchId": "batch-20260817-1500",
+  "batchName": "deleted-20260817-批次软删除测试",
+  "date": "2026-08-17",
+  "executedAt": "2026-08-17T15:00:00+08:00",
+  "formatVersion": 2,
+  "creationType": "sample",
+  "dataUrl": "report-validation-data.json",
+  "ignoreUrl": "ignore-config-by-platform.json",
+  "commandLine": [
+    "java",
+    "-jar",
+    "ccp-report.jar",
+    "--date=2026-08-17"
+  ],
+  "summary": {
+    "items": 1,
+    "channels": 3
+  },
+  "description": "批次软删除测试：batch-meta.json 默认带 deleted 标记；默认范围不展示该批次，需切到「全部批次(含已删除)」范围查看（仅供查看，不可加载 / 收藏 / 删除 / 钉住），用于验证软删除标记与删除 / 恢复流程。",
+  "deleted": true,
+  "tags": [
+    "软删除",
+    "分页测试"
+  ]
+}

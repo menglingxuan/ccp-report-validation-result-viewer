@@ -21,7 +21,16 @@
 - **默认数据源可配置**：`urls.defaultDataMode` 取值 `init`（加载 `report-validation-data-init.json`）、`default`（加载 `report-validation-data-default.json`）或某个已扫描批次名（加载该批次数据）；其他值等同 `default`。
   - 加载 init 空占位数据时，「运行环境」显示为空。
 - **空占位数据**：`report-validation-data-init.json`（0 个 item）可临时改名为 default 文件，查看器展示友好空状态。
-- **批次管理**：批次软删除（元数据 `deleted` 标记），可即时撤销/确认删除；删除后即时以删除样式区分，刷新/重启后不再展示；搜索/筛选/统计只作用于正常批次。
+- **批次管理**：批次软删除（元数据 `deleted` 标记），可即时撤销/确认删除；删除后即时以删除样式区分，刷新/重启后默认不再展示；搜索/筛选/统计默认只作用于正常批次。
+  - 批次面板右上角的范围按钮为**三态循环**：`≡` 全部批次 → `✓` 仅看兼容 → `🗑` 全部批次(含已删除) → `≡`。
+  - 「全部批次(含已删除)」范围会展示带 `deleted` 标记的批次（批次名置灰 + 「已删除」徽章），可查看详情、参与排序/搜索/筛选，但**不支持加载 / 收藏 / 删除 / 钉住**等操作。
+  - 扫描器不再跳过 `deleted` 批次，而是带上 `deleted` 标记写入 `batches-index.json`（因此服务端 `POST /api/batch { deleted: false }` 可恢复）。
+- **批次标签（`tags`）**：`batch-meta.json` 的 `tags` 字符串数组（去空白 / 去重 / 单个 ≤ 24 字符 / 最多 12 个），在列表卡片与详情中展示（卡片中位于 item 数量标签之前）。
+  - 筛选面板在「报告环境」下方新增「按标签筛选」下拉（选项从当前范围的批次标签去重收集）。
+- **批次编辑（✎，仅兼容批次）**：列表卡片提供铅笔入口，可同时编辑**批次名 / 批次描述（多行）/ 标签**，保存后经 `POST /api/batch` 直接回写 `batch-meta.json`（不兼容与已删除批次不提供该入口，也拒绝保存）。
+  - **批次名允许重复**：若输入的名称与其它批次重名，编辑器仅给出告警（列出同名批次 ID）且**不阻止保存**——与 `urls.defaultDataMode` 按批次名解析时取首个匹配的现状一致；批次名为空则不提交（服务端也返回 400）。
+- **批次目录双击打开**：批次详情中的「批次目录」支持双击，经 `POST /api/reveal` 在系统文件管理器中打开该目录（`features.revealPath`：dev/test 默认开启，prod 默认关闭；路径限定在批次根目录内）。
+- **版本兼容性合并到版本号标签**：批次列表卡片、dock 悬停小卡片与批次详情的标签行统一由 `batchBadgesHTML` 渲染，不再单独展示「版本兼容 / 版本不兼容」标签，兼容性以版本号标签的配色 + title 提示表达；详情标签与卡片一致（仅不含 item 数量标签）。
 - **收藏夹**：
   - 按「包名」（`aa.bb.cc`）分层折叠收藏批次；入口位于批次 dock（★）。
   - 收藏/取消收藏会**回写批次元数据**（`favorite` 标记），扫描后仍保留。
@@ -29,6 +38,9 @@
   - 记录**收藏时间**（悬停提示）；支持检测被收藏批次是否仍存在（缺失标记）。
   - 收藏超过 8 项时显示搜索框，可按「包名 / 批次名」简易搜索。
   - 收藏弹框默认提示包名示例为 `you.category.nickname`。
+  - 列表卡片的 ★/☆ 按钮是**开关**：未收藏时弹出「收藏批次」（选择包名）；已收藏时弹出**取消收藏二次确认**（列出该批次所在的收藏包，确认后从所有收藏包移除，取消则不改动）。
+  - 收藏夹条目交互：**单击查看详情**（在侧边弹出，与批次列表一致，默认出现在右侧；含版本 / 环境 / 自定义标签等徽章与字段信息），**双击加载**该批次。
+  - 批次改名后，收藏夹中缓存的批次名快照同步更新（保存编辑时随 `POST /api/favorites` 一并回写）。
   - **收藏与删除互斥**：已收藏批次不能删除（需先取消收藏）；待删除批次不能收藏。
   - 收藏夹面板与批次面板互斥（打开一个自动隐藏另一个）。
 - **「当前批次」徽章**：矩形卡片式 + 悬浮/点击弹出完整批次详情（解决长批次名无法完整显示的问题）。
@@ -125,7 +137,8 @@ report-viewer                  # 任意目录启动（内置默认数据）
 | `GET` | `/config.json` | 统一配置 |
 | `POST` / `GET` | `/scan` | 触发一次完整批次扫描（同步返回结果） |
 | `GET` | `/scan/progress` | 扫描进度 SSE（`text/event-stream`） |
-| `POST` | `/api/batch` | 批次标记写回（body：`{ "batchId": "...", "deleted": true }` 或 `{ "batchId": "...", "favorite": true }`） |
+| `POST` | `/api/batch` | 批次元数据写回（body 任意组合：`{ "batchId": "...", "deleted": true }` / `{ "favorite": true }` / `{ "batchName": "...", "description": "..." }` / `{ "tags": ["a","b"] }`；`tags: []` 或空 `description` 表示清除对应字段，空 `batchName` 返回 400）。**写回后服务端会自动重建 `batches-index.json`**，保证刷新页面立即读到新值（收藏标记 / 标签 / 名称 / 软删除状态） |
+| `POST` | `/api/reveal` | 在系统文件管理器中打开批次目录（body：`{ "path": "<批次目录绝对路径>" }`）；需 `features.revealPath` 开启，路径限定在 `scan.basedir` 内 |
 | `GET` / `POST` | `/api/favorites` | 收藏夹读取 / 整树保存（body：`{ "favorites": {...} }`） |
 | `GET` | `/status` / `/health` | 服务状态与当前配置 |
 
@@ -191,8 +204,24 @@ src/
 ```bash
 node tools/generate-sample-data.js            # 单文件模式
 node tools/generate-sample-data.js --split    # 多文件模式（清单 + data/items/*.json）
+node tools/generate-sample-data.js --batch    # 更新全部样例批次（通用切片 + 多文件批次 + 特殊用途批次）
+node tools/generate-sample-data.js --special  # 仅更新特殊用途批次（单来源渠道 / 批次分页 / 批次软删除）
 node tools/migrate-legacy-data.js <旧文件>     # 旧数据格式迁移为新格式（原地或指定输出）
 ```
+
+生成批次后需触发一次扫描（`GET /scan` 或界面「刷新批次」）以更新 `batches-index.json`。
+
+### 特殊用途样例批次
+
+除通用切片批次（每批 2 / 4 个 item）外，`--batch` / `--special` 还会生成三个固定用途的样例批次：
+
+| 批次目录 | items | 批次名 / 用途 |
+| --- | --- | --- |
+| `batches/2026-08-17/batch-20260817-0900` | 18 | `single-source-20260817-单一来源渠道测试`：全部 item 仅含 1 个来源渠道（`sourceCount=1`）；标签 `单一来源` / `渠道测试` |
+| `batches/2026-08-17/batch-20260817-1200` | 28 | `paging-20260817-批次分页测试-28items`：验证 item 列表分页（8/页 → 4 页）与字段 / 消息表分页（20/页）；标签 `分页测试` / `28items` |
+| `batches/2026-08-17/batch-20260817-1500` | 1 | `deleted-20260817-批次软删除测试`：`batch-meta.json` 默认带 `deleted` 标记，默认范围不可见，需切到「全部批次(含已删除)」范围查看（仅供查看，不可加载）；标签 `软删除` / `分页测试` |
+
+这三类批次自带 `batch-meta.json`，且**不参与通用切片**（否则每次 `--batch` 都会被覆盖成 2 / 4 个 item）。
 
 ## License
 

@@ -1,0 +1,26 @@
+{
+  "batchId": "batch-20260817-1200",
+  "batchName": "paging-20260817-批次分页测试-28items",
+  "date": "2026-08-17",
+  "executedAt": "2026-08-17T12:00:00+08:00",
+  "formatVersion": 2,
+  "creationType": "sample",
+  "dataUrl": "report-validation-data.json",
+  "ignoreUrl": "ignore-config-by-platform.json",
+  "commandLine": [
+    "java",
+    "-jar",
+    "ccp-report.jar",
+    "--date=2026-08-17"
+  ],
+  "summary": {
+    "items": 28,
+    "channels": 3
+  },
+  "description": "批次分页测试：本批次含 28 个 item，用于验证 item 列表分页（每页 8 → 4 页）与字段 / 消息表分页（每页 20 → 多页）。",
+  "tags": [
+    "分页测试",
+    "28items"
+  ],
+  "favorite": false
+}

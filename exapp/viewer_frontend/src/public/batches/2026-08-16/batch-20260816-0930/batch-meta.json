@@ -16,7 +16,7 @@
     "--channels=HKTR,CFTC"
   ],
   "summary": {
-    "items": 18,
+    "items": 4,
     "channels": 3
   },
   "description": "盘中增量批处理：\n- 渠道：HKTR / CFTC\n- 范围：盘中新成交\n- 模式：快速比对"

@@ -212,6 +212,10 @@
     .batch-item.incompat { opacity: .78; }
     .batch-item.deleting { background: var(--warn-bg); opacity: .8; }
     .batch-item.deleting .bi-name { text-decoration: line-through; color: var(--warn); }
+    /* 已删除（软删除）批次：仅查看，不提供加载/收藏/删除/钉住等操作（批次名置灰）。 */
+    .batch-item.deleted { opacity: .7; cursor: default; }
+    .batch-item.deleted .bi-name { font-weight: 500; color: var(--muted); }
+    .batch-item.deleted .bi-time, .batch-item.deleted .bi-desc { color: var(--muted); }
     .bi-top { display: flex; align-items: center; gap: 6px; }
     .bi-name { font-weight: 600; font-family: var(--mono); font-size: 12px; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .bi-info { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1; padding: 2px; }
@@ -235,6 +239,9 @@
     .batch-item:hover .bi-pin, .batch-item:focus-visible .bi-pin { opacity: 1; }
     .bi-pin:hover { color: var(--accent); }
     .bi-pin.on { opacity: 1; color: var(--accent); }
+    .bi-edit { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 13px; line-height: 1; padding: 2px; opacity: 0; }
+    .batch-item:hover .bi-edit, .batch-item:focus-visible .bi-edit { opacity: 1; }
+    .bi-edit:hover { color: var(--accent); }
 
     /* 收藏夹（层级折叠树，契合包名 aa.bb.cc 概念） */
     .fav-panel { width: 300px; }
@@ -254,6 +261,12 @@
     .fav-remove:hover { color: var(--fail); }
     .fav-add-batch { font-family: var(--mono); font-size: 13px; margin-bottom: 10px; color: var(--accent); }
     .fav-add-hint { color: var(--muted); font-size: 11px; margin-top: 6px; }
+    .fav-remove-pkgs { font-family: var(--mono); font-size: 12px; color: var(--accent); margin-top: 6px; word-break: break-all; }
+    .tool-btn.danger { background: var(--fail); border-color: var(--fail); color: #fff; }
+    .tool-btn.danger:hover { filter: brightness(.95); color: #fff; border-color: var(--fail); }
+    .fav-remove-pkgs { font-family: var(--mono); font-size: 12px; color: var(--accent); margin-top: 6px; word-break: break-all; }
+    .tool-btn.danger { background: var(--fail); border-color: var(--fail); color: #fff; }
+    .tool-btn.danger:hover { filter: brightness(.95); color: #fff; border-color: var(--fail); }
     .fav-add-actions { margin-top: 12px; display: flex; gap: 8px; }
     .fav-searchbar { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--border); }
     .fav-searchbar .pop-control { flex: 1; }
@@ -272,10 +285,19 @@
     .b-badge.new { background: var(--fail-bg); color: var(--fail); }
     .b-badge.pin { background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent); }
     .b-badge.sample { background: transparent; color: var(--accent); border: 1px solid var(--accent); font-weight: 600; }
+    .b-badge.del { background: var(--surface-2); color: var(--muted); border: 1px dashed var(--border); }
+    /* 兼容性样式合并到「版本号」标签（不再单独展示版本兼容/不兼容标签）。 */
+    .b-badge.bv.ok { background: var(--pass-bg); color: var(--pass); }
+    .b-badge.bv.bad { background: var(--warn-bg); color: var(--warn); }
+    .b-badge.tag { background: transparent; color: var(--muted); border: 1px dashed var(--border); }
     .batch-item .empty { padding: 18px 14px; color: var(--muted); font-size: 12px; }
     .bp-compat { border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; border-radius: 999px; padding: 2px 9px; font-size: 12px; line-height: 1.6; }
     .bp-compat:hover { color: var(--accent); border-color: var(--accent); }
     .bp-compat.on { color: var(--pass); border-color: var(--pass); background: var(--pass-bg); }
+    .bp-compat.on.del { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); }
+    .bp-compat .bp-ico { line-height: 1; }
+    /* 「仅看兼容」与「全部批次(含已删除)」的图标视觉上偏大，单独调小一档。 */
+    .bp-compat .bp-ico.sm { font-size: 10px; }
     .bd-card {
       position: fixed; z-index: 60; background: var(--card); border: 1px solid var(--border);
       border-radius: 10px; padding: 10px 12px; box-shadow: 0 10px 30px rgba(0,0,0,.2);
@@ -291,6 +313,18 @@
     }
     .batch-qd .bq-name { font-weight: 600; font-family: var(--mono); font-size: 13px; word-break: break-all; }
     .batch-qd .bq-time { color: var(--muted); font-size: 11px; margin-top: 3px; font-family: var(--mono); }
+    .batch-qd .bq-hint { color: var(--warn); font-size: 11px; margin-top: 6px; }
+    /* 批次编辑器（批次名 / 描述 / 标签） */
+    .be-label { font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+    .be-warn { font-size: 11px; color: var(--warn); margin-top: 4px; }
+    .modal-body textarea.pop-control { resize: vertical; min-height: 56px; font-family: inherit; line-height: 1.5; }
+    .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; min-height: 22px; }
+    .tag-chip { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--border); background: var(--surface-2); border-radius: 999px; padding: 2px 8px; font-size: 12px; }
+    .tag-chip-del { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 11px; line-height: 1; padding: 0; }
+    .tag-chip-del:hover { color: var(--fail); }
+    .tag-empty { color: var(--muted); font-size: 12px; }
+    .tag-add-row { display: flex; gap: 6px; align-items: center; }
+    .tag-add-row .pop-control { flex: 1 1 auto; min-width: 0; }
     .batch-qd .bq-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
     .batch-help { max-width: 760px; }
     .batch-help .modal-body { padding: 16px 20px; }
@@ -363,6 +397,7 @@
     .bi-dir { display: flex; align-items: center; gap: 6px; }
     .bi-dir .bi-link { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
     .bi-dir .bi-link:hover { color: var(--accent); text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 2px; }
+    .bi-dir .bi-link.revealable { cursor: pointer; }
     .bi-copy { border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; border-radius: 6px; padding: 2px 7px; font-size: 12px; line-height: 1.4; flex: 0 0 auto; }
     .bi-copy:hover { color: var(--accent); border-color: var(--accent); }
     .bi-copy.copied { color: var(--pass); border-color: var(--pass); }
@@ -845,8 +880,20 @@
     }
     .sidebar-filters input:focus, .sidebar-filters select:focus { border-color: var(--accent); }
     .sidebar-list { position: absolute; left: 0; right: 0; overflow: auto; }
-    .sidebar-pager { margin-top: auto; padding: 8px 12px; border-top: 1px solid var(--border); display: flex; justify-content: center; align-items: center; gap: 4px; }
+    .sidebar-pager { margin-top: auto; padding: 8px 12px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px; }
     .sidebar-pager:empty { display: none; }
+    /* 上一个 / 下一个 Item：位于侧栏头标题与统计数字之间，简约样式（类分页箭头），默认隐藏、悬停显示。 */
+    .item-nav-group { display: inline-flex; align-items: center; gap: 2px; opacity: 0; transition: opacity .15s ease; }
+    .sidebar-head:hover .item-nav-group { opacity: 1; }
+    .item-nav {
+      height: 22px; min-width: 22px; padding: 0 5px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border); border-radius: 6px;
+      background: var(--surface); color: var(--text);
+      font-size: 12px; line-height: 1; cursor: pointer;
+    }
+    .item-nav:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+    .item-nav:disabled { opacity: .4; cursor: not-allowed; }
     .load-more { border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 12px; }
     .load-more:hover { color: var(--accent); border-color: var(--accent); }
 
@@ -1350,7 +1397,7 @@
     <main class="layout" role="main">
       <aside class="sidebar" id="sidebar" aria-label="比较 item 列表">
         <span class="side-resize" id="sideResize" title="拖动调整侧栏宽度"></span>
-        <div class="sidebar-head"><span id="sidebarTitle">比较 item 列表</span><span class="sidebar-head-right"><span class="count" id="itemCount">0</span><button class="side-collapse" id="sideCollapse" title="折叠侧栏">⟨</button></span></div>
+        <div class="sidebar-head"><span id="sidebarTitle">比较 item 列表</span><span class="item-nav-group" id="itemNav"></span><span class="sidebar-head-right"><span class="count" id="itemCount">0</span><button class="side-collapse" id="sideCollapse" title="折叠侧栏">⟨</button></span></div>
         <div class="sidebar-filters">
           <div class="search-wrap">
             <input type="search" id="itemSearch" placeholder="搜索 item id / 报告日期 / 平台 / 产品…">

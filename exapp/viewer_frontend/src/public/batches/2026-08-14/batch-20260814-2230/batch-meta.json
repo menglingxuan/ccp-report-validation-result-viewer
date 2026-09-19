@@ -14,7 +14,7 @@
     "--date=2026-08-14"
   ],
   "summary": {
-    "items": 18,
+    "items": 2,
     "channels": 3
   },
   "description": "历史版本批次（v1）：\n- 由旧版扫描器生成\n- 字段结构存在差异"

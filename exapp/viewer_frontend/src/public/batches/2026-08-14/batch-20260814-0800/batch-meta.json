@@ -14,7 +14,7 @@
     "--date=2026-08-14"
   ],
   "summary": {
-    "items": 18,
+    "items": 2,
     "channels": 3
   },
   "description": "早间批处理：\n- 渠道：JSFA / CFTC\n- 范围：隔夜成交"

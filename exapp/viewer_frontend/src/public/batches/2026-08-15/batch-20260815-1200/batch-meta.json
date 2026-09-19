@@ -14,7 +14,7 @@
     "--date=2026-08-15"
   ],
   "summary": {
-    "items": 18,
+    "items": 2,
     "channels": 3
   },
   "description": "盘中增量批处理：\n- 渠道：HKTR / CFTC\n- 范围：盘中新成交\n- 模式：快速比对"

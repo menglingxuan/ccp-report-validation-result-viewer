@@ -101,10 +101,12 @@
       side: 'left',
       scanning: false,
       dockY: null,
-      compatOnly: false,
+      // 批次范围：'all' 全部批次 / 'compat' 仅看兼容 / 'allDeleted' 全部批次(含已删除)
+      batchScope: 'all',
       cmd: '',
       desc: '',
       env: '',
+      tag: '',
       searchCollapsed: true,
       filtersCollapsed: true,
       listMode: 'lazy',
@@ -149,6 +151,7 @@
           modalPrints: flag('modalPrints'),
           recentBatches: flag('recentBatches'),
           batchHelp: flag('batchHelp'),
+          revealPath: flag('revealPath'),
         };
 
         if (cfg.urls && typeof cfg.urls === 'object') {
@@ -314,7 +317,7 @@
           if (validDataset(json)) { DATA_FILE_URL = resolveUrl(location.href, INIT_DATA_URL); return normalizeLoaded(json); }
         } catch (e) { console.warn('[data] init 数据文件加载失败：', e); }
       } else if (mode && mode !== 'default') {
-        const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === mode || x.batchName === mode; });
+        const b = BATCHES_INDEX.batches.find(function (x) { return (x.batchId === mode || x.batchName === mode) && !x.deleted; });
         if (b && b.dataUrl) {
           const url = resolveUrl(indexBaseUrl(), b.dataUrl);
           try {
@@ -371,6 +374,15 @@
     }
     // 后台渐进加载所有 item 文件（不阻塞首屏渲染）。
     function preloadAllItems() { ensureAllLoaded(); }
+    // 多文件模式下：确保 URL（或默认首个）item 已加载，否则 applyHash→rowPageFor→filteredFields 得到空列表，
+    // fr 行选中定位与主列表渲染会静默失败。useHash=false 时固定加载首个 item。
+    async function ensureHashItemLoaded(useHash) {
+      if (!isMultiMode()) return;
+      const want = useHash === false ? null : hashParams().item;
+      const first = DATA.items[0] && DATA.items[0].tradeId;
+      const id = (want && DATA.items.some(function (it) { return it.tradeId === want; })) ? want : first;
+      if (id) await ensureItemLoaded(id);
+    }
     // 字段比较表列注册表。label 为 i18n 键，可被 config.columns.labels 覆盖为字面量。
     // 「表达式 / 未转换值」预览列默认隐藏，用于数据快速预览。
     const COLUMNS = [
@@ -680,7 +692,22 @@
     function batchSortVal(b) { return String(b.executedAt || b.date || ''); }
     function isBatchPending(b) { return !!(b && BATCH_STATE.pendingDeletes[b.batchId]); }
     function isNewBatch(b) { return !!(b && NEW_BATCH_IDS[b.batchId]); }
-    function liveBatches() { return BATCHES_INDEX.batches.filter(function (b) { return !isBatchPending(b); }); }
+    // 可用批次：未进入「待删除」状态、且未被软删除 -> 可加载 / 收藏 / 删除 / 钉住。
+    function usableBatches() { return BATCHES_INDEX.batches.filter(function (b) { return !isBatchPending(b) && !b.deleted; }); }
+    // 当前「批次范围」下的批次集合（不含客户端待删除批次）：
+    //   'all'        全部批次（不含已软删除的批次）
+    //   'compat'     仅看兼容
+    //   'allDeleted' 全部批次(含已删除)：额外纳入 deleted 批次，仅可查看详情 / 排序 / 搜索
+    function scopeBatches() {
+      const list = BATCHES_INDEX.batches.filter(function (b) { return !isBatchPending(b); });
+      return BATCH_STATE.batchScope === 'allDeleted' ? list : list.filter(function (b) { return !b.deleted; });
+    }
+    function scopeCompatOnly() { return BATCH_STATE.batchScope === 'compat'; }
+    // 当前范围下的批次数量：「仅看兼容」只统计兼容批次（不含搜索 / 日期 / 环境 / 标签筛选）。
+    function scopeCount() {
+      const list = scopeBatches();
+      return scopeCompatOnly() ? list.filter(batchCompatible).length : list.length;
+    }
     function pendingBatches() { return BATCHES_INDEX.batches.filter(function (b) { return isBatchPending(b); }); }
     function batchQueryMatcher(q) {
       const s = String(q == null ? '' : q).trim();
@@ -700,8 +727,8 @@
       const nameM = batchQueryMatcher(BATCH_STATE.search);
       const cmdM = batchQueryMatcher(BATCH_STATE.cmd);
       const descM = batchQueryMatcher(BATCH_STATE.desc);
-      const list = liveBatches().filter(function (b) {
-        if (BATCH_STATE.compatOnly && !batchCompatible(b)) return false;
+      const list = scopeBatches().filter(function (b) {
+        if (scopeCompatOnly() && !batchCompatible(b)) return false;
         if (nameM && !nameM((b.batchName || '') + ' ' + (b.batchId || ''))) return false;
         if (cmdM && !cmdM(((b.commandLine || []).concat(b.argv || [])).join(' '))) return false;
         if (descM && !descM(b.description || '')) return false;
@@ -710,14 +737,15 @@
           if (bd !== d) return false;
         }
         if (BATCH_STATE.env && String(b.reportEnv || '') !== BATCH_STATE.env) return false;
+        if (BATCH_STATE.tag && (Array.isArray(b.tags) ? b.tags : []).indexOf(BATCH_STATE.tag) === -1) return false;
         return true;
       });
       list.sort(function (a, b) { return BATCH_STATE.sortDir * batchSortVal(a).localeCompare(batchSortVal(b)); });
       return list;
     }
     function recentBatches() {
-      return liveBatches().slice().filter(function (b) {
-        return BATCH_STATE.compatOnly ? batchCompatible(b) : true;
+      return usableBatches().slice().filter(function (b) {
+        return scopeCompatOnly() ? batchCompatible(b) : true;
       }).sort(function (a, b) {
         return batchSortVal(b).localeCompare(batchSortVal(a));
       }).slice(0, BATCH_STATE.recentCount);
@@ -742,12 +770,33 @@
       const p = function (n) { return (n < 10 ? '0' : '') + n; };
       return p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
     }
+    function batchBadgesHTML(b, opts) {
+      const o = opts || {};
+      const compat = batchCompatible(b);
+      const deleted = !!b.deleted;
+      const pinned = isPinned(b);
+      const tags = Array.isArray(b.tags) ? b.tags : [];
+      // 兼容性样式与数据合并到第一个「版本号」标签（不再单独展示版本兼容/不兼容标签）。
+      let out = '<span class="b-badge bv ' + (compat ? 'ok' : 'bad') + '" title="' + esc(compat ? t('batchCompat') : t('batchIncompat')) + '">v' + esc(String(b.formatVersion)) + '</span>';
+      if (b.creationType === 'sample') out += '<span class="b-badge sample">Sample</span>';
+      if (deleted) out += '<span class="b-badge del">🗑 ' + t('batchDeletedBadge') + '</span>';
+      if (isNewBatch(b)) out += '<span class="b-badge new">' + t('batchNew') + '</span>';
+      if (pinned) out += '<span class="b-badge pin" title="' + t('pinTitle') + '">📌 ' + t('pinLabel') + '</span>';
+      if (b.reportEnv) out += '<span class="b-badge benv">' + esc(b.reportEnv) + '</span>';
+      tags.forEach(function (tag) { out += '<span class="b-badge tag" title="' + esc(tag) + '">' + esc(tag) + '</span>'; });
+      // item 数量标签仅在列表卡片中展示（详情视图与之保持一致，但不含该标签）。
+      if (o.withItems) {
+        const sum = batchSummaryText(b);
+        if (sum) out += '<span class="b-badge bsum">' + esc(sum) + '</span>';
+      }
+      return out;
+    }
     function batchItemHTML(b) {
       const compat = batchCompatible(b);
+      const deleted = !!b.deleted;
       const active = BATCH_STATE.active && BATCH_STATE.active.batchId === b.batchId;
       const pending = isBatchPending(b);
-      const sum = batchSummaryText(b);
-      const title = BATCH_STATE.detailMode === 'quick' ? t('batchQuickHint') : '';
+      const title = deleted ? t('batchDeletedHint') : (BATCH_STATE.detailMode === 'quick' ? t('batchQuickHint') : '');
       const desc = (typeof b.description === 'string' && b.description.trim()) ? b.description.trim() : '';
       const descLine = desc.split('\n')[0].trim();
       const descHTML = descLine ? '<div class="bi-desc" title="' + esc(desc) + '">' + esc(descLine) + '</div>' : '';
@@ -756,28 +805,24 @@
         infoBtn = '<button class="bi-info" data-binfor="' + esc(b.batchId) + '" title="' + t('batchInfo') + '" aria-label="' + t('batchInfo') + '">ℹ</button>';
       }
       const pinned = isPinned(b);
-      const actions = pending
+      // 已删除批次：不渲染任何修改操作（收藏 / 删除 / 钉住），也不参与待删除流程。
+      const actions = deleted
+        ? ''
+        : pending
         ? '<div class="bi-actions"><button class="bi-act undo" data-batch-undo="' + esc(b.batchId) + '">' + t('batchDeleteUndo') + '</button>' +
           '<button class="bi-act confirm" data-batch-confirm="' + esc(b.batchId) + '">' + t('batchDeleteConfirm') + '</button></div>'
         : '<span class="bi-actions2">' +
           (active ? '<button class="bi-pin' + (pinned ? ' on' : '') + '" data-batch-pin="' + esc(b.batchId) + '" title="' + (pinned ? t('pinUnpinTitle') : t('pinTitle')) + '" aria-label="' + (pinned ? t('pinUnpinTitle') : t('pinTitle')) + '">' + (pinned ? '📌' : '📍') + '</button>' : '') +
+          (compat ? '<button class="bi-edit" data-batch-edit="' + esc(b.batchId) + '" title="' + t('batchEdit') + '" aria-label="' + t('batchEdit') + '">✎</button>' : '') +
           '<button class="bi-fav' + (isBatchFavorited(b) ? ' on' : '') + '" data-batch-fav="' + esc(b.batchId) + '" title="' + t('favAdd') + '" aria-label="' + t('favAdd') + '">' + (isBatchFavorited(b) ? '★' : '☆') + '</button>' +
           ((isBatchFavorited(b) || pinned) ? '' : '<button class="bi-del" data-batch-del="' + esc(b.batchId) + '" title="' + t('batchDelete') + '" aria-label="' + t('batchDelete') + '">✕</button>') +
           '</span>';
       const dataAttr = pending ? 'data-batch-pending="' + esc(b.batchId) + '"' : 'data-batch="' + esc(b.batchId) + '"';
-      return '<div class="batch-item' + (active ? ' active' : '') + (compat ? '' : ' incompat') + (pending ? ' deleting' : '') + '" ' + dataAttr + (pending ? '' : ' role="button" tabindex="0"') + (title && !pending ? ' title="' + title + '"' : '') + '>' +
+      return '<div class="batch-item' + (deleted ? ' deleted' : '') + (active ? ' active' : '') + (compat ? '' : ' incompat') + (pending ? ' deleting' : '') + '" ' + dataAttr + (pending ? '' : ' role="button" tabindex="0"') + (title && !pending ? ' title="' + title + '"' : '') + '>' +
         '<div class="bi-top"><span class="bi-name">' + esc(b.batchName || b.batchId) + '</span>' + infoBtn + actions + '</div>' +
         '<div class="bi-time">' + esc(formatBatchTime(b.executedAt)) + '</div>' +
         descHTML +
-        '<div class="bi-badges">' +
-        '<span class="b-badge bv">v' + esc(String(b.formatVersion)) + '</span>' +
-        (b.creationType === 'sample' ? '<span class="b-badge sample">Sample</span>' : '') +
-        (isNewBatch(b) ? '<span class="b-badge new">' + t('batchNew') + '</span>' : '') +
-        (pinned ? '<span class="b-badge pin" title="' + t('pinTitle') + '">📌 ' + t('pinLabel') + '</span>' : '') +
-        (compat ? '<span class="b-badge ok">✓ ' + t('batchCompat') + '</span>' : '<span class="b-badge bad">⚠ ' + t('batchIncompat') + '</span>') +
-        (b.reportEnv ? '<span class="b-badge benv">' + esc(b.reportEnv) + '</span>' : '') +
-        (sum ? '<span class="b-badge bsum">' + esc(sum) + '</span>' : '') +
-        '</div></div>';
+        '<div class="bi-badges">' + batchBadgesHTML(b, { withItems: true }) + '</div></div>';
     }
     function batchPagerHTML(p, pages) {
       const from = Math.max(1, p - 1), to = Math.min(pages, p + 1);
@@ -799,7 +844,7 @@
         const day = String(b.date || '').slice(-2);
         chips += '<button class="bd-chip' + (active ? ' active' : '') + (batchCompatible(b) ? '' : ' incompat') + (isBatchFavorited(b) ? ' fav' : '') + (isPinned(b) ? ' pinned' : '') + '" data-batch="' + esc(b.batchId) + '" aria-label="' + esc(b.batchName + ' · ' + formatBatchTime(b.executedAt)) + '">' + esc(day || '?') + (isNewBatch(b) ? '<span class="bd-new-dot" title="' + t('batchNew') + '"></span>' : '') + '</button>';
       });
-      if (!chips && liveBatches().length) chips = '<span class="bd-empty" title="' + t('batchNoCompat') + '">' + t('batchNoCompat') + '</span>';
+      if (!chips && usableBatches().length) chips = '<span class="bd-empty" title="' + t('batchNoCompat') + '">' + t('batchNoCompat') + '</span>';
       dock.innerHTML =
         '<div class="bd-grip" id="batchGrip" title="' + t('batchDragHint') + '" aria-label="' + t('batchDragHint') + '">⋮⋮</div>' +
         '<button class="bd-btn' + (BATCH_STATE.expanded ? ' on' : '') + '" id="batchToggle" title="' + t('batchToggle') + '" aria-label="' + t('batchToggle') + '">☰</button>' +
@@ -815,20 +860,33 @@
       if (!panel) return;
       const dateHint = (function () {
         const dates = {};
-        liveBatches().forEach(function (b) { dates[String(b.date || '')] = true; });
+        scopeBatches().forEach(function (b) { dates[String(b.date || '')] = true; });
         return Object.keys(dates).length + ' ' + t('batchDateHint');
       })();
       const envs = [];
-      liveBatches().forEach(function (b) {
+      scopeBatches().forEach(function (b) {
         const e = String(b.reportEnv || '').trim();
         if (e && envs.indexOf(e) === -1) envs.push(e);
       });
       const envOpts = '<option value="">' + t('batchEnvAll') + '</option>' +
         envs.map(function (e) { return '<option value="' + esc(e) + '"' + (BATCH_STATE.env === e ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('');
+      // 标签选项：从当前范围的批次元数据 tags 去重收集（按标签筛选）。
+      const tagSet = [];
+      scopeBatches().forEach(function (b) {
+        (Array.isArray(b.tags) ? b.tags : []).forEach(function (tag) { if (tagSet.indexOf(tag) === -1) tagSet.push(tag); });
+      });
+      tagSet.sort(function (a, b) { return a.localeCompare(b); });
+      const tagOpts = '<option value="">' + t('batchTagAll') + '</option>' +
+        tagSet.map(function (g) { return '<option value="' + esc(g) + '"' + (BATCH_STATE.tag === g ? ' selected' : '') + '>' + esc(g) + '</option>'; }).join('');
       panel.innerHTML =
         '<div class="bp-head"><span class="bp-title">' + t('batchTitle') + '</span>' +
-        '<span class="bp-count" id="batchCount"' + (BATCHES_INDEX.generatedAt ? ' title="' + esc(t('batchScannedAt') + ' ' + batchScanTimeText()) + '"' : '') + '>' + liveBatches().length + '</span>' +
-        '<button class="bp-compat' + (BATCH_STATE.compatOnly ? ' on' : '') + '" id="batchCompatFilter" title="' + (BATCH_STATE.compatOnly ? t('batchCompatOnly') : t('batchAll')) + '" aria-label="' + (BATCH_STATE.compatOnly ? t('batchCompatOnly') : t('batchAll')) + '">' + (BATCH_STATE.compatOnly ? '✓' : '≡') + '</button>' +
+        '<span class="bp-count" id="batchCount"' + (BATCHES_INDEX.generatedAt ? ' title="' + esc(t('batchScannedAt') + ' ' + batchScanTimeText()) + '"' : '') + '>' + scopeCount() + '</span>' +
+        (function () {
+          const scope = BATCH_STATE.batchScope;
+          const label = scope === 'compat' ? t('batchCompatOnly') : (scope === 'allDeleted' ? t('batchAllDeleted') : t('batchAll'));
+          const icon = scope === 'compat' ? '✓' : (scope === 'allDeleted' ? '🗑' : '≡');
+          return '<button class="bp-compat' + (scope === 'all' ? '' : ' on') + (scope === 'allDeleted' ? ' del' : '') + '" id="batchCompatFilter" title="' + esc(label) + '" aria-label="' + esc(label) + '"><span class="bp-ico' + (scope === 'all' ? '' : ' sm') + '">' + icon + '</span></button>';
+        })() +
         '<button class="bp-collapse" id="batchSideFlip" title="' + t('batchSideFlip') + '" aria-label="' + t('batchSideFlip') + '">⇄</button>' +
         '<button class="bp-collapse" id="batchClose" title="' + t('batchClose') + '" aria-label="' + t('batchClose') + '">' + (BATCH_STATE.side === 'right' ? '⟩' : '⟨') + '</button></div>' +
         '<div class="bp-controls">' +
@@ -850,7 +908,8 @@
           '<button class="bp-clear" id="batchDateClear" title="' + t('batchDateClearLabel') + '">✕</button>' +
           '</div>' +
           '<div class="bp-date-hint" id="batchDateHint">' + dateHint + '</div>' +
-          '<div class="bp-row"><select id="batchEnv" title="' + t('batchEnv') + '">' + envOpts + '</select></div>') +
+          '<div class="bp-row"><select id="batchEnv" title="' + t('batchEnv') + '">' + envOpts + '</select></div>' +
+          '<div class="bp-row"><select id="batchTag" title="' + t('batchTagFilter') + '">' + tagOpts + '</select></div>') +
         '</div>' +
         '<div class="bp-notice" id="batchNotice"' + (BATCH_STATE.notice ? '' : ' hidden') + '>' +
         '<span class="bp-notice-text">' + esc(BATCH_STATE.notice || '') + '</span>' +
@@ -876,6 +935,7 @@
     }
     function markBatchPending(id) {
       const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === id; });
+      if (b && b.deleted) return;
       if (b && isBatchFavorited(b)) { setBatchNotice(t('favDeleteBlocked')); return; }
       if (b && isPinned(b)) { setBatchNotice(t('pinDeleteBlocked')); return; }
       BATCH_STATE.pendingDeletes[id] = true;
@@ -895,7 +955,9 @@
         return;
       }
       delete BATCH_STATE.pendingDeletes[id];
-      BATCHES_INDEX.batches = BATCHES_INDEX.batches.filter(function (b) { return b.batchId !== id; });
+      // 软删除：批次仍保留在索引中（带 deleted 标记），默认范围不再展示，
+      // 「全部批次(含已删除)」范围仍可见（仅查看，不可加载/修改）。
+      BATCHES_INDEX.batches.forEach(function (b) { if (b.batchId === id) b.deleted = true; });
       if (PINNED_BATCH_ID === id) { PINNED_BATCH_ID = null; savePinnedId(); }
       if (BATCH_STATE.active && BATCH_STATE.active.batchId === id) { BATCH_STATE.active = null; saveBatchActive(); }
       setBatchNotice('');
@@ -935,19 +997,89 @@
       if (b) b.favorite = flag;
       fetch('/api/batch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ batchId: batchId, favorite: flag }) }).catch(function () {});
     }
-    function isBatchFavorited(b) { return !!(b && b.favorite); }
-    function favoriteCountFor(batchId) {
-      let n = 0;
-      Object.keys(FAVORITES).forEach(function (pkg) {
-        if ((FAVORITES[pkg] || []).some(function (f) { return f.batchId === batchId; })) n++;
+    // 收藏状态：元数据 favorite 为冗余缓存（索引可能滞后），收藏夹树为权威来源，任一命中即为已收藏。
+    function isBatchFavorited(b) { return !!(b && (b.favorite || favoriteCountFor(b.batchId) > 0)); }
+    // 该批次存在哪些收藏包（一个批次可被收藏到多个包）。
+    function favPkgsFor(batchId) {
+      return Object.keys(FAVORITES).filter(function (pkg) {
+        return (FAVORITES[pkg] || []).some(function (f) { return f.batchId === batchId; });
       });
-      return n;
+    }
+    function favoriteCountFor(batchId) { return favPkgsFor(batchId).length; }
+    // 收藏项自带 batchName 快照：批次改名后同步更新（否则收藏夹仍显示旧名）。
+    function syncFavoriteBatchName(batchId, name) {
+      let changed = false;
+      Object.keys(FAVORITES).forEach(function (pkg) {
+        (FAVORITES[pkg] || []).forEach(function (f) {
+          if (f.batchId === batchId && f.batchName !== name) { f.batchName = name; changed = true; }
+        });
+      });
+      return changed;
+    }
+    // 收藏状态变化后统一刷新受影响视图：收藏夹面板 + 批次列表 + dock 小图标 +「当前批次」徽章。
+    // 尤其是当前批次被收藏/取消收藏时，徽章上的 ★ 标记必须同步（否则会遗留旧标记）。
+    function refreshFavoriteViews() {
+      renderFavoritesPanel();
+      renderBatchPanel();
+      renderBatchDock();
+      renderBatchBadge();
+    }
+    // 从所有收藏包中移除该批次（收藏按钮取消收藏 / 收藏项 ✕ 共用）。
+    function removeBatchFromFavorites(batchId) {
+      let changed = false;
+      Object.keys(FAVORITES).forEach(function (pkg) {
+        const before = FAVORITES[pkg] || [];
+        const after = before.filter(function (f) { return f.batchId !== batchId; });
+        if (after.length !== before.length) {
+          changed = true;
+          if (after.length) FAVORITES[pkg] = after;
+          else delete FAVORITES[pkg];
+        }
+      });
+      if (changed) saveFavorites();
+      setBatchFavoriteFlag(batchId, false);
+      hideBatchQuickDetail();
+      refreshFavoriteViews();
+      return changed;
+    }
+    // 取消收藏二次确认（已收藏批次再次点击收藏按钮）。
+    function openRemoveFavoriteDialog(batchId) {
+      const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === batchId; });
+      const pkgs = favPkgsFor(batchId);
+      if (!b) return;
+      if (!pkgs.length) { removeBatchFromFavorites(batchId); return; }
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop';
+      backdrop.innerHTML =
+        '<div class="modal" style="max-width:420px"><div class="modal-head"><h3>' + t('favRemoveTitle') + '</h3><button class="modal-close" aria-label="' + t('closeLabel') + '">✕</button></div>' +
+        '<div class="modal-body">' +
+        '<div class="fav-add-batch">' + esc(b.batchName || b.batchId) + '</div>' +
+        '<div class="fav-add-hint">' + t('favRemoveBody') + '</div>' +
+        '<div class="fav-remove-pkgs">' + esc(pkgs.join('、')) + '</div>' +
+        '<div class="fav-add-actions"><button class="tool-btn danger" data-fav-unfav="1">' + t('favRemoveConfirm') + '</button><button class="tool-btn" data-fav-uncancel="1">' + t('cancel') + '</button></div>' +
+        '</div></div>';
+      backdrop.addEventListener('click', function (e) {
+        if (e.target === backdrop || e.target.closest('.modal-close') || e.target.closest('[data-fav-uncancel]')) { backdrop.remove(); return; }
+        if (e.target.closest('[data-fav-unfav]')) {
+          backdrop.remove();
+          removeBatchFromFavorites(batchId);
+        }
+      });
+      document.body.appendChild(backdrop);
+    }
+    // 收藏按钮：未收藏 -> 选择包名加入收藏；已收藏 -> 二次确认后取消收藏。
+    function toggleBatchFavorite(batchId) {
+      const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === batchId; });
+      if (!b) return;
+      if (isBatchFavorited(b)) openRemoveFavoriteDialog(batchId);
+      else openAddFavoriteDialog(batchId);
     }
     function addFavorite(batchId, pkg) {
       pkg = String(pkg || '').trim();
       if (!isValidPkg(pkg)) return { ok: false, error: t('favInvalidPkg') };
       const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === batchId; });
       if (!b) return { ok: false, error: t('favBatchMissing') };
+      if (b.deleted) return { ok: false, error: t('batchDeletedBlocked') };
       if (isBatchPending(b)) return { ok: false, error: t('favPendingBlocked') };
       if (!FAVORITES[pkg]) FAVORITES[pkg] = [];
       if (!FAVORITES[pkg].some(function (f) { return f.batchId === batchId; })) {
@@ -955,7 +1087,7 @@
         saveFavorites();
       }
       setBatchFavoriteFlag(batchId, true);
-      renderBatchPanel(); renderBatchDock();
+      refreshFavoriteViews();
       return { ok: true };
     }
     function removeFavorite(pkg, batchId) {
@@ -964,18 +1096,17 @@
       if (!FAVORITES[pkg].length) delete FAVORITES[pkg];
       saveFavorites();
       if (favoriteCountFor(batchId) === 0) setBatchFavoriteFlag(batchId, false);
-      renderFavoritesPanel();
-      renderBatchPanel(); renderBatchDock();
+      refreshFavoriteViews();
     }
     function favoriteBatchExists(batchId) {
-      return BATCHES_INDEX.batches.some(function (b) { return b.batchId === batchId; });
+      return BATCHES_INDEX.batches.some(function (b) { return b.batchId === batchId && !b.deleted; });
     }
     function favItemsHTML(items, pkg) {
       return (items || []).map(function (f) {
         const missing = !favoriteBatchExists(f.batchId);
         const savedHint = t('favSavedAt') + ' ' + formatBatchTime(f.savedAt);
         return '<div class="fav-item' + (missing ? ' missing' : '') + '">' +
-          '<button class="fav-load" data-fav-load="' + esc(f.batchId) + '" title="' + esc(savedHint) + '">' + esc(f.batchName) + '</button>' +
+          '<button class="fav-load" data-fav-load="' + esc(f.batchId) + '" title="' + esc(savedHint + ' · ' + t('favClickHint')) + '">' + esc(f.batchName) + '</button>' +
           (missing ? '<span class="fav-missing-badge" title="' + t('favMissing') + '">' + t('favMissing') + '</span>' : '') +
           '<button class="fav-remove" data-fav-remove="' + esc(f.batchId) + '" data-fav-pkg="' + esc(pkg) + '" title="' + t('favRemove') + '">✕</button>' +
           '</div>';
@@ -1023,7 +1154,7 @@
             const missing = !favoriteBatchExists(f.batchId);
             out.push('<div class="fav-item' + (missing ? ' missing' : '') + '">' +
               '<span class="fav-pkg-tag" title="' + esc(pkg) + '">' + esc(pkg) + '</span>' +
-              '<button class="fav-load" data-fav-load="' + esc(f.batchId) + '" title="' + esc(t('favSavedAt') + ' ' + formatBatchTime(f.savedAt)) + '">' + esc(f.batchName) + '</button>' +
+              '<button class="fav-load" data-fav-load="' + esc(f.batchId) + '" title="' + esc(t('favSavedAt') + ' ' + formatBatchTime(f.savedAt) + ' · ' + t('favClickHint')) + '">' + esc(f.batchName) + '</button>' +
               (missing ? '<span class="fav-missing-badge" title="' + t('favMissing') + '">' + t('favMissing') + '</span>' : '') +
               '<button class="fav-remove" data-fav-remove="' + esc(f.batchId) + '" data-fav-pkg="' + esc(pkg) + '" title="' + t('favRemove') + '">✕</button>' +
               '</div>');
@@ -1136,7 +1267,7 @@
       if (BATCH_STATE.scanning) {
         listEl.innerHTML = batchListSkeletonHTML();
       } else if (!slice.length) {
-        listEl.innerHTML = '<div class="empty">' + (BATCHES_INDEX.batches.length ? t('batchEmptyFiltered') : t('batchEmpty')) + '</div>';
+        listEl.innerHTML = '<div class="empty">' + (scopeCount() ? t('batchEmptyFiltered') : t('batchEmpty')) + '</div>';
       } else {
         renderBatchListVirtual(listEl, slice);
       }
@@ -1184,11 +1315,7 @@
       BD_CARD.innerHTML =
         '<div class="bdc-name">' + esc(b.batchName || b.batchId) + '</div>' +
         '<div class="bdc-time">' + esc(formatBatchTime(b.executedAt)) + '</div>' +
-        '<div class="bdc-badges"><span class="b-badge bv">v' + esc(String(b.formatVersion)) + '</span>' +
-        (b.creationType === 'sample' ? '<span class="b-badge sample">Sample</span>' : '') +
-        (batchCompatible(b) ? '<span class="b-badge ok">✓ ' + t('batchCompat') + '</span>' : '<span class="b-badge bad">⚠ ' + t('batchIncompat') + '</span>') +
-        (b.reportEnv ? '<span class="b-badge benv">' + esc(b.reportEnv) + '</span>' : '') +
-        '</div>';
+        '<div class="bdc-badges">' + batchBadgesHTML(b) + '</div>';
       document.body.appendChild(BD_CARD);
       const cr = chip.getBoundingClientRect();
       const cw = BD_CARD.offsetWidth, ch = BD_CARD.offsetHeight;
@@ -1251,14 +1378,14 @@
     // 冷/热启动时优先加载被置顶的批次（存在且未被删除时才生效）。
     function restorePinnedBatch() {
       if (!PINNED_BATCH_ID) return null;
-      const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === PINNED_BATCH_ID && !isBatchPending(x); });
+      const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === PINNED_BATCH_ID && !isBatchPending(x) && !x.deleted; });
       if (b && b.dataUrl) return { batch: b, forced: false };
       return null;
     }
-    // 批次被物理删除（重新扫描后索引中不再存在）时，及时清除置顶状态。
+    // 批次被物理删除（重新扫描后索引中不再存在）或被软删除时，及时清除置顶状态。
     function prunePinnedBatch() {
       if (!PINNED_BATCH_ID) return;
-      const exists = BATCHES_INDEX.batches.some(function (b) { return b.batchId === PINNED_BATCH_ID; });
+      const exists = BATCHES_INDEX.batches.some(function (b) { return b.batchId === PINNED_BATCH_ID && !b.deleted; });
       if (!exists) { PINNED_BATCH_ID = null; savePinnedId(); }
     }
     function toggleBatchPanel(force) {
@@ -1387,7 +1514,15 @@
         banner.hidden = false;
       } else banner.hidden = true;
     }
+    // 打开批次（查看详情或加载）：已删除批次只走详情展示，不支持加载。
+    function openBatchDetail(anchor, b) {
+      if (!b.deleted) { selectBatch(b); return; }
+      if (BATCH_STATE.detailMode === 'modal') openBatchInfo(b);
+      else showBatchQuickDetail(anchor, b);
+    }
     function selectBatch(b) {
+      // 已删除（软删除）批次：仅可查看，不可加载。
+      if (b && b.deleted) { setBatchNotice(t('batchDeletedBlocked')); return; }
       if (!batchCompatible(b)) { confirmIncompatible(b); return; }
       loadBatch(b, false);
     }
@@ -1448,7 +1583,7 @@
       // 加载至主列表后移除「新增」徽章。
       if (NEW_BATCH_IDS[b.batchId]) delete NEW_BATCH_IDS[b.batchId];
       initState();
-      if (isMultiMode()) await ensureItemLoaded(DATA.items[0].tradeId);
+      await ensureHashItemLoaded(applyUrlAfter);
       if (applyUrlAfter) applyHash(); else clearHash();
       applyDateFilterVisibility();
       render();
@@ -1524,21 +1659,130 @@
       try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
       HASH_SYNC.applying = false;
     }
+    // 在系统文件管理器中打开批次目录（服务端 /api/reveal，路径限定在批次根目录内）。
+    async function revealBatchDir(dir) {
+      if (!dir) return;
+      try {
+        const res = await fetch('/api/reveal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: dir }) });
+        const j = await res.json().catch(function () { return null; });
+        if (!res.ok || !j || j.ok !== true) throw new Error(j && j.error ? j.error : ('HTTP ' + res.status));
+      } catch (e) {
+        setBatchNotice(t('batchRevealError') + ' ' + (e && e.message ? e.message : e));
+      }
+    }
+
+    // 批次编辑器（仅兼容批次）：编辑批次名 / 批次描述 / 标签，保存后直接回写 batch-meta.json。
+    // 批次名允许重复：重名仅给出告警（不影响保存），与「defaultDataMode 按名解析取首个匹配」的现状一致。
+    function openBatchEditor(batchId) {
+      const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === batchId; });
+      if (!b) return;
+      if (b.deleted) { setBatchNotice(t('batchDeletedBlocked')); return; }
+      if (!batchCompatible(b)) { setBatchNotice(t('batchEditIncompat')); return; }
+      const draft = Array.isArray(b.tags) ? b.tags.slice() : [];
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop';
+      backdrop.innerHTML =
+        '<div class="modal" style="max-width:520px"><div class="modal-head"><h3>' + t('batchEditTitle') + '</h3><button class="modal-close" aria-label="' + t('closeLabel') + '">✕</button></div>' +
+        '<div class="modal-body">' +
+        '<div class="fav-add-batch">' + esc(b.batchId) + '</div>' +
+        '<div class="be-label">' + t('batchNameLabel') + '</div>' +
+        '<input class="pop-control" id="beName" maxlength="200" value="' + esc(b.batchName || b.batchId) + '">' +
+        '<div class="be-warn" id="beNameWarn" hidden></div>' +
+        '<div class="be-label">' + t('batchDesc') + '</div>' +
+        '<textarea class="pop-control" id="beDesc" rows="3" maxlength="4000" placeholder="' + t('batchDescPlaceholder') + '">' + esc(b.description || '') + '</textarea>' +
+        '<div class="be-label">' + t('batchTagLabel') + '</div>' +
+        '<div class="tag-list" id="tagList"></div>' +
+        '<div class="tag-add-row"><input class="pop-control" id="tagInput" placeholder="' + t('batchTagPlaceholder') + '" maxlength="24"><button class="tool-btn" id="tagAddBtn">' + t('batchTagAdd') + '</button></div>' +
+        '<div class="fav-add-hint">' + t('batchTagHint') + '</div>' +
+        '<div class="fav-add-actions"><button class="tool-btn" id="beSaveBtn">' + t('favSave') + '</button><button class="tool-btn" data-be-cancel="1">' + t('cancel') + '</button></div>' +
+        '</div></div>';
+      const listEl = backdrop.querySelector('#tagList');
+      const inputEl = backdrop.querySelector('#tagInput');
+      const nameEl = backdrop.querySelector('#beName');
+      const descEl = backdrop.querySelector('#beDesc');
+      const warnEl = backdrop.querySelector('#beNameWarn');
+      const renderTags = function () {
+        listEl.innerHTML = draft.length
+          ? draft.map(function (tag, i) { return '<span class="tag-chip">' + esc(tag) + '<button class="tag-chip-del" data-tag-remove="' + i + '" title="' + t('favRemove') + '" aria-label="' + t('favRemove') + '">✕</button></span>'; }).join('')
+          : '<span class="tag-empty">' + t('batchTagEmpty') + '</span>';
+      };
+      // 重名检查：批次名允许重复，仅提示（不影响保存）。
+      const checkName = function () {
+        const name = nameEl.value.trim();
+        if (!name) { warnEl.hidden = false; warnEl.textContent = t('batchNameEmpty'); return; }
+        const ids = BATCHES_INDEX.batches.filter(function (x) {
+          return x.batchId !== batchId && String(x.batchName || x.batchId) === name;
+        }).map(function (x) { return x.batchId; });
+        warnEl.hidden = ids.length === 0;
+        warnEl.textContent = ids.length
+          ? t('batchNameDupWarn').replace('{n}', String(ids.length)).replace('{ids}', ids.join('、'))
+          : '';
+      };
+      const addTag = function () {
+        const v = String(inputEl.value || '').trim().slice(0, 24);
+        if (!v) return;
+        if (draft.indexOf(v) === -1) draft.push(v);
+        inputEl.value = '';
+        renderTags();
+      };
+      const save = async function () {
+        const name = nameEl.value.trim();
+        if (!name) { checkName(); nameEl.focus(); return; }
+        try {
+          const res = await fetch('/api/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ batchId: batchId, batchName: name, description: descEl.value, tags: draft }),
+          });
+          const j = await res.json().catch(function () { return null; });
+          if (!res.ok || !j || j.ok !== true) throw new Error(j && j.error ? j.error : ('HTTP ' + res.status));
+          b.batchName = j.batchName || name;
+          if (j.description) b.description = j.description; else delete b.description;
+          const tags = Array.isArray(j.tags) ? j.tags : [];
+          if (tags.length) b.tags = tags; else delete b.tags;
+          // 收藏夹中缓存的批次名同步更新（收藏项自带 batchName 快照）。
+          if (syncFavoriteBatchName(batchId, b.batchName)) { saveFavorites(); renderFavoritesPanel(); }
+          backdrop.remove();
+          hideBatchQuickDetail();
+          renderBatchBadge();
+          renderBatchPanel(); renderBatchDock();
+        } catch (e) {
+          alert(t('batchEditError') + ' ' + (e && e.message ? e.message : e));
+        }
+      };
+      backdrop.addEventListener('click', function (e) {
+        if (e.target === backdrop || e.target.closest('.modal-close') || e.target.closest('[data-be-cancel]')) { backdrop.remove(); return; }
+        const rm = e.target.closest('[data-tag-remove]');
+        if (rm) { draft.splice(parseInt(rm.getAttribute('data-tag-remove'), 10), 1); renderTags(); return; }
+        if (e.target.closest('#tagAddBtn')) { addTag(); return; }
+        if (e.target.closest('#beSaveBtn')) { save(); return; }
+      });
+      backdrop.addEventListener('keydown', function (e) {
+        if (e.target === inputEl && e.key === 'Enter') { e.preventDefault(); addTag(); }
+      });
+      nameEl.addEventListener('input', checkName);
+      document.body.appendChild(backdrop);
+      checkName();
+      renderTags();
+      nameEl.focus();
+      nameEl.setSelectionRange(nameEl.value.length, nameEl.value.length);
+    }
     function batchDetailKVHTML(b) {
-      const compat = batchCompatible(b);
       const dir = b.path || BATCHES_INDEX.basedir || '';
+      const revealable = !!APP_FEATURES.revealPath;
       const rows = [
         [t('batchEnv'), b.reportEnv || t('batchEnvUnknown'), false],
         [t('batchDateLabel'), b.date || '', false],
         [t('batchExecutedAt'), formatBatchTime(b.executedAt), false],
         [t('batchBasedir'), dir, true],
-        [t('batchVersion'), 'v' + b.formatVersion + ' · ' + (compat ? t('batchCompat') + ' ✓' : t('batchIncompat') + ' ⚠'), false],
       ];
       if (b.summary && typeof b.summary.items === 'number') rows.push([t('batchItemCount'), b.summary.items, false]);
       return rows.map(function (r) {
         const v = r[1] == null ? '' : String(r[1]);
         if (r[2]) {
-          return '<div class="k">' + esc(r[0]) + '</div><div class="v bi-dir"><span class="bi-link" title="' + esc(v) + '">' + esc(v) + '</span><button class="bi-copy" data-copy="' + esc(v) + '" title="' + t('batchCopy') + '" aria-label="' + t('batchCopy') + '">⧉</button></div>';
+          // 批次目录：双击在系统文件管理器中打开（需 features.revealPath 开启）。
+          const title = revealable ? (t('batchRevealHint') + '\n' + v) : v;
+          return '<div class="k">' + esc(r[0]) + '</div><div class="v bi-dir"><span class="bi-link' + (revealable ? ' revealable' : '') + '" title="' + esc(title) + '"' + (revealable ? ' data-reveal-dir="' + esc(v) + '"' : '') + '>' + esc(v) + '</span><button class="bi-copy" data-copy="' + esc(v) + '" title="' + t('batchCopy') + '" aria-label="' + t('batchCopy') + '">⧉</button></div>';
         }
         return '<div class="k">' + esc(r[0]) + '</div><div class="v">' + esc(v) + '</div>';
       }).join('');
@@ -1558,7 +1802,7 @@
       backdrop.className = 'modal-backdrop';
       backdrop.innerHTML =
         '<div class="modal"><div class="modal-head"><h3 title="' + esc(b.batchName || b.batchId) + '">' + t('batchInfoTitle') + '：' + esc(b.batchName || b.batchId) + '</h3><button class="modal-close" aria-label="' + t('closeLabel') + '">✕</button></div>' +
-        '<div class="modal-body"><div class="bi-kv">' + batchDetailKVHTML(b) + '</div>' + batchDetailCmdHTML(b) + batchDetailDescHTML(b) + '</div></div>';
+        '<div class="modal-body"><div class="bi-badges">' + batchBadgesHTML(b) + '</div><div class="bi-kv">' + batchDetailKVHTML(b) + '</div>' + batchDetailCmdHTML(b) + batchDetailDescHTML(b) + '</div></div>';
       backdrop.addEventListener('click', function (e) {
         if (e.target === backdrop || e.target.closest('.modal-close')) backdrop.remove();
       });
@@ -1577,15 +1821,13 @@
       BATCH_QD_HIDE_TIMER = null;
     }
     function buildBatchQuickDetail(b) {
-      const compat = batchCompatible(b);
       const card = document.createElement('div');
       card.className = 'batch-qd';
       card.id = 'batchQuickDetail';
       card.innerHTML =
         '<div class="bq-name">' + esc(b.batchName || b.batchId) + '</div>' +
         '<div class="bq-time">' + esc(formatBatchTime(b.executedAt)) + '</div>' +
-        '<div class="bq-badges"><span class="b-badge bv">v' + esc(String(b.formatVersion)) + '</span>' +
-        (compat ? '<span class="b-badge ok">✓ ' + t('batchCompat') + '</span>' : '<span class="b-badge bad">⚠ ' + t('batchIncompat') + '</span>') + '</div>' +
+        '<div class="bq-badges">' + batchBadgesHTML(b) + '</div>' +
         '<div class="bi-kv">' + batchDetailKVHTML(b) + '</div>' +
         batchDetailCmdHTML(b) +
         batchDetailDescHTML(b);
@@ -1979,6 +2221,17 @@
         '</div>';
     }
 
+    // 侧栏头「上一个 / 下一个 Item」箭头：位于标题与统计数字之间，简约样式（类分页箭头），默认隐藏、悬停显示。
+    // 落在筛选后列表的首/末项时，对应方向置灰。
+    function itemNavHTML() {
+      const all = (state._sidebarAll && state._sidebarAll.length) ? state._sidebarAll : filteredItems();
+      const idx = all.findIndex(function (it) { return it.tradeId === state.itemId; });
+      const atFirst = all.length <= 1 || idx === 0;
+      const atLast = all.length <= 1 || (idx >= 0 && idx >= all.length - 1);
+      return '<button class="item-nav" data-item-nav="-1" title="' + t('prevItem') + '" aria-label="' + t('prevItem') + '"' + (atFirst ? ' disabled' : '') + '>‹</button>' +
+        '<button class="item-nav" data-item-nav="1" title="' + t('nextItem') + '" aria-label="' + t('nextItem') + '"' + (atLast ? ' disabled' : '') + '>›</button>';
+    }
+
     function pagerHTML(p, pages) {
       const from = Math.max(1, p - 1), to = Math.min(pages, p + 1);
       let parts = [];
@@ -2048,6 +2301,8 @@
       const itemCountEl = document.getElementById('itemCount');
       itemCountEl.innerHTML = '<span class="num-pass">' + passedItems + '</span>/<span class="num-fail">' + failedItems + '</span>/<span class="num-pass">' + pct + '%</span>';
       itemCountEl.title = t('passed') + ' ' + passedItems + ' / ' + t('failed') + ' ' + failedItems + ' / ' + t('passRate') + ' ' + pct + '%';
+      const itemNavEl = document.getElementById('itemNav');
+      if (itemNavEl) itemNavEl.innerHTML = itemNavHTML();
       updateReportDateHint();
       syncHash();
       if (SIDEBAR_MODE === 'combined') {
@@ -3838,6 +4093,10 @@
               else state.msgPage = rp;
             }
           }
+        } else {
+          // URL 未指定行选中 → 破坏式清除选中态，避免手动去掉 fr 后旧 rowId 残留到其它 tab。
+          state.rowId = -1;
+          RESTORE_ROW = false;
         }
         // 侧栏 item 筛选器
         if (p.is !== undefined) state.itemSearch = p.is;
@@ -3868,6 +4127,7 @@
         setBatchNotice(msg);
         return;
       }
+      await ensureHashItemLoaded();
       applyHash();
       render();
     }
@@ -4569,7 +4829,9 @@
         const confirmBtn = e.target.closest('[data-batch-confirm]');
         if (confirmBtn) { confirmBatchDelete(confirmBtn.getAttribute('data-batch-confirm')); return; }
         const favBtn = e.target.closest('[data-batch-fav]');
-        if (favBtn) { openAddFavoriteDialog(favBtn.getAttribute('data-batch-fav')); return; }
+        if (favBtn) { toggleBatchFavorite(favBtn.getAttribute('data-batch-fav')); return; }
+        const tagBtn = e.target.closest('[data-batch-edit]');
+        if (tagBtn) { openBatchEditor(tagBtn.getAttribute('data-batch-edit')); return; }
         const itemFirst = e.target.closest('[data-batch]');
         if (!itemFirst) hideBatchQuickDetail();
         const sideFlip = e.target.closest('#batchSideFlip');
@@ -4579,7 +4841,13 @@
         const refresh = e.target.closest('#batchRefresh');
         if (refresh) { reloadBatchesIndex(); return; }
         const compatBtn = e.target.closest('#batchCompatFilter');
-        if (compatBtn) { BATCH_STATE.compatOnly = !BATCH_STATE.compatOnly; BATCH_STATE.page = 1; renderBatchPanel(); renderBatchDock(); return; }
+        if (compatBtn) {
+          // 三态循环：≡ 全部批次 -> ✓ 仅看兼容 -> 🗑 全部批次(含已删除) -> ≡
+          BATCH_STATE.batchScope = BATCH_STATE.batchScope === 'all' ? 'compat' : (BATCH_STATE.batchScope === 'compat' ? 'allDeleted' : 'all');
+          BATCH_STATE.page = 1;
+          if (BATCH_STATE.batchScope !== 'allDeleted') hideBatchQuickDetail();
+          renderBatchPanel(); renderBatchDock(); return;
+        }
         const clearSearch = e.target.closest('#batchSearchClear');
         if (clearSearch) { BATCH_STATE.search = ''; BATCH_STATE.page = 1; renderBatchPanel(); return; }
         const clearCmd = e.target.closest('#batchCmdClear');
@@ -4610,7 +4878,9 @@
         if (item) {
           const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === item.getAttribute('data-batch'); });
           if (b) {
-            if (BATCH_STATE.detailMode === 'quick') showBatchQuickDetail(item, b);
+            // 已删除批次：仅查看详情，不加载。
+            if (b.deleted) openBatchDetail(item, b);
+            else if (BATCH_STATE.detailMode === 'quick') showBatchQuickDetail(item, b);
             else selectBatch(b);
           }
           return;
@@ -4632,9 +4902,17 @@
         if (remove) { removeFavorite(remove.getAttribute('data-fav-pkg'), remove.getAttribute('data-fav-remove')); return; }
         const load = e.target.closest('[data-fav-load]');
         if (load) {
+          // 收藏项单击：在侧边（与批次列表一致，默认出现在右侧）查看批次详情；双击：加载该批次（见下方 dblclick）。
           const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === load.getAttribute('data-fav-load'); });
-          if (b) { hideBatchQuickDetail(); selectBatch(b); }
+          if (b) showBatchQuickDetail(load, b);
+          return;
         }
+      });
+      document.getElementById('favoritesPanel').addEventListener('dblclick', function (e) {
+        const load = e.target.closest('[data-fav-load]');
+        if (!load) return;
+        const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === load.getAttribute('data-fav-load'); });
+        if (b) { hideBatchQuickDetail(); selectBatch(b); }
       });
       document.getElementById('favoritesPanel').addEventListener('input', function (e) {
         if (e.target && e.target.id === 'favSearch') {
@@ -4649,7 +4927,7 @@
         const item = e.target.closest('[data-batch]');
         if (!item) return;
         const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === item.getAttribute('data-batch'); });
-        if (b) { hideBatchQuickDetail(); selectBatch(b); }
+        if (b && !b.deleted) { hideBatchQuickDetail(); selectBatch(b); }
       });
       document.getElementById('batchPanel').addEventListener('scroll', function (e) {
         if (e.target && e.target.id === 'batchList' && BATCH_STATE._slice && BATCH_STATE._slice.length) {
@@ -4692,6 +4970,10 @@
           BATCH_STATE.env = e.target.value;
           BATCH_STATE.page = 1;
           renderBatchList();
+        } else if (e.target && e.target.id === 'batchTag') {
+          BATCH_STATE.tag = e.target.value;
+          BATCH_STATE.page = 1;
+          renderBatchList();
         }
       });
       document.getElementById('batchPanel').addEventListener('keydown', function (e) {
@@ -4708,7 +4990,7 @@
             e.preventDefault();
             const item = items[idx];
             const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === item.getAttribute('data-batch'); });
-            if (b) { hideBatchQuickDetail(); selectBatch(b); }
+            if (b) { hideBatchQuickDetail(); openBatchDetail(item, b); }
           }
         }
       });
@@ -4920,6 +5202,11 @@
       });
 
       document.getElementById('sidebar').addEventListener('click', function (e) {
+        const nav = e.target.closest('[data-item-nav]');
+        if (nav) {
+          if (!nav.disabled) moveItem(parseInt(nav.getAttribute('data-item-nav'), 10));
+          return;
+        }
         const lm = e.target.closest('[data-loadmore]');
         if (lm) {
           state.sidebarPage++;
@@ -5189,7 +5476,7 @@
         if (CTX_DEF_POPUP && !e.target.closest('.ctx-def-popup') && !e.target.closest('.ctx-tag')) closeCtxDefPopup();
         if (RULE_POPUP && !e.target.closest('.rule-popup') && !e.target.closest('[data-rule-popup]')) closeRulePopup();
         if (VAL_PANEL && !e.target.closest('.val-panel') && !e.target.closest('[data-val-expand]')) closeValPanel();
-        if (BATCH_QD && !e.target.closest('#batchPanel') && !e.target.closest('.batch-qd') && !e.target.closest('#batchBadge')) hideBatchQuickDetail();
+        if (BATCH_QD && !e.target.closest('#batchPanel') && !e.target.closest('#favoritesPanel') && !e.target.closest('.batch-qd') && !e.target.closest('#batchBadge')) hideBatchQuickDetail();
         const cp = e.target.closest('[data-copy]');
         if (cp) {
           copyText(cp.getAttribute('data-copy'));
@@ -5198,6 +5485,14 @@
           cp.classList.add('copied');
           setTimeout(function () { cp.textContent = old; cp.classList.remove('copied'); }, 1200);
         }
+      });
+
+      // 批次目录双击：在系统文件管理器中打开对应目录（需服务端 features.revealPath 开启）。
+      document.addEventListener('dblclick', function (e) {
+        const el = e.target.closest('[data-reveal-dir]');
+        if (!el) return;
+        e.preventDefault();
+        revealBatchDir(el.getAttribute('data-reveal-dir'));
       });
 
       // 列表/页面滚动时关闭 Ctx 详情弹框（捕获阶段，覆盖嵌套滚动容器）；
@@ -5274,7 +5569,7 @@
         DATA = await loadData();
       }
       initState();
-      if (isMultiMode()) await ensureItemLoaded(DATA.items[0].tradeId);
+      await ensureHashItemLoaded();
       applyHash();
       applyDateFilterVisibility();
       applyFeatureVisibility();

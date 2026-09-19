@@ -15,7 +15,7 @@
     "--channels=HKTR,JSFA,CFTC"
   ],
   "summary": {
-    "items": 18,
+    "items": 4,
     "channels": 3
   },
   "description": "夜间全量批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：当日全部交易\n- 模式：全量比对 + 汇总报表"

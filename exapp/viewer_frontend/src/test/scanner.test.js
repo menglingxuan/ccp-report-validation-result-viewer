@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { scan } from '../lib/scanner.js';
+import { scan, sanitizeTags } from '../lib/scanner.js';
 import { SRC_ROOT } from '../lib/config.js';
 
 // 直接使用共享样例批次目录（扫描器本身与租户无关，由 server.js 传入租户路径）。
@@ -41,18 +41,43 @@ test('env 过滤只返回指定环境', async () => {
   }
 });
 
-test('标记 deleted 的批次被扫描器跳过（软删除）', async () => {
+test('sanitizeTags：去空白 / 去重 / 限长 / 限量', () => {
+  assert.deepEqual(sanitizeTags([' a ', 'a', '', '  ', 'b']), ['a', 'b']);
+  assert.deepEqual(sanitizeTags('a'), [], '非数组应返回空数组');
+  assert.deepEqual(sanitizeTags(null), [], 'null 应返回空数组');
+  assert.deepEqual(sanitizeTags([{ label: 'x' }, { label: '' }, {}]), ['x'], '支持 { label } 对象形式');
+  assert.equal(sanitizeTags(['x'.repeat(40)])[0].length, 24, '单个标签长度应受限（24）');
+  const many = [];
+  for (let i = 0; i < 30; i++) many.push('t' + i);
+  assert.equal(sanitizeTags(many).length, 12, '标签数量应受限（12）');
+});
+
+test('标记 deleted 的批次仍写入索引并带 deleted 标记（软删除）', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'scan-del-'));
   const out = path.join(tmp, 'batches-index.json');
   try {
-    const dir = path.join(tmp, 'b1');
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'batch-meta.json'), JSON.stringify({ batchId: 'b1', batchName: 'deleted-batch', date: '2026-08-16', executedAt: '2026-08-16T00:00:00+08:00', deleted: true, summary: { items: 1 } }), 'utf8');
-    fs.writeFileSync(path.join(dir, 'report-validation-data.json'), JSON.stringify({ mode: 'single', reportEnv: 'OTCXXX', items: [{ tradeId: 'T-1', reportDate: '2026-08-16', channels: [] }] }), 'utf8');
+    const mk = (name, deleted) => {
+      const dir = path.join(tmp, name);
+      fs.mkdirSync(dir, { recursive: true });
+      const meta = { batchId: name, batchName: name, date: '2026-08-16', executedAt: '2026-08-16T00:00:00+08:00', summary: { items: 1 }, tags: [' 回归 ', '回归', ''] };
+      if (deleted) meta.deleted = true;
+      fs.writeFileSync(path.join(dir, 'batch-meta.json'), JSON.stringify(meta), 'utf8');
+      fs.writeFileSync(path.join(dir, 'report-validation-data.json'), JSON.stringify({ mode: 'single', reportEnv: 'OTCXXX', items: [{ tradeId: 'T-1', reportDate: '2026-08-16', channels: [] }] }), 'utf8');
+    };
+    mk('b1', true);
+    mk('b2', false);
 
     const r = await scan({ basedir: tmp, out, ignore: [], env: null });
     assert.equal(r.ok, true, r.error);
-    assert.equal(r.count, 0, '已删除批次不应出现在索引中');
+    // 已删除批次保留在索引中（带 deleted 标记），供前端「全部批次(含已删除)」范围展示。
+    assert.equal(r.count, 2, '已删除批次也应写入索引');
+    const b1 = r.batches.find((b) => b.batchId === 'b1');
+    const b2 = r.batches.find((b) => b.batchId === 'b2');
+    assert.equal(b1.deleted, true, '已删除批次应带 deleted 标记');
+    assert.equal(b2.deleted, undefined, '未删除批次不应带 deleted 标记');
+    assert.equal(b1.summary.items, 1);
+    assert.deepEqual(b1.tags, ['回归'], '元数据 tags 应清洗后进入索引');
+    assert.deepEqual(b2.tags, ['回归']);
   } finally {
     try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
   }

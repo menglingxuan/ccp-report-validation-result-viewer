@@ -21,15 +21,17 @@
 //   GET  /scan/progress    扫描进度（SSE）
 //   GET  /status | /health 服务状态与当前配置
 //   GET|POST /api/favorites 收藏夹读写
-//   POST /api/batch         批次软删除 / 收藏
+//   POST /api/batch         批次软删除 / 收藏 / 名称与描述 / 标签
+//   POST /api/reveal        在系统文件管理器中打开批次目录
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, resolveConfigFile } from './lib/config.js';
-import { scan } from './lib/scanner.js';
+import { scan, sanitizeTags, MAX_BATCH_NAME_LEN, MAX_BATCH_DESC_LEN } from './lib/scanner.js';
 import { validateFile } from './lib/validate.js';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -66,6 +68,15 @@ function resolveFavoritesFile() {
   return path.join(CFG.tenant.dataRoot, 'favorites.json');
 }
 const FAVORITES_FILE = resolveFavoritesFile();
+
+// 「在系统文件管理器中打开批次目录」开关：features.revealPath 显式设置优先，
+// 否则仅在 dev/test 环境默认开启（生产环境不向客户端暴露打开本地目录的能力）。
+const REVEAL_ENABLED = (function () {
+  const f = CFG.features || {};
+  if (typeof f.revealPath === 'boolean') return f.revealPath;
+  const rt = String(CFG.runType || '').toLowerCase();
+  return rt === 'dev' || rt === 'test';
+})();
 
 // 原子写入：先写临时文件再 rename，避免多实例/并发写同一文件时读到半截内容。
 function writeFileAtomic(filePath, data) {
@@ -253,17 +264,39 @@ function handleFavoritesPost(req, res) {
   });
 }
 
-// 软删除 / 恢复批次：在批次目录的 batch-meta.json 中写入 deleted 标记。
+// 重新扫描并重建批次索引。
+// 元数据写回（收藏 / 软删除 / 名称与描述 / 标签）后必须调用：客户端刷新页面时
+// 直接读取 batches-index.json，索引不重建就会回退到写回前的旧值。
+async function rescanIndex() {
+  try {
+    await scan({
+      basedir: CFG.scan.basedirAbs,
+      out: CFG.scan.outAbs,
+      ignore: CFG.scan.ignore,
+      env: CFG.scan.env,
+    });
+  } catch (e) {
+    console.warn('[report-viewer] 元数据写回后索引重建失败：' + (e && e.message ? e.message : e));
+  }
+}
+
+// 批次元数据写回：软删除 / 恢复 / 收藏 / 名称与描述 / 标签。
 function handleBatchAction(req, res) {
   let body = '';
   req.on('data', function (c) { body += String(c); });
-  req.on('end', function () {
+  req.on('end', async function () {
     try {
       const data = JSON.parse(body || '{}');
       const batchId = data.batchId;
       const hasDeleted = typeof data.deleted === 'boolean';
       const hasFavorite = typeof data.favorite === 'boolean';
+      const hasTags = Array.isArray(data.tags);
+      const hasName = typeof data.batchName === 'string';
+      const hasDesc = typeof data.description === 'string';
       if (!batchId) { json(res, 400, { ok: false, error: 'batchId 必填' }); return; }
+      // 批次名不允许为空（批次名允许重复：重名只在前端告警，不影响回写）。
+      const nextName = hasName ? String(data.batchName).trim().slice(0, MAX_BATCH_NAME_LEN) : null;
+      if (hasName && !nextName) { json(res, 400, { ok: false, error: 'batchName 不能为空' }); return; }
 
       let idx = { batches: [] };
       try { idx = JSON.parse(fs.readFileSync(CFG.scan.outAbs, 'utf8')); } catch (e) {}
@@ -277,10 +310,72 @@ function handleBatchAction(req, res) {
       meta.batchId = meta.batchId || batchId;
       if (hasDeleted) meta.deleted = data.deleted;
       if (hasFavorite) meta.favorite = data.favorite;
+      if (hasName) meta.batchName = nextName;
+      // 描述：允许多行；空值表示清除该字段。
+      if (hasDesc) {
+        const desc = String(data.description).replace(/\r\n/g, '\n').trim().slice(0, MAX_BATCH_DESC_LEN);
+        if (desc) meta.description = desc;
+        else delete meta.description;
+      }
+      // 标签回写：仅覆盖 tags 字段（空数组表示清除）；其余字段与顺序保持不变。
+      if (hasTags) {
+        const tags = sanitizeTags(data.tags);
+        if (tags.length) meta.tags = tags;
+        else delete meta.tags;
+      }
       writeFileAtomic(metaPath, JSON.stringify(meta, null, 2));
-      json(res, 200, { ok: true, batchId: batchId, deleted: hasDeleted ? data.deleted : undefined, favorite: hasFavorite ? data.favorite : undefined });
+      // 写回与索引刷新必须成对，否则刷新页面会读到写回前的旧索引。
+      await rescanIndex();
+      json(res, 200, {
+        ok: true,
+        batchId: batchId,
+        deleted: hasDeleted ? data.deleted : undefined,
+        favorite: hasFavorite ? data.favorite : undefined,
+        batchName: hasName ? meta.batchName : undefined,
+        description: hasDesc ? (meta.description || '') : undefined,
+        tags: hasTags ? (meta.tags || []) : undefined,
+      });
     } catch (e) {
       json(res, 500, { ok: false, error: '操作失败：' + (e && e.message ? e.message : e) });
+    }
+  });
+}
+
+// 在系统文件管理器中打开目录（仅本机部署有意义；spawn 失败静默忽略）。
+function openInFileManager(dir) {
+  const cmd = process.platform === 'win32' ? 'explorer.exe'
+    : (process.platform === 'darwin' ? 'open' : 'xdg-open');
+  try {
+    const child = spawn(cmd, [dir], { detached: true, stdio: 'ignore' });
+    child.on('error', function () {});
+    child.unref();
+  } catch (e) {
+    console.warn('[report-viewer] 打开目录失败：' + (e && e.message ? e.message : e));
+  }
+}
+
+// 在系统文件管理器中打开批次目录。
+// 安全约束：仅当 features.revealPath 开启（dev/test 默认开启，prod 默认关闭）；
+// 路径必须位于批次根目录（scan.basedirAbs）内且为已存在的目录（realpath 后再校验一次）。
+function handleReveal(req, res) {
+  if (!REVEAL_ENABLED) { json(res, 403, { ok: false, error: '当前环境未开启「打开目录」功能' }); return; }
+  let body = '';
+  req.on('data', function (c) { body += String(c); });
+  req.on('end', function () {
+    try {
+      const data = JSON.parse(body || '{}');
+      if (!data.path) { json(res, 400, { ok: false, error: 'path 必填' }); return; }
+      const root = path.resolve(CFG.scan.basedirAbs);
+      const abs = path.resolve(String(data.path));
+      if (abs !== root && !abs.startsWith(root + path.sep)) { json(res, 403, { ok: false, error: '路径不在批次目录内' }); return; }
+      let real;
+      try { real = fs.realpathSync(abs); } catch (e) { json(res, 404, { ok: false, error: '目录不存在：' + abs }); return; }
+      if (real !== root && !real.startsWith(root + path.sep)) { json(res, 403, { ok: false, error: '路径不在批次目录内' }); return; }
+      if (!fs.statSync(real).isDirectory()) { json(res, 400, { ok: false, error: '不是目录：' + real }); return; }
+      openInFileManager(real);
+      json(res, 200, { ok: true, path: real.split(path.sep).join('/') });
+    } catch (e) {
+      json(res, 500, { ok: false, error: '打开失败：' + (e && e.message ? e.message : e) });
     }
   });
 }
@@ -369,6 +464,11 @@ const server = http.createServer(function (req, res) {
     return;
   }
 
+  if (url === '/api/reveal') {
+    handleReveal(req, res);
+    return;
+  }
+
   if (url === '/api/favorites') {
     if (req.method === 'POST') handleFavoritesPost(req, res);
     else handleFavoritesGet(res);
@@ -400,6 +500,9 @@ const server = http.createServer(function (req, res) {
     let servedCfg = {};
     try { servedCfg = JSON.parse(fs.readFileSync(ACTIVE_CONFIG_FILE, 'utf8')) || {}; } catch (e) { servedCfg = {}; }
     servedCfg.urls = servedCfg.urls || {};
+    // 把服务端解析后的「打开目录」开关下发给浏览器（未显式配置时也会带上有效值）。
+    servedCfg.features = servedCfg.features || {};
+    if (typeof servedCfg.features.revealPath !== 'boolean') servedCfg.features.revealPath = REVEAL_ENABLED;
     if (CFG.tenant.enabled) servedCfg.urls.batches = '/tenant/';
     json(res, 200, servedCfg);
     return;

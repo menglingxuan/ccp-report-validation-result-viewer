@@ -14,7 +14,7 @@
     "--date=2026-08-16"
   ],
   "summary": {
-    "items": 18,
+    "items": 4,
     "channels": 3
   },
   "description": "日终批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：当日全部数据\n- 模式：终值校验"

@@ -191,3 +191,14 @@
 - 否则回退到数据文件（单文件或多文件清单）的顶层 `reportEnv`，item 数量取 `items.length`。
 
 索引 `batches-index.json` 的 `batches[]` 除原有字段外，增加 `dataMode`（`"single"` / `"multi"`），供查看器按需加载。旧格式数据可用 `node tools/migrate-legacy-data.js <文件>` 迁移。
+
+### 6.1 `batch-meta.json` 可选字段
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `deleted` | boolean | 软删除标记。扫描器**不跳过**该批次，而是写入索引并带 `deleted: true`（默认范围不展示，需切到「全部批次(含已删除)」范围） |
+| `favorite` | boolean | 收藏标记（回写元数据，扫描后仍保留） |
+| `tags` | string[] | 自定义批次标签。清洗规则（`lib/scanner.js` 的 `sanitizeTags`）：去空白、去重、单个最长 24 字符、最多 12 个；空数组等同未定义 |
+| `batchName` | string | 批次名（展示名）。**允许重复**：界面仅告警不阻止；`urls.defaultDataMode` 按名解析时取首个非已删除匹配。经 `POST /api/batch` 回写时去首尾空白、最长 200 字符、不允许为空 |
+| `description` | string | 批次描述，支持多行（换行统一为 `\n`，最长 4000 字符）；空值表示清除字段 |
+| `summary` / `description` / `commandLine` / `ignoreUrl` / `reportEnv` | - | 同原有定义；`summary.items` 以数据文件实际 item 数量为准（扫描时校正） |
