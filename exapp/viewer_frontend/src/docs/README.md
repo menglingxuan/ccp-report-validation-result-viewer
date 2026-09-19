@@ -61,7 +61,8 @@
 - **Gzip 压缩**：可压缩资源（HTML/CSS/JS/JSON/SVG/TXT）按需 gzip，`Vary: Accept-Encoding`。
 - **扫描进度 SSE**：`GET /scan/progress`（`text/event-stream`）实时推送目录/批次/跳过计数；前端在「刷新批次」时订阅并在按钮上显示进度。
 - **收藏夹服务端持久化**：`GET/POST /api/favorites` 共享收藏树（多用户一致，非管理员账号可写 `favorites.json`），localStorage 仅作离线回退。
-- **忽略配置服务端持久化**：忽略 / 取消忽略 / 批量忽略 / 导入会 `POST /api/ignore` 回写到当前生效的 `ignore-config-by-platform.json`（默认空配置，可按租户隔离；与收藏夹同一套原子写入机制）。「导入」为**分部覆盖**语义（以文件为准，只覆盖文件里出现的部分：警告 / 未比较 XPath / 未比较 CSV，其余保持不变；只接受分组格式），「导出」产物可直接重新导入。
+- **忽略配置服务端持久化**：忽略 / 取消忽略 / 批量忽略 / 导入会 `POST /api/ignore` 回写到当前生效的 `ignore-config-by-platform.json`（默认空配置，可按租户隔离；与收藏夹同一套原子写入机制）。「导入」为**分部覆盖**语义（以文件为准，只覆盖文件里出现的部分：警告 / 未比较 XPath / 未比较 CSV，其余保持不变；只接受分组格式），「导出」产物可直接重新导入。多会话并发写入用 `If-Match` 乐观并发保护：遇 409 先以服务端为准重载并重绘（含打开着的管理窗口），再用新 `etag` **重放一次**本次变更；同一浏览器的多个标签通过 `BroadcastChannel('report-viewer-ignore')` 互相同步，标签回到前台时再按 `etag` 校验一次。
+- **忽略配置管理（查看 / 删除）**：警告 / 未比较选项卡工具栏的「管理忽略配置」打开模态窗口，按类型分页签查看当前全部忽略项（默认选中入口对应类型），含「忽略条数」列（当前 item 内因该条目被忽略的条数，`countIgnoredByKey`），支持**表头三态排序**、**字段级筛选**（`⚲` 浮层，列间 AND，与主列表同一交互：默认下拉框精确匹配、字段列「关联字段 / 元素」自由输入包含匹配；「忽略条数」列仅支持排序、无筛选图标）与**分页**（每页 `limits.ignoreMgrPageSize` 默认 10；条数 > 20 才显示排序 / 筛选图标，单页时不显示分页控件），以及逐条删除；删除即回写配置文件并立即重绘当前数据集（复用 `POST /api/ignore` 的 `If-Match` 乐观并发，409 冲突按既有策略重新加载）。
 - **计算 Worker**：健康总览与全局搜索等重计算移到 Web Worker（`worker.js`，复用 `core.js` 纯函数），失败自动回退主线程同步计算。
 - **纯函数核心拆分**：`public/core.js` 承载无副作用纯函数（搜索/排序/过滤/差异 diff/忽略 key/健康统计/全局搜索），主线程与 Worker 共用，并由 Node 测试直接导入回归。
 - **深链接增强**：URL hash 除 `item/ch/tab/q/result/page` 外，还包含 `batch`（当前批次）、`fr`（强制加载）、`is`（侧栏搜索）、`st/pf/pd/td/dt`（侧栏与批次筛选）、`sp`（特殊值过滤）、`sort`、`cols`（列可见性）、`filters`（列过滤器 JSON）等，可基本完整还原视图状态。
@@ -138,6 +139,7 @@ report-viewer                  # 任意目录启动（内置默认数据）
 | `npm start` / `npm run dev` | 启动服务（`node server.js`） |
 | `npm run scan` | 手动触发一次批次扫描（CLI） |
 | `npm run generate` | 重新生成样例数据文件（单文件模式） |
+| `npm run merge-batch` | 把指定多文件模式批次合并为单文件模式（`node tools/merge-batch.mjs --batch <id>`） |
 | `npm run verify:multi` | 多文件模式端到端冒烟验证（`tools/verify-multi-mode.mjs`） |
 | `npm test` | 运行全部测试（`node --test`） |
 
@@ -190,6 +192,7 @@ src/
 │   └── batches/               # 批次目录（扫描 basedir）
 ├── tools/
 │   ├── generate-sample-data.js
+│   ├── merge-batch.mjs          # 批次模式转换：多文件模式 -> 单文件模式（租户/非租户均支持）
 │   ├── verify-multi-mode.mjs    # 多文件模式端到端冒烟验证（临时 web 根 + 起服务 + HTTP 断言）
 │   └── migrate-legacy-data.js   # 旧数据格式 -> 新数据格式迁移
 ├── test/
@@ -197,8 +200,10 @@ src/
 │   ├── scanner.test.js        # 扫描器测试（含 deleted/tags）
 │   ├── validate.test.js       # 数据校验器测试
 │   ├── sample-multi.test.js   # 多文件模式样例生成（清单 + 默认模板清单 + item 相对路径）
+│   ├── merge-batch.test.js    # 批次模式转换：多文件 -> 单文件（合并/备份/dry-run/错误分支）
 │   ├── desc-ex.test.js        # 任务说明扩展内容（descriptionEx）：表格解析/搜索/排序/分页
-│   ├── i18n.test.js           # i18n 契约：3 语言键 1:1、零死键、descriptionEx 键齐备
+│   ├── ignore-manage.test.js  # 忽略配置管理：key 解析、列出/排序、筛选规则、命中计数、三态排序、批量删除
+│   ├── i18n.test.js           # i18n 契约：3 语言键 1:1、零死键、源码引用键已定义、descriptionEx 键齐备
 │   ├── config.test.js         # 配置加载测试（默认值/环境变量/租户）
 │   ├── batch-meta.test.js     # 批次元数据测试
 │   ├── reveal.test.js         # 打开目录 Launcher 解析与错误传播
@@ -229,6 +234,9 @@ src/
 - 多文件模式下 item 文件路径**相对清单文件所在目录**解析（根目录与批次目录清单都适用）；主数据 / 默认模板数据 / 批次数据在两种模式下的文件形态一致（`multi` 时均为清单）。
 - 每个 item 内联 `ctxDefs`（`id` / `scopes` / `type` / `def` / `hits`）。
 - 字段定义注册表在每个 `channel` 内（`channel.fields`，`id` / `name` / `userTag` / `type`）。
+- **模式转换**：`node tools/merge-batch.mjs --batch <id>` 可把多文件批次合并为单文件（清单 `mode` 改为 `single`、item 内联；
+  除 `mode` / `items` 外的清单顶层字段与 item 顺序原样保留；合并前自动备份原清单为 `<清单名>.multi.bak`，**item 文件不删除**，
+  因此可用 `splitToFiles` 再拆回去）；命令默认会刷新 `batches-index.json`，使 `summary.items` 与 `mode` 立即生效（`--no-scan` 可跳过）。
 
 ## 生成样例数据
 
@@ -238,6 +246,10 @@ node tools/generate-sample-data.js --split    # 多文件模式（主清单 + �
 node tools/generate-sample-data.js --batch    # 更新全部样例批次（通用切片 + 多文件批次 + 特殊用途批次）
 node tools/generate-sample-data.js --special  # 仅更新特殊用途批次（单来源渠道 / 批次分页 / 批次软删除）
 node tools/migrate-legacy-data.js <旧文件>     # 旧数据格式迁移为新格式（原地或指定输出）
+node tools/merge-batch.mjs --list              # 列出批次及其当前模式（单文件 / 多文件）
+node tools/merge-batch.mjs --batch <batchId>   # 把该多文件批次合并为单文件（原地覆盖清单 + 自动备份 + 刷新索引）
+node tools/merge-batch.mjs --batch <目录> --dry-run        # 只检查与统计，不写任何文件
+node tools/merge-batch.mjs --batch <目录> --tenant[=id]    # 租户模式（批次根/索引按租户数据根解析；--no-tenant 相反）
 node tools/verify-multi-mode.mjs              # 多文件模式端到端冒烟验证（自动清理临时目录）
 node tools/verify-multi-mode.mjs --keep       # 同上，但保留临时 web 根并打印手工浏览命令
 ```

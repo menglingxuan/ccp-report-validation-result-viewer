@@ -171,7 +171,8 @@
         "sidebarPageSize": { "type": "integer", "minimum": 1, "description": "侧栏 item 列表每页条数。", "default": 8 },
         "msgPageSize": { "type": "integer", "minimum": 1, "description": "警告/错误/未比较等消息表每页条数。", "default": 20 },
         "globalSearchLimit": { "type": "integer", "minimum": 1, "description": "全局搜索最大返回结果数。", "default": 200 },
-        "descExPageSize": { "type": "integer", "minimum": 1, "description": "任务说明扩展内容（descriptionEx）表格每页条数。", "default": 5 }
+        "descExPageSize": { "type": "integer", "minimum": 1, "description": "任务说明扩展内容（descriptionEx）表格每页条数。", "default": 5 },
+        "ignoreMgrPageSize": { "type": "integer", "minimum": 1, "description": "「管理忽略配置」窗口列表每页条数。", "default": 10 }
       }
     },
     "columns": {

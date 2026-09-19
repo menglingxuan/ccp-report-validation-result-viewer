@@ -629,6 +629,7 @@
     .pg.cur { background: var(--accent); border-color: var(--accent); color: #fff; }
     .pg:disabled { opacity: .4; cursor: not-allowed; }
     .pg-info { color: var(--muted); font-size: 12px; margin: 0 6px; }
+    .pagination .pg-gap { color: var(--muted); font-size: 12px; padding: 0 2px; }
     .pagination select { padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; background: var(--surface); color: var(--text); }
 
     /* 日志 */
@@ -894,18 +895,20 @@
     .load-more { border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 12px; }
     .load-more:hover { color: var(--accent); border-color: var(--accent); }
 
-    /* 表头过滤图标按钮（descriptionEx 的 .descex-fbtn 共用同一视觉） */
-    th .hf-toggle, th .mhf-toggle, th .special-toggle, th .bulk-toggle, th .descex-fbtn {
+    /* 表头过滤图标按钮（descriptionEx 的 .descex-fbtn 与「管理忽略配置」的 .mgr-fbtn 共用同一视觉） */
+    th .hf-toggle, th .mhf-toggle, th .special-toggle, th .bulk-toggle, th .descex-fbtn, th .mgr-fbtn {
       margin-left: 4px; border: none; background: none; cursor: pointer;
       color: var(--muted); font-size: 12px; padding: 0 2px; vertical-align: middle;
     }
-    th .hf-toggle:hover, th .hf-toggle.active, th .mhf-toggle:hover, th .mhf-toggle.active, th .special-toggle:hover, th .special-toggle.active, th .bulk-toggle:hover, th .descex-fbtn:hover, th .descex-fbtn.active { color: var(--accent); }
+    th .hf-toggle:hover, th .hf-toggle.active, th .mhf-toggle:hover, th .mhf-toggle.active, th .special-toggle:hover, th .special-toggle.active, th .bulk-toggle:hover, th .descex-fbtn:hover, th .descex-fbtn.active, th .mgr-fbtn:hover, th .mgr-fbtn.active { color: var(--accent); }
 
     /* 浮层 popover */
     .popover {
       position: fixed; z-index: 48; background: var(--surface); border: 1px solid var(--border);
       border-radius: 10px; padding: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.15);
     }
+    /* 模态窗内打开的浮层需要高于 .modal-backdrop（z-index: 50） */
+    .popover.popover-raised { z-index: 60; }
     .pop-control {
       width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px;
       font-size: 13px; color: var(--text); outline: none; box-sizing: border-box; background: var(--surface);
@@ -1063,8 +1066,25 @@
     .text-full { font-size: 13px; word-break: break-word; }
 
     /* 警告页签工具栏 */
-    .warn-toolbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+    .warn-toolbar { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 10px; }
     .warn-toolbar:empty { display: none; }
+
+    /* 忽略配置管理（警告 / 未比较选项卡 → 模态窗，可查看与删除条目） */
+    .ignore-mgr .modal-body { max-height: 72vh; overflow: auto; }
+    .ignore-kinds { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .ignore-kind { border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 4px 12px; cursor: pointer; font-size: 12px; }
+    .ignore-kind:hover { color: var(--accent); border-color: var(--accent); }
+    .ignore-kind.active { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
+    .ignore-mgr-n { font-variant-numeric: tabular-nums; }
+    .ignore-mgr-n.zero { color: var(--muted); }
+    .ignore-mgr table .mgr-head { cursor: pointer; user-select: none; }
+    .ignore-mgr table .mgr-head:hover { color: var(--text); }
+    .ignore-mgr-empty { font-size: 13px; color: var(--muted); margin: 6px 0; }
+    .ignore-mgr table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .ignore-mgr table th, .ignore-mgr table td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; word-break: break-word; }
+    .ignore-mgr table thead th { position: sticky; top: 0; background: var(--surface); color: var(--muted); font-weight: 600; white-space: nowrap; z-index: 1; }
+    .ignore-mgr .del-btn { border: 1px solid var(--border); background: var(--surface); color: var(--fail); border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+    .ignore-mgr .del-btn:hover { border-color: var(--fail); }
     .export-btn {
       border: 1px solid var(--border); background: var(--surface); border-radius: 8px;
       padding: 5px 12px; cursor: pointer; font-size: 12px; color: var(--muted);

@@ -66,7 +66,8 @@
     "sidebarPageSize": 8,
     "msgPageSize": 20,
     "globalSearchLimit": 200,
-    "descExPageSize": 5
+    "descExPageSize": 5,
+    "ignoreMgrPageSize": 10
   },
   "batches": {
     "recentCount": 5,

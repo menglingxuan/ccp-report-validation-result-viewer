@@ -11,8 +11,10 @@
       parseSearchQuery, makeMatcher, matchRow,
       specialValueMatch, sortValue, flatFields, diffSegments,
       groupedToFlat, normalizeIgnoreConfig, msgIgnoreKey, flatToGrouped, parseIgnoreImport, applyIgnoreImport,
+      listIgnoreEntries, countIgnoredByKey, removeIgnoreKeys,
       computeHealthPure, globalSearchPure,
-      normalizeDescriptionEx, parseMarkdownTable, inlineMarkdown, filterTableRows, sortTableRows, paginateRows,
+      normalizeDescriptionEx, parseMarkdownTable, inlineMarkdown, filterTableRows, sortTableRows, paginateRows, cycleSort,
+      filterRowsByRules, FILTER_EMPTY,
       descExToolsVisible, pageItems, fitColWidths,
     } from './core.js';
 
@@ -61,7 +63,7 @@
     let DATA_MODE = 'single';
     // 当前已加载数据清单文件的绝对 URL（多文件模式据此解析 item 文件的相对路径）。
     let DATA_FILE_URL = null;
-    let APP_LIMITS = { pageSize: 20, pageSizeOptions: [10, 20, 50], sidebarPageSize: 8, msgPageSize: 20, globalSearchLimit: 200, descExPageSize: 5 };
+    let APP_LIMITS = { pageSize: 20, pageSizeOptions: [10, 20, 50], sidebarPageSize: 8, msgPageSize: 20, globalSearchLimit: 200, descExPageSize: 5, ignoreMgrPageSize: 10 };
     let APP_REPORT_CAT_DEFAULT = null;
     let APP_PROGRESS_STYLE = 'status';
     let DATA = { items: [] };
@@ -198,6 +200,7 @@
         if (typeof lm.msgPageSize === 'number' && lm.msgPageSize > 0) APP_LIMITS.msgPageSize = Math.floor(lm.msgPageSize);
         if (typeof lm.globalSearchLimit === 'number' && lm.globalSearchLimit > 0) APP_LIMITS.globalSearchLimit = Math.floor(lm.globalSearchLimit);
         if (typeof lm.descExPageSize === 'number' && lm.descExPageSize > 0) APP_LIMITS.descExPageSize = Math.floor(lm.descExPageSize);
+        if (typeof lm.ignoreMgrPageSize === 'number' && lm.ignoreMgrPageSize > 0) APP_LIMITS.ignoreMgrPageSize = Math.floor(lm.ignoreMgrPageSize);
 
         if (cfg.columns && typeof cfg.columns === 'object') {
           if (cfg.columns.default && typeof cfg.columns.default === 'object') {
@@ -1972,9 +1975,76 @@
       } catch (e) {}
       return raw;
     }
+
+    // 忽略配置变更后的统一重绘（粒度与各写入调用方一致：不关浮层、不重置当前页）。
+    function renderAfterIgnoreChange() {
+      renderSummary(); renderTabs(); renderChannelTabs();
+      renderSidebar(); renderSidebarChips(); renderContent();
+      repaintIgnoreManagerIfOpen();
+    }
+    // 忽略配置在别处（其它标签页 / 会话）变更后的统一收敛：更新内存 + 重绘（含打开着的忽略管理窗口）。
+    function applyIgnoreConfigChange(flat, etag) {
+      IGNORE_CONFIG = flat || {};
+      IGNORE_ETAG = etag || '';
+      saveIgnoreConfigLocal();
+      renderAfterIgnoreChange();
+    }
+    // 若「管理忽略配置」窗口开着，同步刷新其列表（不重开窗口）。
+    function repaintIgnoreManagerIfOpen() {
+      const bd = document.querySelector('.modal-backdrop');
+      if (bd && bd.querySelector('#ignoreMgrBody')) paintIgnoreMgr(bd);
+    }
+    // 跨标签同步：广播本次写入结果（分组格式 + etag），其它标签就地更新。
+    function broadcastIgnoreConfig() {
+      if (!IGNORE_BC) return;
+      try {
+        IGNORE_BC.postMessage({ type: 'ignore-updated', url: ignoreWriteTarget(), etag: IGNORE_ETAG || '', config: flatToGrouped(IGNORE_CONFIG) });
+      } catch (e) {}
+    }
+    /* 跨标签：同名 BroadcastChannel 广播写入结果；不支持时自动降级（仅靠回前台重校验）。
+     * 注意：仅在浏览器环境创建 —— 本模块会被 test/pure-logic.test.js 直接 import，
+     * Node 下开着的 BroadcastChannel 会阻止测试进程退出（保持事件循环存活）。 */
+    const IGNORE_BC_NAME = 'report-viewer-ignore';
+    let IGNORE_BC = null;
+    try {
+      if (typeof window !== 'undefined' && typeof BroadcastChannel === 'function') IGNORE_BC = new BroadcastChannel(IGNORE_BC_NAME);
+    } catch (e) { IGNORE_BC = null; }
+    if (IGNORE_BC) {
+      IGNORE_BC.addEventListener('message', function (ev) {
+        const d = ev && ev.data;
+        // 只接受「同一回写目标」的广播；发送方自己收不到（BroadcastChannel 语义）。
+        if (!d || d.type !== 'ignore-updated' || d.url !== ignoreWriteTarget()) return;
+        const norm = normalizeIgnoreConfig(d.config);
+        if (!norm) return;
+        applyIgnoreConfigChange(norm, d.etag);
+      });
+    }
+    // 回到前台时与服务端核对一次 etag（其它标签 / 会话可能已改过配置），仅在确有变化时重绘。
+    async function revalidateIgnoreConfig() {
+      const url = IGNORE_ACTIVE_URL || IGNORE_CONFIG_URL;
+      if (!url) return;
+      try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) return;
+        const etag = res.headers.get('etag') || '';
+        if (etag && etag === IGNORE_ETAG) return;
+        const norm = normalizeIgnoreConfig(await res.json());
+        if (!norm) return;
+        applyIgnoreConfigChange(norm, etag);
+      } catch (e) {}
+    }
+    // 回到前台时与服务端核对一次 etag；Node 环境（pure-logic.test.js 直接 import 本模块）无 document，需保护。
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') revalidateIgnoreConfig();
+      });
+    }
+
     // 忽略/取消忽略与批量操作：localStorage 镜像 + 回写服务端配置文件。
     // 服务端按租户隔离（租户模式下写入租户数据根内的同名文件），读取路径与 IGNORE_ACTIVE_URL 一致。
-    function saveIgnoreConfig() {
+    // `replay`：可选的「本次变更」重放函数 —— 遇到 409（其它会话先写）时，先按服务端收敛界面，
+    // 再用新 etag 重放一次本次变更（只重试一次），避免用户的点击因冲突而静默丢失。
+    function saveIgnoreConfig(replay, isRetry) {
       saveIgnoreConfigLocal();
       const body = { url: ignoreWriteTarget(), config: flatToGrouped(IGNORE_CONFIG) };
       // 乐观并发：带上加载时的 ETag，服务端内容已变则拒写（409）。
@@ -1986,11 +2056,19 @@
           body: JSON.stringify(body)
         }).then(function (r) {
           if (r.status === 409) {
-            // 其它会话已修改配置文件：以服务端为准重新加载，并提示用户重试。
-            console.warn('[ignore] 配置回写冲突（409）：已重新加载服务端配置');
-            setBatchNotice(t('saveConflict'));
-            loadIgnoreConfig();
-            return null;
+            // 其它会话已修改配置文件：以服务端为准重新加载并重绘，然后（首次冲突时）重放本次变更。
+            console.warn('[ignore] 配置回写冲突（409）：已重新加载服务端配置' + (isRetry ? '（重试仍冲突）' : ''));
+            return loadIgnoreConfig().then(function () {
+              renderAfterIgnoreChange();
+              if (typeof replay === 'function' && !isRetry) {
+                replay();                       // 重放本次变更（重放后会再重绘一次，保证界面与“已生效的意图”一致）
+                renderAfterIgnoreChange();
+                saveIgnoreConfig(null, true);
+              } else {
+                setBatchNotice(t('saveConflict'));
+              }
+              return null;
+            });
           }
           if (!r.ok) throw new Error('HTTP ' + r.status);
           return r.json().catch(function () { return null; });
@@ -1998,6 +2076,7 @@
           if (!j) return;
           if (j.etag) IGNORE_ETAG = j.etag;
           setBatchNotice('');
+          broadcastIgnoreConfig();
         }).catch(function (e) {
           console.warn('[ignore] 配置回写失败：', e);
           setBatchNotice(t('ignoreSaveError') + ' ' + (e && e.message ? e.message : e));
@@ -2008,11 +2087,11 @@
       }
     }
     function toggleIgnoreByKey(key) {
-      if (IGNORE_CONFIG[key]) delete IGNORE_CONFIG[key];
-      else IGNORE_CONFIG[key] = true;
-      saveIgnoreConfig();
-      renderSummary(); renderTabs(); renderChannelTabs();
-      renderSidebar(); renderSidebarChips(); renderContent();
+      const want = !IGNORE_CONFIG[key];
+      if (want) IGNORE_CONFIG[key] = true;
+      else delete IGNORE_CONFIG[key];
+      saveIgnoreConfig(function () { if (want) IGNORE_CONFIG[key] = true; else delete IGNORE_CONFIG[key]; });
+      renderAfterIgnoreChange();
     }
     function exportIgnoreConfig() {
       const grouped = flatToGrouped(IGNORE_CONFIG);
@@ -3865,7 +3944,7 @@
           '<select id="msgPageSize">' + APP_LIMITS.pageSizeOptions.map(function (n) { return '<option' + (state.msgPageSize === n ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></div>';
       }
       document.getElementById('content').innerHTML =
-        ((tab === 'warnings' || tab === 'uncompared') ? '<div class="warn-toolbar"><button class="export-btn" id="importIgnoreBtn">' + t('importIgnore') + '</button><button class="export-btn" id="exportIgnoreBtn">' + t('export') + '</button></div>' : '') +
+        ((tab === 'warnings' || tab === 'uncompared') ? '<div class="warn-toolbar"><button class="export-btn" id="manageIgnoreBtn">' + t('ignoreManage') + '</button><button class="export-btn" id="importIgnoreBtn">' + t('importIgnore') + '</button><button class="export-btn" id="exportIgnoreBtn">' + t('export') + '</button></div>' : '') +
         '<div class="table-wrap"><table>' + msgHeaderHTML(tab) +
         '<tbody id="mTbody">' + (rows || '<tr><td colspan="' + cols.length + '" class="empty">无记录</td></tr>') + '</tbody></table></div>' +
         pagerHtml +
@@ -3895,13 +3974,291 @@
         const btn = e.target.closest('[data-bulk]');
         if (!btn) return;
         const op = btn.getAttribute('data-bulk');
-        keys.forEach(function (k) { if (op === 'ignore') IGNORE_CONFIG[k] = true; else delete IGNORE_CONFIG[k]; });
-        saveIgnoreConfig();
+        const bulkApply = function () { keys.forEach(function (k) { if (op === 'ignore') IGNORE_CONFIG[k] = true; else delete IGNORE_CONFIG[k]; }); };
+        bulkApply();
+        saveIgnoreConfig(bulkApply);
         backdrop.remove();
         renderSummary(); renderTabs(); renderChannelTabs();
         renderSidebar(); renderSidebarChips(); renderContent();
       });
       document.body.appendChild(backdrop);
+    }
+
+    /* ---------- 忽略配置管理（查看 / 删除）：警告 / 未比较 XPath / 未比较 CSV ----------
+     * 入口：警告 / 未比较选项卡工具栏的「管理忽略配置」（默认展示入口对应类型）。
+     * 窗口只做查看与删除（不做新增 / 编辑）；列表支持表头排序与字段级下拉筛选（与主列表同一交互）。
+     * 删除即：更新运行时扁平配置 -> 回写配置文件（POST /api/ignore，带 If-Match）-> 重绘当前数据集。 */
+    let IGNORE_MGR = { kind: 'warn', sort: { col: -1, dir: 1 }, filters: [], page: 1 };
+    // 分页行数：`limits.ignoreMgrPageSize`（默认 10，无页大小选择器）。
+    // 排序 / 筛选图标的显隐按**条数**（而非页数）：超过该阈值才展示，否则保持列表简洁。
+    const IGNORE_MGR_TOOLS_MIN_ROWS = 20;
+    function ignoreMgrPageSize() {
+      const n = APP_LIMITS.ignoreMgrPageSize;
+      return (typeof n === 'number' && n > 0) ? Math.floor(n) : 10;
+    }
+
+    function ignoreKindDefs() {
+      return [
+        ['warn', 'ignoreManageKindWarn'],
+        ['xpath', 'ignoreManageKindXpath'],
+        ['csv', 'ignoreManageKindCsv'],
+      ];
+    }
+
+    // 各类型条目表头（warn 多出作用域/类型/级别/关联字段；xpath/csv 共用平台/渠道/来源/元素）
+    function ignoreMgrColumns(kind) {
+      if (kind === 'warn') return ['sidebarPlatform', 'colChannel', 'colSource', 'colScope', 'colType', 'colLevel', 'colRelField'];
+      return ['sidebarPlatform', 'colChannel', 'colSource', 'colElement'];
+    }
+
+    function ignoreMgrRowCells(e) {
+      if (e.kind === 'warn') {
+        return [e.platform, e.channel, e.source, e.scope === 'field' ? t('scopeField') : t('scopeChannel'), e.type, e.level, e.field];
+      }
+      return [e.platform, e.channel, e.source, e.value];
+    }
+
+    // 每条配置「实际忽略了多少条数据」：只统计当前 item 内命中该 key 的已忽略消息。
+    // 说明：数据文件按 item 懒加载，跨 item 统计需要拉取全部 item 文件，因此不做（列头 tooltip 已声明口径）。
+    function ignoredRowCounts(kind) {
+      const it = currentItem();
+      if (!it) return {};
+      const tab = kind === 'warn' ? 'warnings' : 'uncompared';
+      const list = (tab === 'warnings' ? (it.warnings || []) : (it.uncompared || [])).map(enrichMsg);
+      return countIgnoredByKey(tab, list, IGNORE_CONFIG);
+    }
+
+    // 表头定义（列顺序 = 展示顺序）：数据列 + 「忽略条数」+ 「操作」。
+    // 筛选交互：默认下拉框（选项取自当前数据的不同取值，精确匹配）；字段列（关联字段 / 元素）保留自由输入（包含匹配）。
+    const IGNORE_MGR_TEXT_COLS = ['colRelField', 'colElement'];
+    function ignoreMgrCols(kind) {
+      const cols = ignoreMgrColumns(kind).map(function (k) {
+        return { label: t(k), text: IGNORE_MGR_TEXT_COLS.indexOf(k) !== -1 };
+      });
+      // 「忽略条数」只参与排序，不做字段级筛选（数值列无需下拉筛选）。
+      cols.push({ label: t('ignoreManageAffected'), tip: t('ignoreManageAffectedTip'), noFilter: true });
+      cols.push({ label: t('colIgnored'), tools: false });
+      return cols;
+    }
+
+    // 下拉框选项：该列在当前数据中的不同取值（码位排序保证次序确定），空格子单独提供一个「空值」选项。
+    function ignoreMgrColOptions(rows, k) {
+      const values = [];
+      let hasEmpty = false;
+      rows.forEach(function (r) {
+        const v = String((r[k] && r[k].text) || '');
+        if (v === '') { hasEmpty = true; return; }
+        if (values.indexOf(v) === -1) values.push(v);
+      });
+      values.sort(function (a, b) { return a < b ? -1 : (a > b ? 1 : 0); });
+      return { values: values, hasEmpty: hasEmpty };
+    }
+
+    // 行模型：每个单元格为 { text, cls }（供 filterTableRows / sortTableRows 复用），
+    // 行数组 → 配置 key 的映射放在 Map 里（不污染数组对象）。
+    function ignoreMgrRows(kind) {
+      const list = listIgnoreEntries(IGNORE_CONFIG, kind);
+      const hit = ignoredRowCounts(kind);
+      const rowKey = new Map();
+      const rows = list.map(function (e) {
+        const cells = ignoreMgrRowCells(e).map(function (v) { return { text: v === '' ? '' : v, cls: '' }; });
+        // 忽略条数：空串代表 0（渲染为 —），sortTableRows 会按数值排序且空值恒在后。
+        const n = hit[e.key] || 0;
+        cells.push({ text: n ? String(n) : '', cls: 'ignore-mgr-n', tip: t('ignoreManageAffectedTip') });
+        cells.push({ text: '', cls: '' });                          // 操作列（不排序 / 不筛选）
+        rowKey.set(cells, e.key);
+        return cells;
+      });
+      return { rows: rows, rowKey: rowKey, total: list.length };
+    }
+
+    function renderIgnoreMgrBody() {
+      const kind = IGNORE_MGR.kind;
+      const counts = {};
+      ignoreKindDefs().forEach(function (kv) { counts[kv[0]] = listIgnoreEntries(IGNORE_CONFIG, kv[0]).length; });
+      const kinds = ignoreKindDefs().map(function (kv) {
+        return '<button class="ignore-kind' + (kv[0] === kind ? ' active' : '') + '" data-ignore-kind="' + kv[0] + '">' +
+          esc(t(kv[1])) + ' (' + counts[kv[0]] + ')</button>';
+      }).join('');
+
+      const cols = ignoreMgrCols(kind);
+      const built = ignoreMgrRows(kind);
+      // 工具显隐按「总条数」判定（与 descriptionEx 的按页数不同，避免 11~30 条时既不能排序也不能筛选）。
+      // 工具隐藏时同时忽略已存的排序 / 筛选状态，避免筛选态与不可清除的隐藏行共存。
+      const tools = built.total > IGNORE_MGR_TOOLS_MIN_ROWS;
+      const pageSize = ignoreMgrPageSize();
+      // 筛选规则：下拉列精确匹配（含「空值」哨兵），字段列包含匹配；列间 AND。
+      const rules = [];
+      if (tools) cols.forEach(function (c, k) {
+        if (c.tools === false || c.noFilter) return;
+        const v = IGNORE_MGR.filters[k];
+        if (v == null || v === '') return;
+        rules.push({ col: k, mode: c.text ? 'contains' : 'exact', value: v });
+      });
+      const matched = tools ? filterRowsByRules(built.rows, rules) : built.rows;
+      const sorted = tools ? sortTableRows(matched, IGNORE_MGR.sort.col, IGNORE_MGR.sort.dir) : matched;
+      const pg = paginateRows(sorted, IGNORE_MGR.page, pageSize);
+      IGNORE_MGR.page = pg.page;                          // 越界（删除 / 筛选后）自动收敛
+
+      // 表头：可排序列点击三态切换（升序 → 降序 → 原序）；可筛选列右侧 ⚲ 弹框做字段级筛选（列间 AND）。
+      const head = cols.map(function (c, k) {
+        const tipAttr = c.tip ? ' title="' + esc(c.tip) + '"' : '';
+        if (c.tools === false || !tools) return '<th' + tipAttr + '>' + esc(c.label) + '</th>';
+        const arrow = IGNORE_MGR.sort.col === k ? (IGNORE_MGR.sort.dir === 1 ? '▲' : '▼') : '⇅';
+        const on = String(IGNORE_MGR.filters[k] || '').trim() !== '';
+        const fbtn = c.noFilter ? '' : '<button class="mgr-fbtn' + (on ? ' active' : '') + '" data-mgr-filter="' + k + '" title="' + esc(t('ignoreManageFilterCol')) + '"' +
+          ' aria-label="' + esc(t('ignoreManageFilterCol') + ' ' + c.label) + '">⚲</button>';
+        return '<th' + tipAttr + '>' +
+          '<span class="mgr-head" data-mgr-sort="' + k + '" title="' + esc(t('ignoreManageSortTitle')) + '">' + esc(c.label) +
+          ' <span class="sort-arrow">' + arrow + '</span></span>' + fbtn + '</th>';
+      }).join('');
+
+      const last = cols.length - 1;
+      const rows = pg.slice.map(function (r) {
+        const key = built.rowKey.get(r);
+        const tds = r.slice(0, last).map(function (c) {
+          const cls = (c.cls ? ' class="' + c.cls + (c.text === '' ? ' zero' : '') + '"' : '');
+          const tip = c.tip ? ' title="' + esc(c.tip) + '"' : '';
+          return '<td' + cls + tip + '>' + (c.text === '' ? '—' : esc(c.text)) + '</td>';
+        }).join('');
+        return '<tr>' + tds + '<td><button class="del-btn" data-ignore-del="' + esc(key) + '" title="' +
+          esc(t('ignoreManageDelete')) + '">' + esc(t('ignoreManageDelete')) + '</button></td></tr>';
+      }).join('');
+
+      let body;
+      if (!built.total) {
+        body = '<p class="ignore-mgr-empty">' + esc(t('ignoreManageEmpty')) + '</p>';
+      } else {
+        const emptyRow = rows ? '' : '<tr><td colspan="' + cols.length + '" class="empty">' + esc(t('ignoreManageNoMatch')) + '</td></tr>';
+        // 仅 1 页时不展示分页控件。
+        const pager = pg.pages > 1 ? ignoreMgrPagerHTML(pg.page, pg.pages) : '';
+        body = '<div class="table-wrap"><table><thead><tr>' + head + '</tr></thead><tbody>' + rows + emptyRow + '</tbody></table></div>' + pager;
+      }
+
+      return '<div class="ignore-kinds">' + kinds + '</div>' + body;
+    }
+
+    function paintIgnoreMgr(backdrop) {
+      const box = backdrop.querySelector('#ignoreMgrBody');
+      if (box) box.innerHTML = renderIgnoreMgrBody();
+    }
+
+    // 分页控件（横向，跟进主列表的 .pagination / .pg 样式；每页条数由 limits.ignoreMgrPageSize 决定，无页大小选择器）。
+    function ignoreMgrPagerHTML(page, pages) {
+      let html = '<div class="pagination">';
+      html += '<button class="pg" data-mgr-page="' + (page - 1) + '"' + (page <= 1 ? ' disabled' : '') + ' title="' + esc(t('pagePrev')) + '">‹</button>';
+      pageItems(page, pages).forEach(function (it) {
+        html += it === null
+          ? '<span class="pg-gap">…</span>'
+          : '<button class="pg' + (it === page ? ' cur' : '') + '" data-mgr-page="' + it + '">' + it + '</button>';
+      });
+      html += '<button class="pg" data-mgr-page="' + (page + 1) + '"' + (page >= pages ? ' disabled' : '') + ' title="' + esc(t('pageNext')) + '">›</button>';
+      html += '<span class="pg-info">' + page + ' / ' + pages + ' ' + esc(t('pageOf')) + '</span>';
+      return html + '</div>';
+    }
+
+    function openIgnoreManager() {
+      const c = {};
+      ignoreKindDefs().forEach(function (kv) { c[kv[0]] = listIgnoreEntries(IGNORE_CONFIG, kv[0]).length; });
+      // 默认显示入口对应的配置：警告 tab -> 警告；未比较 tab -> 有内容的未比较类型（XPath 优先）。
+      const defaultKind = state.tab === 'uncompared' ? (c.xpath ? 'xpath' : (c.csv ? 'csv' : 'xpath')) : 'warn';
+      IGNORE_MGR = { kind: defaultKind, sort: { col: -1, dir: 1 }, filters: [], page: 1 };
+
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop';
+      backdrop.innerHTML =
+        '<div class="modal ignore-mgr" style="max-width:960px"><div class="modal-head"><h3>' + esc(t('ignoreManage')) + '</h3>' +
+        '<button class="modal-close" aria-label="' + esc(t('closeLabel')) + '">✕</button></div>' +
+        '<div class="modal-body"><div id="ignoreMgrBody"></div></div></div>';
+
+      backdrop.addEventListener('click', function (e) {
+        // 注意：这里不能用 openIgnoreManager 时的 kind（用户可能已切过类型），一律以 IGNORE_MGR.kind 为准。
+        if (e.target === backdrop || e.target.closest('.modal-close')) { closePopover(); backdrop.remove(); return; }
+        const kindBtn = e.target.closest('[data-ignore-kind]');
+        if (kindBtn) {
+          // 切类型时关闭筛选浮层（列数/列义不同）并重置排序 / 筛选 / 页码。
+          closePopover();
+          IGNORE_MGR = { kind: kindBtn.getAttribute('data-ignore-kind'), sort: { col: -1, dir: 1 }, filters: [], page: 1 };
+          paintIgnoreMgr(backdrop);
+          return;
+        }
+        const mgrPage = e.target.closest('[data-mgr-page]');
+        if (mgrPage) {
+          if (mgrPage.disabled) return;
+          closePopover();
+          IGNORE_MGR.page = parseInt(mgrPage.getAttribute('data-mgr-page'), 10) || 1;
+          paintIgnoreMgr(backdrop);
+          return;
+        }
+        const sortEl = e.target.closest('[data-mgr-sort]');
+        if (sortEl) {
+          IGNORE_MGR.sort = cycleSort(IGNORE_MGR.sort, parseInt(sortEl.getAttribute('data-mgr-sort'), 10));
+          IGNORE_MGR.page = 1;
+          paintIgnoreMgr(backdrop);
+          return;
+        }
+        const fbtn = e.target.closest('[data-mgr-filter]');
+        if (fbtn) {
+          const k = parseInt(fbtn.getAttribute('data-mgr-filter'), 10);
+          const curKind = IGNORE_MGR.kind;                        // 当前实际类型（可能已切过页签）
+          // 再次点击同一列的 ⚲ = 关闭浮层（不改变筛选值）；重绘后锚点是新节点，故按「类型 + 列」判断。
+          const colId = curKind + ':' + k;
+          if (POPOVER.el && POPOVER.el.__mgrFilter === colId) { closePopover(); return; }
+          const col = ignoreMgrCols(curKind)[k];
+          const cur = IGNORE_MGR.filters[k] || '';
+          const width = 220;
+          let content;
+          if (col && col.text) {
+            // 字段列（关联字段 / 元素）：自由输入 + 包含匹配（与之前一致）。
+            const wrap = document.createElement('div');
+            wrap.innerHTML = '<input type="search" class="pop-control" placeholder="' + esc(t('ignoreManageFilterCol')) +
+              '" value="' + esc(cur) + '">';
+            content = wrap.firstChild.outerHTML;
+          } else {
+            // 其它列：下拉框式筛选，选项为该列在当前数据中的不同取值（精确匹配）。
+            const opts = ignoreMgrColOptions(ignoreMgrRows(curKind).rows, k);
+            content = '<select class="pop-control">' +
+              '<option value=""' + (cur === '' ? ' selected' : '') + '>' + esc(t('all')) + '</option>' +
+              opts.values.map(function (v) {
+                return '<option value="' + esc(v) + '"' + (cur === v ? ' selected' : '') + '>' + esc(v) + '</option>';
+              }).join('') +
+              (opts.hasEmpty ? '<option value="' + FILTER_EMPTY + '"' + (cur === FILTER_EMPTY ? ' selected' : '') + '>' +
+                esc(t('specialEmpty')) + '</option>' : '') +
+              '</select>';
+          }
+          const pop = openPopover(fbtn, content, '', width);
+          pop.__mgrFilter = colId;
+          pop.classList.add('popover-raised');            // 需高于 .modal-backdrop（z-index 50）
+          const ctrl = pop.querySelector('.pop-control');
+          if (ctrl && ctrl.tagName === 'SELECT') {
+            ctrl.addEventListener('change', function () {
+              IGNORE_MGR.filters[k] = ctrl.value;
+              IGNORE_MGR.page = 1;
+              paintIgnoreMgr(backdrop);
+              closePopover();
+            });
+          } else if (ctrl) {
+            ctrl.focus();
+            ctrl.addEventListener('input', function () {
+              IGNORE_MGR.filters[k] = ctrl.value;
+              IGNORE_MGR.page = 1;
+              paintIgnoreMgr(backdrop);                   // 只重绘列表，输入框在浮层内不受影响
+            });
+          }
+          return;
+        }
+        const del = e.target.closest('[data-ignore-del]');
+        if (del) {
+          const key = del.getAttribute('data-ignore-del');
+          IGNORE_CONFIG = removeIgnoreKeys(IGNORE_CONFIG, [key]);
+          // 回写配置文件（带 If-Match 乐观并发；冲突时按服务端收敛并重放本次删除）。
+          saveIgnoreConfig(function () { IGNORE_CONFIG = removeIgnoreKeys(IGNORE_CONFIG, [key]); });
+          renderAfterIgnoreChange();
+        }
+      });
+
+      document.body.appendChild(backdrop);
+      paintIgnoreMgr(backdrop);
     }
 
     // 主列表字段的 警告/错误 图标跳转：切到对应选项卡并填充 报告渠道+来源渠道+关联字段 筛选项。
@@ -5191,8 +5548,8 @@ export function parseHash(raw) {
         }
         // 分部覆盖：只替换文件里出现的部分（warnings / uncomparedXpaths / uncomparedCsvs），其余保持不变。
         IGNORE_CONFIG = applyIgnoreImport(IGNORE_CONFIG, r);
-        saveIgnoreConfig();
-        renderSummary(); renderTabs(); renderChannelTabs(); renderSidebar(); renderSidebarChips(); renderContent();
+        saveIgnoreConfig(function () { IGNORE_CONFIG = applyIgnoreImport(IGNORE_CONFIG, r); });
+        renderAfterIgnoreChange();
         alert(importResultText(r));
       };
       reader.readAsText(file);
@@ -5802,6 +6159,8 @@ export function parseHash(raw) {
         if (ign) { toggleIgnoreByKey(ign.getAttribute('data-ignore')); return; }
         const exp = e.target.closest('#exportIgnoreBtn');
         if (exp) { exportIgnoreConfig(); return; }
+        const mgr = e.target.closest('#manageIgnoreBtn');
+        if (mgr) { openIgnoreManager(); return; }
         const imp = e.target.closest('#importIgnoreBtn');
         if (imp) { document.getElementById('importIgnoreFile').click(); return; }
         const bulk = e.target.closest('.bulk-toggle');
@@ -5977,6 +6336,8 @@ export function parseHash(raw) {
         if (CTX_DEF_POPUP && !CTX_DEF_POPUP.contains(e.target)) closeCtxDefPopup();
         if (RULE_POPUP && !RULE_POPUP.contains(e.target)) closeRulePopup();
         if (VAL_PANEL && !VAL_PANEL.contains(e.target)) closeValPanel();
+        // 通用浮层（表头筛选等）在容器滚动后会与锚点脱节，一并关闭；浮层自身内部滚动不关闭。
+        if (POPOVER.el && !POPOVER.el.contains(e.target)) closePopover();
       }, true);
     }
 

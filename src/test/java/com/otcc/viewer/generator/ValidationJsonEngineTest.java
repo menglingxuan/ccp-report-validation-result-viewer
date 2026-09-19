@@ -263,6 +263,8 @@ class ValidationJsonEngineTest {
                 "config.features.descriptionEx 默认 true（所有配置文件均启用）");
         c.check(config.getLimits() != null && Integer.valueOf(5).equals(config.getLimits().getDescExPageSize()),
                 "config.limits.descExPageSize 默认 5");
+        c.check(config.getLimits() != null && Integer.valueOf(10).equals(config.getLimits().getIgnoreMgrPageSize()),
+                "config.limits.ignoreMgrPageSize 默认 10");
         c.done();
     }
 

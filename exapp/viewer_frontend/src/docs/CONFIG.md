@@ -122,7 +122,7 @@ REPORT_VIEWER_CONFIG=prod node server.js
 | `defaultData` | `report-validation-data-default.json` | 默认模板数据文件；`defaultDataMode=default` 时优先加载 |
 | `initData` | `report-validation-data-init.json` | 空占位数据文件；`defaultDataMode=init` 时加载 |
 | `defaultDataMode` | `default` | 默认数据源：`init` / `default` / 某个已扫描批次名（其他值等同 `default`） |
-| `ignore` | `ignore-config-by-platform.json` | 忽略配置，相对 web 根目录；同时作为 `POST /api/ignore` 的**默认回写目标**（租户模式下读取地址重写为 `/tenant/<该路径>`，写入租户数据根内的同路径） |
+| `ignore` | `ignore-config-by-platform.json` | 忽略配置，相对 web 根目录；同时作为 `POST /api/ignore` 的**默认回写目标**（租户模式下读取地址重写为 `/tenant/<该路径>`，写入租户数据根内的同路径）。查看器的忽略新增 / 取消忽略 / 批量 / 导入 / 「管理忽略配置」里删除都回写到该文件（批次级配置由 `batch-meta.json` 的 `ignoreUrl` 覆盖） |
 | `batches` | `batches-index.json` | 批次索引，相对 web 根目录（租户模式下读取地址重写为 `/tenant/<该路径>`，写入租户数据根内的索引） |
 | `help` | `batch-help.json` | docker 帮助文档内容文件，相对 web 根目录 |
 | `scan` | `/scan` | 批次自动扫描接口（相对站点根） |
@@ -161,6 +161,7 @@ REPORT_VIEWER_CONFIG=prod node server.js
 | `msgPageSize` | `20` |
 | `globalSearchLimit` | `200` |
 | `descExPageSize` | `5`（「任务说明」扩展内容表格每页条数） |
+| `ignoreMgrPageSize` | `10`（「管理忽略配置」窗口列表每页条数） |
 
 ## 8. `batches`
 

@@ -98,6 +98,8 @@ public class ValidationConfig {
         private Integer globalSearchLimit;
         /** 「任务说明」扩展内容（descriptionEx）表格每页条数。 */
         private Integer descExPageSize;
+        /** 「管理忽略配置」窗口列表每页条数。 */
+        private Integer ignoreMgrPageSize;
     }
 
 

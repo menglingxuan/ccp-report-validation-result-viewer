@@ -1058,6 +1058,7 @@ public final class ValidationJsonGenerator {
                         .pageSize(20).pageSizeOptions(List.of(10, 20, 50))
                         .sidebarPageSize(8).msgPageSize(20).globalSearchLimit(200)
                         .descExPageSize(5)
+                        .ignoreMgrPageSize(10)
                         .build())
                 .batches(ValidationConfig.BatchesConfig.builder()
                         .recentCount(5).pageSize(8).listMode("lazy")

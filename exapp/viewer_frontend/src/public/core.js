@@ -257,6 +257,84 @@ function msgIsIgnoredPure(tab, m, ignoreConfig) {
   return k ? !!(ignoreConfig && ignoreConfig[k]) : false;
 }
 
+/* ---------- 忽略配置管理（查看 / 删除）：扁平 key ↔ 可展示条目 ---------- */
+// 支持的类型（与配置文件的分组桶一一对应）：警告 / 未比较 XPath / 未比较 CSV。
+export const IGNORE_KINDS = ['warn', 'xpath', 'csv'];
+
+// 解析扁平忽略 key -> 归一化条目；非法/未知类型返回 null。
+// 槽位与 groupedToFlat 严格一致：warn=[kind,platform,channel,source,scope,type,level,field]，
+// xpath=[kind,value,channel,platform,source,'']，csv=[kind,value,channel,platform,source,'']。
+export function parseIgnoreKey(key) {
+  let arr;
+  try { arr = JSON.parse(key); } catch (e) { return null; }
+  if (!Array.isArray(arr) || IGNORE_KINDS.indexOf(arr[0]) === -1) return null;
+  const str = function (v) { return v == null ? '' : String(v); };
+  if (arr[0] === 'warn') {
+    return {
+      key: key, kind: 'warn', platform: str(arr[1]), channel: str(arr[2]), source: str(arr[3]),
+      scope: str(arr[4]) || 'channel', type: str(arr[5]), level: str(arr[6]), field: str(arr[7]), value: '',
+    };
+  }
+  return {
+    key: key, kind: arr[0], platform: str(arr[3]), channel: str(arr[2]), source: str(arr[4]),
+    scope: '', type: '', level: '', field: '', value: str(arr[1]),
+  };
+}
+
+// 列出某类型的忽略条目（按 平台 -> 渠道 -> 来源 -> 值/字段 排序，便于人工核对）。
+export function listIgnoreEntries(flat, kind) {
+  const out = [];
+  Object.keys(flat || {}).forEach(function (k) {
+    if (!flat[k]) return;
+    const e = parseIgnoreKey(k);
+    if (!e || (kind && e.kind !== kind)) return;
+    e.text = [e.platform, e.channel, e.source, e.type, e.level, e.field, e.value].join(' ');
+    out.push(e);
+  });
+  // 排序键用「码位比较」而非 localeCompare：后者会忽略分隔符/控制字符，导致顺序不确定。
+  const sortKey = function (e) { return [e.platform, e.channel, e.source, e.value, e.type, e.level, e.field].join('\u0001'); };
+  out.sort(function (a, b) {
+    const ka = sortKey(a), kb = sortKey(b);
+    return ka < kb ? -1 : (ka > kb ? 1 : 0);
+  });
+  return out;
+}
+
+// 条目关键字过滤（匹配任意展示字段，大小写不敏感；空查询返回全部）。
+// 备注：“管理忽略配置”窗口当前不做筛选（后续可能改为字段级筛选），此纯函数保留供复用。
+export function filterIgnoreEntries(entries, query) {
+  const q = String(query == null ? '' : query).trim().toLowerCase();
+  if (!q) return entries;
+  return (entries || []).filter(function (e) {
+    return String(e.text || '').toLowerCase().indexOf(q) !== -1;
+  });
+}
+
+// 统计「当前消息集合里，每个忽略 key 实际命中了多少条」：
+// 仅统计已忽略（flat[key] 为真）的消息，返回 { key: count }。
+// 用于「管理忽略配置」里展示每条配置实际忽略的数据条数（作用域与 msgIgnoreKey 完全一致）。
+export function countIgnoredByKey(tab, messages, flat) {
+  const out = {};
+  (messages || []).forEach(function (m) {
+    const k = msgIgnoreKey(tab, m);
+    if (!k || !(flat && flat[k])) return;
+    out[k] = (out[k] || 0) + 1;
+  });
+  return out;
+}
+
+// 删除若干 key（纯函数：返回新的扁平集合，不修改入参）。
+export function removeIgnoreKeys(flat, keys) {
+  const drop = {};
+  (Array.isArray(keys) ? keys : [keys]).forEach(function (k) { if (k) drop[k] = true; });
+  const out = {};
+  Object.keys(flat || {}).forEach(function (k) {
+    if (!flat[k]) return;
+    if (!drop[k]) out[k] = true;
+  });
+  return out;
+}
+
 /* ---------- 字段差异高亮（FAILED 字段逐字符 LCS diff） ---------- */
 export function diffSegments(a, b) {
   a = String(a == null ? '' : a); b = String(b == null ? '' : b);
@@ -511,6 +589,40 @@ export function sortTableRows(rows, col, dir) {
   return out;
 }
 
+// 三态排序循环（与主列表 / descriptionEx 同样的交互）：
+// 同一列：升序(1) → 降序(-1) → 原序(col=-1)；点击另一列：从升序开始。
+export function cycleSort(sort, col) {
+  const s = sort || { col: -1, dir: 1 };
+  if (s.col === col) return s.dir === 1 ? { col: col, dir: -1 } : { col: -1, dir: 1 };
+  return { col: col, dir: 1 };
+}
+
+// 「空值」筛选哨兵：exact 模式下用它匹配文本为空单元格（界面下拉框里的「空值」选项）。
+export const FILTER_EMPTY = '__empty__';
+
+// 按列规则过滤（列间 AND）：rules = [{ col, mode, value }]
+//   mode 'exact'    — 单元格文本与 value 完全相等（大小写不敏感；value 为 FILTER_EMPTY 时匹配空单元格）
+//   mode 'contains' — 单元格文本包含 value（大小写不敏感）
+// value 为空串 / null 表示该列不限制；无有效规则时返回原数组。
+export function filterRowsByRules(rows, rules) {
+  const active = (rules || []).filter(function (r) { return r && r.value != null && r.value !== ''; });
+  if (!active.length) return rows || [];
+  return (rows || []).filter(function (row) {
+    for (let i = 0; i < active.length; i++) {
+      const rule = active[i];
+      const cell = row[rule.col];
+      const text = String((cell && cell.text) || '');
+      if (rule.mode === 'exact') {
+        if (rule.value === FILTER_EMPTY) { if (text !== '') return false; continue; }
+        if (text.toLowerCase() !== String(rule.value).toLowerCase()) return false;
+      } else if (text.toLowerCase().indexOf(String(rule.value).toLowerCase()) === -1) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
 // 分页：页码从 1 开始，越界自动收敛到合法范围。
 export function paginateRows(rows, page, size) {
   const per = Math.max(1, Math.floor(size) || 1);
@@ -521,7 +633,8 @@ export function paginateRows(rows, page, size) {
   return { page: p, pages: pages, slice: rows.slice(start, start + per), total: total };
 }
 
-// 任务说明扩展内容：总页数 ≤ 该阈值时不展示表格工具（表头排序/字段筛选），保持纯描述。
+// 表格工具（列排序 + 表头字段筛选）的最大页数阈值：总页数 ≤ 该值时不展示（保持纯描述 / 列表简洁）。
+// 目前被 descriptionEx 表格与「管理忽略配置」列表共用。
 export const DESC_EX_TOOLS_MAX_PAGES = 3;
 
 // 列宽（px）拟合：按各列「最大内容宽度 + 左右内边距」定宽，并限制在 [min, max] 区间。

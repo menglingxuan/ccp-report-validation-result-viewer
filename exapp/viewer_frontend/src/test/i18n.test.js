@@ -39,6 +39,19 @@ test('i18n：不存在死键（每个键都在前端源码中被引用）', () =
   assert.deepEqual(dead, [], '以下键未被任何前端代码引用（应删除或接线）：' + dead.join(', '));
 });
 
+// 反向检查：源码里写死的 t('key') 必须在三种语言中都存在（防止把未定义的键渲染成字面量）。
+test('i18n：源码引用的字面量键均已定义', () => {
+  const used = new Set();
+  const re = /(?<![A-Za-z0-9_$.])t\(\s*(['"])([^'"]+)\1/g;
+  let m;
+  while ((m = re.exec(FRONTEND_SRC)) !== null) used.add(m[2]);
+  assert.ok(used.size > 100, '未解析到足够的 t() 调用，检查解析逻辑');
+  LANGS.forEach((lang) => {
+    const missing = [...used].filter((k) => !(k in I18N[lang])).sort();
+    assert.deepEqual(missing, [], lang + ' 缺少源码引用的键：' + missing.join(', '));
+  });
+});
+
 test('i18n：任务说明扩展内容（descriptionEx）相关键齐备', () => {
   const need = ['descExLoading', 'descExFilter', 'descExNoMatch',
     'descExSortTitle', 'descExPagerToggle', 'descExUnsupported', 'descExBadTable', 'descExLoadFail',
