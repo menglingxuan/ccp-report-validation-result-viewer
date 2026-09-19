@@ -267,9 +267,6 @@
     .fav-remove-pkgs { font-family: var(--mono); font-size: 12px; color: var(--accent); margin-top: 6px; word-break: break-all; }
     .tool-btn.danger { background: var(--fail); border-color: var(--fail); color: #fff; }
     .tool-btn.danger:hover { filter: brightness(.95); color: #fff; border-color: var(--fail); }
-    .fav-remove-pkgs { font-family: var(--mono); font-size: 12px; color: var(--accent); margin-top: 6px; word-break: break-all; }
-    .tool-btn.danger { background: var(--fail); border-color: var(--fail); color: #fff; }
-    .tool-btn.danger:hover { filter: brightness(.95); color: #fff; border-color: var(--fail); }
     .fav-add-actions { margin-top: 12px; display: flex; gap: 8px; }
     .fav-searchbar { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--border); }
     .fav-searchbar .pop-control { flex: 1; }
@@ -316,7 +313,6 @@
     }
     .batch-qd .bq-name { font-weight: 600; font-family: var(--mono); font-size: 13px; word-break: break-all; }
     .batch-qd .bq-time { color: var(--muted); font-size: 11px; margin-top: 3px; font-family: var(--mono); }
-    .batch-qd .bq-hint { color: var(--warn); font-size: 11px; margin-top: 6px; }
     /* 批次编辑器（批次名 / 描述 / 标签） */
     .be-label { font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
     .be-warn { font-size: 11px; color: var(--warn); margin-top: 4px; }
@@ -604,8 +600,6 @@
     .health-table tbody tr:hover td { background: var(--hover); }
     table th.col-hover, table td.col-hover { background: var(--accent-bg) !important; }
     .mono { font-family: var(--mono); font-size: 12px; }
-    .xpath { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .note { color: var(--muted); }
     .empty { text-align: center; color: var(--muted); padding: 34px !important; }
     .empty::before { content: '○'; display: block; font-size: 26px; line-height: 1; color: var(--border); margin-bottom: 8px; }
     .empty-hint { text-align: center; color: var(--muted); padding: 22px 16px; font-size: 13px; }
@@ -900,12 +894,12 @@
     .load-more { border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 12px; }
     .load-more:hover { color: var(--accent); border-color: var(--accent); }
 
-    /* 表头过滤图标按钮 */
-    th .hf-toggle, th .mhf-toggle, th .special-toggle, th .bulk-toggle {
+    /* 表头过滤图标按钮（descriptionEx 的 .descex-fbtn 共用同一视觉） */
+    th .hf-toggle, th .mhf-toggle, th .special-toggle, th .bulk-toggle, th .descex-fbtn {
       margin-left: 4px; border: none; background: none; cursor: pointer;
       color: var(--muted); font-size: 12px; padding: 0 2px; vertical-align: middle;
     }
-    th .hf-toggle:hover, th .hf-toggle.active, th .mhf-toggle:hover, th .mhf-toggle.active, th .special-toggle:hover, th .special-toggle.active, th .bulk-toggle:hover { color: var(--accent); }
+    th .hf-toggle:hover, th .hf-toggle.active, th .mhf-toggle:hover, th .mhf-toggle.active, th .special-toggle:hover, th .special-toggle.active, th .bulk-toggle:hover, th .descex-fbtn:hover, th .descex-fbtn.active { color: var(--accent); }
 
     /* 浮层 popover */
     .popover {
@@ -931,6 +925,58 @@
     .task-note { margin-top: 12px; border-top: 1px dashed var(--border); padding-top: 10px; }
     .task-note-title { font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
     .task-note-text { font-size: 13px; white-space: pre-wrap; word-break: break-word; color: var(--text); }
+
+    /* 任务说明 · 扩展内容（descriptionEx）：只读描述性内容
+       —— 弱化配色（muted + 虚线边框，不用强调色）与主题内容拉开层次；
+       表头字段筛选（⚲ 弹框，与主列表风格一致）+ 列排序 + 右侧竖向紧凑页码 */
+    .task-note-descex:empty { display: none; }
+    .task-note-descex { margin-top: 10px; }
+    /* 表格宽度按内容自适应：外层框随表格内容收缩（不强制占满整行）；页码控件竖向位于表格右侧 */
+    .descex-frame { display: inline-block; max-width: 100%; vertical-align: top; }
+    .descex-flex { display: flex; align-items: flex-start; gap: 4px; max-width: 100%; }
+    /* 页码：折叠三角在上，展开后的页码列位于其正下方（同一列） */
+    .descex-pager-col { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 0 0 auto; }
+    .descex-pager-toggle {
+      border: none; background: none; cursor: pointer; padding: 0; line-height: 1;
+      color: var(--muted); font-size: 13px;
+      min-width: 16px; height: 16px; border-radius: 4px;
+    }
+    .descex-pager-toggle:hover, .descex-pager-toggle[aria-expanded="true"] { color: var(--accent); }
+    .descex-pager { display: flex; flex-direction: column; align-items: stretch; gap: 1px; flex: 0 0 auto; }
+    /* 简约式页码/箭头：无边框无底色，用主题色（当前页用强调色，避免白色高亮过亮） */
+    .descex-pager .pg {
+      border: none; background: none; color: var(--muted);
+      min-width: 16px; height: 16px; padding: 0 3px; font-size: 10px; line-height: 1; border-radius: 4px;
+    }
+    .descex-pager .pg:hover:not(:disabled) { background: none; color: var(--accent); }
+    .descex-pager .pg.cur { background: none; color: var(--accent); font-weight: 700; }
+    .descex-pager .pg:disabled { opacity: .35; }
+    /* 上一页/下一页：用主列表分页的同一字符 ‹ ›，仅旋转 90° 得上下方向（不改风格/尺寸） */
+    .descex-pager .pg-ico { display: inline-block; transform: rotate(90deg); }
+    .descex-pager .pg-gap { color: var(--muted); font-size: 10px; line-height: 1; text-align: center; }
+    .descex-pager .pg-info { font-size: 9px; margin: 1px 0 0; text-align: center; color: var(--muted); }
+    .descex-scroll {
+      max-width: 100%; overflow: auto;
+      border: 1px dashed var(--border); border-radius: 8px; background: transparent;
+    }
+    .descex-table { border-collapse: collapse; font-size: 12px; color: var(--muted); }
+    /* 列宽按整表最大内容宽度定宽（固定布局），使分页切换时表格宽度不变 */
+    .descex-table.descex-fixed { table-layout: fixed; }
+    .descex-table th, .descex-table td {
+      padding: 5px 10px; border-bottom: 1px dashed var(--border);
+      text-align: left; vertical-align: top; word-break: break-word; overflow-wrap: anywhere;
+    }
+    /* 首/末列额外内缩，避免文字贴着表格边框 */
+    .descex-table th:first-child, .descex-table td:first-child { padding-left: 14px; }
+    .descex-table th:last-child, .descex-table td:last-child { padding-right: 14px; }
+    .descex-table thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; white-space: nowrap; font-weight: 600; color: var(--muted); }
+    .descex-table tbody tr:hover { background: var(--hover); }
+    .descex-table .descex-head { cursor: pointer; user-select: none; }
+    .descex-table .descex-head:hover { color: var(--text); }
+    .descex-table .sort-arrow { color: var(--muted); font-size: 10px; opacity: .75; }
+    .descex-table code { font-size: 11px; padding: 0 3px; border-radius: 4px; background: transparent; border: 1px dashed var(--border); }
+    .descex-text { font-size: 12px; white-space: pre-wrap; word-break: break-word; color: var(--muted); max-height: 320px; overflow: auto; }
+    .descex-note { font-size: 11px; color: var(--muted); margin-top: 4px; }
 
     /* 侧栏多选按钮 */
     .sidebar-filters { flex-wrap: wrap; }
@@ -1060,9 +1106,6 @@
     .bulk-btn.danger { color: var(--fail); border-color: var(--fail); }
     .bulk-btn:hover { opacity: .85; }
 
-    /* 悬停长文本 */
-    .hover-trunc { font-size: 13px; color: var(--text); border-bottom: 1px dashed var(--border); cursor: help; }
-
     /* 日期选择按钮 */
     .sidebar-filters #reportDateFilter { padding-right: 46px; }
     #reportDatePickerHelper { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
@@ -1190,14 +1233,18 @@
     }
     .side-expand:hover { color: var(--accent); border-color: var(--accent); }
     body.sidebar-collapsed .side-expand { display: block; }
+    /* dock 停靠左侧时会盖住左侧中间的「展开侧栏」按钮 —— 把它右移到 dock 之外（dock 宽 48 + 边距）。 */
+    body.sidebar-collapsed:not(.batch-side-right) .side-expand { left: 70px; }
     .side-resize { position: absolute; top: 0; right: 0; width: 6px; height: 100%; cursor: col-resize; z-index: 3; }
     .side-resize::after { content: ''; position: absolute; right: 2px; top: 0; width: 2px; height: 100%; }
     .side-resize:hover::after, body.side-resizing .side-resize::after { background: var(--accent); }
     body.side-resizing { cursor: col-resize; user-select: none; }
 
-    /* 顶部区域折叠（统计 + 筛选 + 搜索） */
+    /* 顶部区域折叠（统计 + 筛选 + 搜索）：图标沿用侧栏折叠的同一字符 ⟨⟩，仅旋转 90° 得上下方向 */
     .top-collapse { border: 1px solid var(--border); background: var(--card); color: var(--muted); border-radius: 8px; padding: 2px 10px; cursor: pointer; font-size: 14px; line-height: 22px; }
     .top-collapse:hover { color: var(--accent); border-color: var(--accent); }
+    .top-collapse .tc-ico { display: inline-block; font-size: 13px; transform: rotate(90deg); }        /* 展开态：向上（可折叠） */
+    .top-collapse[aria-expanded="false"] .tc-ico { transform: rotate(-90deg); }                        /* 收起态：向下（可展开） */
     .item-bar .top-collapse { align-self: center; flex: 0 0 auto; }
     body.top-collapsed #topRegion { display: none; }
 
@@ -1396,7 +1443,7 @@
       </div>
     </div>
 
-    <button class="side-expand" id="sideExpand" title="展开侧栏">⟩</button>
+    <button class="side-expand" id="sideExpand" title="展开侧栏" aria-label="展开侧栏">⟩</button>
     <main class="layout" role="main">
       <aside class="sidebar" id="sidebar" aria-label="比较 item 列表">
         <span class="side-resize" id="sideResize" title="拖动调整侧栏宽度"></span>
@@ -1439,9 +1486,9 @@
             <div class="report-cats" id="reportCats">
               <button class="report-cat" data-cat="charts" title="统计图表" aria-label="统计图表"><span class="rc-ico">◔</span></button>
               <button class="report-cat" data-cat="files" title="输入 / 配置文件" aria-label="输入 / 配置文件"><span class="rc-ico">▤</span></button>
-              <button class="report-cat" data-cat="note" title="任务说明" aria-label="任务说明"><span class="rc-ico">≡</span></button>
+              <button class="report-cat" data-cat="note" title="任务说明" aria-label="任务说明"><span class="rc-ico">📄</span></button>
             </div>
-            <button class="top-collapse" id="topCollapse" title="折叠顶部区域" aria-expanded="true">⌃</button>
+            <button class="top-collapse" id="topCollapse" title="折叠顶部区域" aria-expanded="true"><span class="tc-ico">⟨</span></button>
           </div>
           <div class="report-info" id="reportInfo" style="display:none">
             <div class="report-pane" id="paneCharts">

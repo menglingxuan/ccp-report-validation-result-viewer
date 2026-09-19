@@ -7,6 +7,10 @@
 
 两种模式都由顶层 `"mode"` 字段标记：`"single"` 或 `"multi"`（缺省按 `"single"` 处理）。
 
+> 多文件模式下，主数据（`urls.data`）、默认模板数据（`urls.defaultData`）与批次数据文件都是清单：
+> 生成器（Java `validationJsonJob -m multi` 与 `node tools/generate-sample-data.js --split`）会把三者都写成清单，
+> 并各自引用同一套 `data/items/<tradeId>.json`（批次目录则为 `<批次目录>/data/items/<tradeId>.json`）。
+
 ---
 
 ## 1. 单文件模式（`mode: "single"`）
@@ -66,12 +70,13 @@
 | `tradeId` / `reportDate` / `generatedAt` / `platform` / `product` / `productCategory` | 字符串 | item 元数据（供侧栏搜索/筛选） |
 | `counterpartyItemId` / `platformTradeId` / `platformDealId` | 字符串 | 可选元数据 |
 | `enabledChannels` | 字符串数组 | 启用渠道 |
-| `file` | 字符串 | 该 item 完整数据文件的路径（相对 web 根目录） |
+| `file` | 字符串 | 该 item 完整数据文件的路径（**相对清单文件所在目录**；因此根目录清单用 `data/items/<tradeId>.json`，批次清单也一样） |
 | `summary` | 对象 | 预计算统计摘要（侧栏与统计卡无需加载完整 item） |
 
 每个 item 文件内容与单文件模式中的 item 结构相同（含 `ctxDefs`、`channels`、`logs`；字段注册表在各 channel 内）。
 
 > 多文件模式下：查看器先加载清单（轻量），点击 item 时按需加载完整文件；搜索/筛选/统计对全部 item 的合并数据生效。
+> 清单未加载的 item 只有元数据（无 `channels` / `ctxDefs` / `logs`），需要完整 item 的功能（忽略开关、字段比较、关联错误、日志）都先确保 item 已加载。
 
 ---
 
@@ -190,7 +195,11 @@
 - 优先读取 `batch-meta.json` 的 `reportEnv` / `dataUrl` / `summary`。
 - 否则回退到数据文件（单文件或多文件清单）的顶层 `reportEnv`，item 数量取 `items.length`。
 
-索引 `batches-index.json` 的 `batches[]` 除原有字段外，增加 `dataMode`（`"single"` / `"multi"`），供查看器按需加载。旧格式数据可用 `node tools/migrate-legacy-data.js <文件>` 迁移。
+索引 `batches-index.json` 的 `batches[]`（由 `lib/scanner.js` 写入）字段：
+`batchId` / `batchName` / `date` / `executedAt` / `formatVersion` / `path` / `reportEnv` / `dataUrl` / `ignoreUrl` / `summary` / `creationType`（`sample` / `user`），以及可选字段：`deleted`（软删除）、`tags`、`favorite`、`argv`（原始命令）、`metaUrl`（批次目录内 `batch-meta.json` 的相对路径，供查看器按需读取扩展内容；仅在文件存在时写入）、`validationErrors`（扫描时数据校验失败项；**有意保留在索引里**，但当前界面尚未展示，只在扫描/启动日志告警）。旧格式数据可用 `node tools/migrate-legacy-data.js <文件>` 迁移。
+
+> 索引**不写入** `dataMode` / `cwd`（前端从不使用，已移除）；二者如需仍可从对应 `batch-meta.json` 读取。
+> 索引也**不写入** `descriptionEx` 正文（避免索引随批次数膨胀）：查看器用 `metaUrl` 懒加载 `batch-meta.json` 后再取该字段，详见 §6.3。
 
 ### 6.1 `batch-meta.json` 可选字段
 
@@ -201,7 +210,12 @@
 | `tags` | string[] | 自定义批次标签。清洗规则（`lib/scanner.js` 的 `sanitizeTags`）：去空白、去重、单个最长 24 字符、最多 12 个；空数组等同未定义 |
 | `batchName` | string | 批次名（展示名）。**允许重复**：界面仅告警不阻止；`urls.defaultDataMode` 按名解析时取首个非已删除匹配。经 `POST /api/batch` 回写时去首尾空白、最长 200 字符、不允许为空 |
 | `description` | string | 批次描述，支持多行（换行统一为 `\n`，最长 4000 字符）；空值表示清除字段 |
-| `summary` / `description` / `commandLine` / `ignoreUrl` / `reportEnv` | - | 同原有定义；`summary.items` 以数据文件实际 item 数量为准（扫描时校正） |
+| `ignoreUrl` | string | 批次级忽略配置地址（相对批次目录 / web 根）。扫描器写入索引；查看器 `POST /api/ignore` 按同一地址回写（缺省用 `config.urls.ignore`） |
+| `summary` / `commandLine` / `reportEnv` | - | 同原有定义；`summary.items` 以数据文件实际 item 数量为准（扫描时校正） |
+| `descriptionEx` | 对象 | 任务说明**扩展内容**（只读）：`{ contentType, plainContent }`，渲染在「任务说明」末尾，见 §6.3 |
+
+> `deleted` / `favorite` / `tags` / `ignoreUrl` 由**查看器与服务端**写入（`POST /api/batch`、`POST /api/ignore`），Java 样例生成器不写这四项；Java 模型 `BatchMeta` 已声明为可选字段（`@JsonInclude(NON_NULL)`，缺失时不序列化）。
+> `descriptionEx` 也是可选字段（Java 模型 `DescriptionEx`）：样例生成器（Java / `node tools/generate-sample-data.js --batch`）会写一份 `markDownTable` 示例；查看器与 `POST /api/batch` **都不会修改它**（只读）。
 
 ### 6.2 忽略配置（`ignore-config-by-platform.json`）
 
@@ -245,4 +259,49 @@
   - 服务端限定只允许写入 `.json`、且路径必须落在允许的根目录内：非租户模式为 web 根（`public/`），租户模式为租户数据根（`CFG.tenant.dataRoot`，`/tenant/` 前缀会被剥离）。非法路径返回 403，结构不合法返回 400；写入使用原子写（`writeFileAtomic`）。
   - 回写失败（如服务端未更新、路径被拒）时浏览器控制台会告警，并在批次面板顶部提示「忽略配置保存失败」（`ignoreSaveError`）。
   - 与收藏夹（`POST /api/favorites` → `favorites.json`）同一套「按租户隔离 + 原子写入」机制。
+  - **乐观并发**：写入响应带 `etag`；客户端把加载时拿到的 `etag` 作为 `ifMatch` 回传，服务端发现文件已被其他会话修改即返回 **409**（不写入），前端提示「保存冲突」并以服务端为准重新加载。文件不存在时 `etag` 为 `null`，首次写入可省略 `ifMatch`。
 - 存储：`localStorage['reportValidationIgnoreConfig.v1']` 保存运行时扁平 key（仅作镜像，加载/切换批次时写入）；刷新时以配置文件为准，文件不可用时回退 localStorage。
+- **读取宽松 / 写入严格**：读取端 `normalizeIgnoreConfig()` 仍兼容旧版「扁平 key 对象」格式（老版本导出与本地镜像），但**导入接口不再接受**该格式（`importLegacyFail`），避免静默错配 key。
+
+### 6.3 任务说明扩展内容（`descriptionEx`，只读）
+
+```json
+"descriptionEx": {
+  "contentType": "markDownTable",
+  "plainContent": "| 序号 | 检查项 | 说明 |\n| --- | --- | --- |\n| 1 | 数据接入完整性 | 覆盖 `HKTR` / `JSFA` / `CFTC` |"
+}
+```
+
+| 键 | 类型 | 说明 |
+| --- | --- | --- |
+| `contentType` | string | 内容类型（大小写不敏感）。当前支持 `markDownTable`；缺省或未知值按**纯文本**渲染（`descExUnsupported` / `descExBadTable` 提示，不报错、不空白） |
+| `plainContent` | string | 内容正文；`markDownTable` 时为 Markdown 表格文本。最长 65536 字符（`core.js` 的 `DESC_EX_MAX_CHARS`），超出截断并提示 |
+
+**渲染与交互**
+
+- 位置：**「任务说明」卡片末尾**（`#taskNote` 内 `.task-note-text` 之后，独立块 `.task-note-descex`），不是批次详情的一部分。
+- **视觉定位**：只读描述性内容 —— 弱化配色（`--muted` 文字 + 虚线边框，不使用强调色）、无独立工具条，与主题内容拉开层次。
+- 表格能力：
+  - **表头字段筛选**：每个列头右侧一个 `⚲` 图标（与主列表字段表的表头筛选完全一致的视觉与交互），点击弹出浮层自由输入框；列之间为 **AND** 关系，输入即就地重绘（不触发整页 `render()`），已生效的列图标高亮；清空输入即取消该列筛选。
+  - **列排序**：点击列头标签（升序 → 降序 → 原序；数字列按数值，空值恒排在后），⇅/▲/▼ 提示当前列与方向。
+  - **工具显示条件**：数据总页数 `≤ 3`（`core.js` 的 `DESC_EX_TOOLS_MAX_PAGES`）时**不展示**排序与筛选图标，保持纯描述；超过阈值（如样例的 18 行 → 4 页）才出现。
+  - **分页**：每页条数 `config.limits.descExPageSize`（默认 **5**）；页码控件位于**表格右侧**，**默认收起**（仅一个 `▸` 三角，点击展开为 `▾`；尺寸与页码按钮同大；无分页时（仅 1 页）不展示）；展开后的页码列位于**折叠三角正下方**，为**简约竖向列**（上一页 / 窗口化页码 / 下一页 / `页码/总页数`）——上一页/下一页**沿用主列表分页的同一字符 `‹` `›` 与同一尺寸与配色，仅用 CSS 旋转 90° 得到上下方向**；无边框/无底色，用主题色（普通页与箭头 `--muted`、当前页 `--accent` 加粗），**不使用白色高亮**；页码多时按窗口显示（`1 … p-1 p p+1 … n`，`core.js` 的 `pageItems`，最多 7 项含省略号）。
+- Markdown 支持范围（GFM 子集 + 最小内联格式）：表头 + 分隔行（`---` / `:--:` / `--:`，**仅用于识别表格**）、数据行、`\|` 转义、行内 `` `code` `` / `**bold**` / `*italic*`；**不允许 HTML 直通**（全部先转义），链接与图片不解析。
+- 对齐：**单元格与表头统一左对齐**（忽略分隔行中的对齐标记，避免声明与实际渲染不一致）；首/末列有额外左/右侧内边距（默认 14px），避免文字紧贴表格边框。
+- 宽度：**按整表的最大内容宽度定宽**（`core.js` 的 `fitColWidths` + `table-layout: fixed`）——列宽在分页切换/排序/筛选时保持不变，单列限制在 56–360px（超出换行），表格总宽 = 各列之和（不强制占满整行，内容超出可用宽度时由外层横向滚动）；页码控件位于**表格右侧**。
+- 列数不齐的行按表头列数对齐（补空 / 截断）并给出统计提示；缺少 `|` 的行被忽略并计数；**空行视为表格结束**（其后内容不再解析）。
+
+**数据通路与只读约束**
+
+- 索引只写 `metaUrl`（`batch-meta.json` 的相对路径），**内容不进索引**；查看器在渲染「任务说明」时用 `fetchJSONCached` 懒加载（ETag + IndexedDB 缓存，重复打开不重复下载），失败时提示 `descExLoadFail`。
+- **只读**：`POST /api/batch` 的字段白名单（`deleted` / `favorite` / `batchName` / `description` / `tags`）不含 `descriptionEx`，且「编辑批次描述」只读写 `description`；该内容只能由生成器或人工维护 `batch-meta.json`。
+- 批次**描述搜索**（批次面板的「描述」筛选）只匹配 `description`，不解析 `descriptionEx`。
+- 开关：`config.features.descriptionEx`（**所有配置文件默认 `true`**）；关闭时该块完全不渲染（与未提供 `descriptionEx` 时完全一致）。
+
+**扩展新类型（contentType）**
+
+1. `public/core.js` 增加解析纯函数（如 `parseMarkdownTable` 风格，返回渲染所需数据 + `issues`），并补单测（`test/desc-ex.test.js`）；
+2. `public/app.js` 的 `DESC_EX_RENDERERS` 注册渲染器（`parse(raw)` + `render(ctx)`）；
+3. 需要时补 i18n 键（3 种语言 1:1）与文档 / 样例数据。
+
+> Java 侧模型：`com.otcc.viewer.model.DescriptionEx`（`contentType` / `plainContent`，`@JsonInclude(NON_NULL)`）；`ValidationConfig.Features.descriptionEx` / `Limits.descExPageSize` 与前端同名同默认值。

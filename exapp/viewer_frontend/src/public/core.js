@@ -70,6 +70,9 @@ export function sortValue(r, key) {
     case 'channel': return r.channel;
     case 'source': return r.source;
     case 'remarks': return r.remarks;
+    // 「未比较 Item」表列（itemId / reason）：不补齐会静默无排序效果。
+    case 'itemId': return r.itemId || r.tradeId;
+    case 'reason': return r.reason;
     default: return '';
   }
 }
@@ -124,13 +127,20 @@ export function flatFields(item) {
 }
 
 /* ---------- 忽略配置：按平台分组 -> 扁平 key（product 已移除，第 4 槽位改为来源渠道 source） ---------- */
+// 警告作用域归一化：写文件（groupedToFlat）与算运行期 key（msgIgnoreKey）必须用**同一规则**，
+// 否则「导出 → 重新加载」后 key 会变（例如数据里缺 scope 的警告会被猜成 field/channel），
+// 导致忽略项静默失效。scope 缺失时按「有 field = field，否则 channel」推断。
+export function warnScope(w) {
+  return (w && w.scope) || (w && w.field ? 'field' : 'channel');
+}
+
 export function groupedToFlat(grouped) {
   const flat = {};
   Object.keys(grouped || {}).forEach(function (platform) {
     const g = grouped[platform];
     if (!g || typeof g !== 'object') return;
     (g.warnings || []).forEach(function (w) {
-      const key = JSON.stringify(['warn', platform, w.channel || '', w.source || '', w.scope || (w.field ? 'field' : 'channel'), w.type || '', w.level || '', w.field || '']);
+      const key = JSON.stringify(['warn', platform, w.channel || '', w.source || '', warnScope(w), w.type || '', w.level || '', w.field || '']);
       flat[key] = true;
     });
     (g.uncomparedXpaths || []).forEach(function (u) {
@@ -146,6 +156,9 @@ export function groupedToFlat(grouped) {
   return flat;
 }
 
+// 宽松读取：配置文件可能是（a）当前分组格式，（b）旧版本写下的「扁平 key 对象」（老版本导出/本地镜像）。
+// 二者均接受以保证升级后旧数据仍可用；但**导入接口不再接受扁平格式**（parseIgnoreImport 判为 legacy），
+// 即「读取宽松、写入/导入严格」，避免静默错配 key。
 export function normalizeIgnoreConfig(cfg) {
   if (cfg && typeof cfg === 'object' && !Array.isArray(cfg)) {
     const keys = Object.keys(cfg);
@@ -228,7 +241,8 @@ export function applyIgnoreImport(currentFlat, parsed) {
 }
 
 export function msgIgnoreKey(tab, m) {
-  if (tab === 'warnings') return JSON.stringify(['warn', m.platform || '', m.channel || '', m.source || '', m.scope || '', m.type, m.level, m.field || '']);
+  // 警告作用域用 warnScope 归一化，与 groupedToFlat（配置文件读取）保持同一条规则。
+  if (tab === 'warnings') return JSON.stringify(['warn', m.platform || '', m.channel || '', m.source || '', warnScope(m), m.type, m.level, m.field || '']);
   if (tab === 'uncompared') {
     const isCsv = m.type === 2;
     // channel / platform / source 均归一化为字符串：全局未比较条目的 channel / source 为 null，
@@ -323,4 +337,240 @@ export function globalSearchPure(items, q, limit) {
     });
   });
   return results.slice(0, limit || 200);
+}
+
+/* ============================================================
+ * 任务说明扩展内容（batch-meta.json 的 descriptionEx）
+ * 契约见 docs/DATA_SCHEMA.md 6.3：
+ *   { "contentType": "markDownTable", "plainContent": "| a | b |\n| --- | --- |\n| 1 | 2 |" }
+ * 本段只提供「纯函数」：类型归一化 / Markdown 表格解析 / 最小内联格式 / 筛选 / 排序 / 分页。
+ * 渲染器注册表在 public/app.js（DESC_EX_RENDERERS）：新增 contentType 时
+ * 只需在此加解析纯函数（+单测）并在注册表登记渲染器，其它逻辑无需改动。
+ * ============================================================ */
+
+// 单条 descriptionEx 允许渲染的最大字符数（超出截断并提示，避免超长内容拖慢渲染）。
+export const DESC_EX_MAX_CHARS = 65536;
+
+// 默认（未声明）内容类型：按纯文本渲染。
+export const DESC_EX_DEFAULT_TYPE = 'text';
+
+// 最小内联格式支持：`code` / **bold** / *italic*（链接、图片、HTML 一律不解析）。
+export function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+// 归一化 descriptionEx：非对象 / plainContent 为空 -> null（视为「无扩展内容」）。
+// contentType 大小写不敏感；缺省视为 text（纯文本回退，永不报错、永不空白）。
+export function normalizeDescriptionEx(ex) {
+  if (!ex || typeof ex !== 'object' || Array.isArray(ex)) return null;
+  const raw = typeof ex.plainContent === 'string' ? ex.plainContent : '';
+  if (!raw.trim()) return null;
+  const type = typeof ex.contentType === 'string' ? ex.contentType.trim().toLowerCase() : '';
+  let content = raw;
+  let truncated = false;
+  if (content.length > DESC_EX_MAX_CHARS) {
+    content = content.slice(0, DESC_EX_MAX_CHARS);
+    truncated = true;
+  }
+  return { contentType: type || DESC_EX_DEFAULT_TYPE, plainContent: content, truncated: truncated };
+}
+
+// 最小内联格式 -> HTML（先整体转义，再做白名单替换，不允许任何 HTML 直通）。
+export function inlineMarkdown(text) {
+  let s = escapeHtml(text);
+  s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  return s;
+}
+
+// 去掉最小内联标记，得到可见文本（用于表格搜索/排序，避免匹配到 ` 与 * 本身）。
+export function inlinePlainText(text) {
+  return String(text == null ? '' : text).replace(/`/g, '').replace(/\*\*/g, '').replace(/\*/g, '');
+}
+
+// 拆一行表格：支持 `\|` 转义的竖线；首尾无转义的 `|` 视为边框被去掉。
+function stripTrailingPipe(s) {
+  if (!s.endsWith('|')) return s;
+  let bs = 0;
+  for (let k = s.length - 2; k >= 0 && s[k] === '\\'; k--) bs++;
+  return bs % 2 === 1 ? s : s.slice(0, -1);
+}
+
+export function splitTableRow(line) {
+  let s = String(line == null ? '' : line).trim();
+  if (s.startsWith('|')) s = s.slice(1);
+  s = stripTrailingPipe(s);
+  const cells = [];
+  let cur = '';
+  for (let k = 0; k < s.length; k++) {
+    const ch = s[k];
+    if (ch === '\\' && s[k + 1] === '|') { cur += '|'; k++; continue; }
+    if (ch === '|') { cells.push(cur); cur = ''; continue; }
+    cur += ch;
+  }
+  cells.push(cur);
+  return cells.map(function (c) { return c.trim(); });
+}
+
+// 分隔行（| --- | :--- | ---: | ...）判定：仅用于识别「这是表格」。
+// 表格渲染**统一左对齐**（含表头），因此不解析对齐标记（避免声明与实际渲染不一致）。
+function isAlignRow(line) {
+  const cells = splitTableRow(line);
+  if (!cells.length) return false;
+  return cells.every(function (c) { return /^:?-{1,}:?$/.test(c); });
+}
+
+function cell(raw) {
+  return { raw: raw, text: inlinePlainText(raw) };
+}
+
+/**
+ * 解析 Markdown 表格（GFM 子集：表头 + 分隔行 + 数据行；单元格统一左对齐）。
+ * 返回 { header: [cell], rows: [[cell]], issues: [{kind, count}] }
+ * issues.kind: noheader（无法识别为表格）/ ragged（行列数与表头不一致，已对齐）/ skipped（含 `|` 之外的行被忽略）
+ */
+export function parseMarkdownTable(md) {
+  const issues = [];
+  const lines = String(md == null ? '' : md).replace(/\r\n?/g, '\n').split('\n');
+  let i = 0;
+  while (i < lines.length && !lines[i].trim()) i++;
+  if (i >= lines.length || lines[i].indexOf('|') === -1) {
+    return { header: [], rows: [], issues: [{ kind: 'noheader', count: 0 }] };
+  }
+  const headerLine = lines[i];
+  let alignLine = '';
+  let j = i + 1;
+  while (j < lines.length && !lines[j].trim()) j++;
+  if (j < lines.length) alignLine = lines[j];
+  if (!alignLine || !isAlignRow(alignLine)) {
+    return { header: [], rows: [], issues: [{ kind: 'noheader', count: 0 }] };
+  }
+
+  const header = splitTableRow(headerLine).map(cell);
+  const rows = [];
+  let ragged = 0;
+  let skipped = 0;
+  for (let k = j + 1; k < lines.length; k++) {
+    const line = lines[k];
+    if (!line.trim()) break;                       // 空行视为表格结束
+    if (line.indexOf('|') === -1) { skipped++; continue; }
+    const cells = splitTableRow(line);
+    if (cells.length !== header.length) ragged++;
+    const row = [];
+    for (let c = 0; c < header.length; c++) row.push(cell(cells[c] == null ? '' : cells[c]));
+    rows.push(row);
+  }
+  if (ragged) issues.push({ kind: 'ragged', count: ragged });
+  if (skipped) issues.push({ kind: 'skipped', count: skipped });
+  return { header: header, rows: rows, issues: issues };
+}
+
+// 表格筛选（表头字段搜索）：`filters[k]` 为该列的自由输入，列之间为 AND 关系；
+// 大小写不敏感，空串/未提供表示不限制该列。全部为空时返回原数组。
+export function filterTableRows(rows, filters) {
+  const list = Array.isArray(filters) ? filters.map(function (f) { return String(f == null ? '' : f).trim().toLowerCase(); }) : [];
+  const active = list.some(function (q) { return q !== ''; });
+  if (!active) return rows;
+  return rows.filter(function (r) {
+    for (let k = 0; k < list.length; k++) {
+      const q = list[k];
+      if (!q) continue;
+      const cell = r[k];
+      if (!cell || String(cell.text || '').toLowerCase().indexOf(q) === -1) return false;
+    }
+    return true;
+  });
+}
+
+// 表格排序：数字列按数值，其它按本地化字符串；空值恒排在后。
+// col < 0 表示「原序」（不排序）。
+export function sortTableRows(rows, col, dir) {
+  if (!(col >= 0)) return rows;
+  const d = dir === -1 ? -1 : 1;
+  const num = function (c) {
+    const s = String(c.text || '').replace(/,/g, '');
+    return s !== '' && !isNaN(Number(s)) ? Number(s) : null;
+  };
+  const idx = col;
+  const out = rows.slice();
+  out.sort(function (ra, rb) {
+    const a = ra[idx] || { text: '' };
+    const b = rb[idx] || { text: '' };
+    const ea = String(a.text || '') === '';
+    const eb = String(b.text || '') === '';
+    if (ea && eb) return 0;
+    if (ea) return 1;                              // 空值恒排在后（不随方向翻转）
+    if (eb) return -1;
+    const na = num(a), nb = num(b);
+    if (na != null && nb != null) return (na - nb) * d;
+    return String(a.text).localeCompare(String(b.text)) * d;
+  });
+  return out;
+}
+
+// 分页：页码从 1 开始，越界自动收敛到合法范围。
+export function paginateRows(rows, page, size) {
+  const per = Math.max(1, Math.floor(size) || 1);
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / per));
+  const p = Math.min(Math.max(1, Math.floor(page) || 1), pages);
+  const start = (p - 1) * per;
+  return { page: p, pages: pages, slice: rows.slice(start, start + per), total: total };
+}
+
+// 任务说明扩展内容：总页数 ≤ 该阈值时不展示表格工具（表头排序/字段筛选），保持纯描述。
+export const DESC_EX_TOOLS_MAX_PAGES = 3;
+
+// 列宽（px）拟合：按各列「最大内容宽度 + 左右内边距」定宽，并限制在 [min, max] 区间。
+// 配合 table-layout: fixed 使用，保证分页切换时表格宽度固定（不因当前页内容而变化）。
+export function fitColWidths(textWidths, opts) {
+  const o = opts || {};
+  const padFirst = typeof o.padFirst === 'number' ? o.padFirst : 20;
+  const padMid = typeof o.padMid === 'number' ? o.padMid : 20;
+  const padLast = typeof o.padLast === 'number' ? o.padLast : 20;
+  const min = typeof o.min === 'number' ? o.min : 56;
+  const max = (typeof o.max === 'number' && o.max > 0) ? o.max : 360;
+  const list = Array.isArray(textWidths) ? textWidths : [];
+  const last = list.length - 1;
+  return list.map(function (w, i) {
+    const pad = i === 0 ? padFirst : (i === last ? padLast : padMid);
+    const raw = Math.ceil((typeof w === 'number' && isFinite(w) ? w : 0) + pad);
+    return Math.min(max, Math.max(min, raw));
+  });
+}
+
+// 竖向页码控件最多展示的页码项数（含首/末页与省略号），超出则用 null 表示省略号。
+export const DESC_EX_PAGER_MAX_ITEMS = 7;
+
+// 页码序列（用于竖向页码控件）：页码少时全列，多时窗口化 —— [1, …, p-1, p, p+1, …, n]，null 为省略号。
+// 预留「首页 + 末页 + 2 个省略号」共 4 个位置，中间的连续页码窗口宽度为 limit - 4。
+export function pageItems(page, pages, max) {
+  const n = Math.max(1, Math.floor(pages) || 1);
+  const cur = Math.min(Math.max(1, Math.floor(page) || 1), n);
+  const limit = (typeof max === 'number' && max > 0) ? Math.floor(max) : DESC_EX_PAGER_MAX_ITEMS;
+  if (n <= limit) {
+    const all = [];
+    for (let i = 1; i <= n; i++) all.push(i);
+    return all;
+  }
+  const span = Math.max(1, limit - 4);
+  const start = Math.min(Math.max(2, cur - Math.floor(span / 2)), n - 1 - span + 1);
+  const end = start + span - 1;
+  const out = [1];
+  if (start > 2) out.push(null);
+  for (let i = start; i <= end; i++) out.push(i);
+  if (end < n - 1) out.push(null);
+  out.push(n);
+  return out;
+}
+
+// 是否展示表格工具（列排序 + 表头字段筛选）：仅当「总页数」超过阈值时展示。
+export function descExToolsVisible(rowCount, pageSize, maxPages) {
+  const per = Math.max(1, Math.floor(pageSize) || 1);
+  const rows = Math.max(0, Math.floor(rowCount) || 0);
+  const limit = (typeof maxPages === 'number' && maxPages > 0) ? Math.floor(maxPages) : DESC_EX_TOOLS_MAX_PAGES;
+  return Math.ceil(rows / per) > limit;
 }

@@ -21,6 +21,7 @@
     "dev": "node server.js",
     "scan": "node lib/scanner.js",
     "generate": "node tools/generate-sample-data.js",
+    "verify:multi": "node tools/verify-multi-mode.mjs",
     "test": "node --test"
   },
   "license": "MIT"

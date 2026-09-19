@@ -44,9 +44,10 @@ gradle bootRun --args="--level basic"
 
 | 选项 | 说明 | 默认值 |
 |------|------|--------|
-| `-j, --job <name>` | 要运行的 Job：`sampleDataJob` / `helloWorldJob` / `styleDataJob` | `sampleDataJob` |
+| `-j, --job <name>` | 要运行的 Job：`sampleDataJob` / `helloWorldJob` / `styleDataJob` / `validationJsonJob` | `sampleDataJob` |
 | `-l, --level <level>` | 样例数据级别：`minimal` / `basic`（`sampleDataJob` 使用） | `minimal` |
 | `-o, --output-dir <dir>` | 输出目录 | `generated` |
+| `-m, --mode <single\|multi>` | 数据输出模式（`validationJsonJob` 使用：单文件 / 清单 + 每 item 一个文件） | `single` |
 | `-r, --run` / `--no-run` | 是否启动 Job（`--no-run` 仅校验参数） | 启动 |
 | `-h, --help` | 显示帮助 | - |
 | `-V, --version` | 显示版本 | - |
@@ -94,8 +95,8 @@ gradle bootRun --args="generate --style minimal --date-from 2026-08-18 --date-to
 
 文件命名规则：
 
-- 未指定日期：`deepseek-validator-data-<style>.json`（basic 另生成 `batch-meta-<style>.json`）
-- 指定日期 / 日期范围：`deepseek-validator-data-<style>-<date>.json`
+- 未指定日期：`report-validation-data-<style>.json`（basic 另生成 `batch-meta-<style>.json`）
+- 指定日期 / 日期范围：`report-validation-data-<style>-<date>.json`（basic 同时生成 `batch-meta-<style>-<date>.json`）
 
 ### 互斥与组合参数
 
@@ -103,6 +104,7 @@ gradle bootRun --args="generate --style minimal --date-from 2026-08-18 --date-to
 
 - **互斥参数**（`exclusive = true`）：`--report-date` 与 `--all-dates` 只能二选一。
 - **组合参数**（`exclusive = false` + `required = true`）：`--date-from` 与 `--date-to` 必须同时出现。
+- **日期选择与日期范围互斥**：`--report-date` / `--all-dates` 不能与 `--date-from` / `--date-to` 同时使用（命令层额外校验）。
 
 ```bash
 # 错误：互斥参数不能同时指定
@@ -110,22 +112,31 @@ gradle bootRun --args="generate --report-date 2026-08-20 --all-dates"
 
 # 错误：组合参数必须成对出现
 gradle bootRun --args="generate --date-from 2026-08-18"
+
+# 错误：日期选择与日期范围不能同时使用
+gradle bootRun --args="generate --report-date 2026-08-20 --date-from 2026-08-18 --date-to 2026-08-19"
 ```
 
 ## Job 说明
 
-项目包含三个 Job，可通过 `--job=<name>` 选择：
+项目包含四个 Job，可通过 `--job=<name>` 选择：
 
 | Job | 说明 | 关键参数 |
 |-----|------|----------|
 | `sampleDataJob` | 默认 Job，按级别生成样例数据（原有功能） | `level`、`outputDir` |
 | `helloWorldJob` | Hello World 示例 Job | - |
 | `styleDataJob` | 按风格生成数据，支持报告日期（供 `generate` 子命令调用） | `style`、`reportDate`、`outputDir` |
+| `validationJsonJob` | 生成查看器所需的**全部** JSON（数据集 / 配置 / 忽略配置 / 批次索引 + 一个批次目录） | `mode`（`single` / `multi`）、`outputDir` |
 
-`sampleDataJob` 生成文件（原有文件命名不变）：
+`sampleDataJob` 生成文件：
 
-- `minimal`：`deepseek-validator-data-me.json`
-- `basic`：`deepseek-validator-data-basic.json`、`batch-meta-basic.json`
+- `minimal`：`report-validation-data-minimal.json`
+- `basic`：`report-validation-data-basic.json`、`batch-meta-basic.json`
+
+`validationJsonJob` 在输出目录生成（`-m multi` 时数据集拆为清单 + 每 item 一个文件；主数据、默认模板数据与批次数据文件均为清单）：
+
+- `report-validation-data.json`、`report-validation-data-default.json`、`config.json`、`ignore-config-by-platform.json`、`batches-index.json`
+- `batches/2026-08-16/batch-20260816-0400/report-validation-data.json` 与 `.../batch-meta.json`
 
 相关代码：
 
@@ -194,3 +205,16 @@ src/main/resources/
 ├── application*.properties   # 应用与 profile 配置
 └── logback-spring.xml        # 日志配置
 ```
+
+生成产物默认输出到仓库根的 `generated/`（`-o/--output-dir` 可改）：
+
+```
+generated/
+├── report-validation-data.json / -default.json / -minimal.json / -basic.json
+├── config.json                    # 查看器统一配置
+├── ignore-config-by-platform.json  # 忽略配置（默认为空 {}）
+├── batches-index.json             # 批次索引
+└── batches/<date>/<batch>/        # 批次目录（batch-meta.json + 数据文件）
+```
+
+> `generated/` 已在 `.gitignore` 中忽略；需要作为查看器样例数据时，把上述文件拷贝到 `exapp/viewer_frontend/src/public/`。

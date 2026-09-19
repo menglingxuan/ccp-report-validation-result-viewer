@@ -34,7 +34,7 @@ REPORT_VIEWER_CONFIG=prod node server.js
 | `tenants` | 对象 | 租户配置（固定端口 / 数据根），见 §3.1 |
 | `urls` | 对象 | 数据 / 忽略规则 / 批次索引 / 扫描接口的路径 |
 | `ui` | 对象 | 界面默认项 |
-| `features` | 对象 | 19 个功能开关 |
+| `features` | 对象 | 21 个功能开关 |
 | `limits` | 对象 | 分页与数量上限 |
 | `batches` | 对象 | 最近批次面板的行为配置 |
 | `columns` | 对象 | 默认列可见性 |
@@ -60,7 +60,7 @@ REPORT_VIEWER_CONFIG=prod node server.js
 
 > 环境变量覆盖（优先级：命令行 `--port`/`--host` > 环境变量 > 租户固定端口 > `config.json` > 内置默认值）：
 > `REPORT_VIEWER_HOST` / `REPORT_VIEWER_PORT` / `REPORT_VIEWER_WEBROOT` /
-> `REPORT_VIEWER_BASEDIR` / `REPORT_VIEWER_OUT` / `REPORT_VIEWER_ENV` / `REPORT_VIEWER_IGNORE`（逗号分隔，追加）/
+> `REPORT_VIEWER_BASEDIR` / `REPORT_VIEWER_OUT` / `REPORT_VIEWER_ENV` / `REPORT_VIEWER_IGNORE`（逗号分隔，**覆盖** `scan.ignore`）/
 > `REPORT_VIEWER_TENANT`（租户 id，非空时开启租户模式）/ `REPORT_VIEWER_DATA_ROOT`（数据根）。
 >
 > 也可用命令行参数覆盖：`node server.js --port 9000 --host 0.0.0.0 --tenant alice --data-root C:/data/alice`；
@@ -123,7 +123,7 @@ REPORT_VIEWER_CONFIG=prod node server.js
 | `initData` | `report-validation-data-init.json` | 空占位数据文件；`defaultDataMode=init` 时加载 |
 | `defaultDataMode` | `default` | 默认数据源：`init` / `default` / 某个已扫描批次名（其他值等同 `default`） |
 | `ignore` | `ignore-config-by-platform.json` | 忽略配置，相对 web 根目录；同时作为 `POST /api/ignore` 的**默认回写目标**（租户模式下读取地址重写为 `/tenant/<该路径>`，写入租户数据根内的同路径） |
-| `batches` | `batches-index.json` | 批次索引，相对 web 根目录 |
+| `batches` | `batches-index.json` | 批次索引，相对 web 根目录（租户模式下读取地址重写为 `/tenant/<该路径>`，写入租户数据根内的索引） |
 | `help` | `batch-help.json` | docker 帮助文档内容文件，相对 web 根目录 |
 | `scan` | `/scan` | 批次自动扫描接口（相对站点根） |
 
@@ -139,7 +139,7 @@ REPORT_VIEWER_CONFIG=prod node server.js
 | `batchDockSide` | `left` / `right` | `left` |
 | `progressBarStyle` | `status` / `uniform` | `status` |
 
-## 6. `features`（20 项，布尔）
+## 6. `features`（21 项，布尔）
 
 `uncomparedXpath` / `uncomparedCsv` / `uncomparedItems` / `logs` /
 `conversionRule` / `validationRule` / `excelMapping` / `sourceFilter` / `modalRules` /
@@ -147,7 +147,9 @@ REPORT_VIEWER_CONFIG=prod node server.js
 `healthOverview` / `globalSearch` / `keyboardShortcuts` / `modalPrints` / `recentBatches` /
 `batchHelp`（docker 帮助图标入口）/ `revealPath`（批次详情「批次目录」双击在系统文件管理器中打开；
 默认仅在 `runType` 为 `dev` / `test` 时开启，生产环境需显式设为 `true`）；
-关闭时批次目录双击不生效，悬停会提示「当前环境未开启『打开目录』功能」
+关闭时批次目录双击不生效，悬停会提示「当前环境未开启『打开目录』功能」/
+`descriptionEx`（是否在「任务说明」末尾渲染 `batch-meta.json` 的 `descriptionEx` 扩展内容，只读、懒加载；
+**所有配置文件均显式默认 `true`**，详见 [`DATA_SCHEMA.md` §6.3](DATA_SCHEMA.md)）
 
 ## 7. `limits`
 
@@ -158,6 +160,7 @@ REPORT_VIEWER_CONFIG=prod node server.js
 | `sidebarPageSize` | `8` |
 | `msgPageSize` | `20` |
 | `globalSearchLimit` | `200` |
+| `descExPageSize` | `5`（「任务说明」扩展内容表格每页条数） |
 
 ## 8. `batches`
 
@@ -171,7 +174,7 @@ REPORT_VIEWER_CONFIG=prod node server.js
 
 ## 9. `columns`
 
-字段比较表列配置，包含 6 个子项：
+字段比较表列配置，包含 6 个子项（Java 样例生成器只写 `default`）：
 
 - `default`：列名 → 布尔（`true` 显示 / `false` 隐藏），即各列的默认可见性。
 - `labels`：列显示名覆盖（键为列名，值为字面量或 `{语言: 显示名}` 多语对象），未配置时回退到 i18n 默认标签。

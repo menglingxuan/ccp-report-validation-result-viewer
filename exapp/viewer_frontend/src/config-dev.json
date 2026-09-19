@@ -52,7 +52,9 @@
     "keyboardShortcuts": true,
     "modalPrints": true,
     "recentBatches": true,
-    "batchHelp": true
+    "batchHelp": true,
+    "revealPath": true,
+    "descriptionEx": true
   },
   "limits": {
     "pageSize": 20,
@@ -63,7 +65,8 @@
     ],
     "sidebarPageSize": 8,
     "msgPageSize": 20,
-    "globalSearchLimit": 200
+    "globalSearchLimit": 200,
+    "descExPageSize": 5
   },
   "batches": {
     "recentCount": 5,

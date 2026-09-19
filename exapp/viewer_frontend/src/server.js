@@ -125,6 +125,31 @@ function json(res, status, obj) {
 
 const COMPRESSIBLE = { '.html': 1, '.css': 1, '.js': 1, '.mjs': 1, '.json': 1, '.svg': 1, '.txt': 1 };
 
+// 强 ETag（内容哈希，与静态文件服务同格式）——写回接口用它做乐观并发（If-Match）。
+function etagOf(buf) {
+  return '"' + crypto.createHash('sha256').update(buf).digest('hex').slice(0, 16) + '"';
+}
+function etagOfFile(file) {
+  try { return etagOf(fs.readFileSync(file)); } catch (e) { return null; }
+}
+
+// 写操作通用防护：
+//   ① 仅允许同源：浏览器带 Origin 时其 host 必须与请求 Host 一致（无 Origin 的 curl/脚本不受限）；
+//   ② 限制请求体大小：按 Content-Length 预判，避免超大写回体拖垮服务。
+const MAX_API_BODY = 256 * 1024;
+function guardMutation(req, res) {
+  const origin = req.headers && req.headers.origin;
+  if (origin) {
+    let host = '';
+    try { host = new URL(origin).host.toLowerCase(); } catch (e) { host = ''; }
+    const self = String((req.headers && req.headers.host) || '').toLowerCase();
+    if (!host || host !== self) { json(res, 403, { ok: false, error: '跨源请求被拒绝' }); return false; }
+  }
+  const len = parseInt((req.headers && req.headers['content-length']) || '0', 10) || 0;
+  if (len > MAX_API_BODY) { json(res, 413, { ok: false, error: '请求体过大（上限 ' + MAX_API_BODY + ' 字节）' }); return false; }
+  return true;
+}
+
 function serveFile(req, res, absPath) {
   fs.readFile(absPath, function (err, data) {
     if (err) {
@@ -134,7 +159,7 @@ function serveFile(req, res, absPath) {
     }
     const ext = path.extname(absPath).toLowerCase();
     // 强 ETag（内容哈希）：不同内容绝不会共享缓存；所有文件一律 no-cache 强制重校验，保证数据绝不陈旧。
-    const etag = '"' + crypto.createHash('sha256').update(data).digest('hex').slice(0, 16) + '"';
+    const etag = etagOf(data);
     const inm = req.headers['if-none-match'];
     if (inm && inm === etag) {
       res.writeHead(304, { 'ETag': etag, 'Cache-Control': 'no-cache' });
@@ -245,7 +270,8 @@ function writeFavorites(tree) {
   writeFileAtomic(FAVORITES_FILE, JSON.stringify(tree, null, 2));
 }
 function handleFavoritesGet(res) {
-  json(res, 200, { ok: true, favorites: readFavorites() });
+  // 带上当前 ETag，供客户端写入时做 If-Match 乐观并发。
+  json(res, 200, { ok: true, favorites: readFavorites(), etag: etagOfFile(FAVORITES_FILE) });
 }
 
 // 忽略配置默认相对路径（config.json 的 urls.ignore）。
@@ -302,8 +328,14 @@ function handleIgnorePost(req, res) {
       const rel = (typeof data.url === 'string' && data.url) ? data.url : defaultIgnoreUrl();
       const abs = resolveWritableConfigPath(rel, req.headers && req.headers.host);
       if (!abs) { json(res, 403, { ok: false, error: '不允许写入该路径：' + rel }); return; }
+      // 乐观并发：客户端带上它实际加载时的 ETag，与服务端当前文件不一致则拒绝（避免多会话互相覆盖）。
+      const want = (typeof data.ifMatch === 'string' && data.ifMatch) || String((req.headers && req.headers['if-match']) || '');
+      if (want && want !== '*') {
+        const cur = etagOfFile(abs);
+        if (!cur || want !== cur) { json(res, 409, { ok: false, error: '配置已被其他会话修改', etag: cur }); return; }
+      }
       writeFileAtomic(abs, JSON.stringify(cfg, null, 2));
-      json(res, 200, { ok: true, url: abs });
+      json(res, 200, { ok: true, url: abs, etag: etagOfFile(abs) });
     } catch (e) {
       json(res, 500, { ok: false, error: '保存失败：' + (e && e.message ? e.message : e) });
     }
@@ -320,8 +352,14 @@ function handleFavoritesPost(req, res) {
         json(res, 400, { ok: false, error: 'favorites 必须是对象' });
         return;
       }
+      // 乐观并发：与服务端当前文件不一致则拒绝（客户端先用 GET /api/favorites 拿 etag）。
+      const want = (typeof data.ifMatch === 'string' && data.ifMatch) || String((req.headers && req.headers['if-match']) || '');
+      if (want && want !== '*') {
+        const cur = etagOfFile(FAVORITES_FILE);
+        if (!cur || want !== cur) { json(res, 409, { ok: false, error: '收藏夹已被其他会话修改', etag: cur }); return; }
+      }
       writeFavorites(tree);
-      json(res, 200, { ok: true });
+      json(res, 200, { ok: true, etag: etagOfFile(FAVORITES_FILE) });
     } catch (e) {
       json(res, 500, { ok: false, error: '保存失败：' + (e && e.message ? e.message : e) });
     }
@@ -506,6 +544,11 @@ const server = http.createServer(function (req, res) {
     });
     res.end();
     return;
+  }
+
+  // 写操作防护（同源 + 体积上限）：/scan 与全部 /api/* POST 统一拦截。
+  if (req.method === 'POST' && (url === '/scan' || url.startsWith('/api/'))) {
+    if (!guardMutation(req, res)) return;
   }
 
   if (url === '/scan') {

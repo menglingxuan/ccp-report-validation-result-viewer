@@ -184,6 +184,74 @@ test('applyIgnoreImport：只覆盖文件包含的部分', () => {
   assert.deepEqual(Object.keys(n3), [xpathKey], '只保留未涉及的 XPath 部分');
 });
 
+test('警告作用域归一化：scope 缺失时读写两条路径规则一致（可往返）', () => {
+  const key = app.msgIgnoreKey;
+  // 数据里缺 scope 的警告：运行期 key 按「有 field = field，否则 channel」归一化
+  const noScopeField = { channel: 'HKTR', source: 'S', type: 't', level: 'WARN', field: 'notional', platform: 'P' };
+  const noScopeChannel = { channel: 'HKTR', source: 'S', type: 't', level: 'WARN', field: '', platform: 'P' };
+  assert.equal(key('warnings', noScopeField), JSON.stringify(['warn', 'P', 'HKTR', 'S', 'field', 't', 'WARN', 'notional']));
+  assert.equal(key('warnings', noScopeChannel), JSON.stringify(['warn', 'P', 'HKTR', 'S', 'channel', 't', 'WARN', '']));
+  // 往返：导出 -> 重新加载后 key 不变，忽略项不会静默失效
+  const flat = { [key('warnings', noScopeField)]: true, [key('warnings', noScopeChannel)]: true };
+  const round = app.groupedToFlat(app.flatToGrouped(flat));
+  assert.deepEqual(Object.keys(round).sort(), Object.keys(flat).sort(), '缺 scope 的警告也应能往返命中');
+});
+
+test('sortValue：未比较 Item 表列（itemId / reason）可排序', () => {
+  assert.equal(app.sortValue({ itemId: 'T-1' }, 'itemId'), 'T-1');
+  assert.equal(app.sortValue({ tradeId: 'T-2' }, 'itemId'), 'T-2', '回退到 tradeId');
+  assert.equal(app.sortValue({ reason: 'raison' }, 'reason'), 'raison');
+});
+
+test('parseHash：解析/解码/空段容错', () => {
+  assert.deepEqual(app.parseHash('#item=T-1&tab=warnings&ch=HKTR'), { item: 'T-1', tab: 'warnings', ch: 'HKTR' });
+  assert.deepEqual(app.parseHash(''), {});
+  assert.deepEqual(app.parseHash('#a=1&&b='), { a: '1', b: '' });
+  assert.deepEqual(app.parseHash('#flag'), { flag: '' }, '无 = 的段视为空值');
+  assert.deepEqual(app.parseHash('#q=%E4%B8%AD%E6%96%87'), { q: '中文' }, '应做 URL 解码');
+  assert.deepEqual(app.parseHash('#bad=%E4%B8'), { bad: '%E4%B8' }, '解码失败时保留原值');
+});
+
+test('深链接往返：stateToHash() -> parseHash() 保持关键字段', () => {
+  // 字段比较tab：result 过滤器会写入 hash
+  T.setState({
+    itemId: 'T-9', channel: 'JSFA', tab: 'fields', search: 'q 1', rowId: 7, page: 3,
+    sort: { key: 'field', dir: -1 },
+    columns: {},
+    colFilter: { result: 'FAILED' },
+    itemSearch: 'a b', itemFilter: 'failed', itemPlatforms: ['A'], itemProducts: ['IR'],
+    itemTradeIds: ['T-1'], reportDateFilter: '2024-08-14', sidebarPage: 2,
+  });
+  const p = app.parseHash(app.stateToHash());
+  assert.equal(p.item, 'T-9');
+  assert.equal(p.ch, 'JSFA');
+  assert.equal(p.tab, undefined, 'fields 为默认 tab，不写入 hash');
+  assert.equal(p.q, 'q 1');
+  assert.equal(p.fr, '7');
+  assert.equal(p.page, '3');
+  assert.equal(p.sort, 'field:d', '降序应带 :d');
+  assert.equal(p.result, 'FAILED');
+  assert.equal(p.is, 'a b');
+  assert.equal(p.st, 'failed');
+  assert.equal(p.pf, 'A');
+  assert.equal(p.pd, 'IR');
+  assert.equal(p.td, 'T-1');
+  assert.equal(p.dt, '2024-08-14');
+  assert.equal(p.sp, '2');
+
+  // 非字段tab：tab 写入 hash，且不再写 result（result 仅属于字段表）
+  T.setState({
+    itemId: 'T-9', channel: 'ALL', tab: 'uncompared', search: '', rowId: -1, page: 1,
+    sort: { key: '', dir: 1 }, columns: {}, colFilter: { result: 'FAILED' },
+    itemSearch: '', itemFilter: 'ALL', itemPlatforms: [], itemProducts: [], itemTradeIds: [],
+    reportDateFilter: '', sidebarPage: 1,
+  });
+  const p2 = app.parseHash(app.stateToHash());
+  assert.equal(p2.tab, 'uncompared');
+  assert.equal(p2.result, undefined);
+  assert.equal(p2.ch, undefined, 'channel=ALL 不写入 hash');
+});
+
 test('filteredFields 计数（ALL=78，HKTR=26，FAILED 过滤）', () => {
   T.setState(fieldsState());
   assert.equal(app.filteredFields(item).length, 78, 'ALL 渠道应为 78 个字段');

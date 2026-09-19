@@ -81,8 +81,10 @@ public class ValidationConfig {
         private Boolean modalPrints;
         private Boolean recentBatches;
         private Boolean batchHelp;
+        private Boolean revealPath;
+        /** 是否在「任务说明」末尾渲染 batch-meta.json 的 descriptionEx 扩展内容（只读）。 */
+        private Boolean descriptionEx;
     }
-
 
     @Data
     @Builder
@@ -94,6 +96,8 @@ public class ValidationConfig {
         private Integer sidebarPageSize;
         private Integer msgPageSize;
         private Integer globalSearchLimit;
+        /** 「任务说明」扩展内容（descriptionEx）表格每页条数。 */
+        private Integer descExPageSize;
     }
 
 

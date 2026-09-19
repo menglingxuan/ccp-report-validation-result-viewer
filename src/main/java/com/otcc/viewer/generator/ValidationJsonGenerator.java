@@ -12,6 +12,7 @@ import com.otcc.viewer.model.ChannelFiles;
 import com.otcc.viewer.model.CmpSide;
 import com.otcc.viewer.model.ConversionRule;
 import com.otcc.viewer.model.CtxDef;
+import com.otcc.viewer.model.DescriptionEx;
 import com.otcc.viewer.model.ExcelFile;
 import com.otcc.viewer.model.ExtraResult;
 import com.otcc.viewer.model.Field;
@@ -983,6 +984,15 @@ public final class ValidationJsonGenerator {
      * under {@code data/items/&lt;tradeId&gt;.json}. Returns the manifest items.
      */
     public static List<ManifestItem> splitToFiles(ValidationDataset dataset, Path outDir) throws IOException {
+        return splitToFiles(dataset, outDir, "report-validation-data.json");
+    }
+
+    /**
+     * Same as {@link #splitToFiles(ValidationDataset, Path)} but writes the manifest under
+     * {@code manifestName}. Multi-file mode needs this because both the main data file and the
+     * default template data file are manifests (otherwise {@code urls.defaultData} is missing).
+     */
+    public static List<ManifestItem> splitToFiles(ValidationDataset dataset, Path outDir, String manifestName) throws IOException {
         List<ManifestItem> manifestItems = new ArrayList<>();
         for (ValidationItem it : dataset.getItems()) {
             String file = "data/items/" + it.getTradeId() + ".json";
@@ -1007,7 +1017,7 @@ public final class ValidationJsonGenerator {
         manifest.put("reportEnv", dataset.getReportEnv());
         manifest.put("skippedItems", dataset.getSkippedItems());
         manifest.put("items", manifestItems);
-        writeJson(outDir.resolve("report-validation-data.json"), manifest);
+        writeJson(outDir.resolve(manifestName), manifest);
         return manifestItems;
     }
 
@@ -1041,10 +1051,13 @@ public final class ValidationJsonGenerator {
                         .columnHover(true).sidebarSearch(true).sidebarTradeId(true)
                         .compare(true).healthOverview(true).globalSearch(true)
                         .keyboardShortcuts(true).modalPrints(true).recentBatches(true).batchHelp(true)
+                        .revealPath(true)
+                        .descriptionEx(true)
                         .build())
                 .limits(ValidationConfig.Limits.builder()
                         .pageSize(20).pageSizeOptions(List.of(10, 20, 50))
                         .sidebarPageSize(8).msgPageSize(20).globalSearchLimit(200)
+                        .descExPageSize(5)
                         .build())
                 .batches(ValidationConfig.BatchesConfig.builder()
                         .recentCount(5).pageSize(8).listMode("lazy")
@@ -1080,15 +1093,53 @@ public final class ValidationJsonGenerator {
                 .argv(List.of("--job=nightly", "--date=2026-08-16", "--channels=HKTR,JSFA,CFTC"))
                 .summary(summary)
                 .description("夜间全量批处理：\n- 渠道：HKTR / JSFA / CFTC\n- 范围：当日全部交易\n- 模式：全量比对 + 汇总报表")
+                // 任务说明扩展内容（只读）：Markdown 表格示例（查看器渲染为带搜索/排序/分页的表格）。
+                .descriptionEx(DescriptionEx.builder()
+                        .contentType("markDownTable")
+                        .plainContent(descExSampleTable())
+                        .build())
                 .reportEnv("OTCXXX")
                 .creationType("sample")
                 .dataUrl(dataUrl)
                 .dataMode(dataMode)
+                // 批次级忽略配置：与索引条目保持同一份地址（查看器按索引的 ignoreUrl 加载/回写）。
+                .ignoreUrl("ignore-config-by-platform.json")
                 .build();
     }
 
+    /**
+     * descriptionEx 的 Markdown 表格示例（3 列；渲染层统一左对齐）：覆盖 {@code \|} 转义、
+     * 空单元格、最小内联格式（{@code `code`} / {@code **bold**}）与超过工具阈值的行数
+     * （18 行 / 每页 5 行 = 4 页 &gt; 3，故表头排序筛选与页码控件均会展示）。
+     */
+    private static String descExSampleTable() {
+        return """
+                | 序号 | 检查项 | 说明 |
+                | --- | --- | --- |
+                | 1 | 数据接入完整性 | 覆盖 `HKTR` / `JSFA` / `CFTC` |
+                | 2 | 字段映射校验 | 含 **EO/AO** 双侧比对 |
+                | 3 | 上下文命中率 | 命中率 92% |
+                | 4 | 转换规则回归 | 含转义演示：a \\| b |
+                | 5 | 未比较项核对 | 与上一批次对齐 |
+                | 6 | 已知差异确认 | 见任务说明 |
+                | 7 | 报表汇总 |  |
+                | 8 | 监管报表抽取 | 全量 |
+                | 9 | 渠道口径复核 | 仅 HKTR |
+                | 10 | 边界值校验 | 多行文本演示 |
+                | 11 | 金额精度校验 | 保留 2 位小数 |
+                | 12 | 结果归档 | 归档至 `generated/` |
+                | 13 | 报表口径复核 | 与 HKTR 口径一致 |
+                | 14 | 汇总校验 | 含 **汇总** 双跑 |
+                | 15 | 抽样复核 | 抽样 10% |
+                | 16 | 异常清单确认 | 见 `notes/` 附件 |
+                | 17 | 上线前检查 | 发布窗口 22:00 |
+                | 18 | 归档与签名 | SHA256 校验 |
+                """;
+    }
+
     public static BatchIndex generateBatchIndex(BatchMeta meta, String dataUrl, String ignoreUrl,
-                                                String dataMode, String basedir, String path) {
+                                                String basedir, String path) {
+        // 索引不写 cwd / dataMode（前端从不读取；如需可从 batch-meta.json 读）——与 lib/scanner.js 保持一致。
         BatchEntry entry = BatchEntry.builder()
                 .batchId(meta.getBatchId())
                 .batchName(meta.getBatchName())
@@ -1100,11 +1151,9 @@ public final class ValidationJsonGenerator {
                 .path(path)
                 .commandLine(meta.getCommandLine())
                 .argv(meta.getArgv())
-                .cwd(meta.getCwd())
                 .description(meta.getDescription())
                 .summary(meta.getSummary())
                 .reportEnv(meta.getReportEnv())
-                .dataMode(dataMode)
                 .build();
         return BatchIndex.builder()
                 .schemaVersion(1)
@@ -1135,14 +1184,16 @@ public final class ValidationJsonGenerator {
         String ignoreUrl = "ignore-config-by-platform.json";
 
         BatchMeta meta = generateBatchMeta(dataset, "report-validation-data.json", dataMode);
-        BatchIndex index = generateBatchIndex(meta, batchDataUrl, ignoreUrl, dataMode,
+        BatchIndex index = generateBatchIndex(meta, batchDataUrl, ignoreUrl,
                 toWeb(outDir.resolve("batches").toAbsolutePath()),
                 toWeb(batchDir.toAbsolutePath()));
 
         Files.createDirectories(batchDir);
 
         if (mode == DataMode.multi) {
+            // 主数据与默认模板数据在多文件模式下都是清单，两者都必须写（否则 defaultDataMode=default 会缺文件）。
             splitToFiles(dataset, outDir);
+            splitToFiles(dataset, outDir, "report-validation-data-default.json");
             splitToFiles(dataset, batchDir);
         } else {
             writeJson(outDir.resolve("report-validation-data.json"), dataset);
@@ -1166,18 +1217,26 @@ public final class ValidationJsonGenerator {
     }
 
     private static Map<String, Boolean> orderedColumns() {
+        // 必须与查看器 public/app.js 的 DEFAULT_COLUMNS 及 public/config.schema.json 中公布的列名保持一致，
+        // 否则生成的 config.json 里 columns.default 会被查看器静默忽略（未知列名）。
         Map<String, Boolean> m = new LinkedHashMap<>();
         m.put("channel", true);
         m.put("source", true);
-        m.put("f", true);
-        m.put("x", true);
-        m.put("aoCsv", true);
-        m.put("t", false);
-        m.put("ctx", false);
+        m.put("field", true);
+        m.put("userTag", true);
+        m.put("eoEl", false);
+        m.put("aoEl", false);
+        m.put("eoCvtEl", false);
+        m.put("aoCvtEl", false);
+        m.put("vdtEl", false);
+        m.put("type", false);
+        m.put("ctxs", false);
+        m.put("eoUnconverted", false);
         m.put("eo", true);
+        m.put("aoUnconverted", false);
         m.put("ao", true);
         m.put("result", true);
-        m.put("note", false);
+        m.put("remarks", false);
         return m;
     }
 

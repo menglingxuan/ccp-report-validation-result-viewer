@@ -666,8 +666,10 @@ import path from 'node:path';
     }
 
     // 将单文件数据集拆分为多文件模式：
-    // 在 outDir 写入 report-validation-data.json（清单）与 data/items/<tradeId>.json（每个 item 一个文件）。
-    function splitToFiles(dataset, outDir) {
+    // 在 outDir 写入 <manifestName>（默认 report-validation-data.json）与 data/items/<tradeId>.json。
+    // 多文件模式下主数据与默认模板数据都是清单，因此需要能指定清单文件名（否则 defaultDataMode=default 时缺文件）。
+    function splitToFiles(dataset, outDir, manifestName) {
+      const name = manifestName || 'report-validation-data.json';
       const itemsDir = path.join(outDir, 'data', 'items');
       fs.mkdirSync(itemsDir, { recursive: true });
       const manifestItems = (dataset.items || []).map(function (it) {
@@ -689,7 +691,7 @@ import path from 'node:path';
         };
       });
       const manifest = { mode: 'multi', reportEnv: dataset.reportEnv, creationType: dataset.creationType || 'sample', skippedItems: dataset.skippedItems, items: manifestItems };
-      fs.writeFileSync(path.join(outDir, 'report-validation-data.json'), JSON.stringify(manifest, null, 2));
+      fs.writeFileSync(path.join(outDir, name), JSON.stringify(manifest, null, 2));
       return manifest;
     }
 

@@ -26,10 +26,7 @@ public class BatchEntry {
     private String path;
     private List<String> commandLine;
     private List<String> argv;
-    private String cwd;
     private String description;
     private Map<String, Object> summary;
     private String reportEnv;
-    /** {@code "single"} or {@code "multi"}. */
-    private String dataMode;
 }

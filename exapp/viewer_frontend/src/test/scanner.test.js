@@ -41,6 +41,52 @@ test('env 过滤只返回指定环境', async () => {
   }
 });
 
+test('索引登记 metaUrl（供查看器懒加载 descriptionEx），且不把扩展内容写进索引', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'scan-metaurl-'));
+  const out = path.join(tmp, 'batches-index.json');
+  try {
+    const dir = path.join(tmp, 'b-meta');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'batch-meta.json'), JSON.stringify({
+      batchId: 'b-meta',
+      batchName: 'b-meta',
+      date: '2026-09-19',
+      executedAt: '2026-09-19T00:00:00+08:00',
+      summary: { items: 1 },
+      descriptionEx: { contentType: 'markDownTable', plainContent: '| 检查项 |\n| --- |\n| 数据接入 |' },
+    }), 'utf8');
+    fs.writeFileSync(path.join(dir, 'report-validation-data.json'),
+      JSON.stringify({ mode: 'single', reportEnv: 'OTCXXX', items: [{ tradeId: 'T-1', reportDate: '2026-09-19', channels: [] }] }), 'utf8');
+
+    const r = await scan({ basedir: tmp, out, ignore: [], env: null });
+    assert.equal(r.ok, true, r.error);
+    const entry = r.batches.find((b) => b.batchId === 'b-meta');
+    assert.equal(entry.metaUrl, 'b-meta/batch-meta.json', 'metaUrl 是相对索引文件的路径');
+    assert.ok(fs.existsSync(path.join(tmp, entry.metaUrl)), 'metaUrl 指向真实存在的 batch-meta.json');
+    assert.equal(entry.descriptionEx, undefined, 'descriptionEx 内容不应进索引（避免索引膨胀）');
+    assert.equal(JSON.stringify(r.batches).includes('数据接入'), false, '索引里不得出现扩展内容正文');
+  } finally {
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+  }
+});
+
+test('无 batch-meta.json 的批次不写 metaUrl', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'scan-nometa-'));
+  const out = path.join(tmp, 'batches-index.json');
+  try {
+    const dir = path.join(tmp, 'b-data-only');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'report-validation-data.json'),
+      JSON.stringify({ mode: 'single', reportEnv: 'OTCXXX', items: [{ tradeId: 'T-1', reportDate: '2026-09-19', channels: [] }] }), 'utf8');
+    const r = await scan({ basedir: tmp, out, ignore: [], env: null });
+    const entry = r.batches.find((b) => b.batchId === 'b-data-only');
+    assert.ok(entry, '仅有数据文件的目录也会被扫描（batchId 取目录名）');
+    assert.equal(entry.metaUrl, undefined, '没有 batch-meta.json 时不写 metaUrl');
+  } finally {
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+  }
+});
+
 test('sanitizeTags：去空白 / 去重 / 限长 / 限量', () => {
   assert.deepEqual(sanitizeTags([' a ', 'a', '', '  ', 'b']), ['a', 'b']);
   assert.deepEqual(sanitizeTags('a'), [], '非数组应返回空数组');

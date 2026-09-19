@@ -31,6 +31,72 @@ function startServer(extraEnv) {
   });
 }
 
+test('写回接口：同源限制 / 体积上限 / If-Match 乐观并发（POST /api/ignore）', async () => {
+  // 用临时 web 根作为数据根，避免动到仓库里的样例文件。
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'viewer-ignore-'));
+  const child = await startServer({ REPORT_VIEWER_WEBROOT: tmp });
+  try {
+    const base = `http://127.0.0.1:${PORT}`;
+    const target = path.join(tmp, 'ignore-config-by-platform.json');
+    const post = (body, headers) => fetch(base + '/api/ignore', {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, headers || {}),
+      body: JSON.stringify(body),
+    });
+
+    // 1) 正常回写：返回新 ETag，并原子写入目标文件
+    const cfg1 = { P: { warnings: [{ channel: 'C', source: 'S', type: 't', level: 'WARN', field: 'f' }], uncomparedXpaths: [], uncomparedCsvs: [] } };
+    const r1 = await post({ url: 'ignore-config-by-platform.json', config: cfg1 });
+    assert.equal(r1.status, 200);
+    const b1 = await r1.json();
+    assert.equal(b1.ok, true);
+    assert.ok(b1.etag, '应返回写入后的 ETag');
+    assert.deepEqual(JSON.parse(fs.readFileSync(target, 'utf8')), cfg1);
+
+    // 2) 过期 If-Match：409 且不写入
+    const before = fs.readFileSync(target, 'utf8');
+    const r2 = await post({ url: 'ignore-config-by-platform.json', config: {}, ifMatch: '"0000000000000000"' });
+    assert.equal(r2.status, 409);
+    assert.equal(fs.readFileSync(target, 'utf8'), before, '409 时不得写入文件');
+
+    // 3) 正确 If-Match：200 并生效
+    const r3 = await post({ url: 'ignore-config-by-platform.json', config: {}, ifMatch: b1.etag });
+    assert.equal(r3.status, 200);
+    assert.deepEqual(JSON.parse(fs.readFileSync(target, 'utf8')), {});
+
+    // 4) 跨源：403
+    const r4 = await post({ url: 'ignore-config-by-platform.json', config: {} }, { Origin: 'http://evil.example' });
+    assert.equal(r4.status, 403);
+
+    // 5) 体积上限：413
+    const big = 'x'.repeat(300 * 1024);
+    const r5 = await post({ url: 'ignore-config-by-platform.json', config: { P: { warnings: [{ channel: big }] } } });
+    assert.equal(r5.status, 413);
+
+    // 6) 路径白名单：不在 config.urls.ignore、也不在批次目录内的 .json 一律 403
+    const r6 = await post({ url: 'config.json', config: {} });
+    assert.equal(r6.status, 403);
+    const r7 = await post({ url: '../../evil.json', config: {} });
+    assert.equal(r7.status, 403);
+
+    // 7) 收藏夹接口：文件不存在时首次写入无需 If-Match，之后带 ETag 做乐观并发
+    const favGet0 = await (await fetch(base + '/api/favorites')).json();
+    assert.equal(favGet0.ok, true);
+    assert.equal(favGet0.etag, null, '文件不存在时没有 ETag');
+    const favCreate = await fetch(base + '/api/favorites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ favorites: { a: [] } }) });
+    assert.equal(favCreate.status, 200);
+    const etag1 = (await favCreate.json()).etag;
+    assert.ok(etag1, '写入后应返回 etag');
+    const favBad = await fetch(base + '/api/favorites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ favorites: { a: [] }, ifMatch: '"0000000000000000"' }) });
+    assert.equal(favBad.status, 409);
+    const favOk = await fetch(base + '/api/favorites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ favorites: { a: [] }, ifMatch: etag1 }) });
+    assert.equal(favOk.status, 200);
+    assert.ok((await favOk.json()).etag, '写入后应返回新 etag');
+  } finally {
+    child.kill();
+  }
+});
+
 test('服务器：静态站点、配置与扫描 API', async () => {
   // 隔离扫描目录：避免测试污染 tracked 的 public/batches 与 batches-index.json。
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'viewer-srv-'));
@@ -113,6 +179,20 @@ test('服务器：静态站点、配置与扫描 API', async () => {
     assert.equal(revealRes.status, 403, '批次目录之外的路径应被拒绝');
     const revealBad = await fetch(base + '/api/reveal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
     assert.equal(revealBad.status, 400, '缺少 path 应返回 400');
+
+    // descriptionEx（任务说明扩展内容）只读回归：/api/batch 的白名单不含该字段，
+    // 即便请求里带上也不能改动 batch-meta.json（该内容只能由生成器/人工维护）。
+    const metaBefore = JSON.parse(fs.readFileSync(metaFile, 'utf8'));
+    const roRes = await fetch(base + '/api/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batchId: 'b-tags', descriptionEx: { contentType: 'markDownTable', plainContent: '| a |\n| --- |\n| 1 |' } }),
+    });
+    assert.equal(roRes.status, 200);
+    assert.deepEqual(JSON.parse(fs.readFileSync(metaFile, 'utf8')), metaBefore, 'descriptionEx 不得被写回（只读）');
+    const idxAfterRo = JSON.parse(fs.readFileSync(path.join(tmp, 'batches-index.json'), 'utf8')).batches.find((b) => b.batchId === 'b-tags');
+    assert.equal(idxAfterRo.descriptionEx, undefined, '索引同样不应出现 descriptionEx');
+    assert.equal(typeof idxAfterRo.metaUrl, 'string', '索引应带 metaUrl（供查看器懒加载 descriptionEx）');
   } finally {
     child.kill();
     try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}

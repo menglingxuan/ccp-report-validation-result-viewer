@@ -55,6 +55,7 @@ function writeMultiBatch(dir, dataset) {
     ignoreUrl: 'ignore-config-by-platform.json',
     summary: { items: dataset.items.length, channels: 3 },
     description: '多文件模式演示批次：清单 + 每 item 一个独立文件',
+    descriptionEx: { contentType: 'markDownTable', plainContent: descExSampleTable() },
   });
   splitToFiles(dataset, dir);
 }
@@ -70,6 +71,35 @@ function syncBatchMetaSummary(dir, itemCount) {
   if (meta.summary && meta.summary.items === itemCount) return;
   meta.summary = Object.assign({}, meta.summary, { items: itemCount });
   writeJSON(metaFile, meta);
+}
+
+// 任务说明扩展内容（descriptionEx）的 Markdown 表格示例（3 列，渲染统一左对齐）：
+// 覆盖 `\|` 转义、空单元格、最小内联格式，以及超过阈值的行数
+// （18 行 → 每页 5 行共 4 页 > 3，因此表头排序/筛选图标与页码控件都会展示）。
+function descExSampleTable() {
+  return [
+    '| 序号 | 检查项 | 说明 |',
+    '| --- | --- | --- |',
+    '| 1 | 数据接入完整性 | 覆盖 `HKTR` / `JSFA` / `CFTC` |',
+    '| 2 | 字段映射校验 | 含 **EO/AO** 双侧比对 |',
+    '| 3 | 上下文命中率 | 命中率 92% |',
+    '| 4 | 转换规则回归 | 含转义演示：a \\| b |',
+    '| 5 | 未比较项核对 | 与上一批次对齐 |',
+    '| 6 | 已知差异确认 | 见任务说明 |',
+    '| 7 | 报表汇总 |  |',
+    '| 8 | 监管报表抽取 | 全量 |',
+    '| 9 | 渠道口径复核 | 仅 HKTR |',
+    '| 10 | 边界值校验 | 多行文本演示 |',
+    '| 11 | 金额精度校验 | 保留 2 位小数 |',
+    '| 12 | 结果归档 | 归档至 `generated/` |',
+    '| 13 | 报表口径复核 | 与 HKTR 口径一致 |',
+    '| 14 | 汇总校验 | 含 **汇总** 双跑 |',
+    '| 15 | 抽样复核 | 抽样 10% |',
+    '| 16 | 异常清单确认 | 见 `notes/` 附件 |',
+    '| 17 | 上线前检查 | 发布窗口 22:00 |',
+    '| 18 | 归档与签名 | SHA256 校验 |',
+    '',
+  ].join('\n');
 }
 
 // ---------- 特殊用途样例批次 ----------
@@ -92,6 +122,8 @@ const SPECIAL_BATCHES = [
     batchName: 'paging-20260817-批次分页测试-28items',
     tags: ['分页测试', '28items'],
     description: '批次分页测试：本批次含 28 个 item，用于验证 item 列表分页（每页 8 → 4 页）与字段 / 消息表分页（每页 20 → 多页）。',
+    // 任务说明扩展内容（只读）：Markdown 表格示例（查看器渲染为带搜索/排序/分页的表格）。
+    descriptionEx: { contentType: 'markDownTable', plainContent: descExSampleTable() },
     build: function () { return buildDataset({ itemCount: 28 }); },
   },
   {
@@ -128,6 +160,7 @@ function writeSpecialBatch(def) {
   };
   if (def.deleted) meta.deleted = true;
   if (Array.isArray(def.tags) && def.tags.length) meta.tags = def.tags;
+  if (def.descriptionEx) meta.descriptionEx = def.descriptionEx;
   writeJSON(path.join(dir, 'batch-meta.json'), meta);
   writeJSON(path.join(dir, 'report-validation-data.json'), {
     mode: 'single',
@@ -154,8 +187,11 @@ function main() {
 
   if (doSplit) {
     const manifest = splitToFiles(dataset, PUBLIC_DIR);
+    // 多文件模式下默认模板数据也是清单（否则 urls.defaultData / defaultDataMode=default 会缺文件）。
+    splitToFiles(dataset, PUBLIC_DIR, 'report-validation-data-default.json');
     console.log('多文件模式：清单 items=' + manifest.items.length);
     console.log('  清单 -> ' + path.join(PUBLIC_DIR, 'report-validation-data.json'));
+    console.log('  默认模板清单 -> ' + path.join(PUBLIC_DIR, 'report-validation-data-default.json'));
     console.log('  item 文件 -> ' + path.join(PUBLIC_DIR, 'data', 'items', '<tradeId>.json'));
   } else {
     if (!only || only === 'default') {

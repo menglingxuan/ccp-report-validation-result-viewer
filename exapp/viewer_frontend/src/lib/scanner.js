@@ -67,13 +67,12 @@ export function sanitizeTags(v) {
 }
 
 // 从数据文件（单文件或多文件清单）中解析 reportEnv / item 数量 / creationType。
-function readDataInfo(dataPath, indexDir) {
-  const info = { reportEnv: null, itemCount: 0, mode: 'single', creationType: null };
+function readDataInfo(dataPath) {
+  const info = { reportEnv: null, itemCount: 0, creationType: null };
   const data = readJSON(dataPath);
   if (!data || typeof data !== 'object') return info;
   if (typeof data.reportEnv === 'string' && data.reportEnv) info.reportEnv = data.reportEnv;
   if (Array.isArray(data.items)) info.itemCount = data.items.length;
-  info.mode = data.mode === 'multi' ? 'multi' : 'single';
   if (data.creationType === 'sample' || data.creationType === 'user') info.creationType = data.creationType;
   return info;
 }
@@ -137,6 +136,7 @@ export async function scan(opts) {
     const metaPath = path.join(dir, 'batch-meta.json');
     const dataPath = path.join(dir, 'report-validation-data.json');
     const hasData = fs.existsSync(dataPath);
+    const hasMeta = fs.existsSync(metaPath);
     const meta = readJSON(metaPath) || {};
     // 软删除批次（batch-meta.json 的 deleted 标记）不再跳过，而是带上 deleted 标记写入索引：
     // 前端「全部批次(含已删除)」范围需要展示它们（仅供查看，不可加载/收藏/删除/钉住），
@@ -146,16 +146,16 @@ export async function scan(opts) {
 
     // 运行环境：batch-meta.json 的 reportEnv 优先，回退到数据文件（单/多文件清单）顶层 reportEnv。
     // 同时校验数据文件结构，提前暴露坏批次（不跳过，仅标记并告警）。
-    let dataInfo = { reportEnv: null, itemCount: 0, mode: 'single' };
+    let dataInfo = { reportEnv: null, itemCount: 0 };
     let validationErrors = null;
     if (hasData) {
-      dataInfo = readDataInfo(dataPath, path.dirname(out));
+        dataInfo = readDataInfo(dataPath);
       const v = validateDataset(readJSON(dataPath));
       if (!v.ok) validationErrors = v.errors;
     } else if (typeof meta.dataUrl === 'string' && meta.dataUrl && !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(meta.dataUrl)) {
       const refPath = path.isAbsolute(meta.dataUrl) ? meta.dataUrl : path.resolve(dir, meta.dataUrl);
       if (fs.existsSync(refPath)) {
-        dataInfo = readDataInfo(refPath, path.dirname(out));
+        dataInfo = readDataInfo(refPath);
         const v = validateDataset(readJSON(refPath));
         if (!v.ok) validationErrors = v.errors;
       }
@@ -187,7 +187,6 @@ export async function scan(opts) {
       ignoreUrl: meta.ignoreUrl || null,
       path: toWeb(dir),
     };
-    if (dataInfo.mode) entry.dataMode = dataInfo.mode;
     if (deleted) entry.deleted = true;
     // 批次标签（batch-meta.json 的 tags）：用于列表展示与按标签筛选。
     const tags = sanitizeTags(meta.tags);
@@ -195,8 +194,10 @@ export async function scan(opts) {
     if (typeof meta.favorite === 'boolean') entry.favorite = meta.favorite;
     if (typeof meta.commandLine !== 'undefined') entry.commandLine = meta.commandLine;
     if (typeof meta.argv !== 'undefined') entry.argv = meta.argv;
-    if (typeof meta.cwd === 'string') entry.cwd = meta.cwd;
     if (typeof meta.description === 'string') entry.description = meta.description;
+    // 任务说明扩展内容（descriptionEx）：只登记 batch-meta.json 的可取路径（metaUrl），
+    // 内容本身不进索引（索引启动即加载，避免被大表格撑大）；查看器在打开「任务说明」时懒加载。
+    if (hasMeta) entry.metaUrl = relToIndex(metaPath);
     if (meta.summary && typeof meta.summary === 'object') {
       // 以数据文件实际 item 数量为准，覆盖 batch-meta 中可能过期的 summary.items。
       entry.summary = Object.assign({}, meta.summary, { items: dataInfo.itemCount || (meta.summary.items || 0) });
@@ -262,7 +263,7 @@ export async function main() {
   }
   console.log('OK: 扫描 ' + (result.dirCount || 0) + ' 个目录（跳过 ' + result.skipped + '），发现 ' + result.count + ' 个批次 -> ' + result.out);
   result.batches.forEach(function (b) {
-    console.log(' - ' + b.batchId + ' | ' + b.executedAt + ' | v' + b.formatVersion + ' | env=' + (b.reportEnv || '-') + (b.dataMode ? ' | mode=' + b.dataMode : '') + ' | ' + b.dataUrl);
+    console.log(' - ' + b.batchId + ' | ' + b.executedAt + ' | v' + b.formatVersion + ' | env=' + (b.reportEnv || '-') + ' | ' + b.dataUrl);
   });
 }
 

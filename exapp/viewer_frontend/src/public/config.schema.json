@@ -116,7 +116,7 @@
     },
     "features": {
       "type": "object",
-      "description": "功能开关（19 项，布尔）。含义详见 CONFIG.md。未显式配置时按 runType 取默认。",
+      "description": "功能开关（20 项，布尔）。含义详见 CONFIG.md。未显式配置时按 runType 取默认。",
       "properties": {
         "uncomparedXpath": { "type": "boolean" },
         "uncomparedItems": { "type": "boolean" },
@@ -136,7 +136,9 @@
         "keyboardShortcuts": { "type": "boolean" },
         "modalPrints": { "type": "boolean" },
         "recentBatches": { "type": "boolean", "description": "是否启用「最近批次」左侧 dock + 面板。" },
-        "batchHelp": { "type": "boolean", "description": "是否显示 docker 帮助图标入口。" }
+          "batchHelp": { "type": "boolean", "description": "是否显示 docker 帮助图标入口。" },
+          "revealPath": { "type": "boolean", "description": "批次详情「批次目录」是否支持双击在系统文件管理器中打开（需服务端开启，dev/test 默认 true、prod 默认 false）。" },
+          "descriptionEx": { "type": "boolean", "description": "是否在「任务说明」末尾渲染 batch-meta.json 的 descriptionEx 扩展内容（只读，懒加载）。所有配置文件默认 true。" }
       }
     },
     "batches": {
@@ -168,7 +170,8 @@
         "pageSizeOptions": { "type": "array", "items": { "type": "integer", "minimum": 1 }, "description": "每页条数的可选值。", "default": [10, 20, 50] },
         "sidebarPageSize": { "type": "integer", "minimum": 1, "description": "侧栏 item 列表每页条数。", "default": 8 },
         "msgPageSize": { "type": "integer", "minimum": 1, "description": "警告/错误/未比较等消息表每页条数。", "default": 20 },
-        "globalSearchLimit": { "type": "integer", "minimum": 1, "description": "全局搜索最大返回结果数。", "default": 200 }
+        "globalSearchLimit": { "type": "integer", "minimum": 1, "description": "全局搜索最大返回结果数。", "default": 200 },
+        "descExPageSize": { "type": "integer", "minimum": 1, "description": "任务说明扩展内容（descriptionEx）表格每页条数。", "default": 5 }
       }
     },
     "columns": {

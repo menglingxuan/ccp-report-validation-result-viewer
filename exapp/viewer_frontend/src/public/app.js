@@ -12,6 +12,8 @@
       specialValueMatch, sortValue, flatFields, diffSegments,
       groupedToFlat, normalizeIgnoreConfig, msgIgnoreKey, flatToGrouped, parseIgnoreImport, applyIgnoreImport,
       computeHealthPure, globalSearchPure,
+      normalizeDescriptionEx, parseMarkdownTable, inlineMarkdown, filterTableRows, sortTableRows, paginateRows,
+      descExToolsVisible, pageItems, fitColWidths,
     } from './core.js';
 
     const TYPE_META = {
@@ -44,7 +46,7 @@
     // 本次比较任务的说明文本（多行）
     const TASK_NOTE = '本次比较任务说明：\n1. 校验多渠道来源数据与监管报送数据的一致性。\n2. 验证配置驱动映射（Excel）与命中上下文逻辑。\n3. 回归测试多行字段与特殊字符的展示效果。';
 
-    // 每个报告渠道的字段定义: [字段, XPath或AO CSV字段, 断言类型, 值类型]
+    // 每个报告渠道的字段定义以数据文件为准（见 docs/DATA_SCHEMA.md 4/5 节）。
     /* ---------- 数据源与配置（外部 JSON 输入） ---------- */
     let DATA_URL = 'report-validation-data.json';
     let DEFAULT_DATA_URL = 'report-validation-data-default.json';
@@ -53,11 +55,13 @@
     let IGNORE_CONFIG_URL = 'ignore-config-by-platform.json';
     // 回写目标：实际加载成功的配置文件 URL（批次级忽略配置与其批次文件同目录，保持读写同一文件）。
     let IGNORE_ACTIVE_URL = '';
+    // 加载时的 ETag：回写时作为 If-Match 发回，服务端检测到其它会话已修改则返回 409（乐观并发）。
+    let IGNORE_ETAG = '';
     const CONFIG_URL = 'config.json';
     let DATA_MODE = 'single';
     // 当前已加载数据清单文件的绝对 URL（多文件模式据此解析 item 文件的相对路径）。
     let DATA_FILE_URL = null;
-    let APP_LIMITS = { pageSize: 20, pageSizeOptions: [10, 20, 50], sidebarPageSize: 8, msgPageSize: 20, globalSearchLimit: 200 };
+    let APP_LIMITS = { pageSize: 20, pageSizeOptions: [10, 20, 50], sidebarPageSize: 8, msgPageSize: 20, globalSearchLimit: 200, descExPageSize: 5 };
     let APP_REPORT_CAT_DEFAULT = null;
     let APP_PROGRESS_STYLE = 'status';
     let DATA = { items: [] };
@@ -72,6 +76,8 @@
       compare: true, healthOverview: true, globalSearch: true,
       keyboardShortcuts: true, modalPrints: true,
       recentBatches: true, batchHelp: true,
+      // 任务说明扩展内容（batch-meta.json 的 descriptionEx，只读）：默认启用。
+      descriptionEx: true,
     };
     let SIDEBAR_MODE = 'combined';
     const SIDEBAR_ROW_H = 112;
@@ -81,7 +87,6 @@
     let BATCHES_INDEX_URL = 'batches-index.json';
     let SCAN_API_URL = '';
     const SUPPORTED_FORMAT_VERSIONS = [2];
-    const VIEWER_VERSION = '6.0.0';
     const BATCH_STORAGE_KEY = 'reportValidationBatch.v1';
     const PIN_STORAGE_KEY = 'reportValidationPin.v1';
     // 被「置顶为默认加载」的批次 id（持久化，冷/热启动时优先加载）。
@@ -154,6 +159,7 @@
           recentBatches: flag('recentBatches'),
           batchHelp: flag('batchHelp'),
           revealPath: flag('revealPath'),
+          descriptionEx: flag('descriptionEx'),
         };
 
         if (cfg.urls && typeof cfg.urls === 'object') {
@@ -191,6 +197,7 @@
         if (typeof lm.sidebarPageSize === 'number' && lm.sidebarPageSize > 0) APP_LIMITS.sidebarPageSize = Math.floor(lm.sidebarPageSize);
         if (typeof lm.msgPageSize === 'number' && lm.msgPageSize > 0) APP_LIMITS.msgPageSize = Math.floor(lm.msgPageSize);
         if (typeof lm.globalSearchLimit === 'number' && lm.globalSearchLimit > 0) APP_LIMITS.globalSearchLimit = Math.floor(lm.globalSearchLimit);
+        if (typeof lm.descExPageSize === 'number' && lm.descExPageSize > 0) APP_LIMITS.descExPageSize = Math.floor(lm.descExPageSize);
 
         if (cfg.columns && typeof cfg.columns === 'object') {
           if (cfg.columns.default && typeof cfg.columns.default === 'object') {
@@ -533,12 +540,18 @@
       const map = { HKTR: 'channelDescHKTR', JSFA: 'channelDescJSFA', CFTC: 'channelDescCFTC' };
       return t(map[name] || name);
     }
-    function sourceName(name) {
-      return name;
+    // 渠道下拉候选：以数据文件里实际出现的渠道为准（与 sourceNames 一致），避免写死导致新渠道无法筛选。
+    function channelNames() {
+      const names = [];
+      (DATA.items || []).forEach(function (it) {
+        (it.channels || []).forEach(function (ch) {
+          if (ch && ch.name && names.indexOf(ch.name) === -1) names.push(ch.name);
+        });
+      });
+      return names.length ? names : CHANNELS.map(function (c) { return c.name; });
     }
     function sourceNames() {
-      const names = [];
-      DATA.items.forEach(function (it) {
+      const names = [];      DATA.items.forEach(function (it) {
         (it.channels || []).forEach(function (ch) {
           (ch.sources || []).forEach(function (s) {
             if (s.name && names.indexOf(s.name) === -1) names.push(s.name);
@@ -572,7 +585,10 @@
     }
     function updateEnvBadge() {
       const el = document.getElementById('envBadge');
-      if (el) el.textContent = t('env') + currentEnv();
+      if (!el) return;
+      const env = currentEnv();
+      // 未识别的环境不直接显示 DEFAULT_ENV（'UNKNOWN'），按语言显示「未知」。
+      el.textContent = t('env') + (env === DEFAULT_ENV ? t('batchEnvUnknown') : env);
     }
     function applyStaticText() {
       document.getElementById('appTitle').textContent = t('appTitle');
@@ -595,6 +611,17 @@
         b.title = t(key);
         b.setAttribute('aria-label', t(key));
       });
+      // 批次 dock 无障碍标签 / 顶部折叠按钮提示 / 页脚示例数据说明（原先写死在 HTML 里，不随语言切换）。
+      const dockEl = document.getElementById('batchDock');
+      if (dockEl) dockEl.setAttribute('aria-label', t('batchDockLabel'));
+      const topCollapseEl = document.getElementById('topCollapse');
+      if (topCollapseEl) topCollapseEl.title = document.body.classList.contains('top-collapsed') ? t('topExpandTitle') : t('topCollapseTitle');
+      const sideCollapseEl = document.getElementById('sideCollapse');
+      if (sideCollapseEl) { sideCollapseEl.title = t('sideCollapseTitle'); sideCollapseEl.setAttribute('aria-label', t('sideCollapseTitle')); }
+      const sideExpandEl = document.getElementById('sideExpand');
+      if (sideExpandEl) { sideExpandEl.title = t('sideExpandTitle'); sideExpandEl.setAttribute('aria-label', t('sideExpandTitle')); }
+      const noteEl = document.getElementById('sampleDataNote');
+      if (noteEl) noteEl.textContent = t('sampleDataNote');
       document.getElementById('sidebarTitle').textContent = t('sidebarTitle');
       document.getElementById('healthBtn').textContent = t('healthBtn');
       document.getElementById('globalSearchBtn').textContent = t('globalSearch');
@@ -628,7 +655,7 @@
         const res = await fetch(IGNORE_CONFIG_URL, { cache: 'no-store' });
         if (res.ok) {
           const norm = normalizeIgnoreConfig(await res.json());
-          if (norm) { IGNORE_CONFIG = norm; IGNORE_ACTIVE_URL = IGNORE_CONFIG_URL; saveIgnoreConfigLocal(); return; }
+          if (norm) { IGNORE_CONFIG = norm; IGNORE_ACTIVE_URL = IGNORE_CONFIG_URL; IGNORE_ETAG = res.headers.get('etag') || ''; saveIgnoreConfigLocal(); return; }
         }
       } catch (e) {}
       IGNORE_ACTIVE_URL = IGNORE_CONFIG_URL;
@@ -883,7 +910,7 @@
         tagSet.map(function (g) { return '<option value="' + esc(g) + '"' + (BATCH_STATE.tag === g ? ' selected' : '') + '>' + esc(g) + '</option>'; }).join('');
       panel.innerHTML =
         '<div class="bp-head"><span class="bp-title">' + t('batchTitle') + '</span>' +
-        '<span class="bp-count" id="batchCount"' + (BATCHES_INDEX.generatedAt ? ' title="' + esc(t('batchScannedAt') + ' ' + batchScanTimeText()) + '"' : '') + '>' + scopeCount() + '</span>' +
+        '<span class="bp-count"' + (BATCHES_INDEX.generatedAt ? ' title="' + esc(t('batchScannedAt') + ' ' + batchScanTimeText()) + '"' : '') + '>' + scopeCount() + '</span>' +
         (function () {
           const scope = BATCH_STATE.batchScope;
           const label = scope === 'compat' ? t('batchCompatOnly') : (scope === 'allDeleted' ? t('batchAllDeleted') : t('batchAll'));
@@ -910,7 +937,7 @@
           '<button class="bp-cal" id="batchDateCal" title="' + t('batchDate') + '" aria-label="' + t('batchDate') + '">📅</button>' +
           '<button class="bp-clear" id="batchDateClear" title="' + t('batchDateClearLabel') + '">✕</button>' +
           '</div>' +
-          '<div class="bp-date-hint" id="batchDateHint">' + dateHint + '</div>' +
+          '<div class="bp-date-hint">' + dateHint + '</div>' +
           '<div class="bp-row"><select id="batchEnv" title="' + t('batchEnv') + '">' + envOpts + '</select></div>' +
           '<div class="bp-row"><select id="batchTag" title="' + t('batchTagFilter') + '">' + tagOpts + '</select></div>') +
         '</div>' +
@@ -974,6 +1001,8 @@
     let FAVORITES = {};
     let FAV_COLLAPSED = {};
     let FAV_SEARCH = '';
+    // 加载时的 ETag：回写时作为 If-Match 发回（乐观并发，避免多会话互相覆盖）。
+    let FAV_ETAG = '';
     async function loadFavorites() {
       // 优先读取服务端共享收藏（多用户一致）；失败则回退 localStorage。
       try {
@@ -982,6 +1011,7 @@
           const j = await res.json();
           if (j && j.ok === true && j.favorites && typeof j.favorites === 'object' && !Array.isArray(j.favorites)) {
             FAVORITES = j.favorites;
+            FAV_ETAG = j.etag || '';
             try { localStorage.setItem(FAV_STORAGE_KEY, JSON.stringify(FAVORITES)); } catch (e) {}
             return;
           }
@@ -992,7 +1022,21 @@
     }
     function saveFavorites() {
       try { localStorage.setItem(FAV_STORAGE_KEY, JSON.stringify(FAVORITES)); } catch (e) {}
-      fetch('/api/favorites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ favorites: FAVORITES }) }).catch(function () {});
+      const body = { favorites: FAVORITES };
+      if (FAV_ETAG) body.ifMatch = FAV_ETAG;
+      fetch('/api/favorites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function (r) {
+          if (r.status === 409) {
+            console.warn('[favorites] 保存冲突（409）：已重新加载服务端收藏夹');
+            setBatchNotice(t('saveConflict'));
+            loadFavorites().then(function () { refreshFavoriteViews(); });
+            return null;
+          }
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json().catch(function () { return null; });
+        })
+        .then(function (j) { if (j && j.etag) FAV_ETAG = j.etag; })
+        .catch(function (e) { console.warn('[favorites] 保存失败：', e); });
     }
     function favPkgList() { return Object.keys(FAVORITES).sort(); }
     function isValidPkg(pkg) { return /^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/.test(String(pkg || '').trim()); }
@@ -1176,7 +1220,7 @@
       const count = favPkgList().reduce(function (n, pkg) { return n + (FAVORITES[pkg] || []).length; }, 0);
       const searching = !!(FAV_SEARCH && FAV_SEARCH.trim());
       const searchBar = count > 8
-        ? '<div class="fav-searchbar"><input class="pop-control" id="favSearch" placeholder="' + t('favSearchPlaceholder') + '" value="' + esc(FAV_SEARCH) + '"><button class="fav-search-clear" id="favSearchClear" title="' + t('batchNone') + '" aria-label="' + t('batchNone') + '">✕</button></div>'
+        ? '<div class="fav-searchbar"><input class="pop-control" id="favSearch" placeholder="' + t('favSearchPlaceholder') + '" value="' + esc(FAV_SEARCH) + '"><button class="fav-search-clear" id="favSearchClear" title="' + t('filterClear') + '" aria-label="' + t('filterClear') + '">✕</button></div>'
         : '';
       const body = count
         ? (searching ? favSearchResultsHTML(FAV_SEARCH) : favTreeHTML())
@@ -1603,7 +1647,7 @@
         let ok = false;
         try {
           const r = await fetch(ignoreUrl, { cache: 'no-store' });
-          if (r.ok) { const norm = normalizeIgnoreConfig(await r.json()); if (norm) { IGNORE_CONFIG = norm; ok = true; } }
+          if (r.ok) { const norm = normalizeIgnoreConfig(await r.json()); if (norm) { IGNORE_CONFIG = norm; ok = true; IGNORE_ETAG = r.headers.get('etag') || ''; } }
         } catch (e) {}
         // 回写目标跟随实际加载成功的配置文件：批次级忽略配置回写到该批次目录，否则回退全局配置。
         IGNORE_ACTIVE_URL = ok ? ignoreUrl : IGNORE_CONFIG_URL;
@@ -1932,13 +1976,27 @@
     // 服务端按租户隔离（租户模式下写入租户数据根内的同名文件），读取路径与 IGNORE_ACTIVE_URL 一致。
     function saveIgnoreConfig() {
       saveIgnoreConfigLocal();
+      const body = { url: ignoreWriteTarget(), config: flatToGrouped(IGNORE_CONFIG) };
+      // 乐观并发：带上加载时的 ETag，服务端内容已变则拒写（409）。
+      if (IGNORE_ETAG) body.ifMatch = IGNORE_ETAG;
       try {
         fetch('/api/ignore', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: ignoreWriteTarget(), config: flatToGrouped(IGNORE_CONFIG) })
+          body: JSON.stringify(body)
         }).then(function (r) {
+          if (r.status === 409) {
+            // 其它会话已修改配置文件：以服务端为准重新加载，并提示用户重试。
+            console.warn('[ignore] 配置回写冲突（409）：已重新加载服务端配置');
+            setBatchNotice(t('saveConflict'));
+            loadIgnoreConfig();
+            return null;
+          }
           if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json().catch(function () { return null; });
+        }).then(function (j) {
+          if (!j) return;
+          if (j.etag) IGNORE_ETAG = j.etag;
           setBatchNotice('');
         }).catch(function (e) {
           console.warn('[ignore] 配置回写失败：', e);
@@ -2652,7 +2710,285 @@
         : TASK_NOTE;
       document.getElementById('taskNote').innerHTML =
         '<div class="task-note-title">' + t('taskNoteTitle') + '</div>' +
-        '<div class="task-note-text">' + esc(desc).replace(/\n/g, '<br>') + '</div>';
+        '<div class="task-note-text">' + esc(desc).replace(/\n/g, '<br>') + '</div>' +
+        (APP_FEATURES.descriptionEx ? '<div class="task-note-descex" id="taskNoteDescEx"></div>' : '');
+      ensureDescriptionEx();
+    }
+
+    /* ---------- 任务说明扩展内容（batch-meta.json 的 descriptionEx，只读） ----------
+     * 数据通路：索引只带 batch-meta.json 的路径（metaUrl），内容在打开「任务说明」时懒加载
+     * （fetchJSONCached：ETag + IndexedDB，重复打开不再下载）；内容不进 batches-index.json。
+     * 只读：POST /api/batch 的白名单不含 descriptionEx；批次详情/描述编辑均不涉及它。
+     * 扩展点：新增 contentType 时在 core.js 加解析纯函数，再在下面的注册表登记一个渲染器。 */
+    let DESC_EX_STATE = {
+      seq: 0,            // 加载代次：批次切换后丢弃过期响应
+      batchId: '',
+      status: 'idle',    // idle / loading / ready / empty / error
+      ex: null,          // 归一化后的 { contentType, plainContent, truncated }
+      parsed: null,      // 渲染器解析结果（表格结构或 null）
+      renderer: null,
+      note: '',          // 回退/告警说明（i18n 键或已拼接文本）
+      page: 1,
+      filters: [],       // 表头字段搜索：按列自由输入（AND 组合）
+      sort: { col: -1, dir: 1 },
+      pagerOpen: false,  // 竖向页码默认收起（由右侧 ▸ 三角展开）
+      colWidths: null,   // 列宽（按整表最大内容宽度计算，分页切换时宽度固定）
+    };
+
+    function descExPageSize() {
+      const n = APP_LIMITS.descExPageSize;
+      return (typeof n === 'number' && n > 0) ? Math.floor(n) : 5;
+    }
+
+    // 渲染器注册表。parse(raw) -> 渲染所需数据（失败返回 null 走纯文本回退）；
+    // render(ctx) -> HTML 字符串（ctx 提供 esc/t/pageSize 等）。
+    const DESC_EX_RENDERERS = {
+      markdowntable: {
+        label: 'markDownTable',
+        parse: function (raw) {
+          const tb = parseMarkdownTable(raw);
+          return (tb && tb.header && tb.header.length) ? tb : null;
+        },
+        render: renderDescExTableBlock,
+      },
+      text: {
+        label: 'text',
+        parse: function () { return null; },
+        render: renderDescExTextBlock,
+      },
+    };
+
+    function descExRenderer(contentType) {
+      const key = String(contentType || '').toLowerCase();
+      return DESC_EX_RENDERERS[key] || null;
+    }
+
+    function descExMetaUrl(b) {
+      return (b && typeof b.metaUrl === 'string' && b.metaUrl) ? resolveUrl(indexBaseUrl(), b.metaUrl) : '';
+    }
+
+    // 懒加载 + 首帧渲染（renderTaskNote 每次都会调用，靠 batchId/status 去重）。
+    function ensureDescriptionEx() {
+      const box = document.getElementById('taskNoteDescEx');
+      if (!box) return;
+      if (!APP_FEATURES.descriptionEx) { box.innerHTML = ''; return; }
+      const b = BATCH_STATE.active;
+      const url = descExMetaUrl(b);
+      if (!b || !url) { box.innerHTML = ''; return; }
+
+      if (DESC_EX_STATE.batchId === b.batchId && DESC_EX_STATE.status !== 'idle') {
+        paintDescriptionEx(box);
+        return;
+      }
+      const seq = ++DESC_EX_STATE.seq;
+      DESC_EX_STATE = {
+        seq: seq, batchId: b.batchId, status: 'loading', ex: null, parsed: null,
+        renderer: null, note: '', page: 1, filters: [], sort: { col: -1, dir: 1 },
+        pagerOpen: false, colWidths: null,
+      };
+      box.innerHTML = '<div class="descex-note">' + esc(t('descExLoading')) + '</div>';
+      fetchJSONCached(url).then(function (meta) {
+        if (DESC_EX_STATE.seq !== seq) return;                 // 批次已切换：丢弃过期响应
+        const ex = normalizeDescriptionEx(meta && meta.descriptionEx);
+        if (!ex) {
+          DESC_EX_STATE.status = 'empty';
+        } else {
+          const r = descExRenderer(ex.contentType);
+          const parsed = r ? r.parse(ex.plainContent) : null;
+          if (r && parsed) {
+            DESC_EX_STATE.status = 'ready';
+            DESC_EX_STATE.ex = ex;
+            DESC_EX_STATE.renderer = r;
+            DESC_EX_STATE.parsed = parsed;
+          } else {
+            // 未知 contentType 或解析失败 -> 纯文本回退（永不空白、永不报错）。
+            DESC_EX_STATE.status = 'ready';
+            DESC_EX_STATE.ex = ex;
+            DESC_EX_STATE.renderer = DESC_EX_RENDERERS.text;
+            DESC_EX_STATE.parsed = null;
+            DESC_EX_STATE.note = r ? t('descExBadTable') : (t('descExUnsupported') + ex.contentType);
+          }
+        }
+        const now = document.getElementById('taskNoteDescEx');
+        if (now) paintDescriptionEx(now);
+      }).catch(function () {
+        if (DESC_EX_STATE.seq !== seq) return;
+        DESC_EX_STATE.status = 'error';
+        const now = document.getElementById('taskNoteDescEx');
+        if (now) paintDescriptionEx(now);
+      });
+    }
+
+    function paintDescriptionEx(box) {
+      const st = DESC_EX_STATE;
+      if (!box) return;
+      if (st.status === 'loading') { box.innerHTML = '<div class="descex-note">' + esc(t('descExLoading')) + '</div>'; return; }
+      if (st.status === 'error') { box.innerHTML = '<div class="descex-note">' + esc(t('descExLoadFail')) + '</div>'; return; }
+      if (st.status !== 'ready' || !st.ex) { box.innerHTML = ''; return; }
+      const r = st.renderer || DESC_EX_RENDERERS.text;
+      const notes = [];
+      if (st.note) notes.push(esc(st.note));
+      if (st.ex.truncated) notes.push(esc(t('descExTruncated')));
+      if (st.parsed && Array.isArray(st.parsed.issues)) {
+        st.parsed.issues.forEach(function (is) {
+          if (is.kind === 'ragged') notes.push(esc(t('descExRagged')) + '（' + is.count + '）');
+          if (is.kind === 'skipped') notes.push(esc(t('descExSkipped')) + '（' + is.count + '）');
+        });
+      }
+      box.innerHTML = r.render({ esc: esc, t: t }) +
+        (notes.length ? '<div class="descex-note">' + notes.join(' · ') + '</div>' : '');
+      bindDescriptionEx(box);
+    }
+
+    // 事件只重绘该块（不触发 render()），避免丢失页码/筛选/排序状态与输入焦点。
+    function bindDescriptionEx(box) {
+      if (box.__descexBound) return;
+      box.__descexBound = true;
+      box.addEventListener('click', function (e) {
+        const th = e.target.closest('[data-descex-sort]');
+        if (th) {
+          const col = parseInt(th.getAttribute('data-descex-sort'), 10);
+          const s = DESC_EX_STATE.sort;
+          if (s.col === col) {
+            if (s.dir === 1) s.dir = -1;
+            else { s.col = -1; s.dir = 1; }                    // 升序 -> 降序 -> 原序
+          } else { s.col = col; s.dir = 1; }
+          DESC_EX_STATE.page = 1;
+          paintDescriptionEx(box);
+          return;
+        }
+        const pg = e.target.closest('[data-descex-page]');
+        if (pg && !pg.disabled) {
+          DESC_EX_STATE.page = parseInt(pg.getAttribute('data-descex-page'), 10) || 1;
+          paintDescriptionEx(box);
+          return;
+        }
+        const tgl = e.target.closest('[data-descex-pager-toggle]');
+        if (tgl) {
+          DESC_EX_STATE.pagerOpen = !DESC_EX_STATE.pagerOpen;
+          paintDescriptionEx(box);
+        }
+      });
+      // 表头字段筛选：与主列表一致 —— 列头右侧一个 ⚲ 图标，点击弹出自由输入框（列之间 AND）。
+      // 注意：不能复用主列表的 .hf-toggle（其点击由全局处理器接管），故用 .descex-fbtn（同一视觉样式）。
+      box.addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-descex-filter-btn]');
+        if (!btn) return;
+        const k = parseInt(btn.getAttribute('data-descex-filter-btn'), 10);
+        if (btn.classList.contains('active')) { closePopover(); return; }
+        const wrap = document.createElement('div');
+        wrap.innerHTML = '<input type="search" class="pop-control" placeholder="' + esc(t('descExFilter')) + '" value="' + esc(DESC_EX_STATE.filters[k] || '') + '">';
+        const input = wrap.firstChild;
+        const pop = openPopover(btn, input.outerHTML, '', 220);
+        const ctrl = pop.querySelector('.pop-control');
+        if (ctrl) {
+          ctrl.focus();
+          ctrl.addEventListener('input', function () {
+            DESC_EX_STATE.filters[k] = ctrl.value;
+            DESC_EX_STATE.page = 1;
+            paintDescriptionEx(box);
+          });
+        }
+      }, true);
+    }
+
+    // 竖向页码控件（默认收起，由右侧 ▸ 三角展开）：上一页（上） / 窗口化页码 / 下一页（下） / 页码指示器。
+    // 箭头**沿用主列表分页的同一字符（‹ ›）**，仅用 CSS 旋转 90° 得到上下方向 —— 风格与尺寸完全不变。
+    function descexPagerHTML(page, pages) {
+      let html = '<div class="descex-pager-col">';
+      html += '<button class="descex-pager-toggle" data-descex-pager-toggle title="' + t('descExPagerToggle') + '"' +
+        ' aria-label="' + t('descExPagerToggle') + '" aria-expanded="' + (DESC_EX_STATE.pagerOpen ? 'true' : 'false') + '">' +
+        (DESC_EX_STATE.pagerOpen ? '▾' : '▸') + '</button>';
+      if (DESC_EX_STATE.pagerOpen) {
+        html += '<div class="descex-pager">';
+        html += '<button class="pg" data-descex-page="' + (page - 1) + '"' + (page <= 1 ? ' disabled' : '') + ' title="' + t('pagePrev') + '"><span class="pg-ico">‹</span></button>';
+        pageItems(page, pages).forEach(function (it) {
+          html += it === null
+            ? '<span class="pg-gap">…</span>'
+            : '<button class="pg' + (it === page ? ' cur' : '') + '" data-descex-page="' + it + '">' + it + '</button>';
+        });
+        html += '<button class="pg" data-descex-page="' + (page + 1) + '"' + (page >= pages ? ' disabled' : '') + ' title="' + t('pageNext') + '"><span class="pg-ico">›</span></button>';
+        html += '<span class="pg-info">' + page + '/' + pages + '</span>';
+        html += '</div>';
+      }
+      return html + '</div>';
+    }
+
+    // 列宽：按整表（含所有行）的最大内容宽度估算，保证分页切换时表格宽度固定。
+    // 估算会额外计入：行内 `code` 的内边距、以及表头右侧的排序箭头 + 筛选图标占位。
+    function descExColWidths(tb, withTools) {
+      if (Array.isArray(DESC_EX_STATE.colWidths) && DESC_EX_STATE.colWidths.length === tb.header.length) return DESC_EX_STATE.colWidths;
+      let ctx2d = null;
+      try {
+        ctx2d = document.createElement('canvas').getContext('2d');
+        const fam = getComputedStyle(document.body).fontFamily || 'sans-serif';
+        ctx2d.font = '12px ' + fam;
+      } catch (e) { ctx2d = null; }
+      const textW = function (s) { return ctx2d ? ctx2d.measureText(s).width : String(s).length * 7; };
+      const codeW = function (s) { return Math.floor(((String(s).match(/`/g) || []).length) / 2) * 8; };
+      const headExtra = withTools ? 34 : 0;   // 排序箭头 + 筛选图标
+      const measured = tb.header.map(function (h, k) {
+        let w = textW(h.text) + codeW(h.text);
+        tb.rows.forEach(function (row) {
+          const raw = row[k] ? String(row[k].text || '') : '';
+          const cw = textW(raw) + codeW(raw);
+          if (cw > w) w = cw;
+        });
+        return w + headExtra;
+      });
+      const widths = fitColWidths(measured, {
+        padFirst: 14 + 10, padMid: 10 + 10, padLast: 10 + 14, min: 56, max: 360,
+      });
+      DESC_EX_STATE.colWidths = widths;
+      return widths;
+    }
+
+    // markDownTable 渲染器：表头字段筛选（⚲ 弹框）+ 列排序 + 折叠式竖向分页（只读）；单元格统一左对齐。
+    // 总页数 ≤ DESC_EX_TOOLS_MAX_PAGES（默认 3）时不展示排序/筛选图标，保持纯描述性（数据量小无需工具）。
+    function renderDescExTableBlock(ctx) {
+      const tb = DESC_EX_STATE.parsed;
+      const all = tb.rows;
+      const tools = descExToolsVisible(all.length, descExPageSize());
+      const matched = tools ? filterTableRows(all, DESC_EX_STATE.filters) : all;
+      const sorted = tools ? sortTableRows(matched, DESC_EX_STATE.sort.col, DESC_EX_STATE.sort.dir) : matched;
+      const pg = paginateRows(sorted, DESC_EX_STATE.page, descExPageSize());
+      DESC_EX_STATE.page = pg.page;
+      const widths = descExColWidths(tb, tools);
+
+      const head = tb.header.map(function (h, k) {
+        if (!tools) return '<th>' + inlineMarkdown(h.raw) + '</th>';
+        const arrow = DESC_EX_STATE.sort.col === k ? (DESC_EX_STATE.sort.dir === 1 ? '▲' : '▼') : '⇅';
+        const on = String(DESC_EX_STATE.filters[k] || '').trim() !== '';
+        return '<th>' +
+          '<span class="descex-head" data-descex-sort="' + k + '" title="' + ctx.esc(ctx.t('descExSortTitle')) + '">' + inlineMarkdown(h.raw) +
+          ' <span class="sort-arrow">' + arrow + '</span></span>' +
+          '<button class="descex-fbtn' + (on ? ' active' : '') + '" data-descex-filter-btn="' + k + '" title="' + ctx.esc(ctx.t('descExFilter')) + '"' +
+          ' aria-label="' + ctx.esc(ctx.t('descExFilter') + ' ' + h.text) + '">⚲</button></th>';
+      }).join('');
+
+      const body = pg.slice.map(function (row) {
+        return '<tr>' + row.map(function (c) {
+          return '<td>' + inlineMarkdown(c.raw) + '</td>';
+        }).join('') + '</tr>';
+      }).join('') || '<tr><td colspan="' + tb.header.length + '" class="empty">' + ctx.esc(ctx.t('descExNoMatch')) + '</td></tr>';
+
+      const cols = '<colgroup>' + widths.map(function (w) { return '<col style="width:' + w + 'px">'; }).join('') + '</colgroup>';
+      // table-layout: fixed 需显式给出表格宽度（= 各列之和），否则浏览器会按「撑满可用宽度」计算而忽略 col 宽度。
+      const totalW = widths.reduce(function (a, b) { return a + b; }, 0);
+      // 页码控件：竖向、位于表格右侧，默认收起（▸ 展开 / ▾ 收起）；仅有 1 页时不占位。
+      const pager = pg.pages > 1 ? descexPagerHTML(pg.page, pg.pages) : '';
+
+      return '<div class="descex-frame"><div class="descex-flex">' +
+          '<div class="descex-scroll"><table class="descex-table descex-fixed" style="width:' + totalW + 'px">' + cols + '<thead>' +
+            '<tr>' + head + '</tr>' +
+          '</thead><tbody>' + body + '</tbody></table></div>' +
+          pager +
+        '</div></div>';
+    }
+
+    // 纯文本渲染器（未知 contentType / 解析失败的回退）。
+    function renderDescExTextBlock(ctx) {
+      return '<div class="descex-text">' + ctx.esc(DESC_EX_STATE.ex.plainContent) + '</div>';
     }
 
     // creationType：batch-meta.json 优先（经扫描器写入索引），回退到数据文件顶层；缺省视为 sample。
@@ -2739,7 +3075,7 @@
       let sourceHtml = '';
       const srcNames = currentSources();
       if (APP_FEATURES.sourceFilter && srcNames.length > 1) {
-        const srcs = [['ALL', t('all')]].concat(srcNames.map(function (n) { return [n, sourceName(n)]; }));
+        const srcs = [['ALL', t('all')]].concat(srcNames.map(function (n) { return [n, n]; }));
         sourceHtml = '<span class="source-sep"></span>' +
           srcs.map(function ([k, label]) {
             const cls = 'stab' + (state.source === k ? ' active' : '');
@@ -2939,12 +3275,12 @@
         if (col === 'type') arr = ['ALL', 'id', 'num', 'date', 'code', 'product', 'text', 'multi'];
         else if (col === 'userTag') arr = ['ALL', 'platformAssertion', 'productAssertion', 'contextAssertion'];
         else if (col === 'result') arr = ['ALL', 'PASSED', 'FAILED'];
-        else if (col === 'channel') arr = ['ALL', 'HKTR', 'JSFA', 'CFTC'];
+        else if (col === 'channel') arr = ['ALL'].concat(channelNames());
         else if (col === 'source') arr = ['ALL'].concat(sourceNames());
         else arr = ['ALL'];
       } else {
         if (col === 'type') arr = state.tab === 'errors' ? ['ALL'].concat(Object.keys(ERROR_TYPE_META)) : ['ALL', 'platformAssertion', 'productAssertion', 'contextAssertion'];
-        else if (col === 'channel') arr = ['ALL', 'HKTR', 'JSFA', 'CFTC'];
+        else if (col === 'channel') arr = ['ALL'].concat(channelNames());
         else if (col === 'source') arr = ['ALL'].concat(sourceNames());
         else if (col === 'level') arr = ['ALL', 'WARN', 'INFO', 'NOTICE', 'DEBUG', 'ERROR', 'FATAL', 'SEVERE'];
         else arr = ['ALL'];
@@ -2952,7 +3288,7 @@
       return arr.map(function (v) {
         let l = v;
         if (v === 'ALL') l = t('all');
-        else if (col === 'source') l = sourceName(v);
+        else if (col === 'source') l = v;
         else if (table === 'fields' && col === 'type') l = valueTypeLabel(v);
         else if (table === 'fields' && col === 'userTag') l = userTagLabel(v);
         else if (table === 'msg' && col === 'type') l = state.tab === 'errors' ? errorTypeLabel(v) : typeLabel(v);
@@ -3179,7 +3515,7 @@
     function fieldCellHTML(r, key) {
       switch (key) {
         case 'channel': return '<td><span class="chip channel-chip">' + esc(r.channel) + '</span></td>';
-        case 'source': return '<td>' + esc(sourceName(r.source)) + '</td>';
+        case 'source': return '<td>' + esc(r.source) + '</td>';
         case 'field': {
           const warnN = fieldMsgCount('warnings', r);
           const errN = fieldMsgCount('errors', r);
@@ -3451,7 +3787,7 @@
 
     function scopeLabel() {
       const ch = state.channel === 'ALL' ? t('scopeItem') : state.channel + ' ' + t('scopeChannel');
-      const src = state.source === 'ALL' ? '' : ' · ' + t('colSource') + ' ' + sourceName(state.source);
+      const src = state.source === 'ALL' ? '' : ' · ' + t('colSource') + ' ' + state.source;
       return ch + src;
     }
 
@@ -3978,7 +4314,7 @@
           '<div class="modal-body">' +
           '<div class="kv">' +
           '<span class="k">' + t('modalChannel') + '</span><span class="v">' + esc(found.channel) + '</span>' +
-          '<span class="k">' + t('modalSource') + '</span><span class="v">' + esc(sourceName(found.source)) + '</span>' +
+          '<span class="k">' + t('modalSource') + '</span><span class="v">' + esc(found.source) + '</span>' +
           '<span class="k">' + t('modalField') + '</span><span class="v">' + esc(def.name) + '</span>' +
           '<span class="k">' + eoElLabel + '</span><span class="v">' + esc(eoElValue) + '</span>' +
           '<span class="k">' + aoElLabel + '</span><span class="v">' + esc(aoElValue) + '</span>' +
@@ -4107,9 +4443,10 @@
     }
 
     /* ---------- URL 深链接（hash） ---------- */
-    function hashParams() {
+    // 纯函数：把 hash 字符串解析为参数表（便于单测；hashParams() 只是读 location.hash）。
+export function parseHash(raw) {
       const p = {};
-      String(location.hash || '').replace(/^#/, '').split('&').forEach(function (kv) {
+      String(raw || '').replace(/^#/, '').split('&').forEach(function (kv) {
         if (!kv) return;
         const i = kv.indexOf('=');
         const k = i === -1 ? kv : kv.slice(0, i);
@@ -4117,6 +4454,9 @@
         try { p[k] = decodeURIComponent(v); } catch (e) { p[k] = v; }
       });
       return p;
+    }
+    function hashParams() {
+      return parseHash(location.hash);
     }
     function stateToHash() {
       const parts = [];
@@ -4329,7 +4669,7 @@
       if (val === 'NONE') return t('compareNone');
       if (val === 'diff') return t('compareDiff');
       if (val === 'same') return t('compareSame');
-      if (key === 'source') return sourceName(val);
+      if (key === 'source') return val;
       return val;
     }
     function openCompareFilter(btn) {
@@ -4405,7 +4745,7 @@
         const diff = compareDiffOf(r) === 'diff';
         return '<tr class="' + (diff ? 'row-fail' : '') + '">' +
           '<td class="mono"><a class="val-link" data-detail="' + esc(fieldLocKey(state.compare.channelA, r.source, r.a.id)) + '">' + esc(r.f) + '</a></td>' +
-          '<td>' + esc(sourceName(r.source)) + '</td>' +
+          '<td>' + esc(r.source) + '</td>' +
           '<td>' + compareCell(r.a) + '</td>' +
           '<td>' + compareCell(r.b) + '</td>' +
           '<td>' + (diff ? '<span class="cmp-diff">' + t('compareDiff') + '</span>' : '<span class="cmp-same">' + t('compareSame') + '</span>') + '</td>' +
@@ -4877,8 +5217,8 @@
         const collapsed = document.body.classList.toggle('top-collapsed');
         const btn = document.getElementById('topCollapse');
         btn.setAttribute('aria-expanded', String(!collapsed));
-        btn.textContent = collapsed ? '⌄' : '⌃';
-        btn.title = collapsed ? '展开顶部区域' : '折叠顶部区域';
+        // 图标为侧栏折叠同款字符 ⟨（CSS 依 aria-expanded 旋转 90°/-90° 得上下方向），此处不再改文本。
+        btn.title = collapsed ? t('topExpandTitle') : t('topCollapseTitle');
         syncMiniSummary();
       });
 
@@ -5732,8 +6072,8 @@
     // 供 Node 测试与工具使用的导出（纯函数 + 测试挂点）。
     export {
       groupedToFlat, flatToGrouped, parseIgnoreImport, applyIgnoreImport, msgIgnoreKey, msgIsIgnored,
-      filteredFields, getMsgRows, diffSegments,
-      parseSearchQuery, makeMatcher, matchRow,
+      filteredFields, getMsgRows, diffSegments, sortValue,
+      parseSearchQuery, makeMatcher, matchRow, stateToHash,
       fieldMsgCount, rowPageFor,
     };
     export const __test = {

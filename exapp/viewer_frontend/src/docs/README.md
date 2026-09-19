@@ -8,11 +8,16 @@
 
 ## 特性
 
-- **保留原有全部 UI 风格**：11 套主题、11 列字段比较表、侧栏虚拟滚动、健康总览、全局搜索、字段对比（Compare）、消息忽略、批次 dock 面板等。
+- **保留原有全部 UI 风格**：11 套主题、17 列可配置字段比较表（列可见性与显示名见「配置」的 `columns`）、侧栏虚拟滚动、健康总览、全局搜索、字段对比（Compare）、消息忽略、批次 dock 面板等。
 - **单文件 / 多文件数据模式**：
   - 单文件：一个 `report-validation-data.json` 包含全部 item。
   - 多文件：`report-validation-data.json` 为清单（manifest），每个 item 一个独立文件，支持**动态加载**、跨文件**搜索/筛选/统计**。
-  - 所有近期功能（typed Ctx 标签/弹框、批次删除/收藏、新增徽章、可配置默认数据源、空数据占位、来源渠道筛选、字段详情左右导航与规则折叠等）均同时适配单文件与多文件模式。
+  - 所有近期功能（typed Ctx 标签/弹框、批次删除/收藏、新增徽章、可配置默认数据源、空数据占位、来源渠道筛选、字段详情左右导航与规则折叠、任务说明扩展内容等）均同时适配单文件与多文件模式。
+- **任务说明扩展内容（`descriptionEx`，只读）**：`batch-meta.json` 可选字段 `{ contentType, plainContent }`；`contentType: "markDownTable"` 时把 Markdown 表格渲染到「任务说明」**末尾**（**表头 `⚲` 字段筛选**（与主列表同款浮层输入框，列间 AND）/ **列排序**（升序 → 降序 → 原序）/ **分页**（紧凑页码 17×17 + 轻灰当前页，位于表格右上，每页 `limits.descExPageSize` 默认 5））；
+  总页数 `≤ 3` 时不显示排序/筛选图标；列宽按**整表最大内容宽度**定宽（分页/排序切换时宽度固定，单列 56–360px）；页码控件位于表格右侧、**默认收起**（`▸` 展开 / `▾` 收起）、展开后为简约主题色竖向页码，仅 1 页时不显示；
+  该块采用**弱化配色 + 虚线边框**的描述性样式（无独立工具条、无强调色、无冗余提示文案），与主题内容拉开层次；
+  内容**不进批次索引**（索引只写 `metaUrl`，打开「任务说明」时懒加载 `batch-meta.json`），不显示在批次详情，也不可通过「编辑批次描述」/ `POST /api/batch` 修改；
+  开关 `features.descriptionEx`（所有配置文件默认 `true`），契约与扩展步骤见 [`docs/DATA_SCHEMA.md` §6.3](DATA_SCHEMA.md)。
 - **每个 item 独立 ctx 定义**：`id` / `scopes` / `type` / `def` / `hits` 内联到每个 item（`item.ctxDefs`），不再全局共享。
   - `scopes` 为**数组**：`[1]` 字段映射规则 / `[2]` 值转换规则 / `[3]` 终值校验规则；同一 ctx 可配置在多种规则中；`type` 为 `builtin`（内置）/ `user`（用户自定义）。
   - 主列表「命中Ctx」列展示各规则 `ctxs` 的 id 并集（解析为 CtxKey），统一使用主题配色标签；字段详情页各规则 section 直接展示各自 `ctxs` 的 id 引用。
@@ -59,7 +64,7 @@
 - **忽略配置服务端持久化**：忽略 / 取消忽略 / 批量忽略 / 导入会 `POST /api/ignore` 回写到当前生效的 `ignore-config-by-platform.json`（默认空配置，可按租户隔离；与收藏夹同一套原子写入机制）。「导入」为**分部覆盖**语义（以文件为准，只覆盖文件里出现的部分：警告 / 未比较 XPath / 未比较 CSV，其余保持不变；只接受分组格式），「导出」产物可直接重新导入。
 - **计算 Worker**：健康总览与全局搜索等重计算移到 Web Worker（`worker.js`，复用 `core.js` 纯函数），失败自动回退主线程同步计算。
 - **纯函数核心拆分**：`public/core.js` 承载无副作用纯函数（搜索/排序/过滤/差异 diff/忽略 key/健康统计/全局搜索），主线程与 Worker 共用，并由 Node 测试直接导入回归。
-- **深链接增强**：URL hash 除 `item/ch/tab/q/result/page` 外，新增 `sort`、`cols`（列可见性）、`filters`（列过滤器 JSON），可完整还原视图状态。
+- **深链接增强**：URL hash 除 `item/ch/tab/q/result/page` 外，还包含 `batch`（当前批次）、`fr`（强制加载）、`is`（侧栏搜索）、`st/pf/pd/td/dt`（侧栏与批次筛选）、`sp`（特殊值过滤）、`sort`、`cols`（列可见性）、`filters`（列过滤器 JSON）等，可基本完整还原视图状态。
 - **键盘导航**：字段表与消息表行可聚焦（↑/↓ 移动、`Enter` 打开字段详情、`Space` 切换忽略）。
 - **数据校验**：`lib/validate.js` 校验数据文件结构（顶层 / ctxDefs / 字段注册表 / 比较字段；可选规则对象 `cvtLeft`·`cvtRight`·`vdt` 允许为 `null`），服务启动时对默认数据文件告警。
 - **独立打包部署**：`npm pack` / `npx report-viewer` 即可运行。
@@ -133,6 +138,7 @@ report-viewer                  # 任意目录启动（内置默认数据）
 | `npm start` / `npm run dev` | 启动服务（`node server.js`） |
 | `npm run scan` | 手动触发一次批次扫描（CLI） |
 | `npm run generate` | 重新生成样例数据文件（单文件模式） |
+| `npm run verify:multi` | 多文件模式端到端冒烟验证（`tools/verify-multi-mode.mjs`） |
 | `npm test` | 运行全部测试（`node --test`） |
 
 ## HTTP 接口
@@ -140,26 +146,33 @@ report-viewer                  # 任意目录启动（内置默认数据）
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/` | 查看器首页 |
-| `GET` | `/config.json` | 统一配置 |
-| `POST` / `GET` | `/scan` | 触发一次完整批次扫描（同步返回结果） |
+| `GET` | `/config.json` | 统一配置（租户模式下 `urls.batches` 重写为 `/tenant/`、`urls.ignore` 重写为 `/tenant/<urls.ignore>`，并注入解析后的 `features.revealPath`） |
+| `POST` / `GET` | `/scan` | 触发一次完整批次扫描（同步返回结果）；已有扫描在跑返回 **409**，失败返回 **500** `{ ok:false, error }` |
 | `GET` | `/scan/progress` | 扫描进度 SSE（`text/event-stream`） |
-| `POST` | `/api/batch` | 批次元数据写回（body 任意组合：`{ "batchId": "...", "deleted": true }` / `{ "favorite": true }` / `{ "batchName": "...", "description": "..." }` / `{ "tags": ["a","b"] }`；`tags: []` 或空 `description` 表示清除对应字段，空 `batchName` 返回 400）。**写回后服务端会自动重建 `batches-index.json`**，保证刷新页面立即读到新值（收藏标记 / 标签 / 名称 / 软删除状态） |
+| `GET` | `/tenant/...` | 租户数据根内的文件（批次索引 / 批次数据 / 租户级 `favorites.json`、`ignore-config-by-platform.json` 等）；无租户文件时回退到共享 web 根，均无则 404 |
+| `POST` | `/api/batch` | 批次元数据写回（仅 `POST` 有效，其它方法返回 **400**；body 任意组合：`{ "batchId": "...", "deleted": true }` / `{ "favorite": true }` / `{ "batchName": "...", "description": "..." }` / `{ "tags": ["a","b"] }`；`tags: []` 或空 `description` 表示清除对应字段，空 `batchName` 返回 400）。**写回后服务端会自动重建 `batches-index.json`**，保证刷新页面立即读到新值（收藏标记 / 标签 / 名称 / 软删除状态） |
 | `POST` | `/api/reveal` | 在系统文件管理器中打开批次目录（body：`{ "path": "<批次目录绝对路径>" }`）；需 `features.revealPath` 开启，路径限定在 `scan.basedir` 内。返回 `{ ok, path, launcher }`；启动文件管理器失败（如系统未找到可执行文件）返回 **500** 并给出原因，前端提示「打开目录失败」。 |
-| `GET` / `POST` | `/api/favorites` | 收藏夹读取 / 整树保存（body：`{ "favorites": {...} }`） |
-| `POST` | `/api/ignore` | 忽略配置回写（body：`{ "url": "<当前生效的配置地址，缺省用 config.urls.ignore>", "config": {…分组结构…} }`）；仅允许写入 `.json` 且路径需落在允许的根目录内（非租户：web 根；租户：租户数据根，`/tenant/` 前缀自动剥离），原子写入 |
-| `GET` | `/status` / `/health` | 服务状态与当前配置 |
+| `GET` / `POST` | `/api/favorites` | 收藏夹读取 / 整树保存（body：`{ "favorites": {...}, "ifMatch": "<GET 返回的 etag>" }`） |
+| `GET` / `POST` | `/api/ignore` | 忽略配置回写（body：`{ "url": "<当前生效的配置地址，缺省用 config.urls.ignore>", "config": {…分组结构…} }`）；仅允许写入 `config.urls.ignore` 指向的配置文件**或** `scan.basedir` 内的 `.json`（批次级忽略配置），路径需落在允许的根目录内（非租户：web 根；租户：租户数据根，`/tenant/` 前缀自动剥离），原子写入 |
+| `GET` | `/status` / `/health` | 服务状态与当前配置（含 `version` 与 `tenant` 块） |
+
+> **写操作通用约束**（`POST /scan` 与全部 `POST /api/*`）：仅允许**同源**调用（带 `Origin` 时其 host 必须与请求 Host 一致，跨源返回 **403**；不带 `Origin` 的 curl/脚本不受限）；请求体上限 **256 KiB**（超出返回 **413**）。
+>
+> **乐观并发**（`/api/ignore`、`/api/favorites`）：写入后可得到新 `etag`；客户端应把加载/上次写入得到的 `etag` 作为 `ifMatch` 回传，若服务端文件已被其他会话修改则返回 **409** 且不写入（文件不存在时 `etag` 为 `null`，首次写入可省略 `ifMatch`）。
 
 ## 项目结构
 
 ```
 src/
-├── server.js                  # 统一 HTTP 服务入口（静态站点 + 扫描 API）
+├── server.js                  # 统一 HTTP 服务入口（静态站点 + 扫描/写回 API）
 ├── config.json                # 统一配置（服务端 + 浏览器共用）
+├── config-dev.json / config-test.json / config-prod.json   # 按 profile 的配置
 ├── package.json
 ├── lib/
-│   ├── config.js              # 配置加载器（config.json + 环境变量）
+│   ├── config.js              # 配置加载器（config.json + 环境变量 + CLI）
 │   ├── scanner.js             # 批次扫描器（异步，带 onProgress 进度回调）
 │   ├── validate.js            # 数据校验器（validateDataset / validateFile）
+│   ├── reveal.js              # 「在系统文件管理器中打开目录」（Launcher 解析 + 错误上抛）
 │   └── sample-data.js         # 样例数据生成器（buildDataset / splitToFiles）
 ├── public/                    # Web 根目录（静态资源与数据）
 │   ├── index.html             # 查看器页面（UI 结构与样式）
@@ -167,18 +180,28 @@ src/
 │   ├── core.js                # 纯函数核心（无副作用，主线程/Worker/测试共用）
 │   ├── worker.js              # 计算 Worker（健康总览 / 全局搜索）
 │   ├── themes.css / i18n.json / batch-help.json
+│   ├── config.schema.json     # config.json 的 JSON Schema（校验用）
 │   ├── report-validation-data.json            # 主数据文件（单文件或多文件清单）
 │   ├── report-validation-data-default.json    # 默认模板数据
-│   ├── ignore-config-by-platform.json         # 忽略配置
+│   ├── report-validation-data-init.json       # 空占位数据
+│   ├── ignore-config-by-platform.json         # 忽略配置（默认 {}，运行期回写）
+│   ├── favorites.json                         # 收藏夹（运行期写入，租户模式下按租户隔离）
 │   ├── batches-index.json                     # 批次索引（扫描输出）
 │   └── batches/               # 批次目录（扫描 basedir）
 ├── tools/
 │   ├── generate-sample-data.js
+│   ├── verify-multi-mode.mjs    # 多文件模式端到端冒烟验证（临时 web 根 + 起服务 + HTTP 断言）
 │   └── migrate-legacy-data.js   # 旧数据格式 -> 新数据格式迁移
 ├── test/
-│   ├── pure-logic.test.js     # 纯函数回归测试
-│   ├── scanner.test.js        # 扫描器测试
+│   ├── pure-logic.test.js     # 纯函数回归测试（含忽略 key/导入解析）
+│   ├── scanner.test.js        # 扫描器测试（含 deleted/tags）
 │   ├── validate.test.js       # 数据校验器测试
+│   ├── sample-multi.test.js   # 多文件模式样例生成（清单 + 默认模板清单 + item 相对路径）
+│   ├── desc-ex.test.js        # 任务说明扩展内容（descriptionEx）：表格解析/搜索/排序/分页
+│   ├── i18n.test.js           # i18n 契约：3 语言键 1:1、零死键、descriptionEx 键齐备
+│   ├── config.test.js         # 配置加载测试（默认值/环境变量/租户）
+│   ├── batch-meta.test.js     # 批次元数据测试
+│   ├── reveal.test.js         # 打开目录 Launcher 解析与错误传播
 │   └── server.test.js         # 服务集成测试
 └── docs/
     ├── README.md
@@ -203,6 +226,7 @@ src/
 
 - `report-validation-data.json` 顶层 `"mode"` 为 `"single"` 或 `"multi"`。
 - 多文件模式：清单中的每个 item 带 `file` 与预计算 `summary`，查看器动态加载 item 文件；搜索/筛选/统计仍作用于全部 item 的合并数据。
+- 多文件模式下 item 文件路径**相对清单文件所在目录**解析（根目录与批次目录清单都适用）；主数据 / 默认模板数据 / 批次数据在两种模式下的文件形态一致（`multi` 时均为清单）。
 - 每个 item 内联 `ctxDefs`（`id` / `scopes` / `type` / `def` / `hits`）。
 - 字段定义注册表在每个 `channel` 内（`channel.fields`，`id` / `name` / `userTag` / `type`）。
 
@@ -210,11 +234,17 @@ src/
 
 ```bash
 node tools/generate-sample-data.js            # 单文件模式
-node tools/generate-sample-data.js --split    # 多文件模式（清单 + data/items/*.json）
+node tools/generate-sample-data.js --split    # 多文件模式（主清单 + 默认模板清单 + data/items/*.json）
 node tools/generate-sample-data.js --batch    # 更新全部样例批次（通用切片 + 多文件批次 + 特殊用途批次）
 node tools/generate-sample-data.js --special  # 仅更新特殊用途批次（单来源渠道 / 批次分页 / 批次软删除）
 node tools/migrate-legacy-data.js <旧文件>     # 旧数据格式迁移为新格式（原地或指定输出）
+node tools/verify-multi-mode.mjs              # 多文件模式端到端冒烟验证（自动清理临时目录）
+node tools/verify-multi-mode.mjs --keep       # 同上，但保留临时 web 根并打印手工浏览命令
 ```
+
+`verify-multi-mode.mjs` 会在临时目录造一份 multi 数据（主清单 + 默认模板清单 + `data/items/*.json` + 一个单文件批次 + 一个多文件批次），
+以 `REPORT_VIEWER_WEBROOT` 指向它启动 `server.js`，然后断言：清单结构 / 每个 item 文件可按「相对清单目录」加载 /
+默认模板清单存在 / 批次清单相对路径解析 / 索引不含 `dataMode` / `cwd` / 单文件与多文件批次共存（共 17 项，全部通过则退出码 0）。
 
 生成批次后需触发一次扫描（`GET /scan` 或界面「刷新批次」）以更新 `batches-index.json`。
 
@@ -229,6 +259,9 @@ node tools/migrate-legacy-data.js <旧文件>     # 旧数据格式迁移为新�
 | `batches/2026-08-17/batch-20260817-1500` | 1 | `deleted-20260817-批次软删除测试`：`batch-meta.json` 默认带 `deleted` 标记，默认范围不可见，需切到「全部批次(含已删除)」范围查看（仅供查看，不可加载）；标签 `软删除` / `分页测试` |
 
 这三类批次自带 `batch-meta.json`，且**不参与通用切片**（否则每次 `--batch` 都会被覆盖成 2 / 4 个 item）。
+
+其中 `batch-20260817-1200` 与多文件批次 `batch-20260816-1700` 还带 `descriptionEx`（`contentType: "markDownTable"`，18 行表格）示例，
+用于验证「任务说明」末尾的只读 Markdown 表格：表头 `⚲` 字段筛选 / 列排序（升序 → 降序 → 原序）/ 分页（默认 5 行/页，共 4 页 → 工具与页码均展示）。
 
 ## License
 

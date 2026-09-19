@@ -11,6 +11,7 @@ import com.otcc.viewer.model.BatchMeta;
 import com.otcc.viewer.model.Channel;
 import com.otcc.viewer.model.CmpSide;
 import com.otcc.viewer.model.CtxDef;
+import com.otcc.viewer.model.DescriptionEx;
 import com.otcc.viewer.model.Field;
 import com.otcc.viewer.model.FieldDef;
 import com.otcc.viewer.model.ItemLog;
@@ -32,6 +33,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -234,6 +236,50 @@ class ValidationJsonEngineTest {
     }
 
     @Test
+    void descriptionExIsOptionalAndRoundTrips() throws Exception {
+        // descriptionEx 为「任务说明」扩展内容（只读）：写入 batch-meta.json，不进批次索引；
+        // 查看器按索引的 metaUrl 懒加载，因此这里只校验 meta 与 config 的契约。
+        Check c = new Check();
+        DescriptionEx ex = batchMeta.getDescriptionEx();
+        c.check(ex != null, "batchMeta.descriptionEx present（默认生成器会带一份 markDownTable 示例）");
+        if (ex != null) {
+            c.check("markDownTable".equals(ex.getContentType()), "descriptionEx.contentType == markDownTable");
+            String content = ex.getPlainContent() == null ? "" : ex.getPlainContent();
+            c.check(content.startsWith("|"), "descriptionEx.plainContent 为 Markdown 表格（以 | 开头）");
+            c.check(content.split("\n").length >= 6, "示例表格行数应超过一页（默认 5 行/页）：" + content.split("\n").length);
+            c.check(content.contains("\\|"), "示例表格应包含 `\\|` 转义演示");
+            String firstLine = content.split("\n")[0];
+            // Java 的 split 会丢弃末尾空段，故直接数 `|` 个数：3 列表头 = 4 个分隔符。
+            long pipes = firstLine.chars().filter(ch -> ch == '|').count();
+            c.check(pipes == 4, "示例表格为 3 列（首行 4 个 | 分隔符）：" + firstLine);
+            // 索引不得携带扩展内容正文（避免索引膨胀）：内容只能从 batch-meta.json 读到。
+            c.check(!indexJson.toString().contains("数据接入完整性"), "索引中不得出现 descriptionEx 正文");
+            // 往返无损：meta 树 <-> 对象 由 serializationRoundTripsWithoutLoss 统一覆盖，这里补充字段级校验。
+            JsonNode exJson = metaJson.path("descriptionEx");
+            c.check(exJson.isObject() && exJson.path("contentType").asText().equals(ex.getContentType()),
+                    "batch-meta.json 中的 descriptionEx 与模型一致");
+        }
+        c.check(config.getFeatures() != null && Boolean.TRUE.equals(config.getFeatures().getDescriptionEx()),
+                "config.features.descriptionEx 默认 true（所有配置文件均启用）");
+        c.check(config.getLimits() != null && Integer.valueOf(5).equals(config.getLimits().getDescExPageSize()),
+                "config.limits.descExPageSize 默认 5");
+        c.done();
+    }
+
+    @Test
+    void configColumnsMatchViewerColumnNames() {
+        // columns.default 的列名必须与查看器（app.js DEFAULT_COLUMNS）及 config.schema.json 公布的列名一致，
+        // 否则生成的 config.json 会被查看器静默忽略。
+        Check c = new Check();
+        Set<String> expected = new LinkedHashSet<>(List.of(
+                "channel", "source", "field", "userTag", "eoEl", "aoEl", "eoCvtEl", "aoCvtEl", "vdtEl",
+                "type", "ctxs", "eoUnconverted", "eo", "aoUnconverted", "ao", "result", "remarks"));
+        Map<String, Boolean> got = config.getColumns() == null ? null : config.getColumns().getDefaults();
+        c.check(got != null && got.keySet().equals(expected), "columns.default 列名不一致，实际：" + (got == null ? "null" : got.keySet()));
+        c.done();
+    }
+
+    @Test
     void batchFilesAreConsistent() {
         Check c = new Check();
         c.check(batchIndex.getCount() != null && batchIndex.getCount() == 1, "batchIndex.count == 1");
@@ -244,7 +290,10 @@ class ValidationJsonEngineTest {
             c.check(nonBlank(entry.getBatchId()), "batch entry batchId non-blank");
             c.check(nonBlank(entry.getDataUrl()), "batch entry dataUrl non-blank");
             c.check(nonBlank(entry.getIgnoreUrl()), "batch entry ignoreUrl non-blank");
-            c.check("single".equals(entry.getDataMode()), "batch entry dataMode == single");
+            // 索引不写 cwd / dataMode（查看器从不读取，与 lib/scanner.js 保持一致），防止回归。
+            JsonNode entryJson = indexJson.path("batches").get(0);
+            c.check(entryJson != null && !entryJson.has("dataMode") && !entryJson.has("cwd"),
+                    "batch entry 不应包含 dataMode / cwd：" + entryJson);
             c.check(entry.getSummary() != null && entry.getSummary().containsKey("items"), "batch entry summary.items present");
 
             Path dataFile = OUT_DIR.resolve(entry.getDataUrl());
@@ -296,6 +345,42 @@ class ValidationJsonEngineTest {
                 c.check(s.getPassed() + s.getFailed() == s.getTotal(), "manifest[" + i + "].summary passed+failed == total");
             }
         }
+
+        // writeAll(multi) 端到端：根目录主清单 + 默认模板清单 + item 文件，批次目录清单 + item 文件。
+        Path multiOut = tmpDir.resolve("multi-out");
+        ValidationJsonGenerator.writeAll(multiOut, DataMode.multi);
+
+        for (String name : List.of("report-validation-data.json", "report-validation-data-default.json")) {
+            Path f = multiOut.resolve(name);
+            c.check(Files.isRegularFile(f), "multi 根目录应写入 " + name + "（默认模板数据在多文件模式下也是清单）");
+            if (Files.isRegularFile(f)) {
+                JsonNode j = ValidationJsonGenerator.MAPPER.readTree(f.toFile());
+                c.check("multi".equals(j.path("mode").asText()), name + ".mode == multi");
+                c.check(j.path("items").size() == dataset.getItems().size(), name + ".items count matches");
+                JsonNode first = j.path("items").get(0);
+                c.check(Files.isRegularFile(multiOut.resolve(first.path("file").asText())),
+                        name + " 引用的 item 文件存在：" + first.path("file").asText());
+            }
+        }
+
+        Path multiBatchDir = multiOut.resolve("batches/2026-08-16/batch-20260816-0400");
+        Path multiBatchManifest = multiBatchDir.resolve("report-validation-data.json");
+        c.check(Files.isRegularFile(multiBatchManifest), "multi 批次目录应写入清单");
+        if (Files.isRegularFile(multiBatchManifest)) {
+            JsonNode j = ValidationJsonGenerator.MAPPER.readTree(multiBatchManifest.toFile());
+            c.check("multi".equals(j.path("mode").asText()), "批次清单.mode == multi");
+            String file = j.path("items").get(0).path("file").asText();
+            c.check(file.startsWith("data/items/"), "批次清单 item.file 为相对批节目录的路径：" + file);
+            c.check(Files.isRegularFile(multiBatchDir.resolve(file)), "批次 item 文件存在：" + file);
+        }
+
+        JsonNode multiIndex = ValidationJsonGenerator.MAPPER.readTree(multiOut.resolve("batches-index.json").toFile());
+        JsonNode multiEntry = multiIndex.path("batches").get(0);
+        c.check(multiEntry.path("dataUrl").asText().endsWith("batch-20260816-0400/report-validation-data.json"),
+                "索引 dataUrl 指向批次清单");
+        c.check(!multiEntry.has("dataMode") && !multiEntry.has("cwd"), "多文件索引同样不写 dataMode / cwd");
+        JsonNode multiMeta = ValidationJsonGenerator.MAPPER.readTree(multiBatchDir.resolve("batch-meta.json").toFile());
+        c.check("multi".equals(multiMeta.path("dataMode").asText()), "batch-meta.json 保留 dataMode == multi（元数据，非索引）");
         c.done();
     }
 
