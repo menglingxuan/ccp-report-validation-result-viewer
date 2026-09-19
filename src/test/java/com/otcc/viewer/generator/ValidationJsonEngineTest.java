@@ -224,6 +224,16 @@ class ValidationJsonEngineTest {
     }
 
     @Test
+    void ignoreConfigDefaultsToEmpty() {
+        // 默认忽略配置必须为空（不忽略任何条目）；运行期由查看器 POST /api/ignore 回写真实忽略项。
+        Check c = new Check();
+        c.check(ignoreJson.isObject(), "ignore-config-by-platform.json 顶层应为对象");
+        c.check(ignoreJson.isEmpty(), "默认忽略配置应为空对象：" + ignoreJson);
+        c.check(ignore.isEmpty(), "默认忽略配置不应包含任何平台分组");
+        c.done();
+    }
+
+    @Test
     void batchFilesAreConsistent() {
         Check c = new Check();
         c.check(batchIndex.getCount() != null && batchIndex.getCount() == 1, "batchIndex.count == 1");

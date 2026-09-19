@@ -123,7 +123,7 @@ export function flatFields(item) {
   return rows;
 }
 
-/* ---------- 警告忽略配置：按平台分组 -> 扁平 key ---------- */
+/* ---------- 忽略配置：按平台分组 -> 扁平 key（product 已移除，第 4 槽位改为来源渠道 source） ---------- */
 export function groupedToFlat(grouped) {
   const flat = {};
   Object.keys(grouped || {}).forEach(function (platform) {
@@ -134,12 +134,12 @@ export function groupedToFlat(grouped) {
       flat[key] = true;
     });
     (g.uncomparedXpaths || []).forEach(function (u) {
-      // 未比较元素已不携带 ctx，ctx 槽位恒为空，避免与 msgIgnoreKey 生成的 key 失配。
-      const key = JSON.stringify(['xpath', u.xpath || '', u.channel || '', platform, u.product || '', '']);
+      // 未比较元素不携带 ctx，ctx 槽位恒为空；source 可能为空（渠道级条目）。
+      const key = JSON.stringify(['xpath', u.xpath || '', u.channel || '', platform, u.source || '', '']);
       flat[key] = true;
     });
     (g.uncomparedCsvs || []).forEach(function (u) {
-      const key = JSON.stringify(['csv', u.value || '', u.channel || '', platform, u.product || '', '']);
+      const key = JSON.stringify(['csv', u.value || '', u.channel || '', platform, u.source || '', '']);
       flat[key] = true;
     });
   });
@@ -155,11 +155,85 @@ export function normalizeIgnoreConfig(cfg) {
   return null;
 }
 
+// 扁平 key -> 按平台分组的配置（与 groupedToFlat 互为逆运算，供导出/回写使用）；
+// 平台槽位直接取原值（不再编造 'UNKNOWN'），保证「导出 -> 重新加载」后 key 仍能命中。
+// 条目不携带 kind / ctx：容器数组名（warnings / uncomparedXpaths / uncomparedCsvs）即类型，ctx 恒空不落盘。
+export function flatToGrouped(flat) {
+  const grouped = {};
+  Object.keys(flat || {}).forEach(function (k) {
+    if (!flat[k]) return;
+    let arr;
+    try { arr = JSON.parse(k); } catch (e) { return; }
+    if (!Array.isArray(arr)) return;
+    let platform, entry, bucket;
+    if (arr[0] === 'warn') {
+      platform = arr[1] || '';
+      entry = { channel: arr[2], source: arr[3], scope: arr[4], type: arr[5], level: arr[6], field: arr[7] };
+      bucket = 'warnings';
+    } else if (arr[0] === 'xpath') {
+      platform = arr[3] || '';
+      entry = { xpath: arr[1], channel: arr[2], source: arr[4] };
+      bucket = 'uncomparedXpaths';
+    } else if (arr[0] === 'csv') {
+      platform = arr[3] || '';
+      entry = { value: arr[1], channel: arr[2], source: arr[4] };
+      bucket = 'uncomparedCsvs';
+    } else return;
+    if (!grouped[platform]) grouped[platform] = { warnings: [], uncomparedXpaths: [], uncomparedCsvs: [] };
+    grouped[platform][bucket].push(entry);
+  });
+  return grouped;
+}
+
+// 导入解析（纯函数）：只接受「分组格式」（platform -> { warnings, uncomparedXpaths, uncomparedCsvs }）。
+// 支持**分部导入**：文件中「出现的桶」即需要覆盖的部分（warn / xpath / csv），未出现的部分保持不变。
+// 空文件 `{}` 视为三部分皆空 = 清空全部忽略（与配置文件默认值 `{}` 的语义一致）。
+// 返回 { ok: true, flat, kinds } 或 { ok: false, reason: 'json' | 'shape' | 'legacy' | 'buckets' }。
+export function parseIgnoreImport(text) {
+  let cfg;
+  try { cfg = JSON.parse(text); } catch (e) { return { ok: false, reason: 'json' }; }
+  if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) return { ok: false, reason: 'shape' };
+  const platforms = Object.keys(cfg);
+  if (!platforms.length) return { ok: true, flat: {}, kinds: ['warn', 'xpath', 'csv'] };
+  // 旧版扁平格式（平台键本身是 JSON 数组）不再支持，避免静默错配 key
+  const isFlat = platforms.every(function (p) { try { return Array.isArray(JSON.parse(p)); } catch (e) { return false; } });
+  if (isFlat) return { ok: false, reason: 'legacy' };
+  const bucketKind = { warnings: 'warn', uncomparedXpaths: 'xpath', uncomparedCsvs: 'csv' };
+  const kinds = [];
+  Object.keys(bucketKind).forEach(function (b) {
+    const present = platforms.some(function (p) {
+      const g = cfg[p];
+      return !!g && typeof g === 'object' && !Array.isArray(g) && Array.isArray(g[b]);
+    });
+    if (present) kinds.push(bucketKind[b]);
+  });
+  if (!kinds.length) return { ok: false, reason: 'buckets' };
+  return { ok: true, flat: groupedToFlat(cfg), kinds: kinds };
+}
+
+// 分部覆盖（纯函数）：只替换 kinds 指定的部分，未指定的部分保留 currentFlat 中的原值。
+// kinds 为空（或未提供）时视为“全部替换”（与逐行忽略/取消忽略共享同一份扁平集合）。
+export function applyIgnoreImport(currentFlat, parsed) {
+  const kinds = (parsed && parsed.kinds && parsed.kinds.length) ? parsed.kinds : ['warn', 'xpath', 'csv'];
+  const out = {};
+  Object.keys(currentFlat || {}).forEach(function (k) {
+    if (!currentFlat[k]) return;
+    let arr;
+    try { arr = JSON.parse(k); } catch (e) { return; }
+    if (!Array.isArray(arr)) return;
+    if (kinds.indexOf(arr[0]) === -1) out[k] = true;
+  });
+  Object.keys((parsed && parsed.flat) || {}).forEach(function (k) { if (parsed.flat[k]) out[k] = true; });
+  return out;
+}
+
 export function msgIgnoreKey(tab, m) {
   if (tab === 'warnings') return JSON.stringify(['warn', m.platform || '', m.channel || '', m.source || '', m.scope || '', m.type, m.level, m.field || '']);
   if (tab === 'uncompared') {
     const isCsv = m.type === 2;
-    return JSON.stringify([isCsv ? 'csv' : 'xpath', m.value || '', m.channel, m.platform || '', m.product || '', '']);
+    // channel / platform / source 均归一化为字符串：全局未比较条目的 channel / source 为 null，
+    // 而配置文件读取路径（groupedToFlat）统一用 `|| ''`，不归一会导致 key 失配。
+    return JSON.stringify([isCsv ? 'csv' : 'xpath', m.value || '', m.channel || '', m.platform || '', m.source || '', '']);
   }
   return null;
 }
@@ -222,8 +296,8 @@ export function computeHealthPure(items, date, channel, ignoreConfig) {
     });
     (it.warnings || []).forEach(function (w) {
       if (channel && channel !== 'ALL' && w.channel !== channel) return;
-      // platform/product 跟随 item：计算忽略 key 时从 item 注入。
-      const wm = Object.assign({}, w, { platform: it.platform, product: it.product });
+      // platform 跟随 item：计算忽略 key 时从 item 注入（source 条目自带，可能为空）。
+      const wm = Object.assign({}, w, { platform: it.platform });
       if (!msgIsIgnoredPure('warnings', wm, ignoreConfig)) { pWarn++; const k = (w.type || '?') + '|' + w.channel; warnAgg[k] = (warnAgg[k] || 0) + 1; }
     });
     total += pTotal; passed += pPassed; failed += pFailed; warnings += pWarn; errors += pErr;

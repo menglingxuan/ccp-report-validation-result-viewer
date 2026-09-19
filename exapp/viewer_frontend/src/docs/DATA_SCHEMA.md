@@ -202,3 +202,47 @@
 | `batchName` | string | 批次名（展示名）。**允许重复**：界面仅告警不阻止；`urls.defaultDataMode` 按名解析时取首个非已删除匹配。经 `POST /api/batch` 回写时去首尾空白、最长 200 字符、不允许为空 |
 | `description` | string | 批次描述，支持多行（换行统一为 `\n`，最长 4000 字符）；空值表示清除字段 |
 | `summary` / `description` / `commandLine` / `ignoreUrl` / `reportEnv` | - | 同原有定义；`summary.items` 以数据文件实际 item 数量为准（扫描时校正） |
+
+### 6.2 忽略配置（`ignore-config-by-platform.json`）
+
+**默认值为空配置 `{}`**（不忽略任何条目，Java 样例生成器 `ValidationJsonGenerator.generateIgnoreConfig()` 同样输出空 map）；运行时由查看器的「忽略 / 取消忽略 / 批量忽略 / 导入」操作回写。
+
+按「平台」分组，每个平台下三个数组；运行时在 `public/core.js` 中映射为**扁平 key**（`groupedToFlat` 读入 / `flatToGrouped` 导出 / `msgIgnoreKey` 生成）：
+
+| 分组 | 条目字段 | 扁平 key（JSON 数组） |
+| --- | --- | --- |
+| `warnings` | `channel` / `source` / `scope` / `type` / `level` / `field` | `["warn", platform, channel, source, scope, type, level, field]` |
+| `uncomparedXpaths` | `xpath` / `channel` / `source` | `["xpath", xpath, channel, platform, source, ""]` |
+| `uncomparedCsvs` | `value` / `channel` / `source` | `["csv", value, channel, platform, source, ""]` |
+
+```json
+{
+  "OTC-PLATFORM-A": {
+    "warnings": [{ "channel": "HKTR", "source": "", "scope": "field", "type": "platformAssertion", "level": "WARN", "field": "notional" }],
+    "uncomparedXpaths": [{ "xpath": "/HKTR/foo", "channel": "HKTR", "source": "IRS" }],
+    "uncomparedCsvs": []
+  }
+}
+```
+
+- **三种条目均以 `source`（来源渠道）参与 key**，`source` 可能为空（渠道级条目 / 未下发来源时为空串），读取与生成时统一归一化为空串。
+- **条目不携带类型字段**：靠所在数组名区分（`warnings` / `uncomparedXpaths` / `uncomparedCsvs`），不存在 `kind`；未比较元素也不写恒空的 `ctx`。历史文件里残留的 `kind` / `ctx` 会被忽略（读入时不看这两个字段），任意一次忽略/取消忽略回写时会随整文件重写而自动消失。
+- `platform` 不随消息下发，**跟随 item 注入**（`app.js` 的 `enrichMsg`），key 的平台槽位取当前 item 的 `platform`；因此配置文件按平台分组才能逐平台生效。
+- 所有槽位在写入/读取时均归一化为字符串（`|| ''`）：全局未比较条目的 `channel` / `source` 为 `null` 时同样归一为空串，保证「配置文件 → 界面」与「导出 → 重新加载」双向都能命中（key 集合不变）。key 末尾恒为 `""` 的历史保留槽位（对应已废弃的 `ctx` 概念，配置文件中不再作为字段出现）。
+- 界面交互：**警告 / 未比较** 选项卡提供逐行「忽略 / 取消忽略」、表头批量忽略，以及「导入 / 导出忽略配置」。
+  - **导出**：把当前全部忽略项（内存中已加载的完整集合）按本节的**分组格式**下载为 `ignore-config-by-platform.json`（无 `kind`，见下）。导出的内容可直接作为导入文件，也可直接 PUT 给 `POST /api/ignore`。
+  - **导入（分部覆盖）**：以导入文件为准，**只覆盖文件中出现的部分**（`warnings` / `uncomparedXpaths` / `uncomparedCsvs`），未出现的部分保持原值 —— 因此可以只导入「忽略警告」或「忽略 CSV」等单个/多个部分（把导出的文件删掉不需要的数组即可）。某一部分出现但数组为空时，该部分被**清空**；空文件 `{}` 视为三部分皆空，即清空全部忽略。
+  - 导入只接受**分组格式**：旧版「扁平 key 作为文件内容」的格式会被拒绝（`importLegacyFail`），无任何可识别分组的非空对象会被拒绝（`importShapeFail`），非法 JSON 报 `importFail`（三种失败均不改动当前配置与文件）。
+  - 成功后立即 `POST /api/ignore` 回写服务端配置文件，提示按部分列出结果，例如：
+    ```
+    已分部覆盖导入忽略配置：
+    • 警告：2 条
+    • 未比较 XPath：未包含，保持不变
+    • 未比较 CSV：1 条
+    ```
+- **持久化（写回）**：忽略 / 取消忽略 / 批量忽略 / 导入会 `POST /api/ignore`（body `{ "url": "<当前生效的配置地址>", "config": { …分组结构… } }`）将配置回写到当前生效的配置文件：
+  - `url` 由客户端传入自己**实际加载成功**的地址：全局配置（`config.json` 的 `urls.ignore`），或 `batch-meta.json` 中 `ignoreUrl` 指向的批次级配置（此时读写同一批次下的文件）。客户端会先把地址归一化为**站点根相对路径**，服务端也兼容同源绝对 URL（跨域 / 非 `http(s)` 协议一律 403）。
+  - 服务端限定只允许写入 `.json`、且路径必须落在允许的根目录内：非租户模式为 web 根（`public/`），租户模式为租户数据根（`CFG.tenant.dataRoot`，`/tenant/` 前缀会被剥离）。非法路径返回 403，结构不合法返回 400；写入使用原子写（`writeFileAtomic`）。
+  - 回写失败（如服务端未更新、路径被拒）时浏览器控制台会告警，并在批次面板顶部提示「忽略配置保存失败」（`ignoreSaveError`）。
+  - 与收藏夹（`POST /api/favorites` → `favorites.json`）同一套「按租户隔离 + 原子写入」机制。
+- 存储：`localStorage['reportValidationIgnoreConfig.v1']` 保存运行时扁平 key（仅作镜像，加载/切换批次时写入）；刷新时以配置文件为准，文件不可用时回退 localStorage。

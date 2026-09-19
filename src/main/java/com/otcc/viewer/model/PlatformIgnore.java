@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 
 /**
  * {@code ignore-config-by-platform.json}: one entry per platform.
+ *
+ * <p>The three bucket arrays are the only type carrier — entries have no {@code kind} field.</p>
  */
 @Data
 @Builder
@@ -17,4 +19,5 @@ import lombok.NoArgsConstructor;
 public class PlatformIgnore {
     private List<IgnoreWarning> warnings;
     private List<Object> uncomparedXpaths;
+    private List<Object> uncomparedCsvs;
 }

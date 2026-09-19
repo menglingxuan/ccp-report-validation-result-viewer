@@ -10,7 +10,7 @@
     import {
       parseSearchQuery, makeMatcher, matchRow,
       specialValueMatch, sortValue, flatFields, diffSegments,
-      groupedToFlat, normalizeIgnoreConfig, msgIgnoreKey,
+      groupedToFlat, normalizeIgnoreConfig, msgIgnoreKey, flatToGrouped, parseIgnoreImport, applyIgnoreImport,
       computeHealthPure, globalSearchPure,
     } from './core.js';
 
@@ -51,6 +51,8 @@
     let INIT_DATA_URL = 'report-validation-data-init.json';
     let DEFAULT_DATA_MODE = 'default';
     let IGNORE_CONFIG_URL = 'ignore-config-by-platform.json';
+    // 回写目标：实际加载成功的配置文件 URL（批次级忽略配置与其批次文件同目录，保持读写同一文件）。
+    let IGNORE_ACTIVE_URL = '';
     const CONFIG_URL = 'config.json';
     let DATA_MODE = 'single';
     // 当前已加载数据清单文件的绝对 URL（多文件模式据此解析 item 文件的相对路径）。
@@ -159,7 +161,7 @@
           if (typeof cfg.urls.defaultData === 'string') DEFAULT_DATA_URL = cfg.urls.defaultData;
           if (typeof cfg.urls.initData === 'string') INIT_DATA_URL = cfg.urls.initData;
           if (typeof cfg.urls.defaultDataMode === 'string') DEFAULT_DATA_MODE = cfg.urls.defaultDataMode;
-          if (typeof cfg.urls.ignore === 'string' && cfg.urls.ignore) IGNORE_CONFIG_URL = cfg.urls.ignore;
+          if (typeof cfg.urls.ignore === 'string' && cfg.urls.ignore) { IGNORE_CONFIG_URL = cfg.urls.ignore; IGNORE_ACTIVE_URL = IGNORE_CONFIG_URL; }
           if (typeof cfg.urls.batches === 'string' && cfg.urls.batches) BATCHES_INDEX_URL = cfg.urls.batches;
           if (typeof cfg.urls.help === 'string' && cfg.urls.help) BATCH_HELP_URL = cfg.urls.help;
           if (typeof cfg.urls.scan === 'string' && cfg.urls.scan) SCAN_API_URL = cfg.urls.scan;
@@ -618,7 +620,7 @@
     }
     function setLang(lang) { LANG = lang; applyStaticText(); render(); renderBatchDock(); renderBatchPanel(); renderBatchBadge(); renderForceBanner(); savePrefs(); }
 
-    /* ---------- 警告忽略配置（动态存储，后续可改为 JSON 字段加载） ---------- */
+    /* ---------- 忽略配置（服务端持久化，按租户隔离；localStorage 仅作镜像） ---------- */
     const IGNORE_STORAGE_KEY = 'reportValidationIgnoreConfig.v1';
     let IGNORE_CONFIG = {};
     async function loadIgnoreConfig() {
@@ -626,9 +628,10 @@
         const res = await fetch(IGNORE_CONFIG_URL, { cache: 'no-store' });
         if (res.ok) {
           const norm = normalizeIgnoreConfig(await res.json());
-          if (norm) { IGNORE_CONFIG = norm; saveIgnoreConfig(); return; }
+          if (norm) { IGNORE_CONFIG = norm; IGNORE_ACTIVE_URL = IGNORE_CONFIG_URL; saveIgnoreConfigLocal(); return; }
         }
       } catch (e) {}
+      IGNORE_ACTIVE_URL = IGNORE_CONFIG_URL;
       try { IGNORE_CONFIG = JSON.parse(localStorage.getItem(IGNORE_STORAGE_KEY) || '{}'); }
       catch (e) { IGNORE_CONFIG = {}; }
     }
@@ -915,6 +918,8 @@
         '<span class="bp-notice-text">' + esc(BATCH_STATE.notice || '') + '</span>' +
         '<button class="bp-notice-close" id="batchNoticeClose" title="' + t('closeLabel') + '" aria-label="' + t('closeLabel') + '">✕</button>' +
         '</div>' +
+        // 激活筛选标签：位于批次列表上方的独立区域（在拖动标记之上，不随列表高度拖拽变化）。
+        '<div class="bp-chips" id="batchChips"></div>' +
         '<div class="bp-resize top" id="batchResizeTop" title="' + t('batchResizeHint') + '" aria-label="' + t('batchResizeHint') + '">⠿</div>' +
         '<div class="bp-pending-bar" id="batchPendingBar" hidden></div>' +
         '<div class="bp-list" id="batchList"></div>' +
@@ -1244,11 +1249,47 @@
       const input = backdrop.querySelector('#favPkgInput');
       input.focus(); input.select();
     }
+    // 批次列表上方的激活筛选标签（与主列表 #filterChips 同一套样式与「清除全部」规则）。
+    let BATCH_FILTERS = [];
+    function batchActiveFilters() {
+      const list = [];
+      if (BATCH_STATE.search.trim()) list.push({ label: t('batchSearchLabel') + ': ' + BATCH_STATE.search.trim(), clear: function () { BATCH_STATE.search = ''; } });
+      if (BATCH_STATE.cmd.trim()) list.push({ label: t('batchCmdSearch') + ': ' + BATCH_STATE.cmd.trim(), clear: function () { BATCH_STATE.cmd = ''; } });
+      if (BATCH_STATE.desc.trim()) list.push({ label: t('batchDescSearch') + ': ' + BATCH_STATE.desc.trim(), clear: function () { BATCH_STATE.desc = ''; } });
+      if (BATCH_STATE.date.trim()) list.push({ label: t('batchDate') + ': ' + BATCH_STATE.date.trim(), clear: function () { BATCH_STATE.date = ''; } });
+      if (BATCH_STATE.env) list.push({ label: t('batchEnv') + ': ' + BATCH_STATE.env, clear: function () { BATCH_STATE.env = ''; } });
+      if (BATCH_STATE.tag) list.push({ label: t('batchTagLabel') + ': ' + BATCH_STATE.tag, clear: function () { BATCH_STATE.tag = ''; } });
+      return list;
+    }
+    function renderBatchChips() {
+      const el = document.getElementById('batchChips');
+      if (!el) return;
+      BATCH_FILTERS = batchActiveFilters();
+      const html = BATCH_FILTERS.map(function (f, i) {
+        return '<span class="filter-chip">' + esc(f.label) + '<button data-bchip="' + i + '" title="' + t('filterClearThis') + '">✕</button></span>';
+      }).join('');
+      const clearAll = BATCH_FILTERS.length > 1
+        ? '<button class="filter-clear-all" data-bchip-all="1" title="' + t('clearAllFilters') + '">' + t('clearAllFilters') + '</button>'
+        : '';
+      el.innerHTML = html + clearAll;
+    }
+    // 清除全部批次筛选标签，并重置搜索 / 日期 / 环境 / 标签筛选状态与分页。
+    function clearAllBatchFilters() {
+      BATCH_STATE.search = '';
+      BATCH_STATE.cmd = '';
+      BATCH_STATE.desc = '';
+      BATCH_STATE.date = '';
+      BATCH_STATE.env = '';
+      BATCH_STATE.tag = '';
+      BATCH_STATE.page = 1;
+      renderBatchPanel();
+    }
     function renderBatchList() {
       const listEl = document.getElementById('batchList');
       const pagerEl = document.getElementById('batchPager');
       if (!listEl) return;
       const list = visibleBatches();
+      renderBatchChips();
       const total = list.length;
       const pages = Math.max(1, Math.ceil(total / BATCH_STATE.pageSize));
       if (BATCH_STATE.page > pages) BATCH_STATE.page = pages;
@@ -1559,11 +1600,14 @@
       }
       const ignoreUrl = b.ignoreUrl ? resolveUrl(indexBaseUrl(), b.ignoreUrl) : '';
       if (ignoreUrl) {
+        let ok = false;
         try {
           const r = await fetch(ignoreUrl, { cache: 'no-store' });
-          if (r.ok) { const norm = normalizeIgnoreConfig(await r.json()); if (norm) IGNORE_CONFIG = norm; }
+          if (r.ok) { const norm = normalizeIgnoreConfig(await r.json()); if (norm) { IGNORE_CONFIG = norm; ok = true; } }
         } catch (e) {}
-        saveIgnoreConfig();
+        // 回写目标跟随实际加载成功的配置文件：批次级忽略配置回写到该批次目录，否则回退全局配置。
+        IGNORE_ACTIVE_URL = ok ? ignoreUrl : IGNORE_CONFIG_URL;
+        saveIgnoreConfigLocal();
       } else {
         await loadIgnoreConfig();
       }
@@ -1780,8 +1824,8 @@
       return rows.map(function (r) {
         const v = r[1] == null ? '' : String(r[1]);
         if (r[2]) {
-          // 批次目录：双击在系统文件管理器中打开（需 features.revealPath 开启）。
-          const title = revealable ? (t('batchRevealHint') + '\n' + v) : v;
+          // 批次目录：双击在系统文件管理器中打开（需 features.revealPath 开启；关闭时给出提示）。
+          const title = (revealable ? t('batchRevealHint') : t('batchRevealDisabled')) + '\n' + v;
           return '<div class="k">' + esc(r[0]) + '</div><div class="v bi-dir"><span class="bi-link' + (revealable ? ' revealable' : '') + '" title="' + esc(title) + '"' + (revealable ? ' data-reveal-dir="' + esc(v) + '"' : '') + '>' + esc(v) + '</span><button class="bi-copy" data-copy="' + esc(v) + '" title="' + t('batchCopy') + '" aria-label="' + t('batchCopy') + '">⧉</button></div>';
         }
         return '<div class="k">' + esc(r[0]) + '</div><div class="v">' + esc(v) + '</div>';
@@ -1870,8 +1914,40 @@
       const k = msgIgnoreKey(tab, m);
       return k ? !!IGNORE_CONFIG[k] : false;
     }
-    function saveIgnoreConfig() {
+    // 本地镜像：仅写 localStorage（加载/切换批次时用，避免无意义的回写）。
+    function saveIgnoreConfigLocal() {
       try { localStorage.setItem(IGNORE_STORAGE_KEY, JSON.stringify(IGNORE_CONFIG)); } catch (e) {}
+    }
+    // 回写目标归一化：服务端只接受「站点根相对路径」（并拒绝跨域地址），
+    // 而批次级 ignoreUrl 经 resolveUrl 解析后是绝对 URL，因此这里统一转回路径。
+    function ignoreWriteTarget() {
+      const raw = IGNORE_ACTIVE_URL || IGNORE_CONFIG_URL;
+      try {
+        const u = new URL(raw, location.href);
+        if (u.origin === location.origin) return u.pathname.replace(/^\/+/, '');
+      } catch (e) {}
+      return raw;
+    }
+    // 忽略/取消忽略与批量操作：localStorage 镜像 + 回写服务端配置文件。
+    // 服务端按租户隔离（租户模式下写入租户数据根内的同名文件），读取路径与 IGNORE_ACTIVE_URL 一致。
+    function saveIgnoreConfig() {
+      saveIgnoreConfigLocal();
+      try {
+        fetch('/api/ignore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: ignoreWriteTarget(), config: flatToGrouped(IGNORE_CONFIG) })
+        }).then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          setBatchNotice('');
+        }).catch(function (e) {
+          console.warn('[ignore] 配置回写失败：', e);
+          setBatchNotice(t('ignoreSaveError') + ' ' + (e && e.message ? e.message : e));
+        });
+      } catch (e) {
+        console.warn('[ignore] 配置回写失败：', e);
+        setBatchNotice(t('ignoreSaveError') + ' ' + (e && e.message ? e.message : e));
+      }
     }
     function toggleIgnoreByKey(key) {
       if (IGNORE_CONFIG[key]) delete IGNORE_CONFIG[key];
@@ -1881,27 +1957,7 @@
       renderSidebar(); renderSidebarChips(); renderContent();
     }
     function exportIgnoreConfig() {
-      const grouped = {};
-      Object.keys(IGNORE_CONFIG).forEach(function (k) {
-        if (!IGNORE_CONFIG[k]) return;
-        let arr;
-        try { arr = JSON.parse(k); } catch (e) { return; }
-        let platform, entry;
-        if (arr[0] === 'warn') {
-          platform = arr[1] || 'UNKNOWN';
-          entry = { kind: 'warning', channel: arr[2], source: arr[3], scope: arr[4], type: arr[5], level: arr[6], field: arr[7] };
-        } else if (arr[0] === 'xpath') {
-          platform = arr[3] || 'UNKNOWN';
-          entry = { kind: 'uncomparedXpath', xpath: arr[1], channel: arr[2], product: arr[4], ctx: '' };
-        } else if (arr[0] === 'csv') {
-          platform = arr[3] || 'UNKNOWN';
-          entry = { kind: 'uncomparedCsv', value: arr[1], channel: arr[2], product: arr[4] };
-        } else return;
-        if (!grouped[platform]) grouped[platform] = { warnings: [], uncomparedXpaths: [], uncomparedCsvs: [] };
-        if (entry.kind === 'warning') grouped[platform].warnings.push(entry);
-        else if (entry.kind === 'uncomparedXpath') grouped[platform].uncomparedXpaths.push(entry);
-        else grouped[platform].uncomparedCsvs.push(entry);
-      });
+      const grouped = flatToGrouped(IGNORE_CONFIG);
       const blob = new Blob([JSON.stringify(grouped, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -2019,11 +2075,11 @@
       return { total: total, passed: passed, failed: failed, rate: total ? Math.round(passed / total * 100) : 0, warnings: warnings, warningsIgnored: warningsIgnored, errors: errors, uncompared: uncompared, logs: logs };
     }
 
-    // platform / product 跟随 item：计算忽略 key 时从当前 item 注入。
+    // platform 跟随 item：计算忽略 key 时从当前 item 注入（source 条目自带，可能为空）。
     function sourceMatches(name) { return !state.source || state.source === 'ALL' || name === state.source; }
     function enrichMsg(m) {
       const it = currentItem();
-      return Object.assign({}, m, { platform: it ? it.platform : '', product: it ? it.product : '' });
+      return Object.assign({}, m, { platform: it ? it.platform : '' });
     }
     function scopeWarnings() {
       const it = currentItem();
@@ -2267,13 +2323,24 @@
       const rowH = SIDEBAR_ROW_H;
       const pageSize = state.sidebarPageSize;
       const pages = Math.max(1, Math.ceil(all.length / pageSize));
-      const page = Math.min(pages, Math.max(1, Math.floor(listEl.scrollTop / (pageSize * rowH)) + 1));
-      document.getElementById('sidebarPager').innerHTML = pagerHTML(page, pages);
+      const stride = pageSize * rowH;
+      const pagerEl = document.getElementById('sidebarPager');
+      // 由滚动位置推导当前页（视口顶部所在的分页块）。
+      const pageFromScroll = Math.min(pages, Math.max(1, Math.floor(listEl.scrollTop / stride) + 1));
+      pagerEl.innerHTML = pagerHTML(pageFromScroll, pages);
       layoutSidebarList();
       const viewH = listEl.clientHeight || 400;
       const overscan = 3;
       const scrollTop = listEl.scrollTop;
       const totalH = all.length * rowH;
+      // 视口高度通常大于 pageSize*rowH，最后一页的起始偏移被滚动上限裁剪（永远到不了），
+      // 仅用 scrollTop/stride 推导会卡在倒数第二页；因此单独判定「已滚动到底部」直接指示最后一页。
+      const maxScroll = Math.max(0, totalH - viewH);
+      const atBottom = maxScroll > 0 && scrollTop >= maxScroll - 1;
+      const page = atBottom ? pages : pageFromScroll;
+      if (page !== pageFromScroll) pagerEl.innerHTML = pagerHTML(page, pages);
+      // 同步分页状态（深链接 sp= 与「上一个/下一个」推算均以它为准）。
+      state.sidebarPage = page;
       const visible = Math.ceil(viewH / rowH) + overscan * 2;
       let first = Math.max(0, Math.floor(scrollTop / rowH) - overscan);
       let last = Math.min(all.length, first + visible);
@@ -2367,12 +2434,32 @@
         });
       });
       SIDEBAR_FILTERS = chips;
+      // 标签数 > 1 时提供「清除全部」，统一清除 Item 列表的筛选状态。
+      const clearAll = chips.length > 1
+        ? '<button class="filter-clear-all" data-side-clear-all="1" title="' + t('clearAllFilters') + '">' + t('clearAllFilters') + '</button>'
+        : '';
       document.getElementById('sidebarChips').innerHTML = chips.map((c, i) =>
-        '<span class="filter-chip">' + esc(c.label) + '<button data-sideclear="' + i + '" title="' + t('filterClear') + '">✕</button></span>'
-      ).join('');
+        '<span class="filter-chip">' + esc(c.label) + '<button data-sideclear="' + i + '" title="' + t('filterClearThis') + '">✕</button></span>'
+      ).join('') + clearAll;
       document.getElementById('platformFilterBtn').classList.toggle('has-filter', state.itemPlatforms.length > 0);
       document.getElementById('productFilterBtn').classList.toggle('has-filter', state.itemProducts.length > 0);
       document.getElementById('tradeIdFilterBtn').classList.toggle('has-filter', state.itemTradeIds.length > 0);
+      // 标签区高度变化会影响列表起始位置：必须在写入标签后重新布局，
+      // 否则新增/移除标签时 #sidebarList 的 top 会沿用过时高度，首个 item 被标签遮挡。
+      layoutSidebarList();
+    }
+
+    // 清除全部 Item 列表筛选标签（状态 / 平台 / 产品 / TradeId）并重置分页。
+    function clearAllSidebarFilters() {
+      state.itemFilter = 'ALL';
+      state.itemPlatforms = [];
+      state.itemProducts = [];
+      state.itemTradeIds = [];
+      state.sidebarPage = 1;
+      const f = document.getElementById('itemFilter');
+      if (f) f.value = 'ALL';
+      renderSidebar();
+      renderSidebarChips();
     }
 
     function syncMiniSummary() {
@@ -2428,12 +2515,24 @@
 
     function renderMeta() {
       const it = currentItem();
-      document.getElementById('itemMeta').innerHTML = '<a class="item-meta-link" data-item-info="1" title="' + t('viewItemAttrs') + '">' + esc(it.tradeId) + '</a>';
+      // 悬停即弹出关联属性浮层，故用 aria-label 代替原生 title（避免系统提示盖住浮层）。
+      document.getElementById('itemMeta').innerHTML = '<a class="item-meta-link" data-item-info="1" aria-label="' + esc(t('viewItemAttrs')) + '">' + esc(it.tradeId) + '</a>';
       document.getElementById('reportMeta').textContent = t('reportDateLabel') + it.reportDate + '　　' + t('generatedAtLabel') + it.generatedAt;
       document.getElementById('channelMeta').textContent = t('channelMetaLabel') +
         it.channels.map(c => c.name + '（' + channelDesc(c.name) + '）').join('　');
     }
 
+    // item 关联属性浮层：鼠标悬停（而非点击）展示，首行为带标签与复制按钮的 Item ID。
+    let ITEM_INFO_HIDE_TIMER = null;
+    function scheduleItemInfoHide() {
+      clearTimeout(ITEM_INFO_HIDE_TIMER);
+      ITEM_INFO_HIDE_TIMER = setTimeout(function () {
+        const el = POPOVER.el;
+        // 鼠标已移到浮层内（便于点击复制按钮）时保持展开。
+        if (el && el.__itemInfoHover) return;
+        closePopover();
+      }, 200);
+    }
     function openItemInfoPopover(anchor, item) {
       if (anchor.classList.contains('active')) { closePopover(); return; }
       const cpId = item.counterpartyItemId;
@@ -2450,11 +2549,19 @@
         return v ? '<button class="copy-btn" data-copy="' + esc(v) + '" title="' + t('copyValue') + '" aria-label="' + t('copyValue') + '">⧉</button>' : '';
       };
       const html =
+        '<div class="item-info-row"><span class="iir-label">' + t('itemIdLabel') + '</span><span class="mono">' + esc(item.tradeId) + '</span>' + copyBtn(item.tradeId) + '</div>' +
         '<div class="item-info-row"><span class="iir-label">' + t('counterpartyLabel') + '</span>' + cp + copyBtn(item.counterpartyItemId) + '</div>' +
         cpNote +
         '<div class="item-info-row"><span class="iir-label">' + t('platformTradeIdLabel') + '</span><span class="mono">' + esc(item.platformTradeId || t('counterpartyNone')) + '</span>' + copyBtn(item.platformTradeId) + '</div>' +
         '<div class="item-info-row"><span class="iir-label">' + t('platformDealIdLabel') + '</span><span class="mono">' + esc(item.platformDealId || t('counterpartyNone')) + '</span>' + copyBtn(item.platformDealId) + '</div>';
-      const pop = openPopover(anchor, html, item.tradeId, 340);
+      const pop = openPopover(anchor, html, '', 340);
+      // 鼠标进入浮层时保持展开，移出后延迟收起。
+      pop.addEventListener('mouseover', function () { pop.__itemInfoHover = true; clearTimeout(ITEM_INFO_HIDE_TIMER); });
+      pop.addEventListener('mouseout', function (e) {
+        if (e.relatedTarget && pop.contains(e.relatedTarget)) return;
+        pop.__itemInfoHover = false;
+        scheduleItemInfoHide();
+      });
       pop.addEventListener('click', function (e) {
         const cb = e.target.closest('.copy-btn');
         if (cb) {
@@ -4718,24 +4825,35 @@
       setTimeout(function () { input.focus(); }, 60);
     }
 
-    /* ---------- 忽略配置导入 ---------- */
+    /* ---------- 忽略配置导入（分部覆盖：以文件为准，只接受分组格式） ---------- */
+    // 导入结果提示：逐部分说明「已覆盖 N 条」或「未包含，保持不变」。
+    function importResultText(parsed) {
+      const parts = [['warn', 'importPartWarnings'], ['xpath', 'importPartXpaths'], ['csv', 'importPartCsvs']];
+      const counts = { warn: 0, xpath: 0, csv: 0 };
+      Object.keys(parsed.flat || {}).forEach(function (k) {
+        try { const a = JSON.parse(k); if (a && counts[a[0]] !== undefined) counts[a[0]]++; } catch (e) {}
+      });
+      const lines = parts.map(function (p) {
+        const covered = parsed.kinds.indexOf(p[0]) !== -1;
+        return '• ' + t(p[1]) + '：' + (covered ? t('importPartCount').replace('N', counts[p[0]]) : t('importPartKept'));
+      });
+      return t('importSuccess') + '\n' + lines.join('\n');
+    }
     function importIgnoreConfigFile(file) {
       const reader = new FileReader();
       reader.onload = function () {
-        try {
-          const cfg = JSON.parse(reader.result);
-          if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) throw new Error('bad');
-          const keys = Object.keys(cfg);
-          const isFlat = keys.every(function (k) { try { return Array.isArray(JSON.parse(k)); } catch (e) { return false; } });
-          const flat = isFlat ? cfg : groupedToFlat(cfg);
-          let n = 0;
-          Object.keys(flat).forEach(function (k) { if (flat[k]) { IGNORE_CONFIG[k] = true; n++; } });
-          saveIgnoreConfig();
-          renderSummary(); renderTabs(); renderChannelTabs(); renderSidebar(); renderSidebarChips(); renderContent();
-          alert(t('importSuccess').replace('N', n));
-        } catch (e) {
-          alert(t('importFail'));
+        const r = parseIgnoreImport(String(reader.result));
+        if (!r.ok) {
+          if (r.reason === 'legacy') alert(t('importLegacyFail'));
+          else if (r.reason === 'buckets') alert(t('importShapeFail'));
+          else alert(t('importFail'));
+          return;
         }
+        // 分部覆盖：只替换文件里出现的部分（warnings / uncomparedXpaths / uncomparedCsvs），其余保持不变。
+        IGNORE_CONFIG = applyIgnoreImport(IGNORE_CONFIG, r);
+        saveIgnoreConfig();
+        renderSummary(); renderTabs(); renderChannelTabs(); renderSidebar(); renderSidebarChips(); renderContent();
+        alert(importResultText(r));
       };
       reader.readAsText(file);
     }
@@ -4860,6 +4978,16 @@
         if (filtersToggle) { BATCH_STATE.filtersCollapsed = !BATCH_STATE.filtersCollapsed; renderBatchPanel(); return; }
         const clearDate = e.target.closest('#batchDateClear');
         if (clearDate) { BATCH_STATE.date = ''; BATCH_STATE.page = 1; renderBatchPanel(); return; }
+        const chipAll = e.target.closest('[data-bchip-all]');
+        if (chipAll) { clearAllBatchFilters(); return; }
+        const chip = e.target.closest('[data-bchip]');
+        if (chip) {
+          const f = BATCH_FILTERS[parseInt(chip.getAttribute('data-bchip'), 10)];
+          if (f) f.clear();
+          BATCH_STATE.page = 1;
+          renderBatchPanel();
+          return;
+        }
         const dateCal = e.target.closest('#batchDateCal');
         if (dateCal) { openBatchDatePicker(dateCal); return; }
         const sortBtn = e.target.closest('#batchSort');
@@ -5143,6 +5271,7 @@
       });
 
       document.getElementById('sidebarChips').addEventListener('click', function (e) {
+        if (e.target.closest('[data-side-clear-all]')) { clearAllSidebarFilters(); return; }
         const btn = e.target.closest('[data-sideclear]');
         if (!btn) return;
         const idx = parseInt(btn.getAttribute('data-sideclear'), 10);
@@ -5257,10 +5386,17 @@
         if (SIDEBAR_MODE === 'combined' && state._sidebarAll && state._sidebarAll.length) renderSidebarVirtual(state._sidebarAll);
       });
 
-      document.getElementById('itemMeta').addEventListener('click', function (e) {
+      // item id（报告日期左侧）：鼠标悬停展示关联属性浮层（原为点击触发）。
+      const itemMetaEl = document.getElementById('itemMeta');
+      itemMetaEl.addEventListener('mouseover', function (e) {
         const a = e.target.closest('[data-item-info]');
         if (!a) return;
+        // 已为该 id 展开时仅取消收起计时，避免 mouseover 重开。
+        if (a.classList.contains('active')) { clearTimeout(ITEM_INFO_HIDE_TIMER); return; }
         openItemInfoPopover(a, currentItem());
+      });
+      itemMetaEl.addEventListener('mouseout', function (e) {
+        if (e.target.closest('[data-item-info]')) scheduleItemInfoHide();
       });
 
       document.getElementById('tabs').addEventListener('click', function (e) {
@@ -5595,7 +5731,7 @@
 
     // 供 Node 测试与工具使用的导出（纯函数 + 测试挂点）。
     export {
-      groupedToFlat, msgIgnoreKey, msgIsIgnored,
+      groupedToFlat, flatToGrouped, parseIgnoreImport, applyIgnoreImport, msgIgnoreKey, msgIsIgnored,
       filteredFields, getMsgRows, diffSegments,
       parseSearchQuery, makeMatcher, matchRow,
       fieldMsgCount, rowPageFor,

@@ -21,6 +21,7 @@
 //   GET  /scan/progress    扫描进度（SSE）
 //   GET  /status | /health 服务状态与当前配置
 //   GET|POST /api/favorites 收藏夹读写
+//   POST /api/ignore        忽略配置回写（按租户隔离）
 //   POST /api/batch         批次软删除 / 收藏 / 名称与描述 / 标签
 //   POST /api/reveal        在系统文件管理器中打开批次目录
 import http from 'node:http';
@@ -28,11 +29,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, resolveConfigFile } from './lib/config.js';
 import { scan, sanitizeTags, MAX_BATCH_NAME_LEN, MAX_BATCH_DESC_LEN } from './lib/scanner.js';
 import { validateFile } from './lib/validate.js';
+// 「在系统文件管理器中打开目录」：Launcher 用绝对路径解析（不依赖 PATH），失败会如实上抛。
+import { openInFileManager } from './lib/reveal.js';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 // 读取 CLI 参数（--flag value 形式）。
@@ -245,6 +247,68 @@ function writeFavorites(tree) {
 function handleFavoritesGet(res) {
   json(res, 200, { ok: true, favorites: readFavorites() });
 }
+
+// 忽略配置默认相对路径（config.json 的 urls.ignore）。
+function defaultIgnoreUrl() {
+  try {
+    const cfg = JSON.parse(fs.readFileSync(ACTIVE_CONFIG_FILE, 'utf8')) || {};
+    const v = cfg.urls && cfg.urls.ignore;
+    if (typeof v === 'string' && v) return v;
+  } catch (e) {}
+  return 'ignore-config-by-platform.json';
+}
+
+// 把「web 相对路径」解析为可写的忽略配置文件路径：
+//   租户模式 -> 限定在租户数据根（CFG.tenant.dataRoot）内；否则 -> 限定在 web 根内。
+// 仅允许写 ①config.urls.ignore 指向的配置文件，②批次目录（scan.basedirAbs）内的 .json（批次级忽略配置）；
+// 拒绝跨域地址、其它协议（file: 等）与路径穿越。/tenant/ 前缀归一化到对应根目录。
+// host 为当前请求的 Host，用于校验同源绝对 URL（批次级 ignoreUrl 在浏览器侧可能已是绝对地址）。
+function resolveWritableConfigPath(rel, host) {
+  let clean = String(rel || '').trim();
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(clean)) {
+    try {
+      const u = new URL(clean);
+      if (!host || u.host.toLowerCase() !== String(host).toLowerCase()) return null;
+      clean = u.pathname;
+    } catch (e) { return null; }
+  } else if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(clean)) {
+    return null;
+  }
+  clean = clean.split('?')[0].split('#')[0].replace(/\\/g, '/').replace(/^\/+/, '');
+  if (clean === 'tenant' || clean.startsWith('tenant/')) clean = clean.slice('tenant'.length).replace(/^\/+/, '');
+  if (!clean || !/\.json$/i.test(clean)) return null;
+  const root = path.resolve(CFG.tenant.enabled ? CFG.tenant.dataRoot : CFG.server.webRootAbs);
+  const abs = path.resolve(root, clean);
+  if (abs === root || !abs.startsWith(root + path.sep)) return null;
+  const configured = path.resolve(root, String(defaultIgnoreUrl()).replace(/^\/+/, '').replace(/^tenant\//, ''));
+  if (abs === configured) return abs;
+  const batches = path.resolve(CFG.scan.basedirAbs);
+  return abs.startsWith(batches + path.sep) ? abs : null;
+}
+
+// 忽略配置回写：写入「当前生效的配置文件」（客户端传入自己实际加载的那个 url）。
+// 与收藏夹同一套持久化风格：原子写入 + 按租户隔离路径。
+function handleIgnorePost(req, res) {
+  let body = '';
+  req.on('data', function (c) { body += String(c); });
+  req.on('end', function () {
+    try {
+      const data = JSON.parse(body || '{}');
+      const cfg = data.config;
+      if (cfg === undefined || cfg === null || typeof cfg !== 'object' || Array.isArray(cfg)) {
+        json(res, 400, { ok: false, error: 'config 必须是对象' });
+        return;
+      }
+      const rel = (typeof data.url === 'string' && data.url) ? data.url : defaultIgnoreUrl();
+      const abs = resolveWritableConfigPath(rel, req.headers && req.headers.host);
+      if (!abs) { json(res, 403, { ok: false, error: '不允许写入该路径：' + rel }); return; }
+      writeFileAtomic(abs, JSON.stringify(cfg, null, 2));
+      json(res, 200, { ok: true, url: abs });
+    } catch (e) {
+      json(res, 500, { ok: false, error: '保存失败：' + (e && e.message ? e.message : e) });
+    }
+  });
+}
 function handleFavoritesPost(req, res) {
   let body = '';
   req.on('data', function (c) { body += String(c); });
@@ -341,19 +405,6 @@ function handleBatchAction(req, res) {
   });
 }
 
-// 在系统文件管理器中打开目录（仅本机部署有意义；spawn 失败静默忽略）。
-function openInFileManager(dir) {
-  const cmd = process.platform === 'win32' ? 'explorer.exe'
-    : (process.platform === 'darwin' ? 'open' : 'xdg-open');
-  try {
-    const child = spawn(cmd, [dir], { detached: true, stdio: 'ignore' });
-    child.on('error', function () {});
-    child.unref();
-  } catch (e) {
-    console.warn('[report-viewer] 打开目录失败：' + (e && e.message ? e.message : e));
-  }
-}
-
 // 在系统文件管理器中打开批次目录。
 // 安全约束：仅当 features.revealPath 开启（dev/test 默认开启，prod 默认关闭）；
 // 路径必须位于批次根目录（scan.basedirAbs）内且为已存在的目录（realpath 后再校验一次）。
@@ -372,10 +423,16 @@ function handleReveal(req, res) {
       try { real = fs.realpathSync(abs); } catch (e) { json(res, 404, { ok: false, error: '目录不存在：' + abs }); return; }
       if (real !== root && !real.startsWith(root + path.sep)) { json(res, 403, { ok: false, error: '路径不在批次目录内' }); return; }
       if (!fs.statSync(real).isDirectory()) { json(res, 400, { ok: false, error: '不是目录：' + real }); return; }
-      openInFileManager(real);
-      json(res, 200, { ok: true, path: real.split(path.sep).join('/') });
+      // 启动文件管理器：成功/失败都要如实回应（失败时前端会提示，不再是无声无息）。
+      // 错误消息不带前缀，由前端拼接本地化提示（避免「打开目录失败： 打开目录失败：…」重复）。
+      openInFileManager(real).then(function (launcher) {
+        json(res, 200, { ok: true, path: real.split(path.sep).join('/'), launcher: launcher });
+      }).catch(function (e) {
+        console.warn('[report-viewer] 打开目录失败：' + (e && e.message ? e.message : e));
+        json(res, 500, { ok: false, error: (e && e.message) ? e.message : String(e) });
+      });
     } catch (e) {
-      json(res, 500, { ok: false, error: '打开失败：' + (e && e.message ? e.message : e) });
+      json(res, 500, { ok: false, error: (e && e.message) ? e.message : String(e) });
     }
   });
 }
@@ -475,6 +532,12 @@ const server = http.createServer(function (req, res) {
     return;
   }
 
+  if (url === '/api/ignore') {
+    if (req.method === 'POST') handleIgnorePost(req, res);
+    else json(res, 405, { ok: false, error: '仅支持 POST（忽略配置由静态文件读取）' });
+    return;
+  }
+
   if (url === '/scan/progress') {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream; charset=utf-8',
@@ -503,7 +566,11 @@ const server = http.createServer(function (req, res) {
     // 把服务端解析后的「打开目录」开关下发给浏览器（未显式配置时也会带上有效值）。
     servedCfg.features = servedCfg.features || {};
     if (typeof servedCfg.features.revealPath !== 'boolean') servedCfg.features.revealPath = REVEAL_ENABLED;
-    if (CFG.tenant.enabled) servedCfg.urls.batches = '/tenant/';
+    if (CFG.tenant.enabled) {
+      servedCfg.urls.batches = '/tenant/';
+      // 忽略配置同样按租户隔离：/tenant/<urls.ignore>（无租户文件时回退到共享默认文件）。
+      servedCfg.urls.ignore = '/tenant/' + String(defaultIgnoreUrl()).replace(/^\/+/, '');
+    }
     json(res, 200, servedCfg);
     return;
   }

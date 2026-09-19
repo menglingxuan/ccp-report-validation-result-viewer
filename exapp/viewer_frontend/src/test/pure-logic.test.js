@@ -1,6 +1,7 @@
 // 纯函数回归测试：直接从 app.js 导入纯逻辑函数并断言。
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import * as app from '../public/app.js';
 import { buildDataset } from '../lib/sample-data.js';
 
@@ -25,9 +26,9 @@ function msgState(over) {
 test('groupedToFlat 生成警告与 XPath 的扁平 key', () => {
   const flat = app.groupedToFlat({
     'OTC-PLATFORM-A': {
-      warnings: [{ channel: 'HKTR', field: 'notional', type: 'platformAssertion', level: 'WARN', product: 'IRS' }],
-      uncomparedXpaths: [{ xpath: '/HKTR/foo', channel: 'HKTR', product: 'IRS', ctx: 'h.ctx' }],
-      uncomparedCsvs: [{ value: 'col9', channel: 'HKTR', product: 'IRS' }],
+      warnings: [{ channel: 'HKTR', field: 'notional', type: 'platformAssertion', level: 'WARN' }],
+      uncomparedXpaths: [{ xpath: '/HKTR/foo', channel: 'HKTR', source: 'IRS', ctx: 'h.ctx' }],
+      uncomparedCsvs: [{ value: 'col9', channel: 'HKTR', source: 'IRS' }],
     },
   });
   assert.ok(flat[JSON.stringify(['warn', 'OTC-PLATFORM-A', 'HKTR', '', 'field', 'platformAssertion', 'WARN', 'notional'])]);
@@ -35,14 +36,152 @@ test('groupedToFlat 生成警告与 XPath 的扁平 key', () => {
   assert.ok(flat[JSON.stringify(['csv', 'col9', 'HKTR', 'OTC-PLATFORM-A', 'IRS', ''])]);
 });
 
+test('忽略配置 schema：product 键已移除，且空配置不产生 key', () => {
+  // 运行期会向该文件回写忽略项，因此这里只断言结构（不强制为空），但必须不含失效的 product 键。
+  const raw = JSON.parse(readFileSync(new URL('../public/ignore-config-by-platform.json', import.meta.url), 'utf8'));
+  assert.ok(raw && typeof raw === 'object' && !Array.isArray(raw), '配置顶层应为对象');
+  const entries = [];
+  Object.keys(raw).forEach(function (platform) {
+    const g = raw[platform] || {};
+    ['warnings', 'uncomparedXpaths', 'uncomparedCsvs'].forEach(function (b) {
+      (Array.isArray(g[b]) ? g[b] : []).forEach(function (e) { entries.push(e); });
+    });
+  });
+  entries.forEach(function (e) {
+    assert.equal(e.product, undefined, 'product 配置键应已移除：' + JSON.stringify(e));
+  });
+  // 空配置（仓库默认值）→ 无任何扁平 key / 导出仍为空配置
+  assert.deepEqual(app.groupedToFlat({}), {});
+  assert.deepEqual(app.flatToGrouped({}), {});
+});
+
 test('msgIgnoreKey / msgIsIgnored', () => {
-  const msg = { channel: 'HKTR', source: '来源渠道 A', scope: 'field', field: 'notional', type: 'platformAssertion', level: 'WARN', platform: 'OTC-PLATFORM-A', product: 'IRS' };
+  const msg = { channel: 'HKTR', source: '来源渠道 A', scope: 'field', field: 'notional', type: 'platformAssertion', level: 'WARN', platform: 'OTC-PLATFORM-A' };
   const key = app.msgIgnoreKey('warnings', msg);
   assert.equal(key, JSON.stringify(['warn', 'OTC-PLATFORM-A', 'HKTR', '来源渠道 A', 'field', 'platformAssertion', 'WARN', 'notional']));
   T.setIgnoreConfig({});
   assert.equal(app.msgIsIgnored('warnings', msg), false);
   T.setIgnoreConfig({ [key]: true });
   assert.equal(app.msgIsIgnored('warnings', msg), true);
+});
+
+test('忽略配置：配置文件 ↔ 运行时 key 往返一致（含 null channel / 空 platform / 空 source）', () => {
+  const key = app.msgIgnoreKey;
+  const file = {
+    'OTC-PLATFORM-A': {
+      warnings: [{ channel: 'HKTR', field: 'notional', type: 'platformAssertion', level: 'WARN' }],
+      uncomparedXpaths: [{ xpath: '/A/B', channel: 'HKTR', source: 'IRS' }],
+      uncomparedCsvs: [{ value: 'src_x', channel: 'CFTC', source: 'IRS' }],
+    },
+  };
+  const flat = app.groupedToFlat(file);
+  const item = { platform: 'OTC-PLATFORM-A' };
+
+  // 1) 配置文件里的条目 → 运行时 key 必须命中（platform 从 item 注入，source 条目自带）
+  const warnMsg = Object.assign({ channel: 'HKTR', source: '', scope: 'field', field: 'notional', type: 'platformAssertion', level: 'WARN' }, item);
+  assert.ok(flat[key('warnings', warnMsg)], '警告条目应命中');
+  assert.ok(flat[key('uncompared', Object.assign({ type: 1, value: '/A/B', channel: 'HKTR', source: 'IRS' }, item))], 'XPath 未比较条目应命中');
+  assert.ok(flat[key('uncompared', Object.assign({ type: 2, value: 'src_x', channel: 'CFTC', source: 'IRS' }, item))], 'CSV 未比较条目应命中');
+
+  // 1b) source 可能为空（渠道级条目）或为 null：均需归一化为空串后互相命中
+  const noSrc = Object.assign({ type: 2, value: 'nosrc_x', channel: 'HKTR', source: '' }, item);
+  assert.ok(app.groupedToFlat({ 'OTC-PLATFORM-A': { uncomparedCsvs: [{ value: 'nosrc_x', channel: 'HKTR' }] } })[key('uncompared', noSrc)], '空 source 条目应命中');
+  assert.ok(app.groupedToFlat({ 'OTC-PLATFORM-A': { uncomparedCsvs: [{ value: 'nosrc_x', channel: 'HKTR', source: null }] } })[key('uncompared', noSrc)], 'source:null 的文件条目应归一化为空串');
+
+  // 2) 全局未比较条目（channel 为 null）需归一化为空串，否则与配置文件读取结果失配
+  const globalMsg = Object.assign({ type: 1, value: '/Global/X', channel: null, source: 'IRS' }, item);
+  assert.equal(key('uncompared', globalMsg), JSON.stringify(['xpath', '/Global/X', '', 'OTC-PLATFORM-A', 'IRS', '']));
+  assert.ok(app.groupedToFlat({ 'OTC-PLATFORM-A': { uncomparedXpaths: [{ xpath: '/Global/X', channel: null, source: 'IRS' }] } })[key('uncompared', globalMsg)], 'channel:null 的文件条目应命中');
+
+  // 3) 空 platform 不再被写成 'UNKNOWN'，往返后仍能命中
+  const noPlat = { type: 1, value: '/No/Plat', channel: 'HKTR', platform: '', source: '' };
+  assert.ok(app.groupedToFlat({ '': { uncomparedXpaths: [{ xpath: '/No/Plat', channel: 'HKTR', source: '' }] } })[key('uncompared', noPlat)]);
+  assert.deepEqual(Object.keys(app.flatToGrouped({ [key('uncompared', noPlat)]: true })), ['']);
+
+  // 3b) 导出（flat -> grouped）使用 source 字段，且不再输出 kind / ctx 等冗余字段（容器名即类型）
+  const exported = app.flatToGrouped({
+    [JSON.stringify(['warn', 'P', 'HKTR', 'SRC', 'field', 't', 'WARN', 'f'])]: true,
+    [JSON.stringify(['xpath', '/A/B', 'HKTR', 'P', 'SRC', ''])]: true,
+    [JSON.stringify(['csv', 'c1', 'HKTR', 'P', '', ''])]: true,
+  });
+  assert.deepEqual(exported.P.warnings[0], { channel: 'HKTR', source: 'SRC', scope: 'field', type: 't', level: 'WARN', field: 'f' });
+  assert.deepEqual(exported.P.uncomparedXpaths[0], { xpath: '/A/B', channel: 'HKTR', source: 'SRC' });
+  assert.deepEqual(exported.P.uncomparedCsvs[0], { value: 'c1', channel: 'HKTR', source: '' });
+
+  // 4) 导出（flat -> grouped）后再加载，key 完全不变（往返恒等）
+  const round = app.groupedToFlat(app.flatToGrouped(flat));
+  assert.deepEqual(Object.keys(round).sort(), Object.keys(flat).sort(), '往返后 key 集合应一致');
+
+  // 5) 端到端：配置文件（含 channel:null 的全局条目）加载为忽略配置后，对应条目应判定为已忽略
+  const fileWithGlobal = {
+    'OTC-PLATFORM-A': {
+      warnings: file['OTC-PLATFORM-A'].warnings,
+      uncomparedXpaths: file['OTC-PLATFORM-A'].uncomparedXpaths.concat([{ xpath: '/Global/X', channel: null, source: 'IRS' }]),
+      uncomparedCsvs: file['OTC-PLATFORM-A'].uncomparedCsvs,
+    },
+  };
+  T.setIgnoreConfig(app.groupedToFlat(fileWithGlobal));
+  assert.equal(app.msgIsIgnored('warnings', warnMsg), true, '警告条目应判定为已忽略');
+  assert.equal(app.msgIsIgnored('uncompared', globalMsg), true, 'channel:null 的全局未比较条目应判定为已忽略');
+  assert.equal(app.msgIsIgnored('uncompared', { type: 1, value: '/Not/Ignored', channel: 'HKTR', platform: 'OTC-PLATFORM-A', source: 'IRS' }), false, '未在配置中的条目不应当被忽略');
+  T.setIgnoreConfig({});
+});
+
+test('parseIgnoreImport：只接受分组格式，并识别需要覆盖的部分', () => {
+  const grouped = {
+    'OTC-PLATFORM-A': {
+      warnings: [{ channel: 'HKTR', source: 'S', scope: 'field', type: 't', level: 'WARN', field: 'f' }],
+      uncomparedXpaths: [],
+      uncomparedCsvs: [],
+    },
+  };
+  const ok = app.parseIgnoreImport(JSON.stringify(grouped));
+  assert.equal(ok.ok, true);
+  assert.deepEqual(ok.kinds.slice().sort(), ['csv', 'warn', 'xpath'], '三部分均在文件中');
+  assert.deepEqual(Object.keys(ok.flat), [JSON.stringify(['warn', 'OTC-PLATFORM-A', 'HKTR', 'S', 'field', 't', 'WARN', 'f'])]);
+  assert.deepEqual(app.parseIgnoreImport('{}'), { ok: true, flat: {}, kinds: ['warn', 'xpath', 'csv'] }, '{} 即三部分皆空');
+  // 分部：文件里只出现 warnings / 只出现 uncomparedCsvs
+  const warnOnly = app.parseIgnoreImport(JSON.stringify({ P: { warnings: [] } }));
+  assert.deepEqual([warnOnly.ok, warnOnly.kinds, warnOnly.flat], [true, ['warn'], {}]);
+  const csvOnly = app.parseIgnoreImport(JSON.stringify({ P: { uncomparedCsvs: [{ value: 'v', channel: 'c', source: 's' }] } }));
+  assert.deepEqual(csvOnly.kinds, ['csv']);
+  assert.deepEqual(Object.keys(csvOnly.flat), [JSON.stringify(['csv', 'v', 'c', 'P', 's', ''])]);
+  const xpathOnly = app.parseIgnoreImport(JSON.stringify({ P: { warnings: [], uncomparedXpaths: [] } }));
+  assert.deepEqual(xpathOnly.kinds, ['warn', 'xpath']);
+  // 失败情形
+  assert.equal(app.parseIgnoreImport('{ not json').reason, 'json', '非法 JSON');
+  assert.equal(app.parseIgnoreImport('[]').reason, 'shape', '数组顶层');
+  assert.equal(app.parseIgnoreImport('null').reason, 'shape', 'null 顶层');
+  const flatLegacy = JSON.stringify({ [JSON.stringify(['warn', 'P', 'C', '', 'field', 't', 'WARN', 'f'])]: true });
+  assert.equal(app.parseIgnoreImport(flatLegacy).reason, 'legacy', '旧版扁平格式应被拒绝');
+  assert.equal(app.parseIgnoreImport(JSON.stringify({ foo: 'bar' })).reason, 'buckets', '无可识别分组应被拒绝');
+});
+
+test('applyIgnoreImport：只覆盖文件包含的部分', () => {
+  const warnKey = JSON.stringify(['warn', 'P', 'C', 'S', 'field', 't', 'WARN', 'f']);
+  const xpathKey = JSON.stringify(['xpath', '/old', 'C', 'P', 'S', '']);
+  const csvKey = JSON.stringify(['csv', 'oldcsv', 'C', 'P', 'S', '']);
+  const cur = { [warnKey]: true, [xpathKey]: true, [csvKey]: true };
+
+  // 只导入 warnings：警告被替换，xpath / csv 原样保留
+  const r1 = app.parseIgnoreImport(JSON.stringify({ P: { warnings: [{ channel: 'C2', source: 'S2', scope: 'field', type: 't2', level: 'INFO', field: 'f2' }] } }));
+  const n1 = app.applyIgnoreImport(cur, r1);
+  assert.deepEqual(Object.keys(n1).slice().sort(), [
+    csvKey,
+    xpathKey,
+    JSON.stringify(['warn', 'P', 'C2', 'S2', 'field', 't2', 'INFO', 'f2']),
+  ].slice().sort(), '仅警告部分被替换');
+
+  // 只清空 warnings（warnings: []）→ 其它部分保留
+  const n2 = app.applyIgnoreImport(cur, app.parseIgnoreImport(JSON.stringify({ P: { warnings: [] } })));
+  assert.deepEqual(Object.keys(n2).slice().sort(), [csvKey, xpathKey].slice().sort(), '只清空警告');
+
+  // {} = 三部分全部清空
+  assert.deepEqual(app.applyIgnoreImport(cur, app.parseIgnoreImport('{}')), {}, '空文件清空全部');
+
+  // 两个分部分导也可以组合
+  const n3 = app.applyIgnoreImport(cur, app.parseIgnoreImport(JSON.stringify({ P: { warnings: [], uncomparedCsvs: [] } })));
+  assert.deepEqual(Object.keys(n3), [xpathKey], '只保留未涉及的 XPath 部分');
 });
 
 test('filteredFields 计数（ALL=78，HKTR=26，FAILED 过滤）', () => {

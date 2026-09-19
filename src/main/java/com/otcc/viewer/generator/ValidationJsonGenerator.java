@@ -1056,20 +1056,12 @@ public final class ValidationJsonGenerator {
                 .build();
     }
 
+    /**
+     * 忽略配置默认值：空配置（不忽略任何条目）。
+     * 运行期由查看器的 {@code POST /api/ignore} 回写到当前生效的配置文件。
+     */
     public static Map<String, PlatformIgnore> generateIgnoreConfig() {
-        Map<String, PlatformIgnore> map = new LinkedHashMap<>();
-        for (String platform : PLATFORMS) {
-            List<IgnoreWarning> warnings = new ArrayList<>();
-            warnings.add(IgnoreWarning.builder()
-                    .kind("warning").channel("HKTR").field("")
-                    .type("contextAssertion").level("NOTICE").product("IRS")
-                    .build());
-            map.put(platform, PlatformIgnore.builder()
-                    .warnings(warnings)
-                    .uncomparedXpaths(new ArrayList<>())
-                    .build());
-        }
-        return map;
+        return new LinkedHashMap<>();
     }
 
     public static BatchMeta generateBatchMeta(ValidationDataset dataset, String dataUrl, String dataMode) {

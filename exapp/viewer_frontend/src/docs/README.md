@@ -29,8 +29,13 @@
   - 筛选面板在「报告环境」下方新增「按标签筛选」下拉（选项从当前范围的批次标签去重收集）。
 - **批次编辑（✎，仅兼容批次）**：列表卡片提供铅笔入口，可同时编辑**批次名 / 批次描述（多行）/ 标签**，保存后经 `POST /api/batch` 直接回写 `batch-meta.json`（不兼容与已删除批次不提供该入口，也拒绝保存）。
   - **批次名允许重复**：若输入的名称与其它批次重名，编辑器仅给出告警（列出同名批次 ID）且**不阻止保存**——与 `urls.defaultDataMode` 按批次名解析时取首个匹配的现状一致；批次名为空则不提交（服务端也返回 400）。
-- **批次目录双击打开**：批次详情中的「批次目录」支持双击，经 `POST /api/reveal` 在系统文件管理器中打开该目录（`features.revealPath`：dev/test 默认开启，prod 默认关闭；路径限定在批次根目录内）。
+- **批次目录双击打开**：批次详情中的「批次目录」支持双击，经 `POST /api/reveal` 在系统文件管理器中打开该目录（`features.revealPath`：dev/test 默认开启，prod 默认关闭；路径限定在批次根目录内）。Launcher 用**系统绝对路径**解析（Windows 用 `%SystemRoot%\explorer.exe`，不依赖 `PATH` —— 某些环境下 `PATH` 含畸形条目会让 Node 的 PATH 查找整体失效，`spawn('explorer.exe')` 直接 ENOENT）；启动失败会如实返回 500 并在页面上提示，不再无声无息。
 - **版本兼容性合并到版本号标签**：批次列表卡片、dock 悬停小卡片与批次详情的标签行统一由 `batchBadgesHTML` 渲染，不再单独展示「版本兼容 / 版本不兼容」标签，兼容性以版本号标签的配色 + title 提示表达；详情标签与卡片一致（仅不含 item 数量标签）。
+- **Item 关联属性浮层（hover 展示）**：主列表「报告日期」左侧的 item id **鼠标悬停**即弹出（原为点击），移出后延迟收起；鼠标进入浮层内部保持展开，便于点击复制。浮层首行为带标签的 `Item ID` 行并附复制按钮（其余行为对手方 Item ID / 平台 Trade ID / 平台 Trade Deal ID，均带复制按钮）。
+- **激活筛选标签（chips）与「清除全部」**：
+  - Item 列表（左栏）与批次列表都会在列表上方显示当前激活的筛选标签（Item：状态 / 平台 / 产品 / TradeId；批次：名称 / 命令行 / 描述 / 日期 / 环境 / 标签），主列表字段筛选同样沿用该样式。批次标签位于列表上方的**独立区域**（在拖动标记之上，不随列表高度拖拽变化，无标签时自动收起）。
+  - 标签数 **> 1** 时额外显示「清除全部」，一键清除全部标签并重置对应筛选状态与分页；单个标签仍可用自身 ✕ 移除。
+  - Item 列表的标签区高度变化后会自动重算列表起始位置（`renderSidebarChips` → `layoutSidebarList`），避免首个 item 被标签遮挡。
 - **收藏夹**：
   - 按「包名」（`aa.bb.cc`）分层折叠收藏批次；入口位于批次 dock（★）。
   - 收藏/取消收藏会**回写批次元数据**（`favorite` 标记），扫描后仍保留。
@@ -51,6 +56,7 @@
 - **Gzip 压缩**：可压缩资源（HTML/CSS/JS/JSON/SVG/TXT）按需 gzip，`Vary: Accept-Encoding`。
 - **扫描进度 SSE**：`GET /scan/progress`（`text/event-stream`）实时推送目录/批次/跳过计数；前端在「刷新批次」时订阅并在按钮上显示进度。
 - **收藏夹服务端持久化**：`GET/POST /api/favorites` 共享收藏树（多用户一致，非管理员账号可写 `favorites.json`），localStorage 仅作离线回退。
+- **忽略配置服务端持久化**：忽略 / 取消忽略 / 批量忽略 / 导入会 `POST /api/ignore` 回写到当前生效的 `ignore-config-by-platform.json`（默认空配置，可按租户隔离；与收藏夹同一套原子写入机制）。「导入」为**分部覆盖**语义（以文件为准，只覆盖文件里出现的部分：警告 / 未比较 XPath / 未比较 CSV，其余保持不变；只接受分组格式），「导出」产物可直接重新导入。
 - **计算 Worker**：健康总览与全局搜索等重计算移到 Web Worker（`worker.js`，复用 `core.js` 纯函数），失败自动回退主线程同步计算。
 - **纯函数核心拆分**：`public/core.js` 承载无副作用纯函数（搜索/排序/过滤/差异 diff/忽略 key/健康统计/全局搜索），主线程与 Worker 共用，并由 Node 测试直接导入回归。
 - **深链接增强**：URL hash 除 `item/ch/tab/q/result/page` 外，新增 `sort`、`cols`（列可见性）、`filters`（列过滤器 JSON），可完整还原视图状态。
@@ -103,7 +109,7 @@ npm start
 > 默认**非租户模式**：直接使用程序 web 根（`public/`）下的共享批次目录、批次索引与收藏夹。
 > 通过 `--tenant alice`（或 `--tenant`，缺省取系统用户名）开启**租户模式**：每个租户拥有独立
 > 数据根 `~/.report-viewer/<租户>/`（首次启动自动创建兼容的空批次目录 / 空索引 / 空忽略配置），
-> 批次索引/批次数据/收藏夹均按租户隔离；`--no-tenant` 可强制回到非租户模式。
+> 批次索引/批次数据/收藏夹/忽略配置均按租户隔离；`--no-tenant` 可强制回到非租户模式。
 > 开启审查（`--audit` 或 config `audit: true`）后，活跃租户信息实时写入**程序自身目录**
 > （`server.js` 同级目录）下的 `.report-viewer/active/<租户>.json`（心跳），启动/停止记录追加到
 > 同目录 `.report-viewer/activity.log`（程序目录只读时回退到 `~/.report-viewer/`）。
@@ -138,8 +144,9 @@ report-viewer                  # 任意目录启动（内置默认数据）
 | `POST` / `GET` | `/scan` | 触发一次完整批次扫描（同步返回结果） |
 | `GET` | `/scan/progress` | 扫描进度 SSE（`text/event-stream`） |
 | `POST` | `/api/batch` | 批次元数据写回（body 任意组合：`{ "batchId": "...", "deleted": true }` / `{ "favorite": true }` / `{ "batchName": "...", "description": "..." }` / `{ "tags": ["a","b"] }`；`tags: []` 或空 `description` 表示清除对应字段，空 `batchName` 返回 400）。**写回后服务端会自动重建 `batches-index.json`**，保证刷新页面立即读到新值（收藏标记 / 标签 / 名称 / 软删除状态） |
-| `POST` | `/api/reveal` | 在系统文件管理器中打开批次目录（body：`{ "path": "<批次目录绝对路径>" }`）；需 `features.revealPath` 开启，路径限定在 `scan.basedir` 内 |
+| `POST` | `/api/reveal` | 在系统文件管理器中打开批次目录（body：`{ "path": "<批次目录绝对路径>" }`）；需 `features.revealPath` 开启，路径限定在 `scan.basedir` 内。返回 `{ ok, path, launcher }`；启动文件管理器失败（如系统未找到可执行文件）返回 **500** 并给出原因，前端提示「打开目录失败」。 |
 | `GET` / `POST` | `/api/favorites` | 收藏夹读取 / 整树保存（body：`{ "favorites": {...} }`） |
+| `POST` | `/api/ignore` | 忽略配置回写（body：`{ "url": "<当前生效的配置地址，缺省用 config.urls.ignore>", "config": {…分组结构…} }`）；仅允许写入 `.json` 且路径需落在允许的根目录内（非租户：web 根；租户：租户数据根，`/tenant/` 前缀自动剥离），原子写入 |
 | `GET` | `/status` / `/health` | 服务状态与当前配置 |
 
 ## 项目结构

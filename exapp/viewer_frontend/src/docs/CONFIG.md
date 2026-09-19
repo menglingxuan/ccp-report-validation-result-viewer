@@ -122,7 +122,7 @@ REPORT_VIEWER_CONFIG=prod node server.js
 | `defaultData` | `report-validation-data-default.json` | 默认模板数据文件；`defaultDataMode=default` 时优先加载 |
 | `initData` | `report-validation-data-init.json` | 空占位数据文件；`defaultDataMode=init` 时加载 |
 | `defaultDataMode` | `default` | 默认数据源：`init` / `default` / 某个已扫描批次名（其他值等同 `default`） |
-| `ignore` | `ignore-config-by-platform.json` | 忽略配置，相对 web 根目录 |
+| `ignore` | `ignore-config-by-platform.json` | 忽略配置，相对 web 根目录；同时作为 `POST /api/ignore` 的**默认回写目标**（租户模式下读取地址重写为 `/tenant/<该路径>`，写入租户数据根内的同路径） |
 | `batches` | `batches-index.json` | 批次索引，相对 web 根目录 |
 | `help` | `batch-help.json` | docker 帮助文档内容文件，相对 web 根目录 |
 | `scan` | `/scan` | 批次自动扫描接口（相对站点根） |
@@ -146,7 +146,8 @@ REPORT_VIEWER_CONFIG=prod node server.js
 `columnHover` / `sidebarSearch` / `sidebarTradeId` / `compare` /
 `healthOverview` / `globalSearch` / `keyboardShortcuts` / `modalPrints` / `recentBatches` /
 `batchHelp`（docker 帮助图标入口）/ `revealPath`（批次详情「批次目录」双击在系统文件管理器中打开；
-默认仅在 `runType` 为 `dev` / `test` 时开启，生产环境需显式设为 `true`）
+默认仅在 `runType` 为 `dev` / `test` 时开启，生产环境需显式设为 `true`）；
+关闭时批次目录双击不生效，悬停会提示「当前环境未开启『打开目录』功能」
 
 ## 7. `limits`
 

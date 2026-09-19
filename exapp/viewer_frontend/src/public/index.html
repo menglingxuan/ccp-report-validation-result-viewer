@@ -229,6 +229,9 @@
     .bi-act.confirm { background: var(--fail); border-color: var(--fail); color: #fff; }
     .bi-act.confirm:hover { filter: brightness(.95); }
     .bp-pending-bar { border-top: 1px solid var(--border); background: var(--surface-2); }
+    /* 批次列表上方的激活筛选标签：独立区域（在拖动标记上方，不参与列表高度拖拽）。 */
+    .bp-chips { padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--surface-2); }
+    .bp-chips:empty { display: none; }
     .bp-pending-head { font-size: 11px; font-weight: 600; color: var(--warn); padding: 6px 14px 2px; }
     .bi-actions2 { display: flex; gap: 4px; align-items: center; }
     .bi-fav { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 13px; line-height: 1; padding: 2px; opacity: 0; }
@@ -1306,7 +1309,7 @@
     .cp-static-note { display: block; color: var(--num-muted); font-size: 12px; margin: 0 0 4px; padding-left: 4px; transition: color .2s; }
     .cp-static-note:empty { display: none; }
     .cp-static-note.cp-note-flash { color: var(--warn); font-weight: 600; }
-    .item-meta-link { color: var(--text); cursor: pointer; text-decoration: none; border-bottom: 1px dashed var(--border); font-family: var(--mono); }
+    .item-meta-link { color: var(--text); cursor: help; text-decoration: none; border-bottom: 1px dashed var(--border); font-family: var(--mono); }
     .item-meta-link:hover { color: var(--accent); }
     .item-info-row { display: flex; gap: 8px; padding: 4px 0; font-size: 13px; align-items: baseline; white-space: nowrap; }
     .item-info-row .iir-label { color: var(--muted); flex: 0 0 auto; }
