@@ -20,6 +20,44 @@ export function normalizeItemSummary(raw) {
   return out;
 }
 
+/* ---------- 「完整日志」字段定位（日志锚点） ----------
+ * 数据契约见 docs/DATA_SCHEMA.md §3 / §5：scope="field" 的日志行带 field（字段 id）且 channel / source 非空。
+ *   - 合成键 = channel + source + field：即数据文件里日志行的关联标识，只放进 data-log-key（原始值，便于调试与扫描兜底）；
+ *   - DOM id 用**短标识** log-<渠道>-s<来源渠道序号>-f<字段id>.<同键序号>，例 log-HKTR-s1-f2.1（实测最长 17 字符）。
+ *     名称在 [A-Za-z0-9_-] 内直接使用，含中文 / 空白等字符时**整串退化为 36 进制短哈希**并加 x 前缀
+ *     （不做部分清洗：`渠道 A` 与 `面 A` 清洗后都只剩 `A`，会互相碰撞）；
+ *     来源渠道用它在 channel.sources[] 里的 1-based 序号（短且稳定），未登记时退化为 sx<hash>；
+ *     同键序号 = 该行在同键（channel+source+field）行中的次序（按 item.logs 顺序编号，与搜索 / 作用域筛选无关 → id 稳定）。
+ *     不要把合成键整串 encodeURIComponent 塞进 id（旧实现 47 字符且不可读）。
+ * ------------------------------------------------------------------ */
+export function logFieldKey(channel, source, fieldId) {
+  return String(channel || '') + '|' + String(source || '') + '|' + String(fieldId || '');
+}
+// FNV-1a 32bit：确定性（同输入同输出），输出为 36 进制短串。
+export function logHash(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(36);
+}
+export function logSlug(name) {
+  const s = String(name == null ? '' : name);
+  return /^[A-Za-z0-9_-]+$/.test(s) ? s : 'x' + logHash(s);
+}
+// item 用于按渠道名解析 channel.sources[]（决定来源渠道序号）；跳转取 seq=1（首个关联日志行）。
+export function logAnchorId(item, channel, source, fieldId, seq) {
+  const ch = ((item && item.channels) || []).find(function (c) { return c.name === channel; }) || null;
+  const idx = ((ch && ch.sources) || []).map(function (s) { return s.name; }).indexOf(source) + 1;
+  const srcPart = idx > 0 ? 's' + idx : 'sx' + logHash(String(source == null ? '' : source));
+  return 'log-' + logSlug(channel) + '-' + srcPart + '-f' + logSlug(fieldId) + '.' + (seq || 1);
+}
+// 带锚点的日志行：scope="field" 且 channel / source / field 三值齐备（数据契约）。
+export function isFieldLogLine(l) {
+  return !!l && l.scope === 'field' && !!l.field && !!l.channel && !!l.source;
+}
+
 export function parseSearchQuery(q) {
   let s = (q || '').trim();
   let key = null, regex = false;
@@ -140,7 +178,9 @@ export function flatFields(item, tagLabels) {
           eoUnconverted: cvtL.raw != null ? cvtL.raw : '',
           aoUnconverted: cvtR.raw != null ? cvtR.raw : '',
           type: def.type, ctxs: ctxUnion, ctxKeys: ctxKeys,
-          eo: left.value, ao: right.value, result: f.result, remarks: f.remarks, prints: f.prints,
+          eo: left.value, ao: right.value, result: f.result, remarks: f.remarks,
+          // prints 保留待用（字段详情页已改为从「完整日志」读取该字段的关联日志行，见 app.js 的 fieldLogLines）。
+          prints: f.prints,
         });
       });
     });

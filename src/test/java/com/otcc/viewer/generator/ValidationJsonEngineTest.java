@@ -174,8 +174,17 @@ class ValidationJsonEngineTest {
             c.check(item.getLogs() != null && !item.getLogs().isEmpty(), it + ".logs non-empty");
             if (item.getLogs() != null) {
                 for (ItemLog l : item.getLogs()) {
-                    c.check("item".equals(l.getScope()) || "channel".equals(l.getScope()), it + ".logs.scope in {item,channel}");
+                    boolean fieldScoped = "field".equals(l.getScope());
+                    c.check("item".equals(l.getScope()) || "channel".equals(l.getScope()) || fieldScoped,
+                            it + ".logs.scope in {item,channel,field}");
                     c.check(nonBlank(l.getText()), it + ".logs.text non-blank");
+                    // field 仅在 scope=field 时有值；field 非空时 channel / source 都不能为空（数据契约）。
+                    c.check(fieldScoped == nonBlank(l.getField()),
+                            it + ".logs.field only for scope=field: scope=" + l.getScope() + " field=" + l.getField());
+                    if (fieldScoped) {
+                        c.check(nonBlank(l.getChannel()) && nonBlank(l.getSource()),
+                                it + ".logs.field requires channel and source");
+                    }
                 }
             }
         }
@@ -483,14 +492,15 @@ class ValidationJsonEngineTest {
                 c.check(src.getFields() != null && !src.getFields().isEmpty(), label + ".source.fields non-empty");
                 if (src.getFields() != null) {
                     for (Field f : src.getFields()) {
-                        validateField(c, f, label, csv, fieldIds);
+                        validateField(c, f, label, csv, fieldIds, ch.getName(), src.getName());
                     }
                 }
             }
         }
     }
 
-    private static void validateField(Check c, Field f, String label, boolean csv, Set<String> fieldIds) {
+    private static void validateField(Check c, Field f, String label, boolean csv, Set<String> fieldIds,
+                                      String chName, String srcName) {
         c.check(nonBlank(f.getId()), label + ".field.id non-blank");
         c.check(fieldIds.contains(f.getId()), label + ".field.id references item.fields: " + f.getId());
         c.check(f.getCmpLeft() != null && f.getCmpLeft().getCtxs() != null && !f.getCmpLeft().getCtxs().isEmpty(),
@@ -519,7 +529,18 @@ class ValidationJsonEngineTest {
             }
         }
 
+        // prints 保留待用（查看器详情页改为读取关联日志行）；logs 必须带 channel / source / field（日志锚点契约）。
         c.check(f.getPrints() != null && !f.getPrints().isEmpty(), label + ".field.prints non-empty");
+        c.check(f.getLogs() != null && !f.getLogs().isEmpty(), label + ".field.logs non-empty");
+        if (f.getLogs() != null) {
+            for (ItemLog l : f.getLogs()) {
+                c.check("field".equals(l.getScope()), label + ".field.logs.scope == field");
+                c.check(f.getId().equals(l.getField()), label + ".field.logs.field == field.id: " + l.getField());
+                c.check(chName.equals(l.getChannel()), label + ".field.logs.channel == channel name: " + l.getChannel());
+                c.check(srcName.equals(l.getSource()), label + ".field.logs.source == source name: " + l.getSource());
+                c.check(nonBlank(l.getText()), label + ".field.logs.text non-blank");
+            }
+        }
     }
 
     private static void validateMessages(Check c, List<Message> msgs, String label) {

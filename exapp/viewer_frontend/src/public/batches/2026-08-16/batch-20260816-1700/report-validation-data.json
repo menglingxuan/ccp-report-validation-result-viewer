@@ -48,7 +48,7 @@
         "warningsIgnored": 0,
         "errors": 0,
         "uncompared": 1,
-        "logs": 73
+        "logs": 307
       }
     },
     {
@@ -75,7 +75,7 @@
         "warningsIgnored": 0,
         "errors": 10,
         "uncompared": 2,
-        "logs": 73
+        "logs": 289
       }
     },
     {
@@ -102,7 +102,7 @@
         "warningsIgnored": 0,
         "errors": 12,
         "uncompared": 3,
-        "logs": 73
+        "logs": 271
       }
     },
     {
@@ -130,7 +130,7 @@
         "warningsIgnored": 0,
         "errors": 9,
         "uncompared": 2,
-        "logs": 73
+        "logs": 271
       }
     }
   ]

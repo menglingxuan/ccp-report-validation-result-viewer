@@ -3,8 +3,12 @@
      * 数据模型说明
      * item (tradeId) -> 报告渠道 (HKTR/JSFA/CFTC)
      *   -> 来源渠道 (A/B, 各有一套字段映射)
-     *     -> 字段比较结果 { id, ctxs, cmpLeft, cmpRight, cvtLeft, cvtRight, vdt, result, remarks, resultText, resultDetails, prints }
-     * item 级别: fields[]（字段注册表，按 id 去重）/ ctxDefs / warnings[] / errors[] / uncompared[] / logs[]
+     *     -> 字段比较结果 { id, ctxs, cmpLeft, cmpRight, cvtLeft, cvtRight, vdt, result, remarks, resultText, resultDetails, prints, logs }
+     *        （prints 保留待用；logs 为该字段关联的日志行，与 item.logs 中 scope="field" 的行同构）
+     * item 级别: ctxDefs / warnings[] / errors[] / uncompared[] / logs[]
+     *        （logs 行 { scope, channel, source, field, text }：field 仅 scope="field" 时有值，
+     *          且此时 channel / source 均非空 —— 完整日志的字段定位锚点据此建立）
+     * 字段注册表在 channel.fields（report channel 级别）
      * ============================================================ */
 
     import {
@@ -17,6 +21,7 @@
       filterRowsByRules, FILTER_EMPTY,
       descExToolsVisible, pageItems, fitColWidths,
       normalizeItemSummary,
+      logFieldKey, logAnchorId, isFieldLogLine,
     } from './core.js';
 
     const TYPE_META = {
@@ -2512,6 +2517,33 @@
       const p = String(key || '').split('\u0001');
       return { channel: p[0] || '', source: p[1] || '', id: p[2] || '' };
     }
+
+    // 日志行定位（「完整日志」中 scope="field" 的行）：合成键与短标识锚点 id 的纯函数在 core.js
+    // （logFieldKey / logSlug / logHash / logAnchorId / isFieldLogLine，便于 Node 直接单测）。
+
+    // 取某字段关联的完整日志行（item.logs 中 channel + source + field 匹配的行），返回 { lines, anchored }：
+    //   - anchored=true 表示这些行来自「完整日志」选项卡渲染的数据，可在其中定位高亮；
+    //   - 兜底：item.logs 未冗余字段日志时，退回该字段自身的 logs（无锚点，因此不提供跳转）。
+    function fieldLogLines(item, channel, source, fieldId, fieldEntry) {
+      const hit = ((item && item.logs) || []).filter(function (l) {
+        return isFieldLogLine(l) && l.channel === channel && l.source === source && l.field === fieldId;
+      });
+      if (hit.length) return { lines: hit, anchored: true };
+      const own = ((fieldEntry && fieldEntry.logs) || []).filter(function (l) { return l && typeof l.text === 'string'; });
+      return { lines: own, anchored: false };
+    }
+    // 在「完整日志」已渲染的内容里找锚点元素：先用可推导的 id 直取，再用 data-log-key 复核
+    // （slug / 哈希理论上有碰撞可能），不一致时退回按 data-log-key 扫描（也覆盖「首行被筛选掉」的情况）。
+    function findLogAnchorEl(channel, source, fieldId) {
+      const key = logFieldKey(channel, source, fieldId);
+      const el = document.getElementById(logAnchorId(currentItem(), channel, source, fieldId, 1));
+      if (el && el.getAttribute('data-log-key') === key) return el;
+      const nodes = document.querySelectorAll('#content [data-log-key]');
+      for (let i = 0; i < nodes.length; i++) {
+        if (nodes[i].getAttribute('data-log-key') === key) return nodes[i];
+      }
+      return null;
+    }
     function findField(item, channel, source, id) {
       const ch = (item.channels || []).find(function (c) { return c.name === channel; });
       if (!ch) return null;
@@ -3772,7 +3804,7 @@
           let icos = '';
           if (warnN > 0) icos += fieldMsgIconHTML('warnings', warnN, r);
           if (errN > 0) icos += fieldMsgIconHTML('errors', errN, r);
-          return '<td class="mono"><a class="val-link" data-detail="' + esc(fieldLocKey(r.channel, r.source, r.id)) + '" title="' + t('viewCompareDetail') + '">' + esc(r.field) + '</a>' + icos + '</td>';
+          return '<td class="mono"><a class="val-link" data-detail="' + esc(fieldLocKey(r.channel, r.source, r.id)) + '" title="' + esc(t('viewCompareDetailTip')) + '">' + esc(r.field) + '</a>' + icos + '</td>';
         }
         case 'userTag': return '<td>' + userTagHTML(r.userTag) + '</td>';
         case 'aoEl': {
@@ -4075,7 +4107,7 @@
         case 'text': return '<td>' + hoverCellHTML(m.text) + '</td>';
         case 'field':
           if (m.field) {
-            return '<td class="mono"><a class="val-link" data-jump-field="' + esc(m.field) + '" data-jch="' + esc(m.channel || '') + '" data-jsrc="' + esc(m.source || '') + '" title="' + t('jumpToFieldTip') + '">' + esc(m.field) + '</a></td>';
+            return '<td class="mono"><a class="val-link" data-jump-field="' + esc(m.field) + '" data-jch="' + esc(m.channel || '') + '" data-jsrc="' + esc(m.source || '') + '" title="' + esc(t('jumpToFieldTip')) + '">' + esc(m.field) + '</a></td>';
           }
           return '<td class="mono">' + esc(m.field || '—') + '</td>';
         case 'ignored': {
@@ -4531,10 +4563,100 @@
         const q = state.search.trim().toLowerCase();
         lines = lines.filter(l => String(l.text || '').toLowerCase().includes(q));
       }
-      const html = lines.map(l => '<div class="log-line">' + esc(l.text || '') + '</div>').join('');
+      // scope="field" 的行带定位锚点（短标识 id + data-log-key），供字段比较 / 关联字段 / 字段详情跳转高亮；
+      // 其余日志行不带锚点（item / channel 级日志无法从字段侧定位）。
+      // 同键序号按 item.logs 顺序编号（与当前搜索 / 作用域筛选无关）→ 同一行 id 稳定，跳转取 .1。
+      const it = currentItem() || {};
+      const seqByLine = new Map();
+      const seqCount = Object.create(null);
+      (it.logs || []).forEach(function (l) {
+        if (!isFieldLogLine(l)) return;
+        const k = logFieldKey(l.channel, l.source, l.field);
+        seqCount[k] = (seqCount[k] || 0) + 1;
+        seqByLine.set(l, seqCount[k]);
+      });
+      const html = lines.map(function (l) {
+        const text = esc(l.text || '');
+        if (!isFieldLogLine(l)) return '<div class="log-line">' + text + '</div>';
+        const key = logFieldKey(l.channel, l.source, l.field);
+        let seq = seqByLine.get(l);
+        if (!seq) { seqCount[key] = (seqCount[key] || 0) + 1; seq = seqCount[key]; }
+        const id = logAnchorId(it, l.channel, l.source, l.field, seq);
+        return '<div class="log-line" id="' + esc(id) +
+          '" data-log-key="' + esc(key) + '" data-log-field="' + esc(l.field) + '">' + text + '</div>';
+      }).join('');
       document.getElementById('content').innerHTML =
-        '<div class="log-box">' + (html || '<div>无日志</div>') + '</div>' +
+        '<div class="log-box">' + (html || '<div>' + t('logsEmpty') + '</div>') + '</div>' +
         '<div class="meta-note">' + lines.length + ' ' + t('metaLogs') + scopeLabel() + t('metaClose') + '</div>';
+    }
+
+    // 解析「跳转到完整日志」的目标：field 可传字段 id（字段比较行 / 字段详情）或字段名
+    // （警告 / 错误选项卡的「关联字段」存的是字段名）。返回 null 表示不可跳转：
+    // 日志功能关闭、渠道 / 来源 / 字段不可解析，或该字段在完整日志中没有关联日志行（无锚点）。
+    function resolveFieldLogTarget(channel, source, field) {
+      if (!APP_FEATURES.logs || !field || !source) return null;
+      const it = currentItem();
+      const ch = it && (it.channels || []).find(function (c) { return c.name === channel; });
+      if (!ch) return null;
+      const fd = (ch.fields || []).find(function (f) { return f.id === field; })
+        || (ch.fields || []).find(function (f) { return f.name === field; });
+      if (!fd) return null;
+      if (!fieldLogLines(it, ch.name, source, fd.id, fd).anchored) return null;
+      return { item: it, channel: ch.name, source: source, fieldId: fd.id };
+    }
+    function canJumpToFieldLog(channel, source, field) { return !!resolveFieldLogTarget(channel, source, field); }
+
+    // 从字段比较 / 关联字段 / 字段详情跳转到「完整日志」中该字段关联的首个日志行并高亮。
+    //   - 日志锚点要求 channel / source / field 三者齐备（数据契约）；
+    //   - 文本搜索会过滤掉目标行，故先清空搜索；渠道 / 来源作用域同理——先按当前作用域尝试，
+    //     找不到锚点时放宽到 ALL 再定位（保证「能跳过去」，同时尽量不动用户的筛选）。
+    function jumpToFieldLog(channel, source, field) {
+      const target = resolveFieldLogTarget(channel, source, field);
+      if (!target) return false;
+      state.tab = 'logs';
+      state.rowId = -1;
+      state.msgSort = { key: '', dir: 1 };
+      state.msgFilter = {};
+      state.search = '';
+      const searchEl = document.getElementById('search');
+      if (searchEl) searchEl.value = '';
+      closePopover();
+      render();
+      const locate = function (allowRelax) {
+        const el = findLogAnchorEl(target.channel, target.source, target.fieldId);
+        if (el) { flashLogLine(el); return; }
+        if (allowRelax && (state.channel !== 'ALL' || state.source !== 'ALL')) {
+          // 目标行被渠道 / 来源作用域滤掉：放宽作用域后重绘再定位。
+          state.channel = 'ALL';
+          state.source = 'ALL';
+          render();
+          requestAnimationFrame(function () { locate(false); });
+        }
+      };
+      requestAnimationFrame(function () { requestAnimationFrame(function () { locate(true); }); });
+      return true;
+    }
+
+    function flashLogLine(el) {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      el.classList.add('flash-log');
+      setTimeout(function () { el.classList.remove('flash-log'); }, 1800);
+    }
+
+    /* 单击 / 双击共用链接（字段比较的「报告字段」、警告 / 错误的「关联字段」）：
+     * 单击保持原行为（打开比较详情 / 跳到字段行），双击跳「完整日志」中该字段的关联日志行。
+     * 单击动作会切换选项卡或弹出详情页（元素被重建），浏览器便不会再派发第二个 click，
+     * 因此「可跳日志」的链接把单击动作延后到双击判定窗口之后执行（窗口内出现第二次点击即视为双击）。
+     * 没有可定位日志行的链接不受影响，保持即时响应。 */
+    const FIELD_CLICK_DELAY_MS = 300;
+    let FIELD_CLICK_TIMER = 0;
+    function cancelFieldClick() {
+      if (FIELD_CLICK_TIMER) { clearTimeout(FIELD_CLICK_TIMER); FIELD_CLICK_TIMER = 0; }
+    }
+    function scheduleFieldClick(single, channel, source, field) {
+      cancelFieldClick();
+      if (!canJumpToFieldLog(channel, source, field)) { single(); return; }
+      FIELD_CLICK_TIMER = setTimeout(function () { FIELD_CLICK_TIMER = 0; single(); }, FIELD_CLICK_DELAY_MS);
     }
 
     function renderDisabledChannel(name) {
@@ -4835,6 +4957,23 @@
             '<button class="modal-nav" data-modal-nav="next" title="' + t('modalNextField') + '"' + (navInfo.next ? '' : ' disabled') + '>→</button>'
           : '';
 
+        // 「相关打印信息」改为读取完整日志中与该字段关联的日志行（channel + source + field）：
+        // 原 field.prints 保留待用（不再读取）。标题后的三角图标可跳转到「完整日志」中该字段的首个日志行
+        // （仅当这些日志行确实来自完整日志、即能定位到锚点时才显示）。
+        const relatedLogs = fieldLogLines(currentItem(), found.channel, found.source, fid, f);
+        const relatedLogsHtml = relatedLogs.lines.length
+          ? relatedLogs.lines.map(function (l) { return '<div class="log-line">' + esc(l.text || '') + '</div>'; }).join('')
+          : '<div class="log-empty">' + t('modalPrintsEmpty') + '</div>';
+        const printsHtml = APP_FEATURES.modalPrints
+          ? '<div class="print-box"><div class="pb-head"><span>' + t('modalPrints') + '</span>' +
+            (relatedLogs.anchored
+              ? '<button class="log-jump" data-log-jump="1" title="' + esc(t('modalPrintsJumpTip')) + '" aria-label="' + esc(t('modalPrintsJumpTip')) + '">▸</button>'
+              : '') +
+            '</div>' +
+            '<div class="log-box">' + relatedLogsHtml + '</div>' +
+            '</div>'
+          : '';
+
         const html =
           '<div class="modal">' +
           '<div class="modal-head"><div class="modal-head-left"><h3>' + t('modalTitle') + '：' + esc(def.name) + '</h3><span class="modal-item-chip">' + esc(currentItem().tradeId) + '</span></div>' +
@@ -4863,9 +5002,7 @@
               '<div class="modal-part-body" hidden>' + mapRuleHtml + convRuleHtml + valRuleHtml + '</div>' +
               '</div>'
             : '') +
-          (APP_FEATURES.modalPrints ? '<div class="print-box"><div class="pb-head">' + t('modalPrints') + '</div>' +
-          '<div class="log-box">' + (f.prints || []).map(p => '<div class="log-line">' + esc(p) + '</div>').join('') + '</div>' +
-          '</div>' : '') +
+          printsHtml +
           '</div></div>';
         return { html: html, navInfo: navInfo };
       }
@@ -4931,6 +5068,13 @@
         if (nav && !nav.disabled) {
           const dir = nav.getAttribute('data-modal-nav');
           navigateTo(dir === 'prev' ? view.navInfo.prev : view.navInfo.next, dir);
+          return;
+        }
+        // 「相关打印信息」标题后的三角图标：关闭详情页并跳到「完整日志」中该字段的首个关联日志行。
+        if (e.target.closest('[data-log-jump]')) {
+          const target = { channel: navState.channel, source: navState.source, id: navState.id };
+          closeModal();
+          jumpToFieldLog(target.channel, target.source, target.id);
           return;
         }
         if (e.target.closest('[data-modal-jump]')) {
@@ -6372,11 +6516,25 @@ export function parseHash(raw) {
           return;
         }
         const jfield = e.target.closest('[data-jump-field]');
-        if (jfield) { jumpToFieldRow(jfield.getAttribute('data-jch'), jfield.getAttribute('data-jsrc'), jfield.getAttribute('data-jump-field')); return; }
+        if (jfield) {
+          const jch = jfield.getAttribute('data-jch');
+          const jsrc = jfield.getAttribute('data-jsrc');
+          const jname = jfield.getAttribute('data-jump-field');
+          // 双击：跳「完整日志」中该字段的关联日志行（仅关联字段有值时才渲染为链接）。
+          if (e.detail > 1) { cancelFieldClick(); jumpToFieldLog(jch, jsrc, jname); return; }
+          scheduleFieldClick(function () { jumpToFieldRow(jch, jsrc, jname); }, jch, jsrc, jname);
+          return;
+        }
         const fmsg = e.target.closest('[data-field-msg]');
         if (fmsg) { jumpToFieldMsg(fmsg.getAttribute('data-field-msg'), fmsg.getAttribute('data-fch'), fmsg.getAttribute('data-fsrc'), fmsg.getAttribute('data-ffield')); return; }
         const detail = e.target.closest('[data-detail]');
-        if (detail) { const loc = parseFieldLoc(detail.getAttribute('data-detail')); openModal(loc.channel, loc.source, loc.id); return; }
+        if (detail) {
+          const loc = parseFieldLoc(detail.getAttribute('data-detail'));
+          // 双击「报告字段」：跳「完整日志」中该字段的关联日志行；单击：打开比较详情（可跳日志时延后判定）。
+          if (e.detail > 1) { cancelFieldClick(); jumpToFieldLog(loc.channel, loc.source, loc.id); return; }
+          scheduleFieldClick(function () { openModal(loc.channel, loc.source, loc.id); }, loc.channel, loc.source, loc.id);
+          return;
+        }
         const ign = e.target.closest('.ignore-btn');
         if (ign) { toggleIgnoreByKey(ign.getAttribute('data-ignore')); return; }
         const exp = e.target.closest('#exportIgnoreBtn');

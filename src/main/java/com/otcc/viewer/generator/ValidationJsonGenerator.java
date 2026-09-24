@@ -203,7 +203,7 @@ public final class ValidationJsonGenerator {
         List<Message> warnings = new ArrayList<>();
         List<Message> errors = new ArrayList<>();
         List<UncomparedEntry> uncompared = new ArrayList<>();
-        List<ItemLog> channelLogs = new ArrayList<>();
+        List<ChannelBuild> channelBuilds = new ArrayList<>();
         Map<String, CtxDef> ctxDefs = buildCtxDefs(i);
         Map<String, Integer> ctxIdByKey = ctxIdByKey(ctxDefs);
         for (String chName : CHANNEL_NAMES) {
@@ -213,7 +213,7 @@ public final class ValidationJsonGenerator {
             warnings.addAll(built.warnings);
             errors.addAll(built.errors);
             uncompared.addAll(built.uncompared);
-            channelLogs.addAll(built.logs);
+            channelBuilds.add(built);
         }
         uncompared.addAll(buildGlobalUncompared(rng));
 
@@ -239,7 +239,7 @@ public final class ValidationJsonGenerator {
                 .warnings(warnings)
                 .errors(errors)
                 .uncompared(uncompared)
-                .logs(buildOverviewLogs(tradeId, reportDate, channels, channelLogs))
+                .logs(buildOverviewLogs(tradeId, reportDate, channels, channelBuilds))
                 .build();
     }
 
@@ -296,14 +296,17 @@ public final class ValidationJsonGenerator {
         final List<Message> errors;
         final List<UncomparedEntry> uncompared;
         final List<ItemLog> logs;
+        /** Field-scoped log lines of this channel ({@code scope == "field"}), in source/field order. */
+        final List<ItemLog> fieldLogs;
 
         ChannelBuild(Channel channel, List<Message> warnings, List<Message> errors,
-                     List<UncomparedEntry> uncompared, List<ItemLog> logs) {
+                     List<UncomparedEntry> uncompared, List<ItemLog> logs, List<ItemLog> fieldLogs) {
             this.channel = channel;
             this.warnings = warnings;
             this.errors = errors;
             this.uncompared = uncompared;
             this.logs = logs;
+            this.fieldLogs = fieldLogs;
         }
     }
 
@@ -372,12 +375,23 @@ public final class ValidationJsonGenerator {
                 .build();
 
         List<String> sourceNames = sources.stream().map(Source::getName).toList();
+        // Field-scoped log lines of this channel: kept in source/field order so they can be
+        // appended to item.logs right after the channel-level logs of the same channel.
+        List<ItemLog> fieldLogs = new ArrayList<>();
+        for (Source s : sources) {
+            for (Field fd : s.getFields()) {
+                if (fd.getLogs() != null) {
+                    fieldLogs.addAll(fd.getLogs());
+                }
+            }
+        }
         return new ChannelBuild(
                 channel,
                 buildMessages(rng, chName, fieldsDef, failedBySource),
                 buildErrorMessages(rng, chName, failedBySource),
                 buildUncompared(chName, sourceNames, rng, fieldsDef, csv ? 2 : 1),
-                buildChannelLogs(chName, files));
+                buildChannelLogs(chName, files),
+                fieldLogs);
     }
 
     private static Field buildField(String chName, String[] def, int idx, int sn, boolean csv,
@@ -467,6 +481,9 @@ public final class ValidationJsonGenerator {
 
         List<String> prints = buildPrints(f, rawTarget, ctx, chName, "来源渠道 " + (sn == 1 ? "A" : "B"),
                 eo, ao, result, note, csv ? "CSV字段" : "XPath");
+        List<ItemLog> fieldLogs = buildFieldLogs(f, nameToId.get(f), rawTarget, ctx, chName,
+                "来源渠道 " + (sn == 1 ? "A" : "B"), eo, ao, result, note,
+                csv ? "CSV字段" : "XPath", sn, idx);
 
         return Field.builder()
                 .id(nameToId.get(f))
@@ -480,6 +497,7 @@ public final class ValidationJsonGenerator {
                 .resultText(resultNote)
                 .resultDetails(resultDetails)
                 .prints(prints)
+                .logs(fieldLogs)
                 .build();
     }
 
@@ -648,35 +666,42 @@ public final class ValidationJsonGenerator {
     private static List<ItemLog> buildChannelLogs(String chName, ChannelFiles files) {
         String t = "2024-08-14 10:23:0";
         return List.of(
-                ItemLog.builder().scope("channel").channel(chName).source(null)
+                ItemLog.builder().scope("channel").channel(chName).source(null).field(null)
                         .text(t + "0.200 INFO  [" + chName + "] 读取报送文件 " + joinNames(files.getAo())).build(),
-                ItemLog.builder().scope("channel").channel(chName).source(null)
+                ItemLog.builder().scope("channel").channel(chName).source(null).field(null)
                         .text(t + "0.300 INFO  [" + chName + "] 应用映射配置 " + files.getExcel().getFile()
                                 + " [sheet: " + files.getExcel().getSheet() + "]").build(),
-                ItemLog.builder().scope("channel").channel(chName).source(null)
+                ItemLog.builder().scope("channel").channel(chName).source(null).field(null)
                         .text(t + "0.400 INFO  [" + chName + "] 完成字段比较，渠道结果已生成").build());
     }
 
+    /**
+     * Item-level log lines: overview ({@code scope=item}) → per-channel step lines ({@code scope=channel})
+     * → for every channel its own logs followed by its field-scoped logs ({@code scope=field}).
+     */
     private static List<ItemLog> buildOverviewLogs(String tradeId, String reportDate,
-                                                   List<Channel> channels, List<ItemLog> channelLogs) {
+                                                   List<Channel> channels, List<ChannelBuild> channelBuilds) {
         List<ItemLog> lines = new ArrayList<>();
-        lines.add(ItemLog.builder().scope("item").channel(null).source(null)
+        lines.add(ItemLog.builder().scope("item").channel(null).source(null).field(null)
                 .text("2024-08-14 10:23:00.100 INFO  开始比较 item=" + tradeId + "，报告日期=" + reportDate).build());
-        lines.add(ItemLog.builder().scope("item").channel(null).source(null)
+        lines.add(ItemLog.builder().scope("item").channel(null).source(null).field(null)
                 .text("2024-08-14 10:23:00.120 INFO  加载映射配置 mapping.xlsx（" + channels.size() + " 个报告渠道）").build());
-        lines.add(ItemLog.builder().scope("item").channel(null).source(null)
+        lines.add(ItemLog.builder().scope("item").channel(null).source(null).field(null)
                 .text("2024-08-14 10:23:00.140 INFO  初始化逐渠道执行器（HKTR / JSFA / CFTC）").build());
         for (int i = 0; i < 60; i++) {
             Channel ch = channels.get(i % channels.size());
             String ms = String.valueOf(100 + i * 7);
-            lines.add(ItemLog.builder().scope("channel").channel(ch.getName()).source(null)
+            lines.add(ItemLog.builder().scope("channel").channel(ch.getName()).source(null).field(null)
                     .text("2024-08-14 10:23:" + pad2(i) + "." + ms + " INFO  [" + ch.getName() + "] 执行字段比较步骤 "
                             + (i + 1) + "：读取 " + fileEntryName(ch.getFiles().getEo().get(0))
                             + " 与 " + fileEntryName(ch.getFiles().getAo().get(0)) + "，逐字段校验映射关系。").build());
         }
-        lines.add(ItemLog.builder().scope("item").channel(null).source(null)
+        lines.add(ItemLog.builder().scope("item").channel(null).source(null).field(null)
                 .text("2024-08-14 10:24:00.000 INFO  比较完成，结果已生成").build());
-        lines.addAll(channelLogs);
+        for (ChannelBuild g : channelBuilds) {
+            lines.addAll(g.logs);
+            lines.addAll(g.fieldLogs);
+        }
         return lines;
     }
 
@@ -778,6 +803,33 @@ public final class ValidationJsonGenerator {
                 "[INFO] " + targetName + "=" + target + "，命中Ctx=" + String.join(",", ctx),
                 "[INFO] EO=" + eo + "，AO=" + ao + " → " + result
                         + (note == null || note.isEmpty() ? "" : "（" + note + "）"));
+    }
+
+    /**
+     * Field-scoped log lines ({@code scope == "field"}) derived from {@link #buildPrints}: every line
+     * carries {@code channel} + {@code source} + {@code field} (the field id) so the viewer can locate
+     * and highlight it in the full-log tab. The same list is written to {@code field.logs} and appended
+     * to {@code item.logs} (see {@code docs/DATA_SCHEMA.md} §3 / §5).
+     */
+    private static List<ItemLog> buildFieldLogs(String f, String fieldId, String target, List<String> ctx,
+                                                String chName, String srcName, String eo, String ao,
+                                                String result, String note, String targetName,
+                                                int sn, int idx) {
+        String stamp = "2024-08-14 10:24:" + pad2(sn * 10 + (idx % 10)) + ".";
+        String prefix = "[" + chName + "/" + srcName + "] ";
+        List<ItemLog> out = new ArrayList<>();
+        int i = 0;
+        for (String text : buildPrints(f, target, ctx, chName, srcName, eo, ao, result, note, targetName)) {
+            out.add(ItemLog.builder()
+                    .scope("field")
+                    .channel(chName)
+                    .source(srcName)
+                    .field(fieldId)
+                    .text(stamp + (100 + i * 40) + " INFO  " + prefix + text.replaceFirst("^\\[INFO\\]\\s*", ""))
+                    .build());
+            i++;
+        }
+        return out;
     }
 
     private static String genValue(String kind, Random rng) {

@@ -123,7 +123,29 @@ node tools/merge-batch.mjs --batch <id> --tenant[=id] | --no-tenant # 租户 / �
 | `enabledChannels` | 字符串数组 | 启用渠道名 |
 | `warnings` / `errors` | 数组 | item 级警告 / 错误（含 scope / source；source 可能为空） |
 | `uncompared` | 数组 | item 级未比较条目（合并 XPath 与 CSV，含 type / source；channel、source 可为 null，source 非空时 channel 不可为空） |
-| `logs` | 数组 | item 级日志（对象式 `{scope, channel, source, text}`） |
+| `logs` | 数组 | item 级日志（对象式 `{scope, channel, source, field, text}`，见下方「`item.logs` 日志行」） |
+
+### `item.logs` 日志行
+
+```json
+"logs": [
+  { "scope": "item",    "channel": null,          "source": null,          "field": null, "text": "2024-08-14 10:23:00.100 INFO  开始比较 item=T-20240814-1001，报告日期=2024-08-10" },
+  { "scope": "channel", "channel": "HKTR",       "source": null,          "field": null, "text": "2024-08-14 10:23:00.200 INFO  [HKTR] 读取报送文件 …" },
+  { "scope": "field",   "channel": "HKTR",       "source": "来源渠道 A", "field": "2",  "text": "2024-08-14 10:24:10.140 INFO  [HKTR/来源渠道 A] EO=…，AO=… → FAILED（…）" }
+]
+```
+
+| 键 | 类型 | 说明 |
+|---|---|---|
+| `scope` | 字符串 | `item`（item 级，开始/加载/初始化/完成）/ `channel`（渠道执行步骤与该渠道自身日志）/ `field`（字段比较过程日志） |
+| `channel` | 字符串\|null | 报告渠道；`scope=item` 时为 `null`，`scope=channel`\|`field` 时必非空 |
+| `source` | 字符串\|null | 来源渠道；仅 `scope=field` 时非空（渠道级日志可为 `null` 表示“未关联到具体来源”） |
+| `field` | 字符串\|null | **字段 id（引用该渠道的 `channel.fields`）**；仅 `scope="field"` 的行有值（string），其余行必须为 `null` / 省略 |
+| `text` | 字符串 | 日志正文（单行；时间戳与渠道前缀包含在正文内） |
+
+> **不变式**（`lib/validate.js` 会报错）：`field` 非空 ⇒ `scope === "field"` 且 `channel` / `source` 均非空。
+>
+> **用途**：查看器用 `channel` + `source` + `field` 三元组给这些行建立**日志锚点**（渲染时记在 `data-log-key`，DOM `id` 用短标识 `log-<渠道>-s<来源渠道序号>-f<字段id>.<同键序号>`），从而实现「字段比较 / 关联字段 / 字段详情 → 完整日志」的定位高亮（详见 `docs/README.md` 的「完整日志的字段定位」）。同一三元组可对应多行日志（字段比较过程打印多行），跳转取**首个**。
 
 ### `skippedItems`（顶层，与 `reportEnv` 同级）
 
@@ -213,9 +235,12 @@ node tools/merge-batch.mjs --batch <id> --tenant[=id] | --no-tenant # 租户 / �
 | `remarks` | 字符串 | 说明（原 `note`） |
 | `resultText` | 字符串 | 结果说明（原 `resultNote`） |
 | `resultDetails` | 数组 | 额外结果 `[{label, value}]`（原 `extraResults`） |
-| `prints` | 字符串数组 | 相关打印信息 |
+| `prints` | 字符串数组 | 相关打印信息（**保留待用**：字段详情页已改为读取关联日志行 `logs`） |
+| `logs` | 数组 | 该字段关联的日志行：元素与 `item.logs` 同构（`{scope, channel, source, field, text}`），`scope` 恒为 `"field"`、`field` 恒等于该字段的 `id`、`channel` / `source` 恒等于所属渠道 / 来源渠道名；同一批行也会出现在 `item.logs` 中（查看器据此定位高亮） |
 
 > 已移除字段：`eoConverted`（不再需要）与 `field.ctxs`（命中上下文现由 `cmpLeft` / `cmpRight` / `cvtLeft` / `cvtRight` / `vdt` 的 `ctxs` 取并集）。`f` / `t` / `k` 迁移到 `channel.fields`；`x` / `aoCsv` / `ctx` / `eo` / `ao` / `eoUnconverted` / `conversionRule` / `validationRule` / `excelMapping` / `excelConversionRule` / `excelValidationRule` 迁移到上述对象；`ctx`（单数）由 ctx key 字符串/id 改为 **命中 ctxKey 的原始字符串表达式**，`ctxs` 改为 `item.ctxDefs` 的 id 引用数组。
+>
+> `logs` 为新增字段（与 `prints` 同源：同样是字段比较过程的三行文本，但改为带 `channel`/`source`/`field` 的日志行，从而能在「完整日志」里定位）——生成器（Java `ValidationJsonGenerator` / JS `lib/sample-data.js`）与旧数据迁移工具（`tools/migrate-legacy-data.js`）都会同时写 `prints` 与 `logs`。
 
 ## 6. 批次元数据（`batch-meta.json`）与索引（`batches-index.json`）
 

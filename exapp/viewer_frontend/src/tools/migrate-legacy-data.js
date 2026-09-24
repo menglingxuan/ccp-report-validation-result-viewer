@@ -9,7 +9,8 @@
 //     eoUnconverted/conversionRule/validationRule/excel* 等迁移到 cmpLeft/cmpRight/cvtLeft/cvtRight/vdt。
 //   - 消息：channels[].warnings/errors 迁移到 item 级（新增 scope/source，移除 platform/product）。
 //   - uncompared/uncomparedCsv 合并为 item.uncompared（新增 type，移除 platform/product/ctx）。
-//   - channels[].logs 与 overviewLogs 合并为 item.logs（对象式 {scope,channel,source,text}）。
+//   - channels[].logs 与 overviewLogs 合并为 item.logs（对象式 {scope,channel,source,field,text}）；
+//     字段的 prints 同时迁移为 fields[].logs（scope="field"，带 channel/source/field）并追加进 item.logs。
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -105,10 +106,22 @@ function migrateItem(it) {
   });
 
   // 第二遍：迁移比较字段，id 使用数字字符串，ctx 引用改为 ctxDefs 的 id。
+  //   字段级日志（f.logs）：由旧 prints 生成 scope="field" 的日志行（带 channel / source / field），
+  //   并追加进 item.logs，使这些行可在「完整日志」中定位（channel+source+field）。
+  const fieldLogs = [];
   (it.channels || []).forEach(function (ch) {
     (ch.sources || []).forEach(function (s) {
       (s.fields || []).forEach(function (f) {
+        const chName = typeof ch.name === 'string' ? ch.name : '';
+        const srcName = typeof s.name === 'string' ? s.name : '';
+        const fid = nameToId[f.f || f.id || ''] || '';
         const mf = migrateField(f, oldCtxDefs, nameToId, ctxIdByKey);
+        mf.logs = (chName && srcName && fid)
+          ? (mf.prints || []).map(function (text) {
+              return { scope: 'field', channel: chName, source: srcName, field: fid, text: String(text) };
+            })
+          : [];
+        fieldLogs.push.apply(fieldLogs, mf.logs);
         Object.keys(f).forEach(function (k) { delete f[k]; });
         Object.assign(f, mf);
       });
@@ -130,12 +143,14 @@ function migrateItem(it) {
       uncompared.push({ type: 2, channel: u.channel || ch.name, value: u.csvField || '', note: u.note || '' });
     });
     (ch.logs || []).forEach(function (l) {
-      logs.push({ scope: 'channel', channel: ch.name, source: null, text: String(l) });
+      logs.push({ scope: 'channel', channel: ch.name, source: null, field: null, text: String(l) });
     });
   });
   (it.overviewLogs || []).forEach(function (l) {
-    logs.push({ scope: 'item', channel: null, source: null, text: String(l) });
+    logs.push({ scope: 'item', channel: null, source: null, field: null, text: String(l) });
   });
+  // 字段级日志行（scope="field"）追加在末尾：每条都带 channel + source + field。
+  fieldLogs.forEach(function (l) { logs.push(l); });
 
   // 清理旧结构
   (it.channels || []).forEach(function (ch) {

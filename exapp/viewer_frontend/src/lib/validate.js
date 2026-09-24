@@ -6,6 +6,44 @@
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+// 日志行契约（item.logs 与 field.logs 共用，见 docs/DATA_SCHEMA.md §3 / §5）：
+//   { scope, channel, source, field, text }
+//   - scope 只能是 item / channel / field；
+//   - field（字段 id）仅在 scope="field" 时有值；
+//   - field 非空时 channel 与 source 都必须非空；
+//   - 字段级日志（fields[].logs）的 field 必须等于所属字段的 id，channel / source 必须等于所属渠道 / 来源渠道名。
+function validateLogEntries(list, label, errors, owner) {
+  list.forEach(function (l, li) {
+    const llabel = label + '[' + li + ']';
+    if (!l || typeof l !== 'object' || Array.isArray(l)) { errors.push(llabel + ' 必须是对象'); return; }
+    if (typeof l.text !== 'string') errors.push(llabel + ' 缺少 text 字符串');
+    if (l.scope !== undefined && l.scope !== null
+        && l.scope !== 'item' && l.scope !== 'channel' && l.scope !== 'field') {
+      errors.push(llabel + ' scope 只能是 "item" / "channel" / "field"');
+    }
+    ['channel', 'source', 'field'].forEach(function (k) {
+      if (l[k] !== undefined && l[k] !== null && typeof l[k] !== 'string') {
+        errors.push(llabel + ' ' + k + ' 必须是字符串或 null');
+      }
+    });
+    const field = typeof l.field === 'string' ? l.field : '';
+    if (!field) return;
+    if (l.scope !== 'field') errors.push(llabel + ' 只有 scope="field" 的日志行才允许有 field');
+    if (typeof l.channel !== 'string' || !l.channel || typeof l.source !== 'string' || !l.source) {
+      errors.push(llabel + ' field 非空时 channel 与 source 都不能为空');
+    }
+    if (owner) {
+      if (owner.fieldId && l.field !== owner.fieldId) errors.push(llabel + ' field 必须等于所属字段的 id：' + owner.fieldId);
+      if (owner.channel && l.channel != null && l.channel !== owner.channel) {
+        errors.push(llabel + ' channel 必须等于所属渠道：' + owner.channel);
+      }
+      if (owner.source && l.source != null && l.source !== owner.source) {
+        errors.push(llabel + ' source 必须等于所属来源渠道：' + owner.source);
+      }
+    }
+  });
+}
+
 export function validateDataset(json) {
   const errors = [];
   if (!json || typeof json !== 'object' || Array.isArray(json)) {
@@ -99,6 +137,7 @@ export function validateDataset(json) {
     ['warnings', 'errors', 'uncompared', 'logs'].forEach(function (k) {
       if (item[k] !== undefined && !Array.isArray(item[k])) errors.push(label + ' ' + k + ' 必须是数组');
     });
+    if (Array.isArray(item.logs)) validateLogEntries(item.logs, label + '.logs', errors, null);
     item.channels.forEach(function (ch, ci) {
       const clabel = label + '.channels[' + ci + ']';
       if (!ch || typeof ch !== 'object') {
@@ -128,6 +167,13 @@ export function validateDataset(json) {
             const flabel = slabel + '.fields[' + fi + ']';
             if (!f || typeof f !== 'object') { errors.push(flabel + ' 必须是对象'); return; }
             if (typeof f.id !== 'string' || !/^\d+$/.test(f.id)) errors.push(flabel + ' 缺少数字字符串 id');
+            // fields[].logs：该字段关联的日志行（scope=field，带 channel / source / field）。
+            if (f.logs !== undefined && !Array.isArray(f.logs)) {
+              errors.push(flabel + ' logs 必须是数组');
+            } else if (Array.isArray(f.logs)) {
+              validateLogEntries(f.logs, flabel + '.logs', errors,
+                { fieldId: f.id, channel: ch.name, source: s.name });
+            }
             // cvtLeft / cvtRight / vdt 为可选配置，允许为 null。
             ['cvtLeft', 'cvtRight', 'vdt'].forEach(function (rk) {
               if (f[rk] !== undefined && f[rk] !== null && (typeof f[rk] !== 'object' || Array.isArray(f[rk]))) {

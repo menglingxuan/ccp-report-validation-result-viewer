@@ -641,6 +641,11 @@
       max-height: 520px; overflow: auto;
     }
     .log-line { white-space: pre-wrap; word-break: break-all; }
+    /* 日志定位高亮（从字段比较 / 关联字段 / 字段详情跳转到「完整日志」的关联日志行）：
+       与字段行的 .flash-row 同一配色（--mark-bg → 透明）。 */
+    @keyframes logLineFlash { 0% { background-color: var(--mark-bg); } 40% { background-color: var(--mark-bg); } 100% { background-color: transparent; } }
+    .log-line.flash-log { animation: logLineFlash 1.8s ease-in-out; border-radius: 4px; }
+    .log-empty { color: var(--muted); }
 
     .meta-note { margin-top: 10px; color: var(--muted); font-size: 12px; }
     .footer-note { margin-top: 20px; color: var(--muted); font-size: 12px; text-align: center; }
@@ -759,7 +764,14 @@
     .result-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .result-extra { margin-top: 12px; }
     .print-box { margin-top: 14px; }
-    .print-box .pb-head { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    .print-box .pb-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    /* 「相关打印信息」标题后的三角跳转图标：跳到「完整日志」中该字段的首个关联日志行。 */
+    .print-box .pb-head .log-jump {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; padding: 0; border: none; border-radius: 4px;
+      background: none; color: var(--muted); font-size: 13px; line-height: 1; cursor: pointer;
+    }
+    .print-box .pb-head .log-jump:hover { color: var(--accent); background: var(--surface-2); }
     @media (max-width: 640px) { .result-pair { grid-template-columns: 1fr; } }
 
     /* 详情页内容分区（期望值/实际值 + 规则），不明显的细外边框 */

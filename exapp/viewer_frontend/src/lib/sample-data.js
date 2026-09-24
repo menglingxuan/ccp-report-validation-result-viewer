@@ -343,18 +343,37 @@ import path from 'node:path';
     function buildChannelLogs(ch, tradeId) {
       const t = '2024-08-14 10:23:0';
       return [
-        { scope: 'channel', channel: ch.name, source: null, text: t + '0.200 INFO  [' + ch.name + '] 读取报送文件 ' + ch.files.ao.map(fileEntryName).join(', ') },
-        { scope: 'channel', channel: ch.name, source: null, text: t + '0.300 INFO  [' + ch.name + '] 应用映射配置 ' + ch.files.excel.file + ' [sheet: ' + ch.files.excel.sheet + ']' },
-        { scope: 'channel', channel: ch.name, source: null, text: t + '0.400 INFO  [' + ch.name + '] 完成字段比较，渠道结果已生成' },
+        { scope: 'channel', channel: ch.name, source: null, field: null, text: t + '0.200 INFO  [' + ch.name + '] 读取报送文件 ' + ch.files.ao.map(fileEntryName).join(', ') },
+        { scope: 'channel', channel: ch.name, source: null, field: null, text: t + '0.300 INFO  [' + ch.name + '] 应用映射配置 ' + ch.files.excel.file + ' [sheet: ' + ch.files.excel.sheet + ']' },
+        { scope: 'channel', channel: ch.name, source: null, field: null, text: t + '0.400 INFO  [' + ch.name + '] 完成字段比较，渠道结果已生成' },
       ];
     }
 
+    // 原「相关打印信息」（field.prints，保留待用）：字段比较过程的三行打印文本。
     function buildPrints(f, target, ctx, chName, srcName, eo, ao, result, note, targetName) {
       return [
         '[INFO] 比较字段 ' + f + '（报告渠道 ' + chName + ' / ' + srcName + '）',
         '[INFO] ' + targetName + '=' + target + '，命中Ctx=' + (Array.isArray(ctx) ? ctx.join(',') : ctx),
         '[INFO] EO=' + eo + '，AO=' + ao + ' → ' + result + (note ? '（' + note + '）' : ''),
       ];
+    }
+
+    // 字段级日志行（item.logs 中 scope="field" 的行，同时冗余进 fields[].logs）：
+    //   - 每行都带 channel + source + field（field 为该字段的 id），供「完整日志」选项卡定位与详情页展示；
+    //   - 文本沿用原 prints 的语义，补上时间戳与 `[报告渠道/来源渠道]` 前缀，使其与其它日志行一致可读；
+    //   - scope="field" 的行必须同时有 channel / source / field（见 docs/DATA_SCHEMA.md §3）。
+    function buildFieldLogs(f, fieldId, target, ctx, chName, srcName, eo, ao, result, note, targetName, sn, idx) {
+      const stamp = '2024-08-14 10:24:' + String(sn * 10 + (idx % 10)).padStart(2, '0') + '.';
+      const prefix = '[' + chName + '/' + srcName + '] ';
+      return buildPrints(f, target, ctx, chName, srcName, eo, ao, result, note, targetName).map(function (text, i) {
+        return {
+          scope: 'field',
+          channel: chName,
+          source: srcName,
+          field: fieldId,
+          text: stamp + String(100 + i * 40) + ' INFO  ' + prefix + text.replace(/^\[INFO\]\s*/, ''),
+        };
+      });
     }
 
     // 每个 item 的字段定义（不同 item 可有不同字段集合）：
@@ -461,8 +480,10 @@ import path from 'node:path';
           const convCtxIds = toIds(convCtxs);
           const aoConvCtxIds = toIds(aoConvCtxs);
           const valCtxIds = toIds(valCtxs);
+          const srcName = '来源渠道 ' + (sn === 1 ? 'A' : 'B');
+          const fieldId = fr.nameToId[f];
           return {
-            id: fr.nameToId[f],
+            id: fieldId,
             cmpLeft: { value: eo, ctx: ctxExpr(mapCtxs), ctxs: mapCtxIds, elRaw: eoMapping, el: eoCol, srcType: 2 },
             cmpRight: { value: ao, ctx: ctxExpr(mapCtxs), ctxs: mapCtxIds, elRaw: excelMapping, el: el, srcType: srcType },
             cvtLeft: conversionRule ? { ctx: ctxExpr(convCtxs), ctxs: convCtxIds, el: conversionRule.value, elRaw: excelConversionRule, raw: eoUnconverted } : null,
@@ -472,12 +493,20 @@ import path from 'node:path';
             remarks: note,
             resultText: resultNote,
             resultDetails: resultDetails,
-            prints: buildPrints(f, el, ctx, ch.name, '来源渠道 ' + (sn === 1 ? 'A' : 'B'), eo, ao, result, note, isCsv ? 'CSV字段' : 'XPath'),
+            // prints 保留待用（查看器详情页已改为读取关联日志行）；logs 为该字段关联的日志行（scope=field）。
+            prints: buildPrints(f, el, ctx, ch.name, srcName, eo, ao, result, note, isCsv ? 'CSV字段' : 'XPath'),
+            logs: buildFieldLogs(f, fieldId, el, ctx, ch.name, srcName, eo, ao, result, note, isCsv ? 'CSV字段' : 'XPath', sn, idx),
           };
         });
         const srcName = '来源渠道 ' + (sn === 1 ? 'A' : 'B');
         failedBySource.push({ name: srcName, failedFields: failedFields });
         return { name: srcName, fields: fields };
+      });
+
+      // 该渠道的字段级日志行（scope=field）：按来源渠道 / 字段出现顺序汇总，供 item.logs 与渠道分组使用。
+      const fieldLogs = [];
+      sources.forEach(function (s) {
+        (s.fields || []).forEach(function (fd) { fieldLogs.push.apply(fieldLogs, fd.logs || []); });
       });
 
       const aoExt = isCsv ? '.csv' : '.xml';
@@ -501,6 +530,7 @@ import path from 'node:path';
         errors: buildErrorMessages(rng, ch.name, failedBySource),
         uncompared: buildUncompared(ch.name, sources.map(function (s) { return s.name; }), rng, fieldsDef, isCsv ? 2 : 1),
         logs: buildChannelLogs({ name: ch.name, files: files }, tradeId),
+        fieldLogs: fieldLogs,
       };
     }
 
@@ -525,22 +555,26 @@ import path from 'node:path';
       return list;
     }
 
-    // item 级 logs：对象式 { scope, channel, source, text }。
-    //   - overview（开始/加载/初始化/完成）→ scope=item
-    //   - 逐渠道执行步骤与各渠道日志 → scope=channel
-    function buildOverviewLogs(tradeId, reportDate, channels, channelLogs) {
+    // item 级 logs：对象式 { scope, channel, source, field, text }。
+    //   - overview（开始/加载/初始化/完成）→ scope=item（channel / source / field 均为 null）
+    //   - 逐渠道执行步骤、各渠道日志 → scope=channel（field 为 null）
+    //   - 各字段关联的日志行 → scope=field（channel / source / field 均非空）
+    function buildOverviewLogs(tradeId, reportDate, channels, channelLogGroups) {
       const lines = [];
-      lines.push({ scope: 'item', channel: null, source: null, text: '2024-08-14 10:23:00.100 INFO  开始比较 item=' + tradeId + '，报告日期=' + reportDate });
-      lines.push({ scope: 'item', channel: null, source: null, text: '2024-08-14 10:23:00.120 INFO  加载映射配置 mapping.xlsx（' + channels.length + ' 个报告渠道）' });
-      lines.push({ scope: 'item', channel: null, source: null, text: '2024-08-14 10:23:00.140 INFO  初始化逐渠道执行器（HKTR / JSFA / CFTC）' });
+      lines.push({ scope: 'item', channel: null, source: null, field: null, text: '2024-08-14 10:23:00.100 INFO  开始比较 item=' + tradeId + '，报告日期=' + reportDate });
+      lines.push({ scope: 'item', channel: null, source: null, field: null, text: '2024-08-14 10:23:00.120 INFO  加载映射配置 mapping.xlsx（' + channels.length + ' 个报告渠道）' });
+      lines.push({ scope: 'item', channel: null, source: null, field: null, text: '2024-08-14 10:23:00.140 INFO  初始化逐渠道执行器（HKTR / JSFA / CFTC）' });
       for (let i = 0; i < 60; i++) {
         const ms = String(100 + i * 7).padStart(3, '0').slice(-3);
         const ch = channels[i % channels.length];
-        lines.push({ scope: 'channel', channel: ch.name, source: null, text: '2024-08-14 10:23:' + String(i).padStart(2, '0') + '.' + ms + ' INFO  [' + ch.name + '] 执行字段比较步骤 ' + (i + 1) + '：读取 ' + fileEntryName(ch.files.eo[0]) + ' 与 ' + fileEntryName(ch.files.ao[0]) + '，逐字段校验映射关系。' });
+        lines.push({ scope: 'channel', channel: ch.name, source: null, field: null, text: '2024-08-14 10:23:' + String(i).padStart(2, '0') + '.' + ms + ' INFO  [' + ch.name + '] 执行字段比较步骤 ' + (i + 1) + '：读取 ' + fileEntryName(ch.files.eo[0]) + ' 与 ' + fileEntryName(ch.files.ao[0]) + '，逐字段校验映射关系。' });
       }
-      lines.push({ scope: 'item', channel: null, source: null, text: '2024-08-14 10:24:00.000 INFO  比较完成，结果已生成' });
-      // 追加各渠道自身的日志（scope=channel）
-      channelLogs.forEach(function (l) { lines.push(l); });
+      lines.push({ scope: 'item', channel: null, source: null, field: null, text: '2024-08-14 10:24:00.000 INFO  比较完成，结果已生成' });
+      // 按渠道追加：先该渠道自身的日志（scope=channel），再该渠道各字段关联的日志行（scope=field）。
+      (channelLogGroups || []).forEach(function (g) {
+        (g.logs || []).forEach(function (l) { lines.push(l); });
+        (g.fieldLogs || []).forEach(function (l) { lines.push(l); });
+      });
       return lines;
     }
 
@@ -601,7 +635,7 @@ import path from 'node:path';
         const warnings = [];
         const errors = [];
         const uncompared = [];
-        const channelLogs = [];
+        const channelLogGroups = [];
         const ctxDefsRes = buildCtxDefs(i);
         const idByKey = ctxDefsRes.idByKey;
         CHANNELS.forEach(function (ch) {
@@ -611,7 +645,7 @@ import path from 'node:path';
           warnings.push.apply(warnings, built.warnings);
           errors.push.apply(errors, built.errors);
           uncompared.push.apply(uncompared, built.uncompared);
-          channelLogs.push.apply(channelLogs, built.logs);
+          channelLogGroups.push({ logs: built.logs, fieldLogs: built.fieldLogs });
         });
         uncompared.push.apply(uncompared, buildGlobalUncompared(rng));
 
@@ -631,7 +665,7 @@ import path from 'node:path';
           warnings: warnings,
           errors: errors,
           uncompared: uncompared,
-          logs: buildOverviewLogs(tradeId, reportDate, channels, channelLogs),
+          logs: buildOverviewLogs(tradeId, reportDate, channels, channelLogGroups),
         });
       }
       return { mode: 'single', items: items, reportEnv: 'OTCXXX', creationType: 'sample', skippedItems: buildSkippedItems(rng) };

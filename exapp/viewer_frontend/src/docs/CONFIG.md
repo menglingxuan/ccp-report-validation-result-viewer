@@ -155,7 +155,10 @@ localStorage（偏好 / 上次批次 / 置顶 / 忽略与收藏镜像）与 Inde
 租户模式下作用域即当前租户（键带 `@<tenantId>` 后缀、IDB key 带 `tenant:<id>:` 前缀），
 **不影响其它租户与服务器端数据**；`config.json` / dev / test 默认 `true`，**prod 默认 `false`**）/
 `homeButton`（是否显示**顶栏「主页」按钮**（房子图标）：回到站点根 `origin + pathname`（不带查询参数与深链接）并重新加载；
-`config.json` / dev / test 默认 `true`，**prod 默认 `false`**；未显式声明时按 `runType` 取默认：dev/test 开、prod 关）
+`config.json` / dev / test 默认 `true`，**prod 默认 `false`**；未显式声明时按 `runType` 取默认：dev/test 开、prod 关）/
+`modalPrints`（字段详情页「相关打印信息」分区：渲染该字段关联的**完整日志行**（`item.logs` 中 `channel` + `source` + `field` 匹配的行，
+标题后的三角图标可跳回「完整日志」定位高亮；原 `field.prints` 保留待用、不再读取）；关闭时整个分区不渲染，详见
+[`DATA_SCHEMA.md` §3 / §5](DATA_SCHEMA.md)）
 
 ## 7. `limits`
 
