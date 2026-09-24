@@ -32,7 +32,7 @@ public class Field {
     private ValidationRule vdt;
     /** {@code PASSED} or {@code FAILED}. */
     private String result;
-    /** Remark (e.g. {@code 数值差异}). */
+    /** Remark text (e.g. a difference summary such as {@code value mismatch}). */
     private String remarks;
     /** Result explanation. */
     private String resultText;

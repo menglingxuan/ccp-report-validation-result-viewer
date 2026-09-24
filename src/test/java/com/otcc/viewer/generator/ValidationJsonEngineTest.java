@@ -270,14 +270,21 @@ class ValidationJsonEngineTest {
 
     @Test
     void configColumnsMatchViewerColumnNames() {
-        // columns.default 的列名必须与查看器（app.js DEFAULT_COLUMNS）及 config.schema.json 公布的列名一致，
-        // 否则生成的 config.json 会被查看器静默忽略。
+        // columns.default 的列名**与顺序**必须与查看器（app.js DEFAULT_COLUMNS）及 config.schema.json 公布的一致，
+        // 否则生成的 config.json 会被查看器静默忽略（未知列名），或顺序与「主列表 / 列选择」不符。
         Check c = new Check();
-        Set<String> expected = new LinkedHashSet<>(List.of(
-                "channel", "source", "field", "userTag", "eoEl", "aoEl", "eoCvtEl", "aoCvtEl", "vdtEl",
-                "type", "ctxs", "eoUnconverted", "eo", "aoUnconverted", "ao", "result", "remarks"));
+        List<String> expected = List.of(
+                "channel", "source", "field", "userTag", "type", "ctxs",
+                "eoEl", "aoEl", "eoCvtEl", "aoCvtEl", "vdtEl",
+                "eoUnconverted", "eo", "aoUnconverted", "ao", "result", "remarks");
         Map<String, Boolean> got = config.getColumns() == null ? null : config.getColumns().getDefaults();
-        c.check(got != null && got.keySet().equals(expected), "columns.default 列名不一致，实际：" + (got == null ? "null" : got.keySet()));
+        c.check(got != null, "columns.default 缺失");
+        if (got != null) {
+            c.check(got.keySet().equals(new LinkedHashSet<>(expected)),
+                    "columns.default 列名不一致，实际：" + got.keySet());
+            c.check(new ArrayList<>(got.keySet()).equals(expected),
+                    "columns.default 列顺序不一致，实际：" + got.keySet());
+        }
         c.done();
     }
 
@@ -322,6 +329,18 @@ class ValidationJsonEngineTest {
         c.check("multi".equals(manifest.path("mode").asText()), "manifest.mode == 'multi'");
         c.check(manifest.path("items").size() == dataset.getItems().size(), "manifest.items count matches");
         c.check(manifestItems.size() == dataset.getItems().size(), "splitToFiles returned one entry per item");
+        // 清单必须保留单文件模式的所有顶层字段（DATA_SCHEMA.md §2）。
+        c.check(manifest.path("reportEnv").asText().equals(dataset.getReportEnv()), "manifest.reportEnv matches");
+        c.check(manifest.path("creationType").asText().equals(dataset.getCreationType()),
+                "manifest.creationType == dataset.creationType");
+        c.check(manifest.path("skippedItems").isArray(), "manifest.skippedItems is an array");
+        c.check(manifest.path("skippedItems").size() == dataset.getSkippedItems().size(),
+                "manifest.skippedItems size matches dataset");
+        if (manifest.path("skippedItems").size() > 0) {
+            c.check(manifest.path("skippedItems").get(0).path("itemId").asText()
+                            .equals(dataset.getSkippedItems().get(0).getItemId()),
+                    "manifest.skippedItems[0].itemId matches");
+        }
 
         for (int i = 0; i < manifestItems.size(); i++) {
             ManifestItem mi = manifestItems.get(i);
@@ -359,6 +378,10 @@ class ValidationJsonEngineTest {
                 JsonNode j = ValidationJsonGenerator.MAPPER.readTree(f.toFile());
                 c.check("multi".equals(j.path("mode").asText()), name + ".mode == multi");
                 c.check(j.path("items").size() == dataset.getItems().size(), name + ".items count matches");
+                c.check(j.path("creationType").asText().equals(dataset.getCreationType()),
+                        name + ".creationType 与单文件模式一致");
+                c.check(j.path("skippedItems").size() == dataset.getSkippedItems().size(),
+                        name + ".skippedItems 与单文件模式一致");
                 JsonNode first = j.path("items").get(0);
                 c.check(Files.isRegularFile(multiOut.resolve(first.path("file").asText())),
                         name + " 引用的 item 文件存在：" + first.path("file").asText());
@@ -371,6 +394,8 @@ class ValidationJsonEngineTest {
         if (Files.isRegularFile(multiBatchManifest)) {
             JsonNode j = ValidationJsonGenerator.MAPPER.readTree(multiBatchManifest.toFile());
             c.check("multi".equals(j.path("mode").asText()), "批次清单.mode == multi");
+            c.check(j.path("creationType").asText().equals(dataset.getCreationType()), "批次清单.creationType 与数据集一致");
+            c.check(j.path("skippedItems").size() == dataset.getSkippedItems().size(), "批次清单.skippedItems 与数据集一致");
             String file = j.path("items").get(0).path("file").asText();
             c.check(file.startsWith("data/items/"), "批次清单 item.file 为相对批节目录的路径：" + file);
             c.check(Files.isRegularFile(multiBatchDir.resolve(file)), "批次 item 文件存在：" + file);

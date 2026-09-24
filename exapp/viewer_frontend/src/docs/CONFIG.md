@@ -139,7 +139,7 @@ REPORT_VIEWER_CONFIG=prod node server.js
 | `batchDockSide` | `left` / `right` | `left` |
 | `progressBarStyle` | `status` / `uniform` | `status` |
 
-## 6. `features`（21 项，布尔）
+## 6. `features`（23 项，布尔）
 
 `uncomparedXpath` / `uncomparedCsv` / `uncomparedItems` / `logs` /
 `conversionRule` / `validationRule` / `excelMapping` / `sourceFilter` / `modalRules` /
@@ -149,7 +149,13 @@ REPORT_VIEWER_CONFIG=prod node server.js
 默认仅在 `runType` 为 `dev` / `test` 时开启，生产环境需显式设为 `true`）；
 关闭时批次目录双击不生效，悬停会提示「当前环境未开启『打开目录』功能」/
 `descriptionEx`（是否在「任务说明」末尾渲染 `batch-meta.json` 的 `descriptionEx` 扩展内容，只读、懒加载；
-**所有配置文件均显式默认 `true`**，详见 [`DATA_SCHEMA.md` §6.3](DATA_SCHEMA.md)）
+**所有配置文件均显式默认 `true`**，详见 [`DATA_SCHEMA.md` §6.3](DATA_SCHEMA.md)）/
+`clearLocalCache`（是否在**顶栏帮助按钮旁**显示「清除偏好记忆」按钮（逆时针重置箭头图标，内联 SVG）：无二次确认，直接清除**当前作用域**的
+localStorage（偏好 / 上次批次 / 置顶 / 忽略与收藏镜像）与 IndexedDB 数据缓存；
+租户模式下作用域即当前租户（键带 `@<tenantId>` 后缀、IDB key 带 `tenant:<id>:` 前缀），
+**不影响其它租户与服务器端数据**；`config.json` / dev / test 默认 `true`，**prod 默认 `false`**）/
+`homeButton`（是否显示**顶栏「主页」按钮**（房子图标）：回到站点根 `origin + pathname`（不带查询参数与深链接）并重新加载；
+`config.json` / dev / test 默认 `true`，**prod 默认 `false`**；未显式声明时按 `runType` 取默认：dev/test 开、prod 关）
 
 ## 7. `limits`
 
@@ -179,14 +185,17 @@ REPORT_VIEWER_CONFIG=prod node server.js
 
 - `default`：列名 → 布尔（`true` 显示 / `false` 隐藏），即各列的默认可见性。
 - `labels`：列显示名覆盖（键为列名，值为字面量或 `{语言: 显示名}` 多语对象），未配置时回退到 i18n 默认标签。
-- `selector`：列是否出现在「列选择」菜单中（`true` / `false`），未配置的列默认出现。
+- `selector`：列是否在本次部署中**启用**（`true` / `false`），未配置的列默认启用。**`false` 的列既不出现在「列选择」菜单中，也不渲染**（避免留下无法关闭的列；同时覆盖历史预置与深链接 `cols=` 中的旧值）。
+  - 可用列名同 `columns.default`；本仓库的 `config.json` / `config-dev.json` / `config-test.json` 显式声明表达式类列（`aoEl`/`eoEl`/`eoCvtEl`/`aoCvtEl`/`vdtEl`/`eoUnconverted`/`aoUnconverted`）与 `userTag`/`type` 均为 `true`；
+  - `config-prod.json` 在表达式类列之外还禁用 `type`（`false`），`userTag` 保持 `true`。
 - `tag`：是否在 `aoEl` 单元格显示 XPath/CSV 标签（默认 `false`）。
 - `widths`：列宽配置（键为列名，值为 `{def,min,max,resizable}`，单位 px，`def`=默认宽 / `min`=最小宽 / `max`=最大宽 / `resizable`=是否允许拖拽调整列宽，默认 `true`），未配置的列使用内置默认值。
 - `userTag`：用户标签「值 → 显示」配置，含 `raw`（是否只显示原值，普通文本）与 `labels`（值 → 显示标签映射，值为字面量或 `{语言: 显示标签}` 多语对象，标签样式）。
+  - **与搜索联动**：`raw: false`（默认）时按「原始值 + 显示标签」双通道搜索；`raw: true` 时界面显示原始值，搜索也**只**按原始值（显示标签不可搜），以保证「能搜到的」与「看到的」一致。
 
-可用列名（对应新数据结构）：
+可用列名（对应新数据结构；该顺序也是主列表与「列选择」的列顺序）：
 
-`channel`、`source`、`field`、`userTag`、`eoEl`、`aoEl`、`eoCvtEl`、`aoCvtEl`、`vdtEl`、`type`、`ctxs`、`eoUnconverted`、`eo`、`aoUnconverted`、`ao`、`result`、`remarks`。
+`channel`、`source`、`field`、`userTag`、`type`、`ctxs`、`eoEl`、`aoEl`、`eoCvtEl`、`aoCvtEl`、`vdtEl`、`eoUnconverted`、`eo`、`aoUnconverted`、`ao`、`result`、`remarks`。
 
 | 列名 | 默认标签 | 含义 | 数据来源 |
 | --- | --- | --- | --- |
@@ -194,13 +203,13 @@ REPORT_VIEWER_CONFIG=prod node server.js
 | `source` | 来源渠道 | 来源渠道 | `source.name` |
 | `field` | 报告字段 | 字段名 | `channel.fields[].name` |
 | `userTag` | 用户标签 | 字段断言类型标签 | `channel.fields[].userTag` |
+| `type` | 类型 | 值类型 | `channel.fields[].type` |
+| `ctxs` | 命中Ctx | 命中上下文（各规则 `ctxs` 的 id 并集，解析为 key） | `cmpLeft`/`cmpRight`/`cvtLeft`/`cvtRight`/`vdt` 的 `ctxs` 并集 |
 | `eoEl` | 表达式 (CMP-L) | 左侧（EO/来源）定位表达式 | `cmpLeft.el` |
 | `aoEl` | 表达式 (CMP-R) | 右侧（AO/报送）定位表达式（XPath 或 CSV 列） | `cmpRight.el`（srcType=1 为 XPath，srcType=2 为 CSV） |
 | `eoCvtEl` | 表达式 (CVT-L) | EO 值转换规则表达式 | `cvtLeft.el` |
 | `aoCvtEl` | 表达式 (CVT-R) | AO 值转换规则表达式 | `cvtRight.el` |
 | `vdtEl` | 表达式 (VDT) | AO 终值校验规则表达式 | `vdt.el` |
-| `type` | 类型 | 值类型 | `channel.fields[].type` |
-| `ctxs` | 命中Ctx | 命中上下文（各规则 `ctxs` 的 id 并集，解析为 key） | `cmpLeft`/`cmpRight`/`cvtLeft`/`cvtRight`/`vdt` 的 `ctxs` 并集 |
 | `eoUnconverted` | 期望值 (EO-U) | EO 未转换值 | `cvtLeft.raw` |
 | `eo` | 期望值 (EO) | 期望值 | `cmpLeft.value` |
 | `aoUnconverted` | 期望值 (AO-U) | AO 未转换值 | `cvtRight.raw` |

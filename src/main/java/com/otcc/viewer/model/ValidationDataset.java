@@ -9,10 +9,11 @@ import lombok.NoArgsConstructor;
 
 /**
  * Top level of the validation data file (single-file mode):
- * {@code { "mode": "single", "reportEnv": "...", "items": [...] }}.
+ * {@code { "mode": "single", "reportEnv": "...", "creationType": "...", "skippedItems": [...], "items": [...] }}.
  *
- * <p>In multi-file mode the manifest uses the same {@code mode} / {@code reportEnv}
- * fields but a lightweight item list (see {@link ManifestItem}); the full items live
+ * <p>In multi-file mode the manifest repeats all of these top-level fields
+ * ({@code mode} / {@code reportEnv} / {@code creationType} / {@code skippedItems}) and only
+ * replaces {@code items} with a lightweight list (see {@link ManifestItem}); the full items live
  * in separate files.</p>
  */
 @Data

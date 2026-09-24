@@ -14,9 +14,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class SkippedItem {
     private String itemId;
-    /** 报告渠道；可为 null（null 表示未关联到具体渠道）。 */
+    /** Report channel; may be {@code null} (null = not tied to a specific channel). */
     private String channel;
-    /** 来源渠道；可为 null。 */
+    /** Source channel; may be {@code null}. */
     private String source;
     private String reason;
 }

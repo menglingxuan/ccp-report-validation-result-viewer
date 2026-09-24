@@ -12,6 +12,7 @@
 - **单文件 / 多文件数据模式**：
   - 单文件：一个 `report-validation-data.json` 包含全部 item。
   - 多文件：`report-validation-data.json` 为清单（manifest），每个 item 一个独立文件，支持**动态加载**、跨文件**搜索/筛选/统计**。
+  - 清单的**顶层字段与单文件模式完全一致**（`mode` / `reportEnv` / `creationType` / `skippedItems`），只把 `items` 换成轻量条目（`file` + 预计算 `summary`）；Java 生成器（`validationJsonJob -m multi`）与 `splitToFiles()`（JS / Java）都会写出这些字段。
   - 所有近期功能（typed Ctx 标签/弹框、批次删除/收藏、新增徽章、可配置默认数据源、空数据占位、来源渠道筛选、字段详情左右导航与规则折叠、任务说明扩展内容等）均同时适配单文件与多文件模式。
 - **任务说明扩展内容（`descriptionEx`，只读）**：`batch-meta.json` 可选字段 `{ contentType, plainContent }`；`contentType: "markDownTable"` 时把 Markdown 表格渲染到「任务说明」**末尾**（**表头 `⚲` 字段筛选**（与主列表同款浮层输入框，列间 AND）/ **列排序**（升序 → 降序 → 原序）/ **分页**（紧凑页码 17×17 + 轻灰当前页，位于表格右上，每页 `limits.descExPageSize` 默认 5））；
   总页数 `≤ 3` 时不显示排序/筛选图标；列宽按**整表最大内容宽度**定宽（分页/排序切换时宽度固定，单列 56–360px）；页码控件位于表格右侧、**默认收起**（`▸` 展开 / `▾` 收起）、展开后为简约主题色竖向页码，仅 1 页时不显示；
@@ -35,12 +36,18 @@
 - **批次编辑（✎，仅兼容批次）**：列表卡片提供铅笔入口，可同时编辑**批次名 / 批次描述（多行）/ 标签**，保存后经 `POST /api/batch` 直接回写 `batch-meta.json`（不兼容与已删除批次不提供该入口，也拒绝保存）。
   - **批次名允许重复**：若输入的名称与其它批次重名，编辑器仅给出告警（列出同名批次 ID）且**不阻止保存**——与 `urls.defaultDataMode` 按批次名解析时取首个匹配的现状一致；批次名为空则不提交（服务端也返回 400）。
 - **批次目录双击打开**：批次详情中的「批次目录」支持双击，经 `POST /api/reveal` 在系统文件管理器中打开该目录（`features.revealPath`：dev/test 默认开启，prod 默认关闭；路径限定在批次根目录内）。Launcher 用**系统绝对路径**解析（Windows 用 `%SystemRoot%\explorer.exe`，不依赖 `PATH` —— 某些环境下 `PATH` 含畸形条目会让 Node 的 PATH 查找整体失效，`spawn('explorer.exe')` 直接 ENOENT）；启动失败会如实返回 500 并在页面上提示，不再无声无息。
+- **清除偏好记忆（顶栏）**：顶栏帮助按钮右侧新增同风格按钮（逆时针重置箭头内联 SVG 图标，尺寸与帮助按钮一致；hover 提示「清除偏好记忆（语言、列可见性、批次置顶等）」），**无二次确认**，点击即清除**当前作用域**的本地状态（localStorage 5 项 + IndexedDB 数据缓存，共 6 项）；完成后于视口顶部弹出完成提示（`.app-toast`，自动消失）并自动刷新本页。缓存项清单、作用域规则与实现约束见 [`docs/LOCAL_CACHE.md`](LOCAL_CACHE.md)。
+  - **按租户隔离**：租户模式下 localStorage 键带 `@<tenantId>` 后缀、IndexedDB key 带 `tenant:<id>:` 前缀（租户标识由服务端在下发的 `/config.json` 里提供，仅 `enabled`/`id`），多租户共用同一 origin 时互不干扰；非租户模式沿用历史键名（不做迁移）。清理不使用 `localStorage.clear()`，也不会删 IDB 库，同源下其它应用/租户的数据不受影响。
+  - 开关 `features.clearLocalCache`（`config.json` / dev / test 默认 `true`，**prod 默认 `false`**，关闭时按钮隐藏）；服务器端数据（批次、收藏夹、忽略配置）不受影响。其它已打开的标签页建议一并刷新，否则可能把旧状态写回。
+- **主页（顶栏）**：同一排新增按钮（简约房子内联 SVG 图标，与帮助 / 清除按钮同一套 30×30 圆形按钮与 15×15 图标尺寸，画布占比对齐；hover 提示「回到站点根」/ Back to Site Root），点击回到站点根（`origin + pathname`，不带查询参数与深链接）并重新加载页面（先 `history.replaceState` 去掉 query/hash，避免被查看器的 `syncHash` 写回，再 `location.reload`）；与启动失败提示条里的「回到主页」链接共用 `webRootUrl()`；开关 `features.homeButton`（prod 默认 `false`）。
 - **版本兼容性合并到版本号标签**：批次列表卡片、dock 悬停小卡片与批次详情的标签行统一由 `batchBadgesHTML` 渲染，不再单独展示「版本兼容 / 版本不兼容」标签，兼容性以版本号标签的配色 + title 提示表达；详情标签与卡片一致（仅不含 item 数量标签）。
 - **Item 关联属性浮层（hover 展示）**：主列表「报告日期」左侧的 item id **鼠标悬停**即弹出（原为点击），移出后延迟收起；鼠标进入浮层内部保持展开，便于点击复制。浮层首行为带标签的 `Item ID` 行并附复制按钮（其余行为对手方 Item ID / 平台 Trade ID / 平台 Trade Deal ID，均带复制按钮）。
 - **激活筛选标签（chips）与「清除全部」**：
-  - Item 列表（左栏）与批次列表都会在列表上方显示当前激活的筛选标签（Item：状态 / 平台 / 产品 / TradeId；批次：名称 / 命令行 / 描述 / 日期 / 环境 / 标签），主列表字段筛选同样沿用该样式。批次标签位于列表上方的**独立区域**（在拖动标记之上，不随列表高度拖拽变化，无标签时自动收起）。
-  - 标签数 **> 1** 时额外显示「清除全部」，一键清除全部标签并重置对应筛选状态与分页；单个标签仍可用自身 ✕ 移除。
-  - Item 列表的标签区高度变化后会自动重算列表起始位置（`renderSidebarChips` → `layoutSidebarList`），避免首个 item 被标签遮挡。
+  - Item 列表（左栏）与批次列表都会在列表上方显示当前激活的筛选标签（Item：**报告日期** / 状态 / 平台 / 产品 / TradeId；批次：名称 / 命令行 / 描述 / 日期 / 环境 / 标签），主列表字段筛选同样沿用该样式。批次标签位于列表上方的**独立区域**（在拖动标记之上，不随列表高度拖拽变化，无标签时自动收起）。
+  - 标签下方以**小字**（`.chip-count`，`--muted` 11px）显示当前筛选**匹配数量**（`chipMatchCount`：「匹配 N 项」/「{N} matches」）——Item 列表取 `filteredItems().length`，批次列表取 `visibleBatches().length`；无标签时文本为空、整行自动收起（`:empty { display: none }`）。
+  - 标签数 **> 1** 时额外显示「清除全部」，一键清除全部标签并重置对应筛选状态与分页（Item 侧含**报告日期**）；单个标签仍可用自身 ✕ 移除。日期筛选的每个入口（📅 浮层、手动输入、✕ 清除、原生日期选择器）都会刷新标签，因此选完日期立刻能看到并可一键移除。
+  - **日期提示互斥**：「N 个报告日期（有数据）」/「N 个批次日期（有数据）」提示**仅在未指定具体日期时显示**，选定某个日期后自动隐藏（批次侧 `updateBatchDateHint()`，手动输入即时生效）。
+  - Item 列表的标签区高度变化后会自动重算列表起始位置（`renderSidebarChips` → `layoutSidebarList`），**并计入下方计数小字的高度**，避免首个 item 被标签或计数行遮挡。
 - **收藏夹**：
   - 按「包名」（`aa.bb.cc`）分层折叠收藏批次；入口位于批次 dock（★）。
   - 收藏/取消收藏会**回写批次元数据**（`favorite` 标记），扫描后仍保留。
@@ -65,9 +72,13 @@
 - **忽略配置管理（查看 / 删除）**：警告 / 未比较选项卡工具栏的「管理忽略配置」打开模态窗口，按类型分页签查看当前全部忽略项（默认选中入口对应类型），含「忽略条数」列（当前 item 内因该条目被忽略的条数，`countIgnoredByKey`），支持**表头三态排序**、**字段级筛选**（`⚲` 浮层，列间 AND，与主列表同一交互：默认下拉框精确匹配、字段列「关联字段 / 元素」自由输入包含匹配；「忽略条数」列仅支持排序、无筛选图标）与**分页**（每页 `limits.ignoreMgrPageSize` 默认 10；条数 > 20 才显示排序 / 筛选图标，单页时不显示分页控件），以及逐条删除；删除即回写配置文件并立即重绘当前数据集（复用 `POST /api/ignore` 的 `If-Match` 乐观并发，409 冲突按既有策略重新加载）。
 - **计算 Worker**：健康总览与全局搜索等重计算移到 Web Worker（`worker.js`，复用 `core.js` 纯函数），失败自动回退主线程同步计算。
 - **纯函数核心拆分**：`public/core.js` 承载无副作用纯函数（搜索/排序/过滤/差异 diff/忽略 key/健康统计/全局搜索），主线程与 Worker 共用，并由 Node 测试直接导入回归。
-- **深链接增强**：URL hash 除 `item/ch/tab/q/result/page` 外，还包含 `batch`（当前批次）、`fr`（强制加载）、`is`（侧栏搜索）、`st/pf/pd/td/dt`（侧栏与批次筛选）、`sp`（特殊值过滤）、`sort`、`cols`（列可见性）、`filters`（列过滤器 JSON）等，可基本完整还原视图状态。
+- **搜索限定名（工具栏字段搜索与全局搜索共用同一语法）**：`field:` 报告字段 / `tag:`（同义词 `userTag:`）**用户标签** / `xpath:` CCP XPath / `csv:` CCP CSV / `eo:` 期望值 / `ao:` 实际值 / `ctx:` 命中 Ctx / `desc:` 说明；可叠加 `regex:`（如 `xpath:regex:`）；不加限定名时在全部字段做普通文本匹配。**用户标签的搜索能力与 `columns.userTag.raw` 联动**（保证能搜到的东西与界面显示的一致）：`raw: false`（默认）时按「原始值 + 当前语言显示标签」双通道匹配——标签映射（`columns.userTag.labels`）由界面按当前语言解析后作为 `tagLabels` 传给纯函数，Worker 与主线程回退走同一参数，因此结果一致；`raw: true` 时界面显示的就是原始值，只按原始值搜索（`tagLabels` 为空、显示标签不再可搜），帮助面板中 `tag:` 的说明文案也随之切换（`helpSyntaxTag` / `helpSyntaxTagRaw`）。全局搜索结果行还会显示该字段的用户标签徽章，便于确认命中原因。
+- **深链接增强**：URL hash 除 `item/ch/tab/q/result/page` 外，还包含 `batch`（当前批次）、`fr`（强制加载）、`is`（侧栏搜索）、`st/pf/pd/td/dt`（侧栏与批次筛选）、`sp`（特殊值过滤）、`sort`、`cols`（列可见性）、`filters`（列过滤器 JSON）等，可基本完整还原视图状态。失效的 `batch`（不存在 / 版本不兼容 / 批次目录已被移除）会回退默认数据并给出提示；会话内 hash 变更与「返回默认数据」按钮都经由同一安全入口，回退失败不再产生未捕获异常，提示语也不会丢失。多文件清单为空（`mode: multi` + `items: []`）时直接渲染空状态。hash 解析后会把侧栏筛选**回写到控件**（`#search` / `#itemSearch` / **`#itemFilter` 状态下拉** / `#reportDateFilter`），避免深链接 `st=…` 生效但下拉仍显示「全部状态」的错位。
+- **侧栏「按状态筛选」判定**：`全部通过` → `failed === 0`；`存在失败` → `failed > 0`；`存在警告` → 未忽略的 `warnings > 0`（三者为互不相同的独立过滤，可与平台 / 产品 / TradeId / 日期筛选叠加）。`failed = 非 PASSED 字段数`。多文件模式下未按需加载的 item 使用清单里的预计算 `summary`，读取时统一经 `normalizeItemSummary()` 归一（缺失 / 非数字 → 0），因此清单里 `summary` 缺字段也不会把 `undefined` 渲染到卡片；**但清单 summary 与 item 文件内容不一致时（summary 缺失 / 过期），筛选与卡片会以 summary 为准，直到该 item 被选中并懒加载后才按实际内容重算**。
+- **启动期兜底**：`initApp()` 的任何未预期异常都会移除加载骨架层并**贴底**显示固定提示条（`--warn` 配色，「页面初始化失败，请刷新重试…」），避免用户停留在全屏骨架层（观感等同空白页），也不会遮挡页头；提示条不依赖任何页面容器，DOM 缺元素时同样可见。提示条末尾附「或 回到主页」超链接，指向 web 根（`origin + pathname`，不含查询参数与深链接），便于从失效的深链接回到干净主页。
+- **主列表分页在选项卡切换间保留**：字段比较用 `state.page`、消息类（警告 / 错误 / 未比较 / 未比较项）用 `state.msgPage`，两者互不干扰，所以切换选项卡（含点当前选项卡）**不再把页码重置为 1**；页码越界由 `computeFieldPage()` / `renderMsgTable()` 调用 `paginateRows()` 自动收敛。会改变数据集的操作仍各自重置页码：切换 item、全局搜索、列 / 特殊值筛选浮层、清除筛选标签与「清除全部」、汇总卡片跳转、字段警告图标的选项卡跳转、每页条数下拉。副作用是 hash 里的 `page=` 在非字段选项卡下也会保留，刷新后可按深链接还原字段比较所在页。
 - **键盘导航**：字段表与消息表行可聚焦（↑/↓ 移动、`Enter` 打开字段详情、`Space` 切换忽略）。
-- **数据校验**：`lib/validate.js` 校验数据文件结构（顶层 / ctxDefs / 字段注册表 / 比较字段；可选规则对象 `cvtLeft`·`cvtRight`·`vdt` 允许为 `null`），服务启动时对默认数据文件告警。
+- **数据校验**：`lib/validate.js` 校验数据文件结构（顶层 / `reportEnv` / `creationType`（`sample`|`user`）/ `skippedItems` 数组与条目字段 / ctxDefs / 字段注册表 / 比较字段；可选规则对象 `cvtLeft`·`cvtRight`·`vdt` 允许为 `null`），服务启动时对默认数据文件告警。
 - **独立打包部署**：`npm pack` / `npx report-viewer` 即可运行。
 
 ## 环境要求
@@ -230,6 +241,7 @@ src/
 数据文件结构见 [`docs/DATA_SCHEMA.md`](DATA_SCHEMA.md)。关键点：
 
 - `report-validation-data.json` 顶层 `"mode"` 为 `"single"` 或 `"multi"`。
+- **两种模式的顶层字段一致**：`reportEnv` / `creationType`（`sample`|`user`）/ `skippedItems` 在单文件数据集与多文件清单中都存在（`creationType` 决定 Sample 徽标与「示例数据」提示，缺省按 `sample` 处理）。
 - 多文件模式：清单中的每个 item 带 `file` 与预计算 `summary`，查看器动态加载 item 文件；搜索/筛选/统计仍作用于全部 item 的合并数据。
 - 多文件模式下 item 文件路径**相对清单文件所在目录**解析（根目录与批次目录清单都适用）；主数据 / 默认模板数据 / 批次数据在两种模式下的文件形态一致（`multi` 时均为清单）。
 - 每个 item 内联 `ctxDefs`（`id` / `scopes` / `type` / `def` / `hits`）。

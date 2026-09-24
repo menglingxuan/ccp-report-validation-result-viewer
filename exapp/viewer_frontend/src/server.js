@@ -614,6 +614,9 @@ const server = http.createServer(function (req, res) {
       // 忽略配置同样按租户隔离：/tenant/<urls.ignore>（无租户文件时回退到共享默认文件）。
       servedCfg.urls.ignore = '/tenant/' + String(defaultIgnoreUrl()).replace(/^\/+/, '');
     }
+    // 本地缓存作用域：下发租户标识（仅 enabled / id，**不含** dataRoot 等服务器路径）。
+    // 前端据此把 localStorage 与 IndexedDB 缓存按租户分区，各租户互不影响（清除缓存也只清当前租户）。
+    servedCfg.tenant = { enabled: !!CFG.tenant.enabled, id: CFG.tenant.enabled ? CFG.tenant.id : null };
     json(res, 200, servedCfg);
     return;
   }

@@ -189,6 +189,13 @@ async function main() {
     check('主清单通过 lib/validate.js 校验', validated.ok === true, JSON.stringify(validated.errors));
     check('清单条目均带 file + 预计算 summary（懒加载前侧栏计数回退）',
       mItems.length > 0 && mItems.every((i) => typeof i.file === 'string' && i.summary && typeof i.summary.total === 'number'));
+    // 顶层字段：多文件清单与单文件数据集的顶层字段一致（mode / reportEnv / creationType / skippedItems）。
+    check('主清单保留 creationType == ' + dataset.creationType,
+      manifest.json && manifest.json.creationType === dataset.creationType, String(manifest.json && manifest.json.creationType));
+    check('主清单保留 skippedItems（与数据集一致）',
+      manifest.json && Array.isArray(manifest.json.skippedItems)
+      && manifest.json.skippedItems.length === (dataset.skippedItems || []).length,
+      JSON.stringify(manifest.json && manifest.json.skippedItems && manifest.json.skippedItems.length));
 
     // 每个 item 文件都按「相对清单文件所在目录」解析（与 app.js resolveUrl(DATA_FILE_URL, item.file) 一致）
     const badItems = [];
@@ -203,6 +210,11 @@ async function main() {
     // 默认模板清单：multi 模式下同样必须是清单（回归点）
     const def = await getJSON(base + '/report-validation-data-default.json');
     check('默认模板数据存在且 mode == multi', def.status === 200 && def.json && def.json.mode === 'multi', 'status=' + def.status);
+    check('默认模板清单保留 creationType / skippedItems',
+      !!def.json && def.json.creationType === dataset.creationType
+      && Array.isArray(def.json.skippedItems)
+      && def.json.skippedItems.length === (dataset.skippedItems || []).length,
+      JSON.stringify(def.json && { c: def.json.creationType, s: def.json.skippedItems && def.json.skippedItems.length }));
     const defFirst = def.json && def.json.items && def.json.items[0];
     if (defFirst) {
       const r = await getJSON(new URL(defFirst.file, base + '/report-validation-data-default.json').href);
@@ -230,6 +242,12 @@ async function main() {
       const batchManifestUrl = new URL(mEntry.dataUrl, idxUrl).href;
       const bm = await getJSON(batchManifestUrl);
       check('多文件批次清单 mode == multi', bm.status === 200 && bm.json && bm.json.mode === 'multi', 'status=' + bm.status + ' url=' + batchManifestUrl);
+      check('多文件批次清单保留 creationType / skippedItems（与源数据集一致）',
+        !!bm.json && bm.json.creationType === slice.creationType
+        && Array.isArray(bm.json.skippedItems)
+        && bm.json.skippedItems.length === (slice.skippedItems || []).length,
+        JSON.stringify(bm.json && { c: bm.json.creationType, s: bm.json.skippedItems && bm.json.skippedItems.length }));
+      check('多文件批次索引 creationType 与清单/元数据一致', mEntry.creationType === slice.creationType, String(mEntry.creationType));
       const bFirst = bm.json && bm.json.items && bm.json.items[0];
       if (bFirst) {
         const itemUrl = new URL(bFirst.file, batchManifestUrl).href;

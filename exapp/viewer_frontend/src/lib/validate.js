@@ -18,8 +18,31 @@ export function validateDataset(json) {
   if (json.mode !== undefined && json.mode !== 'single' && json.mode !== 'multi') {
     errors.push('mode 只能是 "single" 或 "multi"，当前为：' + json.mode);
   }
-  if (json.reportEnv !== undefined && typeof json.reportEnv !== 'string') {
+  if (json.reportEnv !== undefined && json.reportEnv !== null && typeof json.reportEnv !== 'string') {
     errors.push('reportEnv 必须是字符串');
+  }
+  // 顶层 creationType / skippedItems 为单文件与多文件清单共有字段（见 docs/DATA_SCHEMA.md §1 / §2）。
+  // 显式 null 视为「未提供」（Java 生成器的 ObjectMapper 保留 null）。
+  if (json.creationType !== undefined && json.creationType !== null
+      && json.creationType !== 'sample' && json.creationType !== 'user') {
+    errors.push('creationType 只能是 "sample" 或 "user"，当前为：' + json.creationType);
+  }
+  if (json.skippedItems !== undefined && json.skippedItems !== null) {
+    if (!Array.isArray(json.skippedItems)) {
+      errors.push('skippedItems 必须是数组');
+    } else {
+      json.skippedItems.forEach(function (s, i) {
+        const label = 'skippedItems[' + i + ']';
+        if (!s || typeof s !== 'object' || Array.isArray(s)) { errors.push(label + ' 必须是对象'); return; }
+        if (typeof s.itemId !== 'string' || !s.itemId) errors.push(label + ' 缺少 itemId');
+        if (typeof s.reason !== 'string' || !s.reason) errors.push(label + ' 缺少 reason');
+        ['channel', 'source'].forEach(function (k) {
+          if (s[k] !== undefined && s[k] !== null && typeof s[k] !== 'string') {
+            errors.push(label + ' ' + k + ' 必须是字符串或 null');
+          }
+        });
+      });
+    }
   }
 
   const mode = json.mode === 'multi' ? 'multi' : 'single';
@@ -36,7 +59,8 @@ export function validateDataset(json) {
       if (typeof item.file !== 'string' || !item.file) {
         errors.push(label + '（多文件模式）缺少 file 字段');
       }
-      if (item.summary !== undefined && (typeof item.summary !== 'object' || item.summary === null)) {
+      if (item.summary !== undefined && item.summary !== null
+          && (typeof item.summary !== 'object' || Array.isArray(item.summary))) {
         errors.push(label + '（多文件模式）summary 必须是对象');
       }
       return;

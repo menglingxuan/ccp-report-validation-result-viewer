@@ -13,7 +13,7 @@ self.onmessage = function (e) {
       self.postMessage({ id: id, ok: true, result: computeHealthPure(p.items || [], p.date, p.channel, p.ignoreConfig || {}) });
     } else if (msg.type === 'globalSearch') {
       const p = msg.payload || {};
-      self.postMessage({ id: id, ok: true, result: globalSearchPure(p.items || [], p.q, p.limit) });
+      self.postMessage({ id: id, ok: true, result: globalSearchPure(p.items || [], p.q, p.limit, { tagLabels: p.tagLabels || null }) });
     } else {
       self.postMessage({ id: id, ok: false, error: 'unknown message type: ' + msg.type });
     }

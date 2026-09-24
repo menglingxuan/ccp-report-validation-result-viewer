@@ -664,6 +664,9 @@
       border-radius: 6px; line-height: 1;
     }
     .filter-clear-all:hover { background: var(--accent-bg); text-decoration: underline; }
+    /* 筛选标签下方的「匹配 N 项」小字（无标签时文本为空 -> 自动收起，不占位） */
+    .chip-count { padding: 2px 12px 8px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+    .chip-count:empty { display: none; }
 
     /* 可点击统计卡片 */
     .card.clickable { cursor: pointer; transition: box-shadow .15s, border-color .15s, transform .12s; }
@@ -1318,6 +1321,16 @@
       background: var(--bg); transition: opacity .2s; overflow: auto;
     }
     .boot.done { opacity: 0; pointer-events: none; }
+    /* 启动失败提示条：不依赖任何可能缺失的页面容器，固定在视口底部 */
+    .boot-error {
+      position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 120;
+      width: min(760px, calc(100vw - 32px));
+      padding: 10px 14px; border-radius: 8px; font-size: 13px; line-height: 1.5;
+      background: var(--warn-bg, #fff4e5); color: var(--warn, #b26a00);
+      border: 1px solid currentColor; box-shadow: 0 6px 20px rgba(0, 0, 0, .16);
+    }
+    .boot-error-home { color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+    .boot-error-home:hover { color: var(--accent); }
     .skel {
       border-radius: 10px;
       background: linear-gradient(90deg, var(--surface-2) 25%, var(--hover) 37%, var(--surface-2) 63%);
@@ -1401,11 +1414,24 @@
     }
     .top-select option { color: #111827; }
     .help-btn {
-      width: 30px; height: 30px; border-radius: 999px;
+      width: 30px; height: 30px; border-radius: 999px; padding: 0;
+      display: inline-flex; align-items: center; justify-content: center;
       border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.14);
       color: #fff; cursor: pointer; font-size: 15px; font-weight: 700; line-height: 1;
     }
     .help-btn:hover { background: rgba(255,255,255,.26); }
+    /* 顶栏图标统一：内联 SVG 固定 15×15（与 ? 字形视觉尺寸对齐），描边用 currentColor 跟随按钮颜色 */
+    .help-btn svg { width: 15px; height: 15px; display: block; }
+    /* .help-btn 显式声明了 display，会盖掉 UA 的 [hidden]{display:none}，这里显式补回（功能开关关闭时用 hidden 隐藏）。 */
+    .help-btn[hidden] { display: none; }
+    /* 轻量操作反馈（如「清除偏好记忆」完成）：固定在视口顶部，自动消失 */
+    .app-toast {
+      position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 130;
+      width: max-content; max-width: min(560px, calc(100vw - 32px));
+      padding: 8px 14px; border-radius: 8px; font-size: 13px; line-height: 1.5;
+      background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .16);
+    }
   </style>
 </head>
 <body>
@@ -1439,6 +1465,8 @@
           <option value="en">English</option>
         </select>
         <button class="help-btn" id="helpBtn" title="帮助 / 快捷键" aria-label="帮助 / 快捷键">?</button>
+        <button class="help-btn" id="clearPrefsBtn" title="清除偏好记忆" aria-label="清除偏好记忆"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="0.9 2.9 0.9 6.9 4.9 6.9"/><path d="M2.34 10A6 6 0 1 0 3.76 3.76L0.67 6.67"/></svg></button>
+        <button class="help-btn" id="homeBtn" title="回到站点根" aria-label="回到站点根"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.7 7.4 8 2.1l6.3 5.3"/><path d="M3.2 6.2v7.7h9.6V6.2"/><path d="M6.2 13.9V10.2h3.6v3.7"/></svg></button>
       </div>
     </div>
   </header>
@@ -1456,7 +1484,7 @@
       <div class="filters" id="filterChips"></div>
 
       <div class="toolbar">
-        <input type="search" id="search" placeholder="搜索 字段 / XPath / 期望值 / 实际值 / Ctx / 信息…" title="搜索（/）">
+        <input type="search" id="search" placeholder="搜索 字段 / 用户标签 / XPath / 期望值 / 实际值 / Ctx / 说明…" title="搜索（/）">
         <button class="tool-btn" id="globalSearchBtn" title="全局搜索（G）">全局搜索</button>
         <button class="tool-btn" id="healthBtn" title="健康总览（H）">健康总览</button>
         <input type="file" id="importIgnoreFile" accept="application/json" style="display:none">
@@ -1491,6 +1519,7 @@
           <button class="side-multi" id="tradeIdFilterBtn" data-field="itemTradeIds">Trade ID ▾</button>
         </div>
         <div class="sidebar-chips" id="sidebarChips"></div>
+        <div class="chip-count" id="sidebarMatchCount"></div>
         <div class="sidebar-list" id="sidebarList"></div>
         <div class="sidebar-pager" id="sidebarPager"></div>
       </aside>

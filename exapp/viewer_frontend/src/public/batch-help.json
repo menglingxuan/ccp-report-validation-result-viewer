@@ -36,7 +36,8 @@
           "批次面板支持：按名称 / 命令行 / 描述搜索、按日期筛选、执行时间升降序、兼容性过滤",
           "列表支持懒加载（默认，点「加载更多」逐页追加）与传统分页两种模式（batches.listMode）",
           "列表高度可拖动调整（上下两个手柄）",
-          "重新扫描（⟳）完成后以灯环动画提示"
+          "重新扫描（⟳）完成后以灯环动画提示",
+          "收藏夹（★）与帮助（?）入口"
         ]
       },
       {
@@ -86,10 +87,10 @@
           "runType：运行环境 dev / test / prod —— 未显式声明的 features 在 dev/test 默认开、prod 默认关",
           "urls：数据 / 忽略规则 / 批次索引路径（data / ignore / batches）",
           "ui：界面默认项（lang / theme / sidebarMode / sidebarWidth / reportCatDefault / batchDockSide / progressBarStyle）",
-          "features：18 个功能开关（uncomparedXpath / uncomparedItems / uncomparedCsv / logs / conversionRule / validationRule / excelMapping / sourceFilter / modalRules / columnHover / sidebarSearch / sidebarTradeId / compare / healthOverview / globalSearch / keyboardShortcuts / modalPrints / recentBatches）",
+          "features：23 个功能开关（uncomparedXpath / uncomparedItems / uncomparedCsv / logs / conversionRule / validationRule / excelMapping / sourceFilter / modalRules / columnHover / sidebarSearch / sidebarTradeId / compare / healthOverview / globalSearch / keyboardShortcuts / modalPrints / recentBatches / batchHelp / revealPath / descriptionEx / clearLocalCache / homeButton）",
           "limits：分页与上限（pageSize / pageSizeOptions / sidebarPageSize / msgPageSize / globalSearchLimit）",
           "batches：批次面板（recentCount / pageSize / listMode / detailMode / panelWidth）",
-          "columns：字段比较表列配置（default 默认可见性 / labels 列名覆盖 / selector 列选择可见性 / tag XPath-CSV 标签）；列名：channel / source / field / userTag / eoEl / aoEl / eoCvtEl / aoCvtEl / vdtEl / type / ctxs / eoUnconverted / eo / aoUnconverted / ao / result / remarks",
+          "columns：字段比较表列配置（default 默认可见性 / labels 列名覆盖 / selector 列启用（false 的列既不在「列选择」菜单也不渲染）/ tag XPath-CSV 标签）；列名（即主列表与「列选择」顺序）：channel / source / field / userTag / type / ctxs / eoEl / aoEl / eoCvtEl / aoCvtEl / vdtEl / eoUnconverted / eo / aoUnconverted / ao / result / remarks；默认（config / dev / test）全部启用，prod 另禁用表达式类列与 type（userTag 仍启用）",
           "完整说明与默认值见 CONFIG.md 与 config.schema.json"
         ],
         "code": "\"batches\": { \"recentCount\": 5, \"pageSize\": 8, \"listMode\": \"lazy\", \"detailMode\": \"quick\", \"panelWidth\": 320 }"
@@ -110,8 +111,20 @@
         "items": [
           "数据 / 索引 / 帮助等资源需通过本地 HTTP 服务器访问（file:// 直接打开会因跨域导致数据回退）",
           "修改批次数据后需重新运行 scan-batches.js 刷新索引",
-          "语言与主题切换、dock 停靠方向、面板尺寸等偏好保存在浏览器 localStorage",
+          "语言与主题切换、dock 停靠方向、面板尺寸等偏好保存在浏览器本地；受管理的 6 项缓存与清除方式见「十、本地缓存（偏好记忆）与清除」",
           "键盘：批次列表中 ↑ / ↓ 移动、Enter 加载；全局 / 搜索、G 全局搜索、H 健康总览"
+        ]
+      },
+      {
+        "h": "十、本地缓存（偏好记忆）与清除",
+        "items": [
+          "受管理的本地缓存共 6 项：界面偏好 / 上次活动批次 / 置顶批次 / 忽略配置镜像 / 收藏夹镜像（localStorage，键名 reportValidation*.v1）+ 数据缓存（IndexedDB reportViewerCache，ETag + 响应体）",
+          "不使用 service worker / CacheStorage / Cookie / sessionStorage；除上述 6 项外不写任何本地存储",
+          "作用域按租户分区：localStorage 键带 `@<tenantId>` 后缀、IndexedDB key 带 `tenant:<id>:` 前缀（租户标识由服务端下发的 /config.json 提供，仅 enabled/id）；非租户模式沿用历史键名且不做迁移",
+          "清除：顶栏帮助按钮旁的「清除偏好记忆」按钮（逆时针重置箭头图标，hover 提示：清除偏好记忆（语言、列可见性、批次置顶等））——无二次确认、点击即清当前作用域的 6 项；不使用 localStorage.clear()、不删 IndexedDB 库，同源其它应用/租户与服务器端数据（批次 / 收藏夹 / 忽略配置）均不受影响；完成后顶部提示并自动刷新",
+          "这两个顶栏按钮可用 features.clearLocalCache / features.homeButton 关闭（config.json / dev / test 默认开，prod 默认关）",
+          "其它已打开的标签页仍持有旧内存状态，其后续写入会把键写回，建议一并刷新",
+          "完整说明见 docs/LOCAL_CACHE.md"
         ]
       }
     ]
@@ -153,7 +166,8 @@
           "批次面板支援：按名稱 / 命令行 / 描述搜尋、按日期篩選、執行時間升降序、相容性過濾",
           "列表支援懶載入（預設，點「載入更多」逐頁追加）與傳統分頁兩種模式（batches.listMode）",
           "列表高度可拖動調整（上下兩個手柄）",
-          "重新掃描（⟳）完成後以燈環動畫提示"
+          "重新掃描（⟳）完成後以燈環動畫提示",
+          "收藏夾（★）與幫助（?）入口"
         ]
       },
       {
@@ -203,10 +217,10 @@
           "runType：運行環境 dev / test / prod —— 未顯式聲明的 features 在 dev/test 預設開、prod 預設關",
           "urls：數據 / 忽略規則 / 批次索引路徑（data / ignore / batches）",
           "ui：介面預設項（lang / theme / sidebarMode / sidebarWidth / reportCatDefault / batchDockSide / progressBarStyle）",
-          "features：18 個功能開關（uncomparedXpath / uncomparedItems / uncomparedCsv / logs / conversionRule / validationRule / excelMapping / sourceFilter / modalRules / columnHover / sidebarSearch / sidebarTradeId / compare / healthOverview / globalSearch / keyboardShortcuts / modalPrints / recentBatches）",
+          "features：23 個功能開關（uncomparedXpath / uncomparedItems / uncomparedCsv / logs / conversionRule / validationRule / excelMapping / sourceFilter / modalRules / columnHover / sidebarSearch / sidebarTradeId / compare / healthOverview / globalSearch / keyboardShortcuts / modalPrints / recentBatches / batchHelp / revealPath / descriptionEx / clearLocalCache / homeButton）",
           "limits：分頁與上限（pageSize / pageSizeOptions / sidebarPageSize / msgPageSize / globalSearchLimit）",
           "batches：批次面板（recentCount / pageSize / listMode / detailMode / panelWidth）",
-          "columns：字段比較表列配置（default 預設可見性 / labels 列名覆蓋 / selector 列選擇可見性 / tag XPath-CSV 標籤）；列名：channel / source / field / userTag / eoEl / aoEl / eoCvtEl / aoCvtEl / vdtEl / type / ctxs / eoUnconverted / eo / aoUnconverted / ao / result / remarks",
+          "columns：字段比較表列配置（default 預設可見性 / labels 列名覆蓋 / selector 列啟用（false 的列既不在「列選擇」菜單也不渲染）/ tag XPath-CSV 標籤）；列名（即主列表與「列選擇」順序）：channel / source / field / userTag / type / ctxs / eoEl / aoEl / eoCvtEl / aoCvtEl / vdtEl / eoUnconverted / eo / aoUnconverted / ao / result / remarks；預設（config / dev / test）全部啟用，prod 另禁用表達式類列與 type（userTag 仍啟用）",
           "完整說明與預設值見 CONFIG.md 與 config.schema.json"
         ],
         "code": "\"batches\": { \"recentCount\": 5, \"pageSize\": 8, \"listMode\": \"lazy\", \"detailMode\": \"quick\", \"panelWidth\": 320 }"
@@ -227,8 +241,20 @@
         "items": [
           "數據 / 索引 / 幫助等資源需通過本地 HTTP 伺服器存取（file:// 直接開啟會因跨域導致數據回退）",
           "修改批次數據後需重新運行 scan-batches.js 刷新索引",
-          "語言與主題切換、dock 停靠方向、面板尺寸等偏好會保存在瀏覽器 localStorage",
-          "鍵盤：批次列表中 ↑ / ↓ 移動、Enter 載入；全域 / 搜尋、G 全域搜尋、H 健康總覽"
+          "語言與主題切換、dock 停靠方向、面板尺寸等偏好保存在瀏覽器本地；受管理的 6 項緩存與清除方式見「十、本機緩存（偏好記憶）與清除」",
+          "鍵盤：批次列表中 ↑ / ↓ 移動、Enter 載入；全局 / 搜索、G 全局搜索、H 健康總覽"
+        ]
+      },
+      {
+        "h": "十、本機緩存（偏好記憶）與清除",
+        "items": [
+          "受管理的本機緩存共 6 項：界面偏好 / 上次活動批次 / 置頂批次 / 忽略配置鏡像 / 收藏夾鏡像（localStorage，鍵名 reportValidation*.v1）+ 數據緩存（IndexedDB reportViewerCache，ETag + 響應體）",
+          "不使用 service worker / CacheStorage / Cookie / sessionStorage；除上述 6 項外不寫任何本機存儲",
+          "作用域按租戶分區：localStorage 鍵帶 `@<tenantId>` 後綴、IndexedDB key 帶 `tenant:<id>:` 前綴（由服務端下發的 /config.json 提供租戶標識，僅 enabled/id）；非租戶模式沿用歷史鍵名且不做遷移",
+          "清除：頂欄幫助按鈕旁的「清除偏好記憶」按鈕（逆時針重置箭頭圖標，hover 提示：清除偏好記憶（語言、欄可見性、批次置頂等））——無二次確認、點擊即清當前作用域的 6 項；不使用 localStorage.clear()、不刪 IndexedDB 庫，同源其它應用/租戶與服務器端數據（批次 / 收藏夾 / 忽略配置）均不受影響；完成後頂部提示並自動重新整理",
+          "這兩個頂欄按鈕可用 features.clearLocalCache / features.homeButton 關閉（config.json / dev / test 預設開，prod 預設關）",
+          "其它已開啟的標籤頁仍持有舊內存狀態，其後續寫入會把鍵寫回，建議一併重新整理",
+          "完整說明見 docs/LOCAL_CACHE.md"
         ]
       }
     ]
@@ -270,7 +296,8 @@
           "The panel supports search by name / command line / description, date filter, ascending/descending execution time, and compatibility filter",
           "List supports lazy loading (default, Load more) and traditional pagination (batches.listMode)",
           "List height is resizable via the top and bottom handles",
-          "Rescan (⟳) finishes with a ring flash animation"
+          "Rescan (⟳) finishes with a ring flash animation",
+          "Favorites (★) and help (?) entries"
         ]
       },
       {
@@ -320,10 +347,10 @@
           "runType: environment dev / test / prod — undeclared features default on in dev/test, off in prod",
           "urls: data / ignore / batch index paths (data / ignore / batches)",
           "ui: UI defaults (lang / theme / sidebarMode / sidebarWidth / reportCatDefault / batchDockSide / progressBarStyle)",
-          "features: 18 feature flags (uncomparedXpath / uncomparedItems / uncomparedCsv / logs / conversionRule / validationRule / excelMapping / sourceFilter / modalRules / columnHover / sidebarSearch / sidebarTradeId / compare / healthOverview / globalSearch / keyboardShortcuts / modalPrints / recentBatches)",
+          "features: 23 feature flags (uncomparedXpath / uncomparedItems / uncomparedCsv / logs / conversionRule / validationRule / excelMapping / sourceFilter / modalRules / columnHover / sidebarSearch / sidebarTradeId / compare / healthOverview / globalSearch / keyboardShortcuts / modalPrints / recentBatches / batchHelp / revealPath / descriptionEx / clearLocalCache / homeButton)",
           "limits: paging & caps (pageSize / pageSizeOptions / sidebarPageSize / msgPageSize / globalSearchLimit)",
           "batches: batch panel (recentCount / pageSize / listMode / detailMode / panelWidth)",
-          "columns: fields-table column config (default visibility / labels override / selector visibility / tag XPath-CSV badge); keys: channel / source / field / userTag / eoEl / aoEl / eoCvtEl / aoCvtEl / vdtEl / type / ctxs / eoUnconverted / eo / aoUnconverted / ao / result / remarks",
+          "columns: fields-table column config (default visibility / labels override / selector — a column set to false is neither listed in the column picker nor rendered / tag XPath-CSV badge); keys (also the main-list and column-picker order): channel / source / field / userTag / type / ctxs / eoEl / aoEl / eoCvtEl / aoCvtEl / vdtEl / eoUnconverted / eo / aoUnconverted / ao / result / remarks; all enabled by default (config / dev / test); prod additionally disables the expression columns and type (userTag stays enabled)",
           "See CONFIG.md and config.schema.json for full details and defaults"
         ],
         "code": "\"batches\": { \"recentCount\": 5, \"pageSize\": 8, \"listMode\": \"lazy\", \"detailMode\": \"quick\", \"panelWidth\": 320 }"
@@ -344,8 +371,20 @@
         "items": [
           "Data / index / help resources must be served over HTTP (opening file:// directly causes CORS fallback)",
           "Re-run scan-batches.js after changing batch data",
-          "Language, theme, dock side, and panel size preferences persist in browser localStorage",
+          "Language, theme, dock side, and panel size preferences persist in the browser; the 6 managed cache items and how to clear them are described in section 10",
           "Keyboard: ↑ / ↓ navigate and Enter loads in the batch list; / search, G global search, H health overview"
+        ]
+      },
+      {
+        "h": "10. Local cache (preference memory) & clearing",
+        "items": [
+          "6 managed local cache items: UI preferences / last active batch / pinned batch / ignore-config mirror / favorites mirror (localStorage, keys reportValidation*.v1) + data cache (IndexedDB reportViewerCache, ETag + response body)",
+          "No service worker / CacheStorage / Cookie / sessionStorage is used; nothing else is written to browser storage",
+          "Scope is partitioned per tenant: localStorage keys carry an `@<tenantId>` suffix and IndexedDB keys a `tenant:<id>:` prefix (the tenant id comes from the served /config.json, only enabled/id); non-tenant mode keeps the historical key names and does no migration",
+          "Clearing: the Clear local preferences button next to the help button (counter-clockwise reset arrow icon; hover: Clear local preferences (language, column visibility, pinned batch, etc.)) — no confirmation, clears the 6 items of the current scope immediately; it never calls localStorage.clear() and never drops the IndexedDB database, so other apps/tenants on the same origin and all server-side data (batches / favorites / ignore config) stay untouched; a toast is shown and the page reloads",
+          "Both top-bar buttons can be disabled via features.clearLocalCache / features.homeButton (on by default in config.json / dev / test, off in prod)",
+          "Other open tabs still hold the old in-memory state and will write the keys back on their next change; refresh them too",
+          "Full description: docs/LOCAL_CACHE.md"
         ]
       }
     ]

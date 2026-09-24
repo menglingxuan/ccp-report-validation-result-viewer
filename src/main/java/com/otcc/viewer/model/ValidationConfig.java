@@ -82,8 +82,20 @@ public class ValidationConfig {
         private Boolean recentBatches;
         private Boolean batchHelp;
         private Boolean revealPath;
-        /** 是否在「任务说明」末尾渲染 batch-meta.json 的 descriptionEx 扩展内容（只读）。 */
+        /** Whether to render the {@code batch-meta.json} {@code descriptionEx} content at the end of the Task Note panel (read-only). */
         private Boolean descriptionEx;
+        /**
+         * Whether the top bar (next to the help button) shows the "clear preferences" button.
+         * It clears only the current tenant scope (localStorage + IndexedDB); server-side data
+         * is never touched. Enabled by default except in the prod config.
+         */
+        private Boolean clearLocalCache;
+        /**
+         * Whether the top bar (next to the clear button) shows the "home" button, which returns
+         * to the site root (origin + pathname, no query/deep link) and reloads. Enabled by
+         * default except in the prod config.
+         */
+        private Boolean homeButton;
     }
 
     @Data
@@ -96,9 +108,9 @@ public class ValidationConfig {
         private Integer sidebarPageSize;
         private Integer msgPageSize;
         private Integer globalSearchLimit;
-        /** 「任务说明」扩展内容（descriptionEx）表格每页条数。 */
+        /** Page size of the {@code descriptionEx} table in the Task Note panel. */
         private Integer descExPageSize;
-        /** 「管理忽略配置」窗口列表每页条数。 */
+        /** Page size of the item list in the ignore-config manager window. */
         private Integer ignoreMgrPageSize;
     }
 

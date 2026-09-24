@@ -16,6 +16,7 @@
       normalizeDescriptionEx, parseMarkdownTable, inlineMarkdown, filterTableRows, sortTableRows, paginateRows, cycleSort,
       filterRowsByRules, FILTER_EMPTY,
       descExToolsVisible, pageItems, fitColWidths,
+      normalizeItemSummary,
     } from './core.js';
 
     const TYPE_META = {
@@ -80,6 +81,9 @@
       recentBatches: true, batchHelp: true,
       // 任务说明扩展内容（batch-meta.json 的 descriptionEx，只读）：默认启用。
       descriptionEx: true,
+      // 顶栏「清除偏好记忆」与「主页」按钮（均仅清/作用于浏览器本地；默认 dev/test 开、prod 关）。
+      clearLocalCache: true,
+      homeButton: true,
     };
     let SIDEBAR_MODE = 'combined';
     const SIDEBAR_ROW_H = 112;
@@ -89,8 +93,8 @@
     let BATCHES_INDEX_URL = 'batches-index.json';
     let SCAN_API_URL = '';
     const SUPPORTED_FORMAT_VERSIONS = [2];
-    const BATCH_STORAGE_KEY = 'reportValidationBatch.v1';
-    const PIN_STORAGE_KEY = 'reportValidationPin.v1';
+    const BATCH_STORAGE_KEY = 'reportValidationBatch.v1';   // 基名（实际键见 storageKey）
+    const PIN_STORAGE_KEY = 'reportValidationPin.v1';       // 基名（实际键见 storageKey）
     // 被「置顶为默认加载」的批次 id（持久化，冷/热启动时优先加载）。
     let PINNED_BATCH_ID = null;
     let BATCHES_INDEX = { batches: [] };
@@ -128,6 +132,15 @@
     let BATCH_SCROLL_PENDING = false;
     let NEW_BATCH_IDS = {};
 
+    /* ---------- 本地缓存作用域（按租户分区） ----------
+     * 租户模式（config.json 的 tenant.enabled）下，所有本地缓存键带 `@<tenantId>` 后缀：
+     * 偏好 / 上次批次 / 置顶 / 忽略配置镜像 / 收藏夹镜像（localStorage）与数据缓存（IndexedDB）
+     * 均按租户隔离。非租户模式沿用历史键名——**不做迁移**，避免把某个租户的旧状态错误地交给其它租户。
+     * 「清除本地缓存」也只清除当前作用域内的项。
+     */
+    let TENANT_ID = null;
+    function storageKey(base) { return TENANT_ID ? base + '@' + TENANT_ID : base; }
+    function idbCacheKey(url) { return TENANT_ID ? 'tenant:' + TENANT_ID + ':' + url : url; }
     async function loadAppConfig() {
       try {
         const res = await fetch(CONFIG_URL, { cache: 'no-store' });
@@ -135,6 +148,10 @@
         const cfg = await res.json();
         if (!cfg || typeof cfg !== 'object') return;
         const warn = function (msg) { try { console.warn('[config] ' + msg); } catch (e) {} };
+
+        // 缓存作用域：尽早确定当前租户（后续所有 localStorage / IndexedDB 读写均依赖它）。
+        const tn = cfg.tenant && typeof cfg.tenant === 'object' ? cfg.tenant : null;
+        TENANT_ID = (tn && tn.enabled && typeof tn.id === 'string' && tn.id) ? tn.id : null;
 
         const runType = String(cfg.runType || '').toLowerCase();
         const verbose = runType === 'dev' || runType === 'test';
@@ -162,6 +179,8 @@
           batchHelp: flag('batchHelp'),
           revealPath: flag('revealPath'),
           descriptionEx: flag('descriptionEx'),
+          clearLocalCache: flag('clearLocalCache'),
+          homeButton: flag('homeButton'),
         };
 
         if (cfg.urls && typeof cfg.urls === 'object') {
@@ -303,8 +322,10 @@
       });
     }
     async function fetchJSONCached(url) {
+      // 缓存键按租户作用域分区（idbCacheKey）：同一 origin 下多租户互不覆盖。
+      const key = idbCacheKey(url);
       const db = await openIdb();
-      const cached = db ? await idbGet(db, url) : null;
+      const cached = db ? await idbGet(db, key) : null;
       const headers = {};
       if (cached && cached.etag) headers['If-None-Match'] = cached.etag;
       const res = await fetch(url, { cache: 'no-store', headers: headers });
@@ -312,7 +333,7 @@
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const body = await res.text();
       const etag = res.headers.get('etag');
-      if (db && etag) await idbPut(db, url, { etag: etag, body: body });
+      if (db && etag) await idbPut(db, key, { etag: etag, body: body });
       return JSON.parse(body);
     }
     // 默认数据源可配置（urls.defaultDataMode）：
@@ -396,19 +417,23 @@
       if (id) await ensureItemLoaded(id);
     }
     // 字段比较表列注册表。label 为 i18n 键，可被 config.columns.labels 覆盖为字面量。
+    // 数组顺序即「主列表显示顺序」与「列选择」弹层顺序：
+    //   报告渠道 → 来源渠道 → 报告字段 → 用户标签 → 类型 → 命中Ctx
+    //   → 表达式系列（CMP-L / CMP-R / CVT-L / CVT-R / VDT）
+    //   → 期望值系列（EO-U / EO / AO-U / AO）→ 结果 → 说明
     // 「表达式 / 未转换值」预览列默认隐藏，用于数据快速预览。
     const COLUMNS = [
       { key: 'channel', label: 'colChannel', sortable: true,  filterable: 'select' },
       { key: 'source',  label: 'colSource',  sortable: true,  filterable: 'select' },
       { key: 'field',   label: 'colField',   sortable: true,  filterable: 'text' },
       { key: 'userTag', label: 'colUserTag', sortable: true,  filterable: 'select' },
+      { key: 'type',    label: 'colType',    sortable: true,  filterable: 'select' },
+      { key: 'ctxs',    label: 'colCtx',     sortable: true,  filterable: 'text' },
       { key: 'eoEl',    label: 'colEoEl',    sortable: false, filterable: 'text' },
       { key: 'aoEl',    label: 'colAoEl',    sortable: true,  filterable: 'text' },
       { key: 'eoCvtEl', label: 'colEoCvtEl', sortable: false, filterable: 'text' },
       { key: 'aoCvtEl', label: 'colAoCvtEl', sortable: false, filterable: 'text' },
       { key: 'vdtEl',   label: 'colVdtEl',   sortable: false, filterable: 'text' },
-      { key: 'type',    label: 'colType',    sortable: true,  filterable: 'select' },
-      { key: 'ctxs',    label: 'colCtx',     sortable: true,  filterable: 'text' },
       { key: 'eoUnconverted', label: 'colEoUnconverted', sortable: false, filterable: 'text' },
       { key: 'eo',      label: 'colEO',      sortable: false, filterable: 'text' },
       { key: 'aoUnconverted', label: 'colAoUnconverted', sortable: false, filterable: 'text' },
@@ -416,7 +441,8 @@
       { key: 'result',  label: 'colResult',  sortable: true,  filterable: 'select' },
       { key: 'remarks', label: 'colNote',    sortable: true,  filterable: 'text' },
     ];
-    const DEFAULT_COLUMNS = { channel: true, source: true, field: true, userTag: true, eoEl: false, aoEl: false, eoCvtEl: false, aoCvtEl: false, vdtEl: false, type: false, ctxs: false, eoUnconverted: false, eo: true, aoUnconverted: false, ao: true, result: true, remarks: false };
+    // 可见性默认值：键顺序与 COLUMNS 保持一致（state.columns / 「列选择」均按此顺序遍历）。
+    const DEFAULT_COLUMNS = { channel: true, source: true, field: true, userTag: true, type: false, ctxs: false, eoEl: false, aoEl: false, eoCvtEl: false, aoCvtEl: false, vdtEl: false, eoUnconverted: false, eo: true, aoUnconverted: false, ao: true, result: true, remarks: false };
     // 列显示名 / 是否出现在「列选择」/ XPath-CSV 标签开关，均可由 config.columns 覆盖。
     let COL_LABELS = {};
     let COL_SELECTOR = {};
@@ -503,11 +529,11 @@
     let LANG = 'zh-CN';
     let THEME = 'light';
     let SIDEBAR_WIDTH = 280;
-    const PREF_STORAGE_KEY = 'reportValidationPrefs.v1';
+    const PREF_STORAGE_KEY = 'reportValidationPrefs.v1';    // 基名（实际键见 storageKey）
     let PREF_COLUMNS = null;
     function loadPrefs() {
       try {
-        const p = JSON.parse(localStorage.getItem(PREF_STORAGE_KEY) || '{}');
+        const p = JSON.parse(localStorage.getItem(storageKey(PREF_STORAGE_KEY)) || '{}');
         if (p.lang && LANGS.some(function (l) { return l[0] === p.lang; })) LANG = p.lang;
         if (p.theme && THEMES.some(function (t) { return t[0] === p.theme; })) THEME = p.theme;
         if (typeof p.sidebarWidth === 'number') SIDEBAR_WIDTH = p.sidebarWidth;
@@ -529,7 +555,7 @@
           if (state.columns[k] !== DEFAULT_COLUMNS[k]) cols[k] = !!state.columns[k];
         });
       }
-      try { localStorage.setItem(PREF_STORAGE_KEY, JSON.stringify({ theme: THEME, lang: LANG, sidebarWidth: SIDEBAR_WIDTH, batchDockSide: BATCH_STATE.side, dockY: BATCH_STATE.dockY, listH: BATCH_STATE.listH, columns: cols })); } catch (e) {}
+      try { localStorage.setItem(storageKey(PREF_STORAGE_KEY), JSON.stringify({ theme: THEME, lang: LANG, sidebarWidth: SIDEBAR_WIDTH, batchDockSide: BATCH_STATE.side, dockY: BATCH_STATE.dockY, listH: BATCH_STATE.listH, columns: cols })); } catch (e) {}
     }
     function applySidebarWidth() {
       document.documentElement.style.setProperty('--side-w', SIDEBAR_WIDTH + 'px');
@@ -630,6 +656,16 @@
       document.getElementById('globalSearchBtn').textContent = t('globalSearch');
       document.getElementById('helpBtn').title = t('helpTitle');
       document.getElementById('helpBtn').setAttribute('aria-label', t('helpTitle'));
+      const clearPrefsBtn = document.getElementById('clearPrefsBtn');
+      if (clearPrefsBtn) {
+        clearPrefsBtn.title = t('clearPrefsBtn');
+        clearPrefsBtn.setAttribute('aria-label', t('clearPrefsBtn'));
+      }
+      const homeBtn = document.getElementById('homeBtn');
+      if (homeBtn) {
+        homeBtn.title = t('homeBtn');
+        homeBtn.setAttribute('aria-label', t('homeBtn'));
+      }
       document.getElementById('themeSelect').title = t('themeLabel');
       document.getElementById('langSelect').title = t('langLabel');
       document.getElementById('search').setAttribute('aria-label', t('toolbarSearch'));
@@ -651,7 +687,7 @@
     function setLang(lang) { LANG = lang; applyStaticText(); render(); renderBatchDock(); renderBatchPanel(); renderBatchBadge(); renderForceBanner(); savePrefs(); }
 
     /* ---------- 忽略配置（服务端持久化，按租户隔离；localStorage 仅作镜像） ---------- */
-    const IGNORE_STORAGE_KEY = 'reportValidationIgnoreConfig.v1';
+    const IGNORE_STORAGE_KEY = 'reportValidationIgnoreConfig.v1';   // 基名（实际键见 storageKey）
     let IGNORE_CONFIG = {};
     async function loadIgnoreConfig() {
       try {
@@ -662,7 +698,7 @@
         }
       } catch (e) {}
       IGNORE_ACTIVE_URL = IGNORE_CONFIG_URL;
-      try { IGNORE_CONFIG = JSON.parse(localStorage.getItem(IGNORE_STORAGE_KEY) || '{}'); }
+      try { IGNORE_CONFIG = JSON.parse(localStorage.getItem(storageKey(IGNORE_STORAGE_KEY)) || '{}'); }
       catch (e) { IGNORE_CONFIG = {}; }
     }
 
@@ -867,6 +903,91 @@
       if (pages > 3) parts.push('<button class="pg" data-bpage="' + pages + '"' + (p === pages ? ' disabled' : '') + '>»</button>');
       return parts.join('') + '<span class="pg-info">' + p + '/' + pages + '</span>';
     }
+    /* ---------- 清除本地缓存（按租户作用域） ----------
+     * 作用域键清单与判定均为纯函数（便于 Node 单测）：
+     *   - localStorage：5 个基名（偏好 / 上次批次 / 置顶 / 忽略镜像 / 收藏镜像）+ 作用域后缀；
+     *   - IndexedDB：租户模式只清 `tenant:<id>:` 前缀，非租户模式只清非租户项（不会误删其它租户缓存）。
+     * 只删当前作用域内的项，不使用 storage.clear()，不动同源下其它租户或其它应用的数据。
+     */
+    function localCacheKeys(tenantId) {
+      const bases = [PREF_STORAGE_KEY, BATCH_STORAGE_KEY, PIN_STORAGE_KEY, IGNORE_STORAGE_KEY, FAV_STORAGE_KEY];
+      return bases.map(function (b) { return tenantId ? b + '@' + tenantId : b; });
+    }
+    function clearLocalCacheStorage(storage, tenantId) {
+      const removed = [];
+      localCacheKeys(tenantId).forEach(function (k) {
+        try {
+          if (storage.getItem(k) !== null) { storage.removeItem(k); removed.push(k); }
+        } catch (e) { /* 隐私模式下 storage 可能抛错：忽略单键失败 */ }
+      });
+      return removed;
+    }
+    // IDB 缓存 key：租户模式为 `tenant:<id>:<url>`，非租户为原 URL。
+    function idbKeyInScope(key, tenantId) {
+      const k = String(key == null ? '' : key);
+      if (!tenantId) return k.indexOf('tenant:') !== 0;
+      return k.indexOf('tenant:' + tenantId + ':') === 0;
+    }
+    // 按作用域逐条删除 IndexedDB 缓存（游标判定，不删库 → 不影响其它租户）。
+    function clearLocalCacheIdb(tenantId) {
+      return openIdb().then(function (db) {
+        if (!db) return 0;
+        return new Promise(function (resolve) {
+          let n = 0;
+          const done = function () { resolve(n); };
+          try {
+            const tx = db.transaction('files', 'readwrite');
+            const req = tx.objectStore('files').openCursor();
+            req.onsuccess = function () {
+              const cur = req.result;
+              if (!cur) return;
+              if (idbKeyInScope(cur.key, tenantId)) { cur.delete(); n++; }
+              cur.continue();
+            };
+            req.onerror = done;
+            tx.oncomplete = done;
+            tx.onerror = done;
+            tx.onabort = done;
+          } catch (e) { done(); }
+        });
+      });
+    }
+    // 站点根地址（不含查询参数与深链接）：顶栏「主页」与启动失败提示共用。
+    function webRootUrl() {
+      try {
+        if (location.origin && location.origin !== 'null') return location.origin + location.pathname;
+      } catch (e) {}
+      return location.pathname || '/';
+    }
+    // 轻量操作反馈：显示在视口顶部，自动消失（重载后随之消失，不做持久化）。
+    let TOAST_TIMER = null;
+    function showToast(msg) {
+      let el = document.getElementById('appToast');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'appToast';
+        el.className = 'app-toast';
+        el.setAttribute('role', 'status');
+        (document.body || document.documentElement).appendChild(el);
+      }
+      el.textContent = msg;
+      if (TOAST_TIMER) clearTimeout(TOAST_TIMER);
+      TOAST_TIMER = setTimeout(function () { if (el.parentNode) el.remove(); }, 2600);
+    }
+    // 清除当前作用域的本地「偏好记忆」（localStorage 5 项 + IndexedDB 数据缓存）：
+    // 无需二次确认，直接执行；给出完成反馈后重载（内存态无法就地复原）。
+    function clearLocalCacheNow() {
+      const removed = clearLocalCacheStorage(window.localStorage, TENANT_ID);
+      showToast((TENANT_ID ? t('clearPrefsDone') : t('clearPrefsDoneDefault')).replace('{id}', TENANT_ID || ''));
+      try {
+        console.info('[cache] 已清除本地偏好记忆（作用域：' + (TENANT_ID ? 'tenant:' + TENANT_ID : 'default') + '）：localStorage ' + removed.length + ' 项');
+      } catch (e) {}
+      clearLocalCacheIdb(TENANT_ID).then(function (n) {
+        try { console.info('[cache] IndexedDB 数据缓存已清除 ' + n + ' 项'); } catch (e) {}
+        setTimeout(function () { location.reload(); }, 900);
+      });
+    }
+
     function renderBatchDock() {
       const dock = document.getElementById('batchDock');
       if (!dock) return;
@@ -891,11 +1012,6 @@
     function renderBatchPanel() {
       const panel = document.getElementById('batchPanel');
       if (!panel) return;
-      const dateHint = (function () {
-        const dates = {};
-        scopeBatches().forEach(function (b) { dates[String(b.date || '')] = true; });
-        return Object.keys(dates).length + ' ' + t('batchDateHint');
-      })();
       const envs = [];
       scopeBatches().forEach(function (b) {
         const e = String(b.reportEnv || '').trim();
@@ -940,7 +1056,7 @@
           '<button class="bp-cal" id="batchDateCal" title="' + t('batchDate') + '" aria-label="' + t('batchDate') + '">📅</button>' +
           '<button class="bp-clear" id="batchDateClear" title="' + t('batchDateClearLabel') + '">✕</button>' +
           '</div>' +
-          '<div class="bp-date-hint">' + dateHint + '</div>' +
+          '<div class="bp-date-hint"></div>' +
           '<div class="bp-row"><select id="batchEnv" title="' + t('batchEnv') + '">' + envOpts + '</select></div>' +
           '<div class="bp-row"><select id="batchTag" title="' + t('batchTagFilter') + '">' + tagOpts + '</select></div>') +
         '</div>' +
@@ -950,6 +1066,7 @@
         '</div>' +
         // 激活筛选标签：位于批次列表上方的独立区域（在拖动标记之上，不随列表高度拖拽变化）。
         '<div class="bp-chips" id="batchChips"></div>' +
+        '<div class="chip-count" id="batchMatchCount"></div>' +
         '<div class="bp-resize top" id="batchResizeTop" title="' + t('batchResizeHint') + '" aria-label="' + t('batchResizeHint') + '">⠿</div>' +
         '<div class="bp-pending-bar" id="batchPendingBar" hidden></div>' +
         '<div class="bp-list" id="batchList"></div>' +
@@ -958,6 +1075,16 @@
       renderBatchList();
       renderBatchPendingBar();
       positionBatchPanel();
+      updateBatchDateHint();
+    }
+    // 批次日期提示：仅在未指定具体日期时展示「N 个批次日期（有数据）」（与侧栏报告日期提示一致）。
+    function updateBatchDateHint() {
+      const el = document.querySelector('#batchPanel .bp-date-hint');
+      if (!el) return;
+      if (BATCH_STATE.date.trim()) { el.textContent = ''; return; }
+      const dates = {};
+      scopeBatches().forEach(function (b) { dates[String(b.date || '')] = true; });
+      el.textContent = Object.keys(dates).length + ' ' + t('batchDateHint');
     }
     function renderBatchPendingBar() {
       const el = document.getElementById('batchPendingBar');
@@ -1000,7 +1127,7 @@
     }
 
     /* ---------- 收藏夹（按包名 aa.bb.cc 分层折叠） ---------- */
-    const FAV_STORAGE_KEY = 'reportValidationFavorites.v1';
+    const FAV_STORAGE_KEY = 'reportValidationFavorites.v1';   // 基名（实际键见 storageKey）
     let FAVORITES = {};
     let FAV_COLLAPSED = {};
     let FAV_SEARCH = '';
@@ -1015,16 +1142,16 @@
           if (j && j.ok === true && j.favorites && typeof j.favorites === 'object' && !Array.isArray(j.favorites)) {
             FAVORITES = j.favorites;
             FAV_ETAG = j.etag || '';
-            try { localStorage.setItem(FAV_STORAGE_KEY, JSON.stringify(FAVORITES)); } catch (e) {}
+            try { localStorage.setItem(storageKey(FAV_STORAGE_KEY), JSON.stringify(FAVORITES)); } catch (e) {}
             return;
           }
         }
       } catch (e) {}
-      try { FAVORITES = JSON.parse(localStorage.getItem(FAV_STORAGE_KEY) || '{}'); } catch (e) { FAVORITES = {}; }
+      try { FAVORITES = JSON.parse(localStorage.getItem(storageKey(FAV_STORAGE_KEY)) || '{}'); } catch (e) { FAVORITES = {}; }
       if (!FAVORITES || typeof FAVORITES !== 'object' || Array.isArray(FAVORITES)) FAVORITES = {};
     }
     function saveFavorites() {
-      try { localStorage.setItem(FAV_STORAGE_KEY, JSON.stringify(FAVORITES)); } catch (e) {}
+      try { localStorage.setItem(storageKey(FAV_STORAGE_KEY), JSON.stringify(FAVORITES)); } catch (e) {}
       const body = { favorites: FAVORITES };
       if (FAV_ETAG) body.ifMatch = FAV_ETAG;
       fetch('/api/favorites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -1308,7 +1435,7 @@
       if (BATCH_STATE.tag) list.push({ label: t('batchTagLabel') + ': ' + BATCH_STATE.tag, clear: function () { BATCH_STATE.tag = ''; } });
       return list;
     }
-    function renderBatchChips() {
+    function renderBatchChips(total) {
       const el = document.getElementById('batchChips');
       if (!el) return;
       BATCH_FILTERS = batchActiveFilters();
@@ -1319,6 +1446,14 @@
         ? '<button class="filter-clear-all" data-bchip-all="1" title="' + t('clearAllFilters') + '">' + t('clearAllFilters') + '</button>'
         : '';
       el.innerHTML = html + clearAll;
+      renderChipMatchCount('batchMatchCount', BATCH_FILTERS.length, total);
+    }
+    // 筛选标签下方的「匹配 N 项」小字：仅在确实有标签时显示（无标签 -> 文本置空，元素自动收起）。
+    function renderChipMatchCount(elId, filterCount, matches) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      const n = typeof matches === 'number' ? matches : 0;
+      el.textContent = filterCount > 0 ? t('chipMatchCount').replace('{N}', n) : '';
     }
     // 清除全部批次筛选标签，并重置搜索 / 日期 / 环境 / 标签筛选状态与分页。
     function clearAllBatchFilters() {
@@ -1336,7 +1471,7 @@
       const pagerEl = document.getElementById('batchPager');
       if (!listEl) return;
       const list = visibleBatches();
-      renderBatchChips();
+      renderBatchChips(list.length);
       const total = list.length;
       const pages = Math.max(1, Math.ceil(total / BATCH_STATE.pageSize));
       if (BATCH_STATE.page > pages) BATCH_STATE.page = pages;
@@ -1428,13 +1563,13 @@
     }
     function saveBatchActive() {
       try {
-        if (BATCH_STATE.active) localStorage.setItem(BATCH_STORAGE_KEY, JSON.stringify({ id: BATCH_STATE.active.batchId, forced: BATCH_STATE.forced }));
-        else localStorage.removeItem(BATCH_STORAGE_KEY);
+        if (BATCH_STATE.active) localStorage.setItem(storageKey(BATCH_STORAGE_KEY), JSON.stringify({ id: BATCH_STATE.active.batchId, forced: BATCH_STATE.forced }));
+        else localStorage.removeItem(storageKey(BATCH_STORAGE_KEY));
       } catch (e) {}
     }
     function restoreActiveBatch() {
       try {
-        const s = JSON.parse(localStorage.getItem(BATCH_STORAGE_KEY) || 'null');
+        const s = JSON.parse(localStorage.getItem(storageKey(BATCH_STORAGE_KEY)) || 'null');
         if (s && s.id) {
           const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === s.id; });
           if (b) return { batch: b, forced: batchCompatible(b) ? false : !!s.forced };
@@ -1449,12 +1584,12 @@
     function isPinned(b) { return !!(b && PINNED_BATCH_ID === b.batchId); }
     function loadPinnedId() {
       try {
-        const v = JSON.parse(localStorage.getItem(PIN_STORAGE_KEY) || 'null');
+        const v = JSON.parse(localStorage.getItem(storageKey(PIN_STORAGE_KEY)) || 'null');
         PINNED_BATCH_ID = typeof v === 'string' && v ? v : null;
       } catch (e) { PINNED_BATCH_ID = null; }
     }
     function savePinnedId() {
-      try { if (PINNED_BATCH_ID) localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(PINNED_BATCH_ID)); else localStorage.removeItem(PIN_STORAGE_KEY); } catch (e) {}
+      try { if (PINNED_BATCH_ID) localStorage.setItem(storageKey(PIN_STORAGE_KEY), JSON.stringify(PINNED_BATCH_ID)); else localStorage.removeItem(storageKey(PIN_STORAGE_KEY)); } catch (e) {}
     }
     function toggleBatchPin(batchId) {
       const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === batchId; });
@@ -1689,11 +1824,26 @@
       await loadIgnoreConfig();
       DATA = await loadData();
       initState();
-      if (isMultiMode()) await ensureItemLoaded(DATA.items[0].tradeId);
+      // 多文件模式允许空清单（items 为空）：没有 item 可加载时直接渲染空状态，
+      // 避免 DATA.items[0] 解引用抛 TypeError（曾导致回退提示丢失、hash 与内容不一致）。
+      if (isMultiMode() && DATA.items.length) await ensureItemLoaded(DATA.items[0].tradeId);
       applyDateFilterVisibility();
       render();
       preloadAllItems();
       renderBatchPanel(); renderBatchDock(); renderBatchBadge(); renderForceBanner();
+    }
+    // 回退默认数据的统一入口（会话内深链接失效 / 「返回默认数据」按钮）：
+    // 任何失败都不再产生未捕获的 Promise 拒绝，并保证提示语可见。
+    async function fallbackToDefaultReport(notice) {
+      let ok = true;
+      try {
+        await loadDefaultReport();
+      } catch (e) {
+        ok = false;
+        console.warn('[batch] 回退默认数据失败：', e);
+      }
+      setBatchNotice(notice || (ok ? '' : t('batchLoadError')));
+      return ok;
     }
     async function reloadBatchesIndex() {
       setBatchScanning(true);
@@ -1963,7 +2113,7 @@
     }
     // 本地镜像：仅写 localStorage（加载/切换批次时用，避免无意义的回写）。
     function saveIgnoreConfigLocal() {
-      try { localStorage.setItem(IGNORE_STORAGE_KEY, JSON.stringify(IGNORE_CONFIG)); } catch (e) {}
+      try { localStorage.setItem(storageKey(IGNORE_STORAGE_KEY), JSON.stringify(IGNORE_CONFIG)); } catch (e) {}
     }
     // 回写目标归一化：服务端只接受「站点根相对路径」（并拒绝跨域地址），
     // 而批次级 ignoreUrl 经 resolveUrl 解析后是绝对 URL，因此这里统一转回路径。
@@ -2194,11 +2344,14 @@
     }
 
     function isFieldColVisible(c) {
-      return state.columns[c.key];
+      // 被配置禁用（columns.selector[key] === false）的列一律不渲染：
+      // 它不会出现在「列选择」菜单里，若仍按历史预置 / 深链接渲染就会变成无法关闭的列。
+      return !!state.columns[c.key] && isColSelectable(c);
     }
 
     function itemStatsAll(item) {
-      if (isMultiMode() && item && !Array.isArray(item.channels)) return item.summary || { total: 0, passed: 0, failed: 0, rate: 0, warnings: 0, warningsIgnored: 0, errors: 0, uncompared: 0, logs: 0 };
+      // 多文件模式下未按需加载的 item 只有清单里的预计算 summary（字段可能缺失 -> 归一为 0）。
+      if (isMultiMode() && item && !Array.isArray(item.channels)) return normalizeItemSummary(item.summary);
       let total = 0, passed = 0, failed = 0;
       item.channels.forEach(ch => ch.sources.forEach(s => s.fields.forEach(f => {
         total++;
@@ -2282,7 +2435,7 @@
     }
 
     function filteredFields(item) {
-      let rows = flatFields(item).map(function (r, i) { r._idx = i; return r; });
+      let rows = flatFields(item, searchTagLabels()).map(function (r, i) { r._idx = i; return r; });
       if (state.channel !== 'ALL') rows = rows.filter(r => r.channel === state.channel);
       if (state.source && state.source !== 'ALL') rows = rows.filter(r => r.source === state.source);
       COLUMNS.forEach(c => {
@@ -2441,9 +2594,12 @@
       if (!list) return;
       if (window.innerWidth <= 920) { list.style.top = ''; list.style.bottom = ''; return; }
       const chips = document.getElementById('sidebarChips');
+      const chipCount = document.getElementById('sidebarMatchCount');
       const pager = document.getElementById('sidebarPager');
       const topEl = (chips && chips.offsetHeight) ? chips : document.querySelector('.sidebar-filters');
-      const top = topEl ? topEl.offsetTop + topEl.offsetHeight : 0;
+      let top = topEl ? topEl.offsetTop + topEl.offsetHeight : 0;
+      // 标签下方的「匹配 N 项」小字也占高度，需一并计入，否则首个 item 会被它遮挡。
+      if (chipCount && chipCount.offsetHeight) top = Math.max(top, chipCount.offsetTop + chipCount.offsetHeight);
       const bottom = pager ? pager.offsetHeight : 0;
       list.style.top = top + 'px';
       list.style.bottom = bottom + 'px';
@@ -2544,6 +2700,17 @@
 
     function renderSidebarChips() {
       const chips = [];
+      // 报告日期：与其它侧栏筛选一样以标签形式展示（此前只写在输入框里，选中后无标签、无法一键移除）。
+      if (state.reportDateFilter) {
+        chips.push({
+          label: t('sidebarReportDate') + ': ' + state.reportDateFilter,
+          clear: function () {
+            state.reportDateFilter = '';
+            const input = document.getElementById('reportDateFilter');
+            if (input) { input.value = ''; input.parentElement.classList.remove('has-value'); }
+          },
+        });
+      }
       if (state.itemFilter !== 'ALL') {
         chips.push({
           label: t('statusChipLabel') + (state.itemFilter === 'PASSED' ? t('sidebarStatusPassed') : (state.itemFilter === 'WARN' ? t('sidebarStatusWarn') : t('sidebarStatusFailed'))),
@@ -2581,13 +2748,15 @@
       document.getElementById('platformFilterBtn').classList.toggle('has-filter', state.itemPlatforms.length > 0);
       document.getElementById('productFilterBtn').classList.toggle('has-filter', state.itemProducts.length > 0);
       document.getElementById('tradeIdFilterBtn').classList.toggle('has-filter', state.itemTradeIds.length > 0);
+      renderChipMatchCount('sidebarMatchCount', chips.length, filteredItems().length);
       // 标签区高度变化会影响列表起始位置：必须在写入标签后重新布局，
       // 否则新增/移除标签时 #sidebarList 的 top 会沿用过时高度，首个 item 被标签遮挡。
       layoutSidebarList();
     }
 
-    // 清除全部 Item 列表筛选标签（状态 / 平台 / 产品 / TradeId）并重置分页。
+    // 清除全部 Item 列表筛选标签（报告日期 / 状态 / 平台 / 产品 / TradeId）并重置分页。
     function clearAllSidebarFilters() {
+      state.reportDateFilter = '';
       state.itemFilter = 'ALL';
       state.itemPlatforms = [];
       state.itemProducts = [];
@@ -2595,6 +2764,8 @@
       state.sidebarPage = 1;
       const f = document.getElementById('itemFilter');
       if (f) f.value = 'ALL';
+      const d = document.getElementById('reportDateFilter');
+      if (d) { d.value = ''; d.parentElement.classList.remove('has-value'); }
       renderSidebar();
       renderSidebarChips();
     }
@@ -4916,6 +5087,9 @@ export function parseHash(raw) {
       if (searchEl) searchEl.value = state.search || '';
       const itemSearchEl = document.getElementById('itemSearch');
       if (itemSearchEl) itemSearchEl.value = state.itemSearch || '';
+      // 状态筛选下拉不参与输入事件，必须显式回写，否则深链接（st=…）生效时下拉仍显示「全部状态」。
+      const statusSel = document.getElementById('itemFilter');
+      if (statusSel) statusSel.value = state.itemFilter || 'ALL';
       const dateInput = document.getElementById('reportDateFilter');
       if (dateInput) { dateInput.value = state.reportDateFilter || ''; dateInput.parentElement.classList.toggle('has-value', !!state.reportDateFilter); }
     }
@@ -4927,8 +5101,7 @@ export function parseHash(raw) {
         const b = batchById(p.batch);
         if (b && batchCompatible(b)) { loadBatch(b, false, true); return; }
         const msg = b ? t('batchUrlIncompat') : t('batchUrlMissing');
-        await loadDefaultReport();
-        setBatchNotice(msg);
+        await fallbackToDefaultReport(msg);
         return;
       }
       await ensureHashItemLoaded();
@@ -5166,6 +5339,7 @@ export function parseHash(raw) {
           input.value = state.reportDateFilter;
           input.parentElement.classList.toggle('has-value', true);
           renderSidebar();
+          renderSidebarChips();
           closePopover();
         });
       });
@@ -5177,6 +5351,7 @@ export function parseHash(raw) {
         input.value = '';
         input.parentElement.classList.toggle('has-value', false);
         renderSidebar();
+        renderSidebarChips();
         closePopover();
       });
     }
@@ -5437,6 +5612,7 @@ export function parseHash(raw) {
       ];
       const syntax = [
         ['field:', t('helpSyntaxField')],
+        ['tag:', t(tagSyntaxHelpKey())],
         ['xpath:', t('helpSyntaxXpath')],
         ['csv:', t('helpSyntaxCsv')],
         ['eo:', t('helpSyntaxEo')],
@@ -5470,12 +5646,28 @@ export function parseHash(raw) {
     }
 
     /* ---------- 全局搜索（跨 item，重计算在 Worker） ---------- */
+    // 用户标签的搜索能力与 columns.userTag.raw 联动（与界面显示保持一致）：
+    //   raw = true  → 界面显示原始值 → 返回空映射，只按原始值搜索；
+    //   raw = false → 界面显示当前语言标签（columns.userTag.labels）→ 返回「原始值 → 标签」映射，原始值与标签都能搜。
+    function searchTagLabels() {
+      const m = {};
+      if (USER_TAG_RAW) return m;
+      const vals = Object.keys(TYPE_META).concat(Object.keys(USER_TAG_LABELS));
+      vals.forEach(function (v) {
+        const l = userTagLabel(v);
+        if (l && l !== v && m[v] == null) m[v] = l;
+      });
+      return m;
+    }
+    // 标签搜索能力的文案：与上面同一开关，避免提示与实际能力不符。
+    function tagSyntaxHelpKey() { return USER_TAG_RAW ? 'helpSyntaxTagRaw' : 'helpSyntaxTag'; }
     async function globalSearchResults(q) {
       if (isMultiMode()) await ensureAllLoaded();
+      const tagLabels = searchTagLabels();
       try {
-        return await workerCall('globalSearch', { items: DATA.items, q: q, limit: APP_LIMITS.globalSearchLimit });
+        return await workerCall('globalSearch', { items: DATA.items, q: q, limit: APP_LIMITS.globalSearchLimit, tagLabels: tagLabels });
       } catch (e) {
-        return globalSearchPure(DATA.items, q, APP_LIMITS.globalSearchLimit);
+        return globalSearchPure(DATA.items, q, APP_LIMITS.globalSearchLimit, { tagLabels: tagLabels });
       }
     }
     function openGlobalSearch() {
@@ -5512,6 +5704,7 @@ export function parseHash(raw) {
               return '<div class="gs-row" data-goto="' + esc(r.itemId) + '" data-field-id="' + esc(r.fieldId) + '" data-channel="' + esc(r.channel) + '" data-source="' + esc(r.source) + '">' +
                 '<span class="gs-item mono">' + esc(r.itemId) + '</span>' +
                 '<span class="chip channel-chip">' + esc(r.channel) + '</span>' +
+                (r.userTag ? userTagHTML(r.userTag) : '') +
                 '<span class="mono">' + esc(r.field) + '</span>' +
                 '<span class="gs-snippet">' + highlight(r.snippet, q) + '</span>' +
                 '</div>';
@@ -5564,6 +5757,25 @@ export function parseHash(raw) {
       document.getElementById('healthBtn').addEventListener('click', function () { openHealthOverview(); });
       document.getElementById('globalSearchBtn').addEventListener('click', function () { openGlobalSearch(); });
       document.getElementById('helpBtn').addEventListener('click', function () { openHelp(); });
+      // 顶栏（与帮助按钮同风格）：清除偏好记忆（受 features.clearLocalCache 控制）与回到站点根主页。
+      // 注意：.help-btn 显式声明了 display:inline-flex，会盖掉 UA 的 [hidden]{display:none}，
+      // 因此关闭开关时必须同时设置 hidden 与内联 display:none（与其它功能开关的写法一致）。
+      const clearPrefsBtn = document.getElementById('clearPrefsBtn');
+      if (clearPrefsBtn) {
+        if (APP_FEATURES.clearLocalCache) clearPrefsBtn.addEventListener('click', function () { clearLocalCacheNow(); });
+        else { clearPrefsBtn.hidden = true; clearPrefsBtn.style.display = 'none'; }
+      }
+      const homeBtn = document.getElementById('homeBtn');
+      if (homeBtn) {
+        if (APP_FEATURES.homeButton) {
+          homeBtn.addEventListener('click', function () {
+            // 「主页」：回到站点根（不带查询参数与深链接）并重新加载。
+            // 先 replaceState 去掉 query/hash（不触发 hashchange，避免被 syncHash 写回），再 reload 做一次全新加载。
+            try { history.replaceState(null, '', webRootUrl()); } catch (e) {}
+            location.reload();
+          });
+        } else { homeBtn.hidden = true; homeBtn.style.display = 'none'; }
+      }
       document.getElementById('importIgnoreFile').addEventListener('change', function (e) {
         if (e.target.files && e.target.files[0]) importIgnoreConfigFile(e.target.files[0]);
         e.target.value = '';
@@ -5786,6 +5998,7 @@ export function parseHash(raw) {
           if (formatted !== e.target.value) e.target.value = formatted;
           BATCH_STATE.date = formatted;
           BATCH_STATE.page = 1;
+          updateBatchDateHint();
           clearTimeout(BATCH_LIST_TIMER);
           BATCH_LIST_TIMER = setTimeout(renderBatchList, 150);
         }
@@ -5858,7 +6071,7 @@ export function parseHash(raw) {
         // 移出徽标后延迟隐藏；若移入详情框则由其 mouseenter 取消。
         scheduleBatchQdHide();
       });
-      document.getElementById('batchBackDefault').addEventListener('click', function () { loadDefaultReport(); });
+      document.getElementById('batchBackDefault').addEventListener('click', function () { fallbackToDefaultReport(); });
 
       document.getElementById('sideResize').addEventListener('mousedown', function (e) {
         e.preventDefault();
@@ -5910,10 +6123,12 @@ export function parseHash(raw) {
           state.reportDateFilter = formatted;
           e.target.parentElement.classList.toggle('has-value', true);
           renderSidebar();
+          renderSidebarChips();
         } else if (digits.length === 0) {
           state.reportDateFilter = '';
           e.target.parentElement.classList.toggle('has-value', false);
           renderSidebar();
+          renderSidebarChips();
         }
       });
       document.getElementById('reportDateClear').addEventListener('click', function () {
@@ -5923,6 +6138,7 @@ export function parseHash(raw) {
         datePicker.value = '';
         dateInput.parentElement.classList.remove('has-value');
         renderSidebar();
+        renderSidebarChips();
       });
       document.getElementById('reportDateCal').addEventListener('click', function () {
         openReportDatePicker(this);
@@ -5934,6 +6150,7 @@ export function parseHash(raw) {
           dateInput.value = datePicker.value;
           dateInput.parentElement.classList.toggle('has-value', true);
           renderSidebar();
+          renderSidebarChips();
         }
       });
 
@@ -6099,7 +6316,12 @@ export function parseHash(raw) {
       document.getElementById('tabs').addEventListener('click', function (e) {
         const el = e.target.closest('[data-tab]');
         if (!el) return;
-        state.tab = el.getAttribute('data-tab'); state.page = 1; state.rowId = -1;
+        // 切换选项卡**保留**当前分页：字段比较用 state.page、消息类（警告 / 错误 / 未比较…）用 state.msgPage，
+        // 各选项卡页码本身互不干扰，因此无需在切换时重置，否则来回切换会被拽回第 1 页。
+        // 页码越界由 renderFields / renderMsgTable 自动收敛（paginateRows）；
+        // 真正改变数据集的操作（切 item / 改筛选 / 全局搜索 / 换每页条数 / 汇总卡片等）仍各自重置页码。
+        state.tab = el.getAttribute('data-tab');
+        state.rowId = -1;
         state.msgSort = { key: '', dir: 1 };
         state.msgFilter = {};
         closePopover();
@@ -6428,7 +6650,28 @@ export function parseHash(raw) {
       document.getElementById('reportDateWrap').style.display = Object.keys(dates).length <= 1 ? 'none' : '';
     }
 
-    if (typeof document !== 'undefined' && document.getElementById) initApp();
+    // 启动期任何未预期异常都不能把用户留在全屏骨架层（观感等同空白页）：
+    // 无条件移除 #boot，并用最少 DOM 依赖的方式给出可读提示；
+    // 提示后附「或 回到主页」链接，指向 web 根（不含查询参数与深链接）。
+    function bootFailed(err) {
+      try { console.error('[boot] 初始化失败：', err); } catch (e) {}
+      const boot = document.getElementById('boot');
+      if (boot) boot.remove();
+      if (document.getElementById('bootError')) return;
+      const bar = document.createElement('div');
+      bar.id = 'bootError';
+      bar.className = 'boot-error';
+      bar.setAttribute('role', 'alert');
+      bar.appendChild(document.createTextNode(t('bootError') + ' ' + t('bootErrorOr') + ' '));
+      const home = document.createElement('a');
+      home.className = 'boot-error-home';
+      home.href = webRootUrl();
+      home.textContent = t('bootErrorHome');
+      bar.appendChild(home);
+      (document.body || document.documentElement).appendChild(bar);
+    }
+
+    if (typeof document !== 'undefined' && document.getElementById) initApp().catch(bootFailed);
 
     // 供 Node 测试与工具使用的导出（纯函数 + 测试挂点）。
     export {
@@ -6436,6 +6679,8 @@ export function parseHash(raw) {
       filteredFields, getMsgRows, diffSegments, sortValue,
       parseSearchQuery, makeMatcher, matchRow, stateToHash,
       fieldMsgCount, rowPageFor,
+      // 本地缓存作用域（纯函数）：键清单 / 按作用域清除 / IDB key 判定。
+      localCacheKeys, clearLocalCacheStorage, idbKeyInScope,
     };
     export const __test = {
       setState(s) { state = s; },

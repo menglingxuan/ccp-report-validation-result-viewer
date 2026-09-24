@@ -54,7 +54,9 @@
     "recentBatches": true,
     "batchHelp": false,
     "revealPath": false,
-    "descriptionEx": true
+    "descriptionEx": true,
+    "clearLocalCache": false,
+    "homeButton": false
   },
   "limits": {
     "pageSize": 20,
@@ -82,13 +84,13 @@
       "source": true,
       "field": true,
       "userTag": true,
+      "type": false,
+      "ctxs": false,
       "eoEl": false,
       "aoEl": false,
       "eoCvtEl": false,
       "aoCvtEl": false,
       "vdtEl": false,
-      "type": false,
-      "ctxs": false,
       "eoUnconverted": false,
       "eo": true,
       "aoUnconverted": false,
@@ -112,7 +114,9 @@
       "aoCvtEl": false,
       "vdtEl": false,
       "eoUnconverted": true,
-      "aoUnconverted": false
+      "aoUnconverted": false,
+      "userTag": true,
+      "type": false
     },
     "tag": false,
     "widths": {

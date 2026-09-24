@@ -97,6 +97,28 @@ test('写回接口：同源限制 / 体积上限 / If-Match 乐观并发（POST 
   }
 });
 
+test('服务器：租户模式下 config.json 下发 tenant 标识（供前端按租户分区本地缓存）', async () => {
+  // 临时 web 根 + 临时租户数据根：不触碰仓库样例与真实租户目录。
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'viewer-tenant-cfg-'));
+  const dataRoot = path.join(tmp, 'tenant-alice');
+  const child = await startServer({
+    REPORT_VIEWER_WEBROOT: tmp,
+    REPORT_VIEWER_TENANT: 'alice',
+    REPORT_VIEWER_DATA_ROOT: dataRoot,
+  });
+  try {
+    const base = `http://127.0.0.1:${PORT}`;
+    const cfg = await (await fetch(base + '/config.json')).json();
+    assert.deepEqual(cfg.tenant, { enabled: true, id: 'alice' }, '租户模式应下发 enabled/id');
+    assert.equal(cfg.urls.batches, '/tenant/', '租户模式批次索引走 /tenant/');
+    assert.ok(String(cfg.urls.ignore).startsWith('/tenant/'), '忽略配置同样按租户隔离');
+    assert.equal('dataRoot' in cfg.tenant, false, '不应把服务器路径下发给浏览器');
+  } finally {
+    child.kill();
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) { /* 忽略 Windows 占用 */ }
+  }
+});
+
 test('服务器：静态站点、配置与扫描 API', async () => {
   // 隔离扫描目录：避免测试污染 tracked 的 public/batches 与 batches-index.json。
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'viewer-srv-'));
@@ -116,6 +138,7 @@ test('服务器：静态站点、配置与扫描 API', async () => {
     const cfg = await cfgRes.json();
     assert.ok(cfg.urls && typeof cfg.urls.data === 'string');
     assert.equal(typeof cfg.features.revealPath, 'boolean', 'config.json 应下发 features.revealPath 的有效值');
+    assert.deepEqual(cfg.tenant, { enabled: false, id: null }, '非租户模式应下发 tenant.enabled=false / id=null');
 
     const status = await fetch(base + '/status');
     assert.equal(status.status, 200);

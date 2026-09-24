@@ -42,7 +42,7 @@ test('mergeManifest：多文件清单 + item 内容 -> 单文件数据集（保�
     mode: 'multi',
     reportEnv: 'ENVX',
     creationType: 'sample',
-    skippedItems: [{ tradeId: 'T-X', reason: 'no-data' }],
+    skippedItems: [{ itemId: 'T-X', channel: null, source: null, reason: 'no-data' }],
     extra: { note: 'keep me' },
     items: [
       { tradeId: 'T-1', file: 'data/items/T-1.json', summary: { total: 3 } },

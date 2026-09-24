@@ -47,7 +47,7 @@ gradle bootRun --args="--level basic"
 | `-j, --job <name>` | 要运行的 Job：`sampleDataJob` / `helloWorldJob` / `styleDataJob` / `validationJsonJob` | `sampleDataJob` |
 | `-l, --level <level>` | 样例数据级别：`minimal` / `basic`（`sampleDataJob` 使用） | `minimal` |
 | `-o, --output-dir <dir>` | 输出目录 | `generated` |
-| `-m, --mode <single\|multi>` | 数据输出模式（`validationJsonJob` 使用：单文件 / 清单 + 每 item 一个文件） | `single` |
+| `-m, --mode <single\|multi>` | 数据输出模式（`validationJsonJob` 使用：单文件 / 清单 + 每 item 一个文件；`multi` 的清单保留 `mode` / `reportEnv` / `creationType` / `skippedItems` 顶层字段，仅把 `items` 换成带 `file` + `summary` 的轻量条目） | `single` |
 | `-r, --run` / `--no-run` | 是否启动 Job（`--no-run` 仅校验参数） | 启动 |
 | `-h, --help` | 显示帮助 | - |
 | `-V, --version` | 显示版本 | - |

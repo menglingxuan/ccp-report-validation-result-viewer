@@ -27,6 +27,10 @@ test('多文件模式：清单 + 每 item 一个文件，清单可通过数据�
 
     assert.equal(manifest.mode, 'multi');
     assert.equal(manifest.items.length, dataset.items.length);
+    // 清单必须保留单文件模式的所有顶层字段（DATA_SCHEMA §2）。
+    assert.equal(manifest.reportEnv, dataset.reportEnv);
+    assert.equal(manifest.creationType, dataset.creationType);
+    assert.deepEqual(manifest.skippedItems, dataset.skippedItems);
 
     const first = manifest.items[0];
     assert.equal(first.file, 'data/items/' + first.tradeId + '.json', 'file 必须是相对清单目录的路径');
@@ -56,6 +60,8 @@ test('多文件模式：默认模板数据也是清单（可指定清单文件�
     const j = JSON.parse(fs.readFileSync(def, 'utf8'));
     assert.equal(j.mode, 'multi');
     assert.equal(j.items.length, dataset.items.length);
+    assert.equal(j.creationType, dataset.creationType, '默认模板清单同样保留 creationType');
+    assert.deepEqual(j.skippedItems, dataset.skippedItems, '默认模板清单同样保留 skippedItems');
     assert.ok(fs.existsSync(path.join(out, j.items[0].file)), '默认模板清单引用的 item 文件同样存在');
     assert.equal(validateDataset(j).ok, true);
   });

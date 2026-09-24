@@ -3,7 +3,22 @@
  * 所有函数均为纯计算：相同输入 -> 相同输出，不读写全局状态。
  * ============================================================ */
 
-const SEARCH_KEYS = { field: 'field', xpath: 'aoEl', csv: 'aoEl', eo: 'eo', ao: 'ao', ctx: 'ctxs', desc: 'remarks' };
+// 限定名（大小写不敏感）：tag:/userTag: 都会匹配「用户标签」列（含原始值与显示标签）。
+const SEARCH_KEYS = { field: 'field', xpath: 'aoEl', csv: 'aoEl', tag: 'userTagHay', usertag: 'userTagHay', eo: 'eo', ao: 'ao', ctx: 'ctxs', desc: 'remarks' };
+
+// 多文件清单里每个 item 的预计算 summary（total/passed/failed/rate/warnings/…）。
+// 清单由外部工具生成，字段可能缺失或非数字：一律归一为数字（缺失 -> 0），
+// 避免把 undefined 渲染到侧栏卡片，也避免筛选（存在失败 / 全部通过）出现不确定判定。
+const ITEM_SUMMARY_KEYS = ['total', 'passed', 'failed', 'rate', 'warnings', 'warningsIgnored', 'errors', 'uncompared', 'logs'];
+export function normalizeItemSummary(raw) {
+  const s = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const out = {};
+  ITEM_SUMMARY_KEYS.forEach(function (k) {
+    const v = s[k];
+    out[k] = (typeof v === 'number' && isFinite(v)) ? v : 0;
+  });
+  return out;
+}
 
 export function parseSearchQuery(q) {
   let s = (q || '').trim();
@@ -26,7 +41,9 @@ function searchValue(obj, key) {
 }
 
 function fieldHay(r) {
-  return r.field + ' ' + r.userTag + ' ' + r.aoEl + ' ' + r.eoEl + ' ' + r.eoCvtEl + ' ' + r.aoCvtEl + ' ' + r.vdtEl + ' ' + r.eoUnconverted + ' ' + r.aoUnconverted + ' ' + r.eo + ' ' + r.ao + ' ' + (r.remarks || '') + ' ' + ((r.ctxKeys || r.ctxs) || []).join(' ');
+  // 用户标签：优先用「原始值 + 显示标签」合并字段（userTagHay），使界面显示的标签也可直接搜到。
+  const tag = r.userTagHay != null ? r.userTagHay : r.userTag;
+  return r.field + ' ' + tag + ' ' + r.aoEl + ' ' + r.eoEl + ' ' + r.eoCvtEl + ' ' + r.aoCvtEl + ' ' + r.vdtEl + ' ' + r.eoUnconverted + ' ' + r.aoUnconverted + ' ' + r.eo + ' ' + r.ao + ' ' + (r.remarks || '') + ' ' + ((r.ctxKeys || r.ctxs) || []).join(' ');
 }
 
 export function makeMatcher(pq) {
@@ -77,7 +94,7 @@ export function sortValue(r, key) {
   }
 }
 
-export function flatFields(item) {
+export function flatFields(item, tagLabels) {
   const rows = [];
   // ctxDefs id → key 反向映射（用于搜索 / 显示 / 排序时把 id 解析为可读 key）。
   const keyById = {};
@@ -90,6 +107,11 @@ export function flatFields(item) {
     (ch.sources || []).forEach(s => {
       (s.fields || []).forEach(f => {
         const def = defs[f.id] || {};
+        // 用户标签的搜索用合并串：原始值（如 platformAssertion）+ 显示标签（如「平台断言」），
+        // 标签映射由调用方按当前语言解析后传入（纯函数不依赖配置 / i18n）。
+        const tagRaw = def.userTag || '';
+        const tagLabel = tagLabels && tagRaw && tagLabels[tagRaw] != null ? String(tagLabels[tagRaw]) : '';
+        const tagHay = tagLabel && tagLabel !== tagRaw ? tagRaw + ' ' + tagLabel : tagRaw;
         const right = f.cmpRight || {};
         const left = f.cmpLeft || {};
         const cvtL = f.cvtLeft || {};
@@ -108,7 +130,7 @@ export function flatFields(item) {
         });
         rows.push({
           channel: ch.name, source: s.name,
-          id: f.id, field: def.name, userTag: def.userTag || '',
+          id: f.id, field: def.name, userTag: tagRaw, userTagHay: tagHay,
           // 表达式 / 预览列：aoEl/eoEl 为左右侧定位（XPath 或 CSV 列），其余为各规则的原始表达式与未转换值。
           aoEl: right.el || '', srcType: right.srcType || 1,
           eoEl: left.el || '',
@@ -400,17 +422,19 @@ export function computeHealthPure(items, date, channel, ignoreConfig) {
 }
 
 /* ---------- 全局搜索（跨 item） ---------- */
-export function globalSearchPure(items, q, limit) {
+// opts.tagLabels：用户标签「原始值 → 当前语言显示标签」映射（可选）；传入后可用显示标签搜索。
+export function globalSearchPure(items, q, limit, opts) {
   const pq = parseSearchQuery(q);
   const matcher = makeMatcher(pq);
+  const tagLabels = opts && opts.tagLabels;
   const results = [];
   if (!matcher) return results;
   items.forEach(function (it) {
     const enabled = Array.isArray(it.enabledChannels) ? it.enabledChannels : (it.channels || []).map(function (c) { return c.name; });
-    flatFields(it).forEach(function (r) {
+    flatFields(it, tagLabels).forEach(function (r) {
       if (enabled.indexOf(r.channel) === -1) return;
       if (matchRow(r, pq, matcher)) {
-        results.push({ itemId: it.tradeId, channel: r.channel, source: r.source, fieldId: r.id, field: r.field, snippet: r.eo + ' → ' + r.ao });
+        results.push({ itemId: it.tradeId, channel: r.channel, source: r.source, fieldId: r.id, field: r.field, userTag: r.userTag, snippet: r.eo + ' → ' + r.ao });
       }
     });
   });

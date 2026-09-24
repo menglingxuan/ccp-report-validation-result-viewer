@@ -116,7 +116,7 @@
     },
     "features": {
       "type": "object",
-      "description": "功能开关（20 项，布尔）。含义详见 CONFIG.md。未显式配置时按 runType 取默认。",
+      "description": "功能开关（23 项，布尔）。含义详见 CONFIG.md。未显式配置时按 runType 取默认。",
       "properties": {
         "uncomparedXpath": { "type": "boolean" },
         "uncomparedItems": { "type": "boolean" },
@@ -138,7 +138,9 @@
         "recentBatches": { "type": "boolean", "description": "是否启用「最近批次」左侧 dock + 面板。" },
           "batchHelp": { "type": "boolean", "description": "是否显示 docker 帮助图标入口。" },
           "revealPath": { "type": "boolean", "description": "批次详情「批次目录」是否支持双击在系统文件管理器中打开（需服务端开启，dev/test 默认 true、prod 默认 false）。" },
-          "descriptionEx": { "type": "boolean", "description": "是否在「任务说明」末尾渲染 batch-meta.json 的 descriptionEx 扩展内容（只读，懒加载）。所有配置文件默认 true。" }
+          "descriptionEx": { "type": "boolean", "description": "是否在「任务说明」末尾渲染 batch-meta.json 的 descriptionEx 扩展内容（只读，懒加载）。所有配置文件默认 true。" },
+          "clearLocalCache": { "type": "boolean", "description": "是否在顶栏帮助按钮旁显示「清除偏好记忆」按钮（直接清除当前作用域内的 localStorage 偏好记忆 / 上次批次 / 置顶 / 忽略与收藏镜像，以及 IndexedDB 数据缓存；服务器端数据不受影响）。dev/test/config.json 默认 true，prod 默认 false。" },
+          "homeButton": { "type": "boolean", "description": "是否在顶栏帮助按钮旁显示「主页」按钮（回到站点根并重新加载，不带查询参数与深链接）。dev/test/config.json 默认 true，prod 默认 false。" }
       }
     },
     "batches": {
@@ -181,19 +183,19 @@
       "properties": {
         "default": {
           "type": "object",
-          "description": "列名 → 布尔（true 显示 / false 隐藏）。可用列名：channel, source, field, userTag, eoEl, aoEl, eoCvtEl, aoCvtEl, vdtEl, type, ctxs, eoUnconverted, eo, aoUnconverted, ao, result, remarks。aoEl/eoEl 统一展示 CCP XPath（XML 渠道）与 AO CSV 字段（CSV 渠道）；eoCvtEl/aoCvtEl/vdtEl/eoUnconverted/aoUnconverted 为表达式与未转换值预览列。",
+          "description": "列名 → 布尔（true 显示 / false 隐藏）。可用列名（即主列表与「列选择」的列顺序）：channel, source, field, userTag, type, ctxs, eoEl, aoEl, eoCvtEl, aoCvtEl, vdtEl, eoUnconverted, eo, aoUnconverted, ao, result, remarks。aoEl/eoEl 统一展示 CCP XPath（XML 渠道）与 AO CSV 字段（CSV 渠道）；eoEl/aoEl/eoCvtEl/aoCvtEl/vdtEl/eoUnconverted/aoUnconverted 为表达式与未转换值预览列。",
           "properties": {
             "channel": { "type": "boolean" },
             "source": { "type": "boolean" },
             "field": { "type": "boolean" },
             "userTag": { "type": "boolean" },
+            "type": { "type": "boolean" },
+            "ctxs": { "type": "boolean" },
             "eoEl": { "type": "boolean" },
             "aoEl": { "type": "boolean" },
             "eoCvtEl": { "type": "boolean" },
             "aoCvtEl": { "type": "boolean" },
             "vdtEl": { "type": "boolean" },
-            "type": { "type": "boolean" },
-            "ctxs": { "type": "boolean" },
             "eoUnconverted": { "type": "boolean" },
             "eo": { "type": "boolean" },
             "aoUnconverted": { "type": "boolean" },
@@ -214,7 +216,7 @@
         },
         "selector": {
           "type": "object",
-          "description": "列是否出现在「列选择」菜单中（true 显示 / false 隐藏）。未配置的列默认出现。",
+          "description": "列是否在本次部署中启用（true 启用 / false 禁用，未配置的列默认启用）：false 的列既不出现在「列选择」菜单中，也不渲染（避免留下无法关闭的列）。可用列名同 columns.default；config.json / dev / test 默认全部启用，prod 额外禁用表达式类列（eoEl / eoCvtEl / aoCvtEl / vdtEl / aoUnconverted）与 type，userTag 保持启用。",
           "additionalProperties": { "type": "boolean" }
         },
         "tag": {
@@ -237,7 +239,7 @@
         },
         "userTag": {
           "type": "object",
-          "description": "用户标签列显示配置：raw 为 true 时直接显示原值（普通文本）；否则按 labels 的「值 → 显示标签」映射显示为标签样式。",
+          "description": "用户标签列显示配置：raw 为 true 时直接显示原值（普通文本），搜索也仅按原值（显示标签不可搜）；否则按 labels 的「值 → 显示标签」映射显示为标签样式，且搜索按原值与显示标签双通道匹配。",
           "properties": {
             "raw": { "type": "boolean", "default": false },
             "labels": {

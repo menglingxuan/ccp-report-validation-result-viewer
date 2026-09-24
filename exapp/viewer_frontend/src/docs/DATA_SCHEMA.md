@@ -65,6 +65,16 @@
 }
 ```
 
+清单的**顶层字段与单文件模式完全一致**（多文件模式只把 `items` 换成轻量条目）：
+
+| 顶层键 | 类型 | 说明 |
+|---|---|---|
+| `mode` | 字符串 | `"multi"` |
+| `reportEnv` | 字符串 | 运行环境标识（可选） |
+| `creationType` | 字符串 | 数据来源：`"sample"`（内置样例）/ `"user"`（真实用户数据）；查看器据此决定是否展示 Sample 徽标与「示例数据」提示，缺省按 `"sample"` 处理 |
+| `skippedItems` | 数组 | 未能参与比较的 item 记录（结构见 §3 的 `skippedItems`） |
+| `items` | 数组 | 轻量清单条目（下表） |
+
 | 清单 item 键 | 类型 | 说明 |
 |---|---|---|
 | `tradeId` / `reportDate` / `generatedAt` / `platform` / `product` / `productCategory` | 字符串 | item 元数据（供侧栏搜索/筛选） |
@@ -72,6 +82,8 @@
 | `enabledChannels` | 字符串数组 | 启用渠道 |
 | `file` | 字符串 | 该 item 完整数据文件的路径（**相对清单文件所在目录**；因此根目录清单用 `data/items/<tradeId>.json`，批次清单也一样） |
 | `summary` | 对象 | 预计算统计摘要（侧栏与统计卡无需加载完整 item） |
+
+> 可选字段的显式 `null` 视为「未提供」（Java 生成器的 ObjectMapper 保留 null）：顶层 `reportEnv` / `creationType` / `skippedItems` 与 item 的 `summary` 均允许为 `null`。
 
 每个 item 文件内容与单文件模式中的 item 结构相同（含 `ctxDefs`、`channels`、`logs`；字段注册表在各 channel 内）。
 

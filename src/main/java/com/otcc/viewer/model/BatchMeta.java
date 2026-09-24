@@ -40,23 +40,24 @@ public class BatchMeta {
     /** {@code "single"} or {@code "multi"}. */
     private String dataMode;
 
-    // ---- 以下为查看器/服务端写入的可选用户态字段（无值时不序列化） ----
-    /** 软删除标记：{@code true} 表示批次已删除但仍可见。 */
+    // ---- Optional user-state fields written by the viewer/server (not serialized when absent) ----
+    /** Soft-delete flag: {@code true} means the batch is deleted but still listed. */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private Boolean deleted;
-    /** 收藏标记。 */
+    /** Favorite flag. */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private Boolean favorite;
-    /** 批次标签（最多 12 个）。 */
+    /** Batch tags (up to 12). */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<String> tags;
-    /** 批次级忽略配置地址（相对批次目录 / web 根）。 */
+    /** Batch-level ignore-config location (relative to the batch dir / web root). */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private String ignoreUrl;
     /**
-     * 任务说明扩展内容（只读）：在「任务说明」末尾按 {@code contentType} 渲染；
-     * 写入 {@code batch-meta.json}，不进入 {@code batches-index.json}（查看器按索引的
-     * {@code metaUrl} 懒加载）。详见 {@link DescriptionEx}。
+     * Task Note extension content (read-only): rendered at the end of the Task Note panel
+     * according to {@code contentType}. Written to {@code batch-meta.json} only — it never
+     * enters {@code batches-index.json} (the viewer lazy-loads it via the index
+     * {@code metaUrl}). See {@link DescriptionEx}.
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private DescriptionEx descriptionEx;

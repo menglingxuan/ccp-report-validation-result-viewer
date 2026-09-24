@@ -991,6 +991,10 @@ public final class ValidationJsonGenerator {
      * Same as {@link #splitToFiles(ValidationDataset, Path)} but writes the manifest under
      * {@code manifestName}. Multi-file mode needs this because both the main data file and the
      * default template data file are manifests (otherwise {@code urls.defaultData} is missing).
+     *
+     * <p>The manifest keeps the dataset's top-level fields ({@code mode} / {@code reportEnv} /
+     * {@code creationType} / {@code skippedItems}) so multi-file mode is a drop-in equivalent of
+     * single-file mode for the viewer (see {@code docs/DATA_SCHEMA.md} §2).</p>
      */
     public static List<ManifestItem> splitToFiles(ValidationDataset dataset, Path outDir, String manifestName) throws IOException {
         List<ManifestItem> manifestItems = new ArrayList<>();
@@ -1015,6 +1019,9 @@ public final class ValidationJsonGenerator {
         Map<String, Object> manifest = new LinkedHashMap<>();
         manifest.put("mode", "multi");
         manifest.put("reportEnv", dataset.getReportEnv());
+        // 顶层字段必须与单文件模式一致（DATA_SCHEMA.md §2）：缺 creationType 会让查看器
+        // 把真实用户数据误判为示例数据（Sample 徽标 / 示例数据提示），缺 skippedItems 会丢失「已跳过 item」。
+        manifest.put("creationType", dataset.getCreationType());
         manifest.put("skippedItems", dataset.getSkippedItems());
         manifest.put("items", manifestItems);
         writeJson(outDir.resolve(manifestName), manifest);
@@ -1053,6 +1060,8 @@ public final class ValidationJsonGenerator {
                         .keyboardShortcuts(true).modalPrints(true).recentBatches(true).batchHelp(true)
                         .revealPath(true)
                         .descriptionEx(true)
+                        .clearLocalCache(true)
+                        .homeButton(true)
                         .build())
                 .limits(ValidationConfig.Limits.builder()
                         .pageSize(20).pageSizeOptions(List.of(10, 20, 50))
@@ -1218,20 +1227,23 @@ public final class ValidationJsonGenerator {
     }
 
     private static Map<String, Boolean> orderedColumns() {
-        // 必须与查看器 public/app.js 的 DEFAULT_COLUMNS 及 public/config.schema.json 中公布的列名保持一致，
-        // 否则生成的 config.json 里 columns.default 会被查看器静默忽略（未知列名）。
+        // 必须与查看器 public/app.js 的 DEFAULT_COLUMNS 及 public/config.schema.json 中公布的列名与**顺序**一致，
+        // 否则生成的 config.json 里 columns.default 会被查看器静默忽略（未知列名）或顺序与界面不符。
+        // 顺序：报告渠道 → 来源渠道 → 报告字段 → 用户标签 → 类型 → 命中Ctx
+        //       → 表达式系列（CMP-L / CMP-R / CVT-L / CVT-R / VDT）
+        //       → 期望值系列（EO-U / EO / AO-U / AO）→ 结果 → 说明
         Map<String, Boolean> m = new LinkedHashMap<>();
         m.put("channel", true);
         m.put("source", true);
         m.put("field", true);
         m.put("userTag", true);
+        m.put("type", false);
+        m.put("ctxs", false);
         m.put("eoEl", false);
         m.put("aoEl", false);
         m.put("eoCvtEl", false);
         m.put("aoCvtEl", false);
         m.put("vdtEl", false);
-        m.put("type", false);
-        m.put("ctxs", false);
         m.put("eoUnconverted", false);
         m.put("eo", true);
         m.put("aoUnconverted", false);
