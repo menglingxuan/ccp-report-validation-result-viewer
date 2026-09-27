@@ -11,6 +11,7 @@
 //   - 本模块不做任何写入以外的事情（写文件由调用方通过 opts 控制），便于单独测试。
 import fs from 'node:fs';
 import path from 'node:path';
+import { stringifyJSON } from './json-write.js';
 import { validateDataset } from './validate.js';
 
 // 默认的清单/输出文件名（与 config.urls.data 一致）。
@@ -137,7 +138,7 @@ export function writeMergedDataset(outputPath, dataset, opts) {
     return { ok: false, error: '合并结果校验失败（可用 --force 忽略）：\n   - ' + validation.errors.join('\n   - '), validation: validation };
   }
 
-  const text = JSON.stringify(dataset, null, 2) + '\n';
+  const text = stringifyJSON(dataset, { pretty: o.pretty });
   // dry-run：只统计与校验，不写任何文件（含备份）。
   if (o.dryRun) return { ok: true, outputPath: outputPath, backupPath: null, bytes: Buffer.byteLength(text, 'utf8'), validation: validation, dryRun: true };
 

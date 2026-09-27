@@ -20,6 +20,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildDataset, splitToFiles } from '../lib/sample-data.js';
+import { stringifyJSON } from '../lib/json-write.js';
 import { validateDataset } from '../lib/validate.js';
 import { scan } from '../lib/scanner.js';
 
@@ -50,7 +51,7 @@ function check(name, ok, detail) {
 
 function writeJSON(file, obj) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(obj, null, 2) + '\n', 'utf8');
+  fs.writeFileSync(file, stringifyJSON(obj), 'utf8');
 }
 
 // 复制静态资源（index.html / app.js / core.js / i18n.json / worker.js / themes.css / 配置 schema…）。

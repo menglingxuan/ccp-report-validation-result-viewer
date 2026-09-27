@@ -5,10 +5,12 @@
 //   node tools/generate-sample-data.js --only default  # 仅生成默认模板数据文件
 //   node tools/generate-sample-data.js --special       # 仅生成三个特殊用途样例批次（单来源 / 分页 / 软删除）
 //   node tools/generate-sample-data.js --batch         # 一并更新批次样例数据（通用切片批次 + 多文件批次 + 特殊用途批次）
+//   node tools/generate-sample-data.js --pretty        # 输出缩进版（仅供人工排查；默认紧凑，体积约为一半）
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDataset, splitToFiles } from '../lib/sample-data.js';
+import { writeJSON as writeJSONFile } from '../lib/json-write.js';
 
 const TOOLS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SRC_ROOT = path.dirname(TOOLS_DIR);
@@ -19,13 +21,17 @@ const doSplit = argv.includes('--split');
 const doBatch = argv.includes('--batch');
 const doSpecial = argv.includes('--special');
 const only = argv.includes('--only') ? argv[argv.indexOf('--only') + 1] : null;
+const OUT_OPTS = { pretty: argv.includes('--pretty') };
 
 // 批次目录根（每个批次目录拥有自己独立的 report-validation-data.json）。
 const BATCHES_DIR = path.join(PUBLIC_DIR, 'batches');
 
-function writeJSON(file, obj) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(obj, null, 2) + '\n', 'utf8');
+function writeDataset(file, obj) {
+  return writeJSONFile(file, obj, OUT_OPTS);
+}
+// batch-meta.json 是人工也会编辑/查看的用户态小文件（服务端写回时也用缩进版），保持缩进。
+function writeBatchMeta(file, obj) {
+  return writeJSONFile(file, obj, { pretty: true });
 }
 
 // 递归收集 public/batches 下所有含 batch-meta.json 的批次目录（按路径排序）。
@@ -43,7 +49,7 @@ function collectBatchDirs(root) {
 
 // 写一个多文件模式批次：batch-meta.json + 清单 report-validation-data.json（mode=multi）+ data/items/*.json。
 function writeMultiBatch(dir, dataset) {
-  writeJSON(path.join(dir, 'batch-meta.json'), {
+  writeBatchMeta(path.join(dir, 'batch-meta.json'), {
     reportEnv: dataset.reportEnv,
     creationType: 'sample',
     batchId: path.basename(dir),
@@ -57,7 +63,7 @@ function writeMultiBatch(dir, dataset) {
     description: '多文件模式演示批次：清单 + 每 item 一个独立文件',
     descriptionEx: { contentType: 'markDownTable', plainContent: descExSampleTable() },
   });
-  splitToFiles(dataset, dir);
+  splitToFiles(dataset, dir, undefined, OUT_OPTS);
 }
 
 // 同步批次的 batch-meta.json 与写入的数据文件一致（summary.items = 实际 item 数量）。
@@ -70,7 +76,7 @@ function syncBatchMetaSummary(dir, itemCount) {
   try { meta = JSON.parse(fs.readFileSync(metaFile, 'utf8')); } catch (e) { return; }
   if (meta.summary && meta.summary.items === itemCount) return;
   meta.summary = Object.assign({}, meta.summary, { items: itemCount });
-  writeJSON(metaFile, meta);
+  writeBatchMeta(metaFile, meta);
 }
 
 // 任务说明扩展内容（descriptionEx）的 Markdown 表格示例（3 列，渲染统一左对齐）：
@@ -161,8 +167,8 @@ function writeSpecialBatch(def) {
   if (def.deleted) meta.deleted = true;
   if (Array.isArray(def.tags) && def.tags.length) meta.tags = def.tags;
   if (def.descriptionEx) meta.descriptionEx = def.descriptionEx;
-  writeJSON(path.join(dir, 'batch-meta.json'), meta);
-  writeJSON(path.join(dir, 'report-validation-data.json'), {
+  writeBatchMeta(path.join(dir, 'batch-meta.json'), meta);
+  writeDataset(path.join(dir, 'report-validation-data.json'), {
     mode: 'single',
     reportEnv: dataset.reportEnv,
     creationType: 'sample',
@@ -186,20 +192,20 @@ function main() {
   console.log('生成数据集：items=' + dataset.items.length + ' reportEnv=' + dataset.reportEnv);
 
   if (doSplit) {
-    const manifest = splitToFiles(dataset, PUBLIC_DIR);
+    const manifest = splitToFiles(dataset, PUBLIC_DIR, undefined, OUT_OPTS);
     // 多文件模式下默认模板数据也是清单（否则 urls.defaultData / defaultDataMode=default 会缺文件）。
-    splitToFiles(dataset, PUBLIC_DIR, 'report-validation-data-default.json');
+    splitToFiles(dataset, PUBLIC_DIR, 'report-validation-data-default.json', OUT_OPTS);
     console.log('多文件模式：清单 items=' + manifest.items.length);
     console.log('  清单 -> ' + path.join(PUBLIC_DIR, 'report-validation-data.json'));
     console.log('  默认模板清单 -> ' + path.join(PUBLIC_DIR, 'report-validation-data-default.json'));
     console.log('  item 文件 -> ' + path.join(PUBLIC_DIR, 'data', 'items', '<tradeId>.json'));
   } else {
     if (!only || only === 'default') {
-      writeJSON(path.join(PUBLIC_DIR, 'report-validation-data-default.json'), dataset);
+      writeDataset(path.join(PUBLIC_DIR, 'report-validation-data-default.json'), dataset);
       console.log('默认模板数据 -> report-validation-data-default.json');
     }
     if (!only) {
-      writeJSON(path.join(PUBLIC_DIR, 'report-validation-data.json'), dataset);
+      writeDataset(path.join(PUBLIC_DIR, 'report-validation-data.json'), dataset);
       console.log('主数据文件 -> report-validation-data.json');
     }
   }
@@ -219,7 +225,7 @@ function main() {
       const items = [];
       for (let k = 0; k < n; k++) items.push(dataset.items[(start + k) % dataset.items.length]);
       const file = path.join(dir, 'report-validation-data.json');
-      writeJSON(file, { mode: 'single', reportEnv: dataset.reportEnv, creationType: 'sample', skippedItems: dataset.skippedItems, items });
+      writeDataset(file, { mode: 'single', reportEnv: dataset.reportEnv, creationType: 'sample', skippedItems: dataset.skippedItems, items });
       syncBatchMetaSummary(dir, items.length);
       console.log('批次数据 -> ' + path.relative(PUBLIC_DIR, file) + '（' + items.length + ' items，已同步 batch-meta.json summary.items）');
     });

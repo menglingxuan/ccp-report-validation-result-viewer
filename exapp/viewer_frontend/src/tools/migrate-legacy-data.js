@@ -13,6 +13,7 @@
 //     字段的 prints 同时生成 scope="field" 的日志行（带 channel/source/field）追加进 item.logs（字段本身不存日志）。
 import fs from 'node:fs';
 import path from 'node:path';
+import { writeJSON } from '../lib/json-write.js';
 
 function ctxKeysOfType(ctx, ctxDefs, type) {
   return (ctx || []).filter(function (k) {
@@ -177,10 +178,12 @@ function main() {
   const argv = process.argv.slice(2);
   const src = argv[0];
   const dst = argv[1] || src;
-  if (!src) { console.error('用法：node tools/migrate-legacy-data.js <旧文件> [新文件]'); process.exit(1); }
+  if (!src) { console.error('用法：node tools/migrate-legacy-data.js <旧文件> [新文件] [--pretty]'); process.exit(1); }
   const json = JSON.parse(fs.readFileSync(src, 'utf8'));
   const migrated = migrateDataset(json);
-  fs.writeFileSync(dst, JSON.stringify(migrated, null, 2) + '\n', 'utf8');
+  // 输出紧凑 JSON（迁移产物就是给查看器读的数据文件，紧凑体积约为缩进版的一半，见 lib/json-write.js）；
+  // 需要人工比对时加 --pretty。
+  writeJSON(dst, migrated, { pretty: argv.includes('--pretty') });
   console.log('已迁移：' + src + ' -> ' + dst);
 }
 

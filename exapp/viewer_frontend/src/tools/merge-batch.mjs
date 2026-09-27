@@ -10,6 +10,7 @@
 //   --out <name>        合并结果写到批次目录内的另一个文件（默认原地覆盖清单）
 //   --no-backup         不生成 <清单名>.multi.bak 备份
 //   --force             合并结果校验失败时仍然写入
+//   --pretty            输出缩进版 JSON（默认紧凑：体积约为缩进版的一半，见 lib/json-write.js）
 //   --no-scan           不刷新 batches-index.json（默认会刷新，使 mode/summary 立即生效）
 //   --tenant[=id] / --no-tenant   租户模式开关（与非租户模式的批次根/索引均按 config 解析）
 //   --config dev|test|prod / --data-root <dir>       与 server.js 一致
@@ -114,6 +115,7 @@ const res = mergeBatchDirToSingle(batchDir, {
   backup: !has('--no-backup'),
   dryRun: dryRun,
   force: has('--force'),
+  pretty: has('--pretty'),
 });
 
 if (!res.ok) {

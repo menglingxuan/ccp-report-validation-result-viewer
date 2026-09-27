@@ -65,7 +65,8 @@
 - **配置切换**：`--config dev|test|prod`（或 `REPORT_VIEWER_CONFIG`）分别加载 `config-dev.json` / `config-test.json` / `config-prod.json`。
 - **统一配置入口**：`config.json`（服务端 + 浏览器共用）。
 - **数据准确性优先的缓存策略**：静态/数据文件统一返回强 `ETag` + `Cache-Control: no-cache`（每次加载强制重校验，304 不返回陈旧数据）；API 响应 `no-store`。前端用 **IndexedDB + ETag 条件请求**（`If-None-Match`）缓存数据文件，任何内容变更都会因 ETag 变化而重新拉取，**杜绝窜数据/错位**。
-- **Gzip 压缩**：可压缩资源（HTML/CSS/JS/JSON/SVG/TXT）按需 gzip，`Vary: Accept-Encoding`。
+- **静态资源压缩（brotli 优先，gzip 兜底）**：可压缩资源（HTML/CSS/JS/MJS/JSON/SVG/TXT）按 `Accept-Encoding` 选编码——支持 `br` 就用 brotli，只支持 `gzip` 就用 gzip，都不支持（或显式 `q=0` 拒绝）就原样下发；无论是否压缩都下发 `Vary: Accept-Encoding`（避免中间缓存把压缩体喂给不支持的客户端）。压缩结果按 `ETag` 缓存（上限 32 项），因此同一文件的重复请求不重复压缩，且与 `If-None-Match` → 304 协商共存。brotli 质量取 **9**（实测样例数据：q4 141 KB/7 ms · q6 95 KB/11 ms · **q9 75 KB/21 ms** · q11 65 KB/**2125 ms** · gzip 208 KB/12 ms —— q9 是拐点，比 q11 快 100 倍只大 13%）。小于 1 KB 的文件与二进制类型不压缩。数据文件本身也改为**紧凑 JSON**（见下条），两相叠加后首屏要传的数据是 4.57 MB → **约 75 KB**。
+- **数据文件写紧凑 JSON（体积约为缩进版的一半）**：数据文件由生成器 / 迁移工具 / 合并命令统一经 `lib/json-write.js` 写出，**默认紧凑**（无缩进 + 结尾换行）；缩进只服务于人阅读，却要占 40%+ 体积（实测样例 4.57 MB → 2.69 MB），而查看器只解析内容。需要人工排查时给生成器 / 迁移工具 / `merge-batch` 加 `--pretty` 即可拿到缩进版。**例外（保持缩进）**：`batches-index.json`（索引，人也会看）、`favorites.json` / `batch-meta.json` / 租户配置等用户态小文件（便于手工编辑与 diff；服务端 `POST /api/batch` 写回时也是缩进版）。
 - **扫描进度 SSE**：`GET /scan/progress`（`text/event-stream`）实时推送目录/批次/跳过计数；前端在「刷新批次」时订阅并在按钮上显示进度。
 - **收藏夹服务端持久化**：`GET/POST /api/favorites` 共享收藏树（多用户一致，非管理员账号可写 `favorites.json`），localStorage 仅作离线回退。
 - **忽略配置服务端持久化**：忽略 / 取消忽略 / 批量忽略 / 导入会 `POST /api/ignore` 回写到当前生效的 `ignore-config-by-platform.json`（默认空配置，可按租户隔离；与收藏夹同一套原子写入机制）。「导入」为**分部覆盖**语义（以文件为准，只覆盖文件里出现的部分：警告 / 未比较 XPath / 未比较 CSV，其余保持不变；只接受分组格式），「导出」产物可直接重新导入。多会话并发写入用 `If-Match` 乐观并发保护：遇 409 先以服务端为准重载并重绘（含打开着的管理窗口），再用新 `etag` **重放一次**本次变更；同一浏览器的多个标签通过 `BroadcastChannel('report-viewer-ignore')` 互相同步，标签回到前台时再按 `etag` 校验一次。
@@ -173,6 +174,8 @@ report-viewer                  # 任意目录启动（内置默认数据）
 
 > **写操作通用约束**（`POST /scan` 与全部 `POST /api/*`）：仅允许**同源**调用（带 `Origin` 时其 host 必须与请求 Host 一致，跨源返回 **403**；不带 `Origin` 的 curl/脚本不受限）；请求体上限 **256 KiB**（超出返回 **413**）。
 >
+> **静态资源压缩**：静态文件（HTML / CSS / JS / MJS / JSON / SVG / TXT）按 `Accept-Encoding` 走 **brotli（优先）/ gzip**，并与强 `ETag` + `Cache-Control: no-cache` 共存（`If-None-Match` → **304**）；压缩结果按 `ETag` 缓存，重复请求不重复压缩。API 响应（`no-store`）与 `/scan/progress`（SSE）不压缩。
+>
 > **乐观并发**（`/api/ignore`、`/api/favorites`、`/api/batch`）：写入后可得到新 `etag`；客户端应把加载/上次写入得到的 `etag` 作为 `ifMatch` 回传（也接受 `If-Match` 请求头，`*` 表示不校验），若服务端文件已被其他会话修改则返回 **409** 且不写入（不匹配时响应仍带服务端当前 `etag`，文件不存在时 `etag` 为 `null`，首次写入可省略 `ifMatch`）。
 
 ## 项目结构
@@ -188,6 +191,7 @@ src/
 │   ├── scanner.js             # 批次扫描器（异步，带 onProgress 进度回调）
 │   ├── validate.js            # 数据校验器（validateDataset / validateFile）
 │   ├── reveal.js              # 「在系统文件管理器中打开目录」（Launcher 解析 + 错误上抛）
+│   ├── json-write.js          # 数据 JSON 输出策略（默认紧凑 + 结尾换行；pretty 可选）
 │   └── sample-data.js         # 样例数据生成器（buildDataset / splitToFiles）
 ├── public/                    # Web 根目录（静态资源与数据）
 │   ├── index.html             # 查看器页面（UI 结构与样式）
@@ -259,7 +263,8 @@ node tools/generate-sample-data.js            # 单文件模式
 node tools/generate-sample-data.js --split    # 多文件模式（主清单 + 默认模板清单 + data/items/*.json）
 node tools/generate-sample-data.js --batch    # 更新全部样例批次（通用切片 + 多文件批次 + 特殊用途批次）
 node tools/generate-sample-data.js --special  # 仅更新特殊用途批次（单来源渠道 / 批次分页 / 批次软删除）
-node tools/migrate-legacy-data.js <旧文件>     # 旧数据格式迁移为新格式（原地或指定输出）
+node tools/generate-sample-data.js --pretty   # 输出缩进版 JSON（仅供人工排查；默认紧凑，体积约为一半）
+node tools/migrate-legacy-data.js <旧文件>     # 旧数据格式迁移为新格式（原地或指定输出；加 --pretty 输出缩进版）
 node tools/merge-batch.mjs --list              # 列出批次及其当前模式（单文件 / 多文件）
 node tools/merge-batch.mjs --batch <batchId>   # 把该多文件批次合并为单文件（原地覆盖清单 + 自动备份 + 刷新索引）
 node tools/merge-batch.mjs --batch <目录> --dry-run        # 只检查与统计，不写任何文件

@@ -126,6 +126,34 @@ function json(res, status, obj) {
 
 const COMPRESSIBLE = { '.html': 1, '.css': 1, '.js': 1, '.mjs': 1, '.json': 1, '.svg': 1, '.txt': 1 };
 
+// 静态资源压缩：优先 brotli，其次 gzip（都按 ETag 缓存结果，避免每个请求重算）。
+// brotli 质量取 9：实测样例数据（4.57 MB 缩进版 / 2.69 MB 紧凑版）
+//   q4=141 KB(7ms) · q5=108 KB(11ms) · q6=95 KB(11ms) · q9=75 KB(21ms) · q11=65 KB(2125ms)
+//   gzip=208 KB(12ms) —— q9 是拐点：比 q11 快 100 倍、只大 13%；比 gzip 再小 64%。
+const BROTLI_QUALITY = 9;
+const COMPRESS_MIN_BYTES = 1024;
+const COMPRESS_CACHE_MAX = 32;                       // 条目数上限（每项 = ETag+编码 -> 压缩后的 Buffer）
+const compressCache = new Map();
+function compressedBody(etag, kind, buf) {
+  const key = kind + ':' + etag;
+  const hit = compressCache.get(key);
+  if (hit) return hit;
+  const out = kind === 'br'
+    ? zlib.brotliCompressSync(buf, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: BROTLI_QUALITY } })
+    : zlib.gzipSync(buf);
+  if (compressCache.size >= COMPRESS_CACHE_MAX) compressCache.delete(compressCache.keys().next().value);
+  compressCache.set(key, out);
+  return out;
+}
+// 依 Accept-Encoding 选编码：br > gzip > 无（q=0 表示显式拒绝该编码）。
+function pickEncoding(acceptEncoding) {
+  const ae = String(acceptEncoding || '').toLowerCase();
+  const rejected = function (name) { return new RegExp(name + '\\s*;\\s*q=0\\b').test(ae); };
+  if (ae.indexOf('br') !== -1 && !rejected('br')) return 'br';
+  if (ae.indexOf('gzip') !== -1 && !rejected('gzip')) return 'gzip';
+  return null;
+}
+
 // 强 ETag（内容哈希，与静态文件服务同格式）——写回接口用它做乐观并发（If-Match）。
 function etagOf(buf) {
   return '"' + crypto.createHash('sha256').update(buf).digest('hex').slice(0, 16) + '"';
@@ -172,15 +200,18 @@ function serveFile(req, res, absPath) {
       'ETag': etag,
       'Cache-Control': 'no-cache',
     };
-    const ae = String(req.headers['accept-encoding'] || '');
-    if (COMPRESSIBLE[ext] && ae.indexOf('gzip') !== -1 && data.length > 1024) {
-      const gz = zlib.gzipSync(data);
-      headers['Content-Encoding'] = 'gzip';
-      headers['Content-Length'] = gz.length;
+    // 可压缩类型：按 Accept-Encoding 选 br / gzip；不可压缩时同样要下发 Vary，
+    // 否则中间缓存可能把「压缩过的响应」喂给不支持该编码的客户端。
+    const kind = COMPRESSIBLE[ext] ? pickEncoding(req.headers['accept-encoding']) : null;
+    if (kind && data.length > COMPRESS_MIN_BYTES) {
+      const body = compressedBody(etag, kind, data);
+      headers['Content-Encoding'] = kind;
+      headers['Content-Length'] = body.length;
       headers['Vary'] = 'Accept-Encoding';
       res.writeHead(200, headers);
-      res.end(gz);
+      res.end(body);
     } else {
+      if (COMPRESSIBLE[ext]) headers['Vary'] = 'Accept-Encoding';
       headers['Content-Length'] = data.length;
       res.writeHead(200, headers);
       res.end(data);

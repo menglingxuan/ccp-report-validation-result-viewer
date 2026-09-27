@@ -90,6 +90,27 @@
 > 多文件模式下：查看器先加载清单（轻量），点击 item 时按需加载完整文件；搜索/筛选/统计对全部 item 的合并数据生效。
 > 清单未加载的 item 只有元数据（无 `channels` / `ctxDefs` / `logs`），需要完整 item 的功能（忽略开关、字段比较、关联错误、日志）都先确保 item 已加载。
 
+### 2.0 文件书写格式与体积（紧凑 JSON）
+
+数据文件的**内容格式**由本节各节定义，**书写格式**统一为**紧凑 JSON**（无缩进 + 单个结尾换行），由 `lib/json-write.js` 单点控制：
+
+- 缩进只服务于人阅读，却要占 40%+ 体积（实测样例：4,566,418 B 缩进版 → **2,688,717 B 紧凑版**，−41%）；查看器只解析内容，不看缩进。
+- 真实数据由 Java 生成器产出（`MAPPER.writeValueAsString`）本来就是紧凑的；JS 侧工具此前用 `JSON.stringify(obj, null, 2)`，导致「同一种数据两种体积」，现已统一。
+- 需要人工排查时加 `--pretty`：`node tools/generate-sample-data.js --pretty`、`node tools/migrate-legacy-data.js <旧> [新] --pretty`、`node tools/merge-batch.mjs --batch <id> --pretty`。
+- **例外（保持缩进）**：`batches-index.json`（索引，人也会看）、`favorites.json` / `batch-meta.json` / 租户配置等**用户态小文件**（便于手工编辑与 diff；服务端 `POST /api/batch` 写回时也是缩进版，JS 侧生成器与之一致）。
+  > 注：Java 样例生成器（`BasicBatchMetaGenerator` / `ValidationJsonGenerator`）写 `batch-meta.json` 时用的是默认紧凑序列化，与本条不同（历史差异；被查看器写回一次后会规整为缩进版）。此差异不影响读取，故本轮未改 Java 侧。
+
+配合服务端的 **brotli/gzip** 协商（见 `README.md` 的「静态资源压缩」），首屏要传的样例数据从 4.57 MB 降到约 **75 KB**：
+
+| 形态 | 体积（样例 18 items） |
+|---|---|
+| 缩进 JSON | 4,566,418 B（4.57 MB） |
+| 紧凑 JSON | 2,688,717 B（−41%） |
+| 紧凑 + gzip | ≈ 208 KB |
+| 紧凑 + brotli(q9) | **≈ 75 KB（−98.4%）** |
+
+> 解析耗时不是瓶颈：`JSON.parse` 4.5 MB 实测 **8.4 ms**；真正的成本在传输体积与 DOM 规模。进一步的结构优化（分片按需加载、日志分组索引、共享登记表等）见仓库记忆中的重构提案。
+
 ### 2.1 模式转换（多文件 → 单文件）
 
 命令行工具 `tools/merge-batch.mjs`（npm：`npm run merge-batch`）把**指定的一个多文件批次**合并为单文件批次：

@@ -2,6 +2,7 @@
 // 生成单文件数据集 buildDataset()，以及多文件模式 splitToFiles()。
 import fs from 'node:fs';
 import path from 'node:path';
+import { writeJSON } from './json-write.js';
 
     const TYPE_META = {
       platformAssertion: { label: '平台断言', cls: 'tp-platform' },
@@ -703,13 +704,14 @@ import path from 'node:path';
     // 将单文件数据集拆分为多文件模式：
     // 在 outDir 写入 <manifestName>（默认 report-validation-data.json）与 data/items/<tradeId>.json。
     // 多文件模式下主数据与默认模板数据都是清单，因此需要能指定清单文件名（否则 defaultDataMode=default 时缺文件）。
-    function splitToFiles(dataset, outDir, manifestName) {
+    // opts.pretty：输出缩进版（默认紧凑，见 lib/json-write.js；缩进会让文件大 40%+）。
+    function splitToFiles(dataset, outDir, manifestName, opts) {
       const name = manifestName || 'report-validation-data.json';
       const itemsDir = path.join(outDir, 'data', 'items');
       fs.mkdirSync(itemsDir, { recursive: true });
       const manifestItems = (dataset.items || []).map(function (it) {
         const file = 'data/items/' + it.tradeId + '.json';
-        fs.writeFileSync(path.join(outDir, file), JSON.stringify(it, null, 2));
+        writeJSON(path.join(outDir, file), it, opts);
         return {
           tradeId: it.tradeId,
           reportDate: it.reportDate,
@@ -726,7 +728,7 @@ import path from 'node:path';
         };
       });
       const manifest = { mode: 'multi', reportEnv: dataset.reportEnv, creationType: dataset.creationType || 'sample', skippedItems: dataset.skippedItems, items: manifestItems };
-      fs.writeFileSync(path.join(outDir, name), JSON.stringify(manifest, null, 2));
+      writeJSON(path.join(outDir, name), manifest, opts);
       return manifest;
     }
 
