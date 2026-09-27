@@ -25,7 +25,6 @@ public class ManifestItem {
     private String counterpartyItemId;
     private String platformTradeId;
     private String platformDealId;
-    private List<String> enabledChannels;
     /** Relative path to the full item file (from the web root). */
     private String file;
     private ItemSummary summary;

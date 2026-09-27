@@ -15,7 +15,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateDataset } from '../lib/validate.js';
 import { migrateDataset } from '../tools/migrate-legacy-data.js';
-import { logFieldKey, logAnchorId, logSlug, logHash, isFieldLogLine } from '../public/core.js';
+import {
+  logFieldKey, logAnchorId, isFieldLogLine,
+  refChannelId, refSourceId, CHANNEL_ID_PRESET, SOURCE_ID_PRESET,
+  hydrateDataset,
+} from '../public/core.js';
 
 const SRC_DIR = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PUBLIC_DIR = path.join(SRC_DIR, 'public');
@@ -32,68 +36,92 @@ function bodyOf(sig, len = 1200) {
 
 /* ---------------- 1. 数据契约 ---------------- */
 
+// 最小合法数据集：渠道 / 来源渠道在顶层声明，item 里只有 id 引用（契约：引用 ⊆ 声明）。
+function minimalDataset(items, extra) {
+  return Object.assign({
+    mode: 'single',
+    channels: [{ id: CHANNEL_ID_PRESET.HKTR, name: 'HKTR', desc: '香港交易资料储存库', format: 'xml' }],
+    sources: [{ id: SOURCE_ID_PRESET['来源渠道 A'], name: '来源渠道 A' }],
+    items: items,
+  }, extra || {});
+}
+
+// 最小合法 item：渠道 / 来源渠道都只有 id 引用 + 本 item 的数据。
 function minimalItem(logs) {
   return {
     tradeId: 'T-1',
     reportDate: '2026-08-16',
     channels: [{
-      name: 'HKTR',
+      id: CHANNEL_ID_PRESET.HKTR,
       fields: [{ id: '1', name: 'tradeId', userTag: 'contextAssertion', type: 'id' }],
       sources: [{
-        name: '来源渠道 A',
+        id: SOURCE_ID_PRESET['来源渠道 A'],
         fields: [{ id: '1', result: 'PASSED' }],
       }],
     }],
     logs: logs,
   };
 }
+// 字段级日志行（新形态：只写 id + field，名称由查看器按 id 解析回来）。
+function fieldLog(channel, source, field, text, extra) {
+  return Object.assign({
+    scope: 'field', field: field, text: text,
+    channelId: CHANNEL_ID_PRESET[channel] || null,
+    sourceId: SOURCE_ID_PRESET[source] || null,
+  }, extra || {});
+}
 
-test('数据契约：field 仅出现在 scope="field" 的日志行上，且要求 channel/source 非空', () => {
-  const ok = validateDataset({
-    mode: 'single',
-    items: [minimalItem([
-      { scope: 'item', channel: null, source: null, field: null, text: 'a' },
-      { scope: 'channel', channel: 'HKTR', source: null, field: null, text: 'b' },
-      { scope: 'field', channel: 'HKTR', source: '来源渠道 A', field: '1', text: 'c' },
-    ])],
-  });
+test('数据契约：field 仅出现在 scope="field" 的日志行上，且只写 id 就能通过校验', () => {
+  const ok = validateDataset(minimalDataset([minimalItem([
+    { scope: 'item', channelId: null, sourceId: null, field: null, text: 'a' },
+    { scope: 'channel', channelId: 1, sourceId: null, field: null, text: 'b' },
+    fieldLog('HKTR', '来源渠道 A', '1', 'c'),
+  ])]));
+  assert.equal(ok.ok, true, JSON.stringify(ok.errors));
+  // 老写法（名称与 id 双写）仍然可读：名称是可选的，但要与声明一致。
+  const legacy = validateDataset(minimalDataset([minimalItem([
+    { scope: 'field', channel: 'HKTR', source: '来源渠道 A', channelId: 1, sourceId: 1, field: '1', text: 'c' },
+  ])]));
+  assert.equal(legacy.ok, true, JSON.stringify(legacy.errors));
+});
+
+test('数据契约：scope=channel 的行带 field 报错；field 非空时缺 channelId / sourceId 报错（不再看名称）', () => {
+  const r = validateDataset(minimalDataset([minimalItem([
+    { scope: 'channel', channelId: 1, sourceId: null, field: '1', text: 'a' },
+    { scope: 'field', channelId: 1, sourceId: null, field: '1', text: 'b' },
+    { scope: 'field', sourceId: null, field: '1', text: 'c' },
+  ])]));
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => e.includes('只有 scope="field" 的日志行才允许有 field')), JSON.stringify(r.errors));
+  // 3 条坏行都缺 channelId / sourceId（已经不再校验 channel / source 名称）：
+  assert.equal(r.errors.filter((e) => e.includes('field 非空时 channelId 与 sourceId 都不能为空')).length, 3,
+    JSON.stringify(r.errors));
+  // 名称缺失本身不再算错误（日志只写 id）；就算名称存在也不会因为名称缺失而报错。
+  assert.equal(r.errors.some((e) => e.includes('channel 与 source 都不能为空')), false, JSON.stringify(r.errors));
+});
+
+test('数据契约：field 非空时 channelId 与 sourceId 都不能为空（日志锚点需要 id）', () => {
+  const noIds = validateDataset(minimalDataset([minimalItem([{ scope: 'field', channel: 'HKTR', source: '来源渠道 A', field: '1', text: 'x' }])]));
+  assert.equal(noIds.ok, false);
+  assert.equal(noIds.errors.filter((e) => e.includes('field 非空时 channelId 与 sourceId 都不能为空')).length, 1,
+    JSON.stringify(noIds.errors));
+  const ok = validateDataset(minimalDataset([minimalItem([fieldLog('HKTR', '来源渠道 A', '1', 'x')])]));
   assert.equal(ok.ok, true, JSON.stringify(ok.errors));
 });
 
-test('数据契约：scope=channel 的行带 field / field 缺 channel 或 source 都报错', () => {
-  const r = validateDataset({
-    mode: 'single',
-    items: [minimalItem([
-      { scope: 'channel', channel: 'HKTR', source: null, field: '1', text: 'a' },
-      { scope: 'field', channel: 'HKTR', source: '', field: '1', text: 'b' },
-      { scope: 'field', channel: 'HKTR', source: null, field: '1', text: 'c' },
-    ])],
-  });
-  assert.equal(r.ok, false);
-  assert.ok(r.errors.some((e) => e.includes('只有 scope="field" 的日志行才允许有 field')), JSON.stringify(r.errors));
-  // 3 条坏行都触发「field 非空时 channel 与 source 都不能为空」：logs[0] 是 scope=channel 且 source=null，
-  // logs[1] 的 source 为空串，logs[2] 的 source 为 null。
-  assert.equal(r.errors.filter((e) => e.includes('field 非空时 channel 与 source 都不能为空')).length, 3, JSON.stringify(r.errors));
-});
-
 test('数据契约：日志行必须是对象且 text 为字符串', () => {
-  const r = validateDataset({
-    mode: 'single',
-    items: [minimalItem(['纯文本日志'])],
-  });
+  const r = validateDataset(minimalDataset([minimalItem(['纯文本日志'])]));
   assert.equal(r.ok, false);
   assert.ok(r.errors.some((e) => e.includes('必须是对象')), JSON.stringify(r.errors));
 
-  const r2 = validateDataset({
-    mode: 'single',
-    items: [minimalItem([{ scope: 'field', channel: 'HKTR', source: '来源渠道 A', field: '1' }])],
-  });
+  const r2 = validateDataset(minimalDataset([minimalItem([{ scope: 'field', channel: 'HKTR', source: '来源渠道 A', channelId: 1, sourceId: 1, field: '1' }])]));
   assert.equal(r2.ok, false);
   assert.ok(r2.errors.some((e) => e.includes('缺少 text 字符串')), JSON.stringify(r2.errors));
 });
 
 test('样例数据：字段级日志行只在 item.logs 里，fields[] 不新增任何字段', () => {
-  const json = JSON.parse(fs.readFileSync(path.join(PUBLIC_DIR, 'report-validation-data-default.json'), 'utf8'));
+  // 落盘数据是「顶层登记表 + item 只留 id 引用」的形态：按查看器的方式 hydrate 后再断言。
+  const json = hydrateDataset(JSON.parse(fs.readFileSync(path.join(PUBLIC_DIR, 'report-validation-data-default.json'), 'utf8')));
   assert.ok(json.items.length > 0);
   json.items.forEach((item) => {
     const fieldLines = (item.logs || []).filter((l) => l.scope === 'field');
@@ -102,7 +130,8 @@ test('样例数据：字段级日志行只在 item.logs 里，fields[] 不新增
     item.channels.forEach((ch) => {
       const ids = ch.fields.map((d) => d.id);
       const srcs = ch.sources.map((s) => s.name);
-      byChannel[ch.name] = { ids: ids, srcs: srcs };
+      const srcIds = ch.sources.map((s) => s.id);
+      byChannel[ch.name] = { ids: ids, srcs: srcs, srcIds: srcIds, id: ch.id };
       ch.sources.forEach((s) => s.fields.forEach((f) => {
         assert.equal(f.id, String(f.id), item.tradeId + ' 字段 id 必须是字符串');
         assert.ok(ids.indexOf(f.id) !== -1, item.tradeId + ' 字段 id 必须存在于渠道注册表');
@@ -112,12 +141,19 @@ test('样例数据：字段级日志行只在 item.logs 里，fields[] 不新增
       }));
     });
     // 每条字段级日志行都要能对回真实的渠道 / 来源渠道 / 字段 id（否则锚点定位不到）。
+    // 落盘数据只写 id；hydrate 后名称也应齐备（展示 / 筛选按名称）。
+    const byChId = {};
+    item.channels.forEach((ch) => { byChId[ch.id] = { ch: ch, srcIds: ch.sources.map((s) => s.id), fieldIds: ch.fields.map((d) => d.id) }; });
     fieldLines.forEach((l) => {
-      const ch = byChannel[l.channel];
-      assert.ok(ch, item.tradeId + ' 日志行的 channel 不在该 item 里：' + l.channel);
-      assert.ok(ch.srcs.indexOf(l.source) !== -1, item.tradeId + ' 日志行的 source 不在该渠道里：' + l.source);
-      assert.ok(ch.ids.indexOf(l.field) !== -1, item.tradeId + ' 日志行的 field 不在该渠道注册表里：' + l.field);
+      const entry = byChId[l.channelId];
+      assert.ok(entry, item.tradeId + ' 日志行的 channelId 不在该 item 里：' + l.channelId);
+      assert.ok(entry.srcIds.indexOf(l.sourceId) !== -1, item.tradeId + ' 日志行 sourceId 不在该渠道里：' + l.sourceId);
+      assert.ok(entry.fieldIds.indexOf(l.field) !== -1, item.tradeId + ' 日志行的 field 不在该渠道注册表里：' + l.field);
       assert.ok(String(l.text).length > 0, item.tradeId + ' 日志行 text 不应为空');
+      // hydrate 后名称齐备（名称由 hydrateItem 按 id 从声明表补回，不解析 text）。
+      assert.equal(l.channel, entry.ch.name, item.tradeId + ' hydrate 后日志行应有渠道名称');
+      const src = entry.ch.sources.find((s) => s.id === l.sourceId);
+      assert.equal(l.source, src.name, item.tradeId + ' hydrate 后日志行应有来源渠道名称');
     });
   });
 });
@@ -146,38 +182,122 @@ test('迁移工具：旧 prints 生成字段级日志行并只追加进 item.log
   const migratedFieldLines = item.logs.filter((l) => l.scope === 'field');
   assert.equal(migratedFieldLines.length, 2, '字段日志行只进 item.logs');
   migratedFieldLines.forEach((l) => {
-    assert.equal(l.channel, 'HKTR');
-    assert.equal(l.source, '来源渠道 A');
+    assert.equal(l.channelId, CHANNEL_ID_PRESET.HKTR);
+    assert.equal(l.sourceId, SOURCE_ID_PRESET['来源渠道 A']);
     assert.equal(l.field, '1');
+    // 迁移输出与生成器一致：日志行只写 id，不写名称。
+    assert.equal('channel' in l, false, '日志行不应再写渠道名称');
+    assert.equal('source' in l, false, '日志行不应再写来源渠道名称');
   });
   assert.equal(validateDataset(migrated).ok, true, JSON.stringify(validateDataset(migrated).errors));
+  // 查看器加载时按 id 把名称补回（不解析 text）：
+  const hydrated = hydrateDataset(migrated);
+  const hydratedLines = hydrated.items[0].logs.filter((l) => l.scope === 'field');
+  assert.equal(hydratedLines.length, 2);
+  hydratedLines.forEach((l) => {
+    assert.equal(l.channel, 'HKTR', '名称应由 hydrate 按 channelId 补回');
+    assert.equal(l.source, '来源渠道 A', '名称应由 hydrate 按 sourceId 补回');
+  });
+});
+
+test('样例数据：落盘日志行只写 channelId / sourceId，消息段仍保留名称（双写）', () => {
+  const raw = JSON.parse(fs.readFileSync(path.join(PUBLIC_DIR, 'report-validation-data.json'), 'utf8'));
+  let logLines = 0;
+  let msgRefs = 0;
+  raw.items.forEach((item) => {
+    (item.logs || []).forEach((l) => {
+      logLines++;
+      assert.equal('channel' in l, false, '日志行不应写 channel 名称：' + JSON.stringify(l).slice(0, 140));
+      assert.equal('source' in l, false, '日志行不应写 source 名称：' + JSON.stringify(l).slice(0, 140));
+    });
+    ['warnings', 'errors', 'uncompared'].forEach((k) => {
+      (item[k] || []).forEach((m) => {
+        if (m.channel == null) return;
+        msgRefs++;
+        assert.ok(typeof m.channelId === 'number', k + ' 仍应是名称 + id 双写（channelId 缺失）');
+      });
+    });
+  });
+  assert.ok(logLines > 100, '应检查到足够多的日志行，实际：' + logLines);
+  assert.ok(msgRefs > 0, '应检查到消息段的双写引用');
+  (raw.skippedItems || []).forEach((s, i) => {
+    if (s.channel == null) return;
+    assert.equal(s.channelId, CHANNEL_ID_PRESET[s.channel], 'skippedItems[' + i + '] 仍应双写 channelId');
+  });
+});
+
+test('hydrate：渠道 / 来源渠道名称只按 id 解析，绝不从日志文本（text）推断', () => {
+  const data = {
+    mode: 'single',
+    channels: [
+      { id: CHANNEL_ID_PRESET.HKTR, name: 'HKTR', desc: '香港交易资料储存库', format: 'xml' },
+      { id: CHANNEL_ID_PRESET.JSFA, name: 'JSFA' },
+    ],
+    sources: [{ id: SOURCE_ID_PRESET['来源渠道 A'], name: '来源渠道 A' }],
+    items: [{
+      tradeId: 'T-1',
+      channels: [{ id: CHANNEL_ID_PRESET.HKTR, fields: [], sources: [{ id: SOURCE_ID_PRESET['来源渠道 A'], fields: [] }] }],
+      logs: [
+        // text 里写满了渠道 / 来源名称，但没有任何 id：不得据此补出名称（也不得当成字段级日志行）
+        { scope: 'field', field: '1', channelId: null, sourceId: null, text: '[HKTR/来源渠道 A] 比较字段 notional' },
+        // 只写 id：名称由声明表补回
+        { scope: 'field', channelId: CHANNEL_ID_PRESET.HKTR, sourceId: SOURCE_ID_PRESET['来源渠道 A'], field: '1', text: 'x' },
+      ],
+      warnings: [{ channelId: CHANNEL_ID_PRESET.HKTR, sourceId: SOURCE_ID_PRESET['来源渠道 A'], type: 't', level: 'WARN', text: 'w' }],
+      uncompared: [{ type: 1, channelId: CHANNEL_ID_PRESET.HKTR, sourceId: null, value: '/x' }],
+    }],
+    skippedItems: [{ itemId: 'T-9', channelId: CHANNEL_ID_PRESET.JSFA, sourceId: null, reason: 'r' }],
+  };
+  const h = hydrateDataset(data);
+  const logs = h.items[0].logs;
+  assert.equal(logs[0].channel, undefined, '不得从 text 推断渠道名称');
+  assert.equal(logs[0].source, undefined, '不得从 text 推断来源渠道名称');
+  assert.equal(isFieldLogLine(logs[0]), false, 'text 里有渠道名也不算字段级日志行（只看结构化字段）');
+  assert.equal(logs[1].channel, 'HKTR', '只有 id 时按声明表补回渠道名称');
+  assert.equal(logs[1].source, '来源渠道 A', '只有 id 时按声明表补回来源渠道名称');
+  assert.equal(isFieldLogLine(logs[1]), true, '只写 id 的字段级日志行成立');
+  assert.equal(h.items[0].warnings[0].channel, 'HKTR', 'warnings 同样按 id 解析');
+  assert.equal(h.items[0].uncompared[0].channel, 'HKTR', 'uncompared 同样按 id 解析');
+  assert.equal(h.skippedItems[0].channel, 'JSFA', 'skippedItems 同样按 id 解析');
+  // 幂等：再 hydrate 一次结果不变（且不会把名称写回成 id 以外的形态）。
+  assert.deepEqual(hydrateDataset(h).items[0].logs, logs);
+  // 老形态（只有名称、没有 id）保持原样：不做反向推断，也不丢名称。
+  const legacy = hydrateDataset({ mode: 'single', items: [{ tradeId: 'T-1', channels: [], logs: [{ scope: 'field', channel: 'HKTR', source: '来源渠道 A', field: '1', text: 'x' }] }] });
+  assert.equal(legacy.items[0].logs[0].channel, 'HKTR');
+  assert.equal(legacy.items[0].logs[0].channelId, undefined, 'hydrate 不会凭空造 id');
 });
 
 /* ---------------- 2. 查看器接线 ---------------- */
 
-test('日志锚点：短标识 log-<渠道>-s<来源序号>-f<字段id>.<同键序号>（键仍记在 data-log-key）', () => {
+test('日志锚点：合成键 = channelId|sourceId|fieldId，DOM id = log-<渠道id>-<来源id>-f<字段id>.<序号>', () => {
   // 锚点纯函数在 public/core.js（DOM 无关，可直接单测）；app.js 只负责渲染与跳转。
   assert.match(APP, /logFieldKey, logAnchorId, isFieldLogLine,/, 'app.js 应从 core.js 引入锚点纯函数');
-  assert.equal(logFieldKey('HKTR', '来源渠道 A', '2'), 'HKTR|来源渠道 A|2', '合成键 = channel|source|field');
-  // 渠道 / 字段 id 是 ASCII 标识符 → 直接用；含中文 / 空白的名称 → 整串退化为 36 进制短哈希（确定性）
-  assert.equal(logSlug('HKTR'), 'HKTR');
-  assert.equal(logSlug('2'), '2');
-  assert.match(logSlug('来源渠道 A'), /^x[0-9a-z]{1,8}$/, '非 ASCII 名称应退化为短哈希');
-  assert.equal(logSlug('来源渠道 A'), logSlug('来源渠道 A'), '哈希必须确定性');
-  assert.notEqual(logSlug('来源渠道 A'), logSlug('来源渠道 B'), '不同名称不得碰撞（不做部分清洗）');
-  assert.notEqual(logSlug('渠道 A'), logSlug('面 A'), '「清洗后只剩 A」类名称必须区分开');
-  assert.equal(logHash('x'), logHash('x'), 'logHash 应确定性');
-  const item = { channels: [{ name: 'HKTR', sources: [{ name: '来源渠道 A' }, { name: '来源渠道 B' }] }] };
-  assert.equal(logAnchorId(item, 'HKTR', '来源渠道 A', '2', 1), 'log-HKTR-s1-f2.1', '锚点 id 应短且可读');
-  assert.equal(logAnchorId(item, 'HKTR', '来源渠道 B', '13', 3), 'log-HKTR-s2-f13.3', '同键序号取该行在同键行中的次序');
-  assert.match(logAnchorId(item, 'HKTR', '未登记来源', '2', 1), /^log-HKTR-sx[0-9a-z]+-f2\.1$/, '未登记来源退化为 sx<hash>');
-  const cn = { channels: [{ name: '渠道 A', sources: [{ name: '来源渠道 A' }] }] };
-  assert.match(logAnchorId(cn, '渠道 A', '来源渠道 A', '2', 1), /^log-x[0-9a-z]+-s1-f2\.1$/, '中文渠道名退化为哈希（id 保持 ASCII）');
-  assert.ok(logAnchorId(item, 'HKTR', '来源渠道 A', '2', 1).length <= 20, 'id 应保持短小（旧实现是 47 字符的整串编码）');
+  assert.equal(logFieldKey(1, 2, '3'), '1|2|3', '合成键 = channelId|sourceId|fieldId（数字，无歧义）');
+  assert.equal(logFieldKey(null, null, '3'), '||3', 'id 缺失时置空占位（仍可生成键）');
+  assert.equal(logAnchorId(1, 1, '2', 1), 'log-1-1-f2.1', '锚点 id 形如 log-<渠道id>-<来源id>-f<字段id>.<序号>');
+  assert.equal(logAnchorId(3, 2, '13', 3), 'log-3-2-f13.3', '同键序号取该行在同键行中的次序');
+  assert.equal(logAnchorId(1, 2, '2', 1).length <= 20, true, 'id 短小稳定（不再有名称 slug / 哈希）');
+  // 旧实现的名称 slug / 哈希已彻底删除：不能因「清理后同名」而碰撞。
+  assert.equal(typeof logSlugRemoved, 'undefined');
   // 日志行契约判定
   assert.equal(isFieldLogLine({ scope: 'field', channel: 'HKTR', source: 'A', field: '1' }), true);
   assert.equal(isFieldLogLine({ scope: 'field', channel: 'HKTR', source: '', field: '1' }), false, '缺 source 不算带锚点的行');
   assert.equal(isFieldLogLine({ scope: 'channel', channel: 'HKTR', source: 'A', field: '1' }), false, '非 field 级不算');
+});
+
+test('id 引用解析：优先用数据里的 id，缺 id 时按名称回退（老数据仍可定位）', () => {
+  const item = { channels: [{ id: 5, name: 'HKTR', sources: [{ id: 7, name: '来源渠道 A' }] }] };
+  assert.equal(refChannelId(item, { channel: 'HKTR' }), 5, '按渠道名解析 id');
+  assert.equal(refChannelId(item, { channel: 'HKTR', channelId: 1 }), 1, '数据里的 id 优先（不反查名称）');
+  assert.equal(refSourceId(item, { channel: 'HKTR', source: '来源渠道 A' }), 7, '按来源名解析 id');
+  assert.equal(refSourceId(item, { channel: 'HKTR', source: '来源渠道 A', sourceId: 2 }), 2, '数据里的 sourceId 优先');
+  // 老数据：渠道 / 来源没有 id → 回退预设表；名称不在预设里则返回 null。
+  const legacy = { channels: [{ name: 'HKTR', sources: [{ name: '来源渠道 B' }] }] };
+  assert.equal(refChannelId(legacy, { channel: 'HKTR' }), CHANNEL_ID_PRESET.HKTR, '未登记渠道按预设回退');
+  assert.equal(refSourceId(legacy, { channel: 'HKTR', source: '来源渠道 B' }), SOURCE_ID_PRESET['来源渠道 B'], '未登记来源按预设回退');
+  assert.equal(refChannelId(legacy, { channel: '未知名' }), null, '无法解析时返回 null');
+  assert.equal(refSourceId(legacy, { channel: 'HKTR', source: '未知名' }), null, '无法解析时返回 null');
+  assert.equal(refSourceId(legacy, { channel: '未知名', source: '来源渠道 A' }), null, '渠道解析不到时来源也无从解析');
 });
 
 test('日志锚点：仅 scope="field" 的行渲染 id 与 data-log-key，序号在 item.logs 内稳定', () => {
@@ -186,19 +306,21 @@ test('日志锚点：仅 scope="field" 的行渲染 id 与 data-log-key，序号
     '非字段级日志行不应带锚点');
   assert.match(body, /seqCount\[k\] = \(seqCount\[k\] \|\| 0\) \+ 1;\s+seqByLine\.set\(l, seqCount\[k\]\);/,
     '同键序号应按 item.logs 顺序编号（与筛选无关 → id 稳定）');
-  assert.match(body, /const id = logAnchorId\(it, l\.channel, l\.source, l\.field, seq\);/, '渲染时应用 logAnchorId');
+  assert.match(body, /const ids = logIdsOf\(it, l\);/, '应按渠道 / 来源 id 生成锚点（名称仅作回退）');
+  assert.match(body, /logAnchorId\(ids\.channelId, ids\.sourceId, l\.field, seq\)/, '渲染时应用 logAnchorId（id 参数）');
   assert.match(body, /'" data-log-key="' \+ esc\(key\) \+ '" data-log-field="' \+ esc\(l\.field\)/,
     '渲染时应带上 data-log-key / data-log-field');
   assert.match(body, /t\('logsEmpty'\)/, '空日志应使用 i18n 文案（不再硬编码「无日志」）');
   assert.equal(APP.indexOf('无日志') === -1 || APP.indexOf('modalPrintsEmpty') !== -1, true);
 });
 
-test('锚点查找：id 直取 + data-log-key 复核，不一致时退回扫描（防 slug/哈希碰撞）', () => {
-  const body = bodyOf('function findLogAnchorEl(', 800);
-  assert.match(body, /const key = logFieldKey\(channel, source, fieldId\);/, '应按三元组算合成键');
-  assert.match(body, /document\.getElementById\(logAnchorId\(currentItem\(\), channel, source, fieldId, 1\)\)/, '应先用可推导的 id 直取首个锚点');
+test('锚点查找：先用 id 三元组直取，再用 data-log-key 复核，不一致时退回扫描', () => {
+  const body = bodyOf('function findLogAnchorEl(', 900);
+  assert.match(body, /const ids = logIdsOf\(it, \{ channel: channel, source: source \}\);/, '应先把 channel / source 解析为 id');
+  assert.match(body, /const key = logFieldKey\(ids\.channelId, ids\.sourceId, fieldId\)/, '应按 id 三元组算合成键');
+  assert.match(body, /document\.getElementById\(logAnchorId\(ids\.channelId, ids\.sourceId, fieldId, 1\)\)/, '应先用可推导的 id 直取首个锚点');
   assert.match(body, /if \(el && el\.getAttribute\('data-log-key'\) === key\) return el;/,
-    'id 命中后必须用 data-log-key 复核一致（slug/哈希理论上有碰撞）');
+    'id 命中后必须用 data-log-key 复核一致（数据里同时有 id 与名称，两者必须一致）');
   assert.match(body, /document\.querySelectorAll\('#content \[data-log-key\]'\)/, '复核不一致 / 未命中时应扫描兜底');
   assert.match(body, /if \(nodes\[i\]\.getAttribute\('data-log-key'\) === key\) return nodes\[i\];/, '扫描按合成键精确匹配');
 });
@@ -283,10 +405,12 @@ test('字段详情页：「相关打印信息」改为读完整日志里的关�
 });
 
 test('关联日志取数：只从 item.logs 取（字段对象不存日志，无退路）', () => {
-  const body = bodyOf('function fieldLogLines(', 700);
-  assert.match(body, /isFieldLogLine\(l\) && l\.channel === channel && l\.source === source && l\.field === fieldId/,
-    '应按 channel + source + field 三元组从 item.logs 取行');
+  const body = bodyOf('function fieldLogLines(', 900);
+  assert.match(body, /const want = logIdsOf\(item, \{ channel: channel, source: source \}\);/, '应按名称解析出目标 id 三元组');
+  assert.match(body, /ids\.channelId === want\.channelId && ids\.sourceId === want\.sourceId/,
+    '应按 id（channelId + sourceId + field）匹配行，不依赖名称是否存在');
   assert.match(body, /return \(\(item && item\.logs\) \|\| \[\]\)\.filter/, '数据源只能是 item.logs');
+  assert.equal(/l\.text/.test(body), false, '不得用日志文本（text）做任何匹配');
   assert.equal(body.includes('fieldEntry'), false, '不应再有字段自身 logs 的退路');
   assert.equal(body.includes('anchored'), false, '返回值简化为数组（不再需要 anchored 标记）');
 });

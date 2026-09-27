@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { writeJSON } from './json-write.js';
+import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } from '../public/core.js';
 
     const TYPE_META = {
       platformAssertion: { label: '平台断言', cls: 'tp-platform' },
@@ -18,11 +19,21 @@ import { writeJSON } from './json-write.js';
       bufferError:     { label: 'errBuffer',     cls: 'er-buffer' },
     };
 
+    // 渠道稳定标识：与 public/core.js 的预设一致（HKTR=1 / JSFA=2 / CFTC=3）。
+    // 启用标记不再放在 item.enabledChannels，而是写在各渠道的 enabled 上（见 buildChannelData）。
     const CHANNELS = [
-      { name: 'HKTR', desc: '香港交易资料储存库', format: 'xml' },
-      { name: 'JSFA', desc: '日本金融厅', format: 'xml' },
-      { name: 'CFTC', desc: '美国商品期货交易委员会', format: 'csv' },
+      { id: CHANNEL_ID_PRESET.HKTR, name: 'HKTR', desc: '香港交易资料储存库', format: 'xml' },
+      { id: CHANNEL_ID_PRESET.JSFA, name: 'JSFA', desc: '日本金融厅', format: 'xml' },
+      { id: CHANNEL_ID_PRESET.CFTC, name: 'CFTC', desc: '美国商品期货交易委员会', format: 'csv' },
     ];
+
+    // 引用双写（名称 + id）：warnings / errors / uncompared / logs / skippedItems 同时写
+    // channel|channelId 与 source|sourceId。名称缺失（'' / null）时对应 id 为 null。
+    function refIds(channelName, sourceName) {
+      const chId = (channelName && CHANNEL_ID_PRESET[channelName]) || null;
+      const srcId = (chId != null && sourceName && SOURCE_ID_PRESET[sourceName]) || null;
+      return { channelId: chId, sourceId: srcId };
+    }
 
     // 产品类别 -> 子产品（示例：利率类 IR 包含 IRS/OIS/BSW 等）
     const PRODUCT_CATEGORIES = {
@@ -226,6 +237,10 @@ import { writeJSON } from './json-write.js';
       const levelPool = ['WARN', 'INFO', 'NOTICE', 'DEBUG'];
       // 所有存在失败字段的来源渠道：用于让部分警告关联到失败字段（与错误叠加）。
       const failedSrcs = (failedBySource || []).filter(function (s) { return s.failedFields.length > 0; });
+      // 来源渠道只能从**该渠道实际存在的来源**里挑：否则会出现引用了不存在来源渠道的消息
+      // （旧的 enabledChannels 时代这种悬空引用无法被发现，现在 id 引用校验会直接报错）。
+      const srcPool = (failedBySource || []).map(function (s) { return s.name; });
+      const pickSource = function () { return srcPool.length ? srcPool[Math.floor(rng() * srcPool.length)] : ''; };
       const msgs = [];
       for (let i = 0; i < count; i++) {
         const base = WARN_TEXTS[Math.floor(rng() * WARN_TEXTS.length)];
@@ -246,16 +261,19 @@ import { writeJSON } from './json-write.js';
             source = src.name;
           } else {
             field = fieldsDef[Math.floor(rng() * fieldsDef.length)][0];
-            source = rng() < 0.25 ? '' : (rng() < 0.5 ? '来源渠道 A' : '来源渠道 B');
+            source = rng() < 0.25 ? '' : pickSource();
           }
         } else {
           // 渠道级警告：部分来源渠道为空（模拟来源信息缺失的样例数据）。
-          source = rng() < 0.25 ? '' : (rng() < 0.5 ? '来源渠道 A' : '来源渠道 B');
+          source = rng() < 0.25 ? '' : pickSource();
         }
+        const defIds = refIds(channelName, source);
         msgs.push({
           scope: field ? 'field' : 'channel',
           source: source,
           channel: channelName,
+          channelId: defIds.channelId,
+          sourceId: defIds.sourceId,
           type: typeKeys[Math.floor(rng() * typeKeys.length)],
           level: levelPool[Math.floor(rng() * levelPool.length)],
           text: text,
@@ -291,10 +309,13 @@ import { writeJSON } from './json-write.js';
           : base;
         // 字段级错误必须携带失败字段所在的来源渠道；渠道级错误偶尔来源为空（模拟缺失）。
         const source = field ? src.name : (rng() < 0.3 ? '' : src.name);
+        const ids = refIds(channelName, source);
         msgs.push({
           scope: field ? 'field' : 'channel',
           source: source,
           channel: channelName,
+          channelId: ids.channelId,
+          sourceId: ids.sourceId,
           type: typeKeys[Math.floor(rng() * typeKeys.length)],
           level: levelPool[Math.floor(rng() * levelPool.length)],
           text: text,
@@ -320,7 +341,8 @@ import { writeJSON } from './json-write.js';
             ? '未在映射配置中匹配到对应 CSV 字段\n详情：Excel 映射配置中未找到与该 XPath 对应的条目，可能因 context 定义变化导致。\n请检查映射表并确认该 XPath 是否仍需要参与比较。'
             : '未在映射配置中匹配到对应来源字段\n详情：Excel 映射配置中未找到与该 AO CSV 字段对应的条目，可能因 context 定义变化导致。\n请检查映射表并确认该 CSV 字段是否仍需要参与比较。')
           : (type === 1 ? '未在映射配置中匹配到对应 CSV 字段' : '未在映射配置中匹配到对应来源字段');
-        list.push({ type: type, channel: channelName, source: source, value: d[1], note: note });
+        const ids = refIds(channelName, source);
+        list.push({ type: type, channel: channelName, source: source, channelId: ids.channelId, sourceId: ids.sourceId, value: d[1], note: note });
       }
       return list;
     }
@@ -334,6 +356,8 @@ import { writeJSON } from './json-write.js';
           type: rng() < 0.5 ? 1 : 2,
           channel: null,
           source: null,
+          channelId: null,
+          sourceId: null,
           value: ['/Common/Header/TradeId', '/Common/Header/DealId', '/Common/Header/ReportDate'][Math.floor(rng() * 3)],
           note: '未在任一报告渠道的映射配置中匹配到对应字段',
         });
@@ -343,10 +367,12 @@ import { writeJSON } from './json-write.js';
 
     function buildChannelLogs(ch, tradeId) {
       const t = '2024-08-14 10:23:0';
+      // 日志行只写**渠道 / 来源渠道 id**（不写名称）：名称由查看器加载时按 id 从顶层声明表补回，
+      // text 里的 `[渠道名]` 只是给人看的展示内容，不承载任何数据（见 docs/DATA_SCHEMA.md §3）。
       return [
-        { scope: 'channel', channel: ch.name, source: null, field: null, text: t + '0.200 INFO  [' + ch.name + '] 读取报送文件 ' + ch.files.ao.map(fileEntryName).join(', ') },
-        { scope: 'channel', channel: ch.name, source: null, field: null, text: t + '0.300 INFO  [' + ch.name + '] 应用映射配置 ' + ch.files.excel.file + ' [sheet: ' + ch.files.excel.sheet + ']' },
-        { scope: 'channel', channel: ch.name, source: null, field: null, text: t + '0.400 INFO  [' + ch.name + '] 完成字段比较，渠道结果已生成' },
+        { scope: 'channel', channelId: ch.id, sourceId: null, field: null, text: t + '0.200 INFO  [' + ch.name + '] 读取报送文件 ' + ch.files.ao.map(fileEntryName).join(', ') },
+        { scope: 'channel', channelId: ch.id, sourceId: null, field: null, text: t + '0.300 INFO  [' + ch.name + '] 应用映射配置 ' + ch.files.excel.file + ' [sheet: ' + ch.files.excel.sheet + ']' },
+        { scope: 'channel', channelId: ch.id, sourceId: null, field: null, text: t + '0.400 INFO  [' + ch.name + '] 完成字段比较，渠道结果已生成' },
       ];
     }
 
@@ -361,17 +387,18 @@ import { writeJSON } from './json-write.js';
 
     // 字段级日志行（item.logs 中 scope="field" 的行）：
     //   - **只在 item.logs 里存一份**（fields[] 不新增任何字段，字段自身只有 prints 保留待用）；
-    //   - 每行都带 channel + source + field（field 为该字段的 id），供「完整日志」选项卡定位与详情页展示；
+    //   - 每行带 field（字段 id）与 channelId / sourceId：**不写渠道 / 来源渠道名称**，
+    //     名称由查看器加载时按 id 从顶层声明表补回（展示 / 筛选 / 深链接仍按名称）；
     //   - 文本沿用原 prints 的语义，补上时间戳与 `[报告渠道/来源渠道]` 前缀，使其与其它日志行一致可读；
-    //   - scope="field" 的行必须同时有 channel / source / field（见 docs/DATA_SCHEMA.md §3）。
-    function buildFieldLogs(f, fieldId, target, ctx, chName, srcName, eo, ao, result, note, targetName, sn, idx) {
+    //     前缀**只是展示文本**，代码逻辑不得解析它（真实数据可能完全不带渠道信息）。
+    function buildFieldLogs(f, fieldId, chId, srcId, target, ctx, chName, srcName, eo, ao, result, note, targetName, sn, idx) {
       const stamp = '2024-08-14 10:24:' + String(sn * 10 + (idx % 10)).padStart(2, '0') + '.';
       const prefix = '[' + chName + '/' + srcName + '] ';
       return buildPrints(f, target, ctx, chName, srcName, eo, ao, result, note, targetName).map(function (text, i) {
         return {
           scope: 'field',
-          channel: chName,
-          source: srcName,
+          channelId: chId,
+          sourceId: srcId,
           field: fieldId,
           text: stamp + String(100 + i * 40) + ' INFO  ' + prefix + text.replace(/^\[INFO\]\s*/, ''),
         };
@@ -406,7 +433,9 @@ import { writeJSON } from './json-write.js';
       return { registry: registry, nameToId: nameToId };
     }
 
-    function buildChannelData(ch, tradeId, reportDate, rng, failRate, fieldsDef, sourceCount, idByKey) {
+    // enabled：该渠道是否参与本次比较（唯一口径 channels[].enabled）。
+    // 仅在被禁用时输出 `enabled: false`（缺省 = 启用），避免无意义的 `enabled: true` 噪声。
+    function buildChannelData(ch, tradeId, reportDate, rng, failRate, fieldsDef, sourceCount, idByKey, enabled) {
       const fr = buildChannelFieldRegistry(fieldsDef);
       const base = ch.name.toLowerCase();
       const mapPool = [
@@ -488,7 +517,7 @@ import { writeJSON } from './json-write.js';
           const fieldId = fr.nameToId[f];
           // 字段级日志行（scope=field）：只进 item.logs，不写进字段对象。
           sourceFieldLogs.push.apply(sourceFieldLogs,
-            buildFieldLogs(f, fieldId, el, ctx, ch.name, srcName, eo, ao, result, note, isCsv ? 'CSV字段' : 'XPath', sn, idx));
+            buildFieldLogs(f, fieldId, ch.id, SOURCE_ID_PRESET[srcName], el, ctx, ch.name, srcName, eo, ao, result, note, isCsv ? 'CSV字段' : 'XPath', sn, idx));
           return {
             id: fieldId,
             cmpLeft: { value: eo, ctx: ctxExpr(mapCtxs), ctxs: mapCtxIds, elRaw: eoMapping, el: eoCol, srcType: 2 },
@@ -506,7 +535,7 @@ import { writeJSON } from './json-write.js';
         });
         const srcName = '来源渠道 ' + (sn === 1 ? 'A' : 'B');
         failedBySource.push({ name: srcName, failedFields: failedFields });
-        return { name: srcName, fields: fields };
+        return { id: SOURCE_ID_PRESET[srcName], name: srcName, fields: fields };
       });
 
       // 该渠道的字段级日志行（scope=field）：按来源渠道 / 字段出现顺序汇总，只用于 item.logs（按渠道分组）。
@@ -526,18 +555,25 @@ import { writeJSON } from './json-write.js';
         excel: { file: 'mapping.xlsx', sheet: ch.name, path: 'data/excel/mapping.xlsx' },
       };
 
+      const channel = { id: ch.id, name: ch.name };
+      if (enabled === false) channel.enabled = false;
+      channel.desc = ch.desc;
+      channel.format = ch.format;
+      channel.files = files;
+      channel.fields = fr.registry;
+      channel.sources = sources;
       return {
-        channel: { name: ch.name, desc: ch.desc, format: ch.format, files: files, fields: fr.registry, sources: sources },
+        channel: channel,
         warnings: buildMessages(rng, ch.name, fieldsDef, failedBySource),
         errors: buildErrorMessages(rng, ch.name, failedBySource),
         uncompared: buildUncompared(ch.name, sources.map(function (s) { return s.name; }), rng, fieldsDef, isCsv ? 2 : 1),
-        logs: buildChannelLogs({ name: ch.name, files: files }, tradeId),
+        logs: buildChannelLogs({ id: ch.id, name: ch.name, files: files }, tradeId),
         fieldLogs: sourceFieldLogs,
       };
     }
 
     // 顶层 skippedItems：记录未能参与比较的 item（与 reportEnv 同级）。
-    //   channel / source 均可为 null：null 表示「未关联到具体渠道 / 来源」。
+    //   channel / source / channelId / sourceId 均可为 null：null 表示「未关联到具体渠道 / 来源」。
     function buildSkippedItems(rng) {
       const list = [];
       const n = 2 + Math.floor(rng() * 3);
@@ -552,26 +588,28 @@ import { writeJSON } from './json-write.js';
         else if (source === null) reason = '在 ' + channel + ' 渠道中未找到该 item 的对应记录，已跳过该渠道的比较。';
         else reason = '在 ' + channel + ' 渠道的 ' + source + ' 中未找到该 item 的对应记录，已跳过该来源渠道的比较。';
         if (rng() < 0.35) reason += '\n详情：该 item 在来源 CSV 与报送 XML 中均未出现对应记录，可能因数据采集或报送延迟导致。\n建议核对上游系统是否已产生该 item 的数据。';
-        list.push({ itemId: itemId, channel: channel, source: source, reason: reason });
+        const ids = refIds(channel, source);
+        list.push({ itemId: itemId, channel: channel, source: source, channelId: ids.channelId, sourceId: ids.sourceId, reason: reason });
       }
       return list;
     }
 
-    // item 级 logs：对象式 { scope, channel, source, field, text }。
-    //   - overview（开始/加载/初始化/完成）→ scope=item（channel / source / field 均为 null）
-    //   - 逐渠道执行步骤、各渠道日志 → scope=channel（field 为 null）
-    //   - 各字段关联的日志行 → scope=field（channel / source / field 均非空）
+    // item 级 logs：对象式 { scope, channelId, sourceId, field, text }。
+    //   - overview（开始/加载/初始化/完成）→ scope=item（channelId / sourceId / field 均为 null）
+    //   - 逐渠道执行步骤、各渠道日志 → scope=channel（field 为 null，channelId 非空、sourceId 为 null）
+    //   - 各字段关联的日志行 → scope=field（field 与两个 id 均非空）
+    // 日志行**不写渠道 / 来源渠道名称**（名称由查看器按 id 补回）；text 仅为展示文本。
     function buildOverviewLogs(tradeId, reportDate, channels, channelLogGroups) {
       const lines = [];
-      lines.push({ scope: 'item', channel: null, source: null, field: null, text: '2024-08-14 10:23:00.100 INFO  开始比较 item=' + tradeId + '，报告日期=' + reportDate });
-      lines.push({ scope: 'item', channel: null, source: null, field: null, text: '2024-08-14 10:23:00.120 INFO  加载映射配置 mapping.xlsx（' + channels.length + ' 个报告渠道）' });
-      lines.push({ scope: 'item', channel: null, source: null, field: null, text: '2024-08-14 10:23:00.140 INFO  初始化逐渠道执行器（HKTR / JSFA / CFTC）' });
+      lines.push({ scope: 'item', channelId: null, sourceId: null, field: null, text: '2024-08-14 10:23:00.100 INFO  开始比较 item=' + tradeId + '，报告日期=' + reportDate });
+      lines.push({ scope: 'item', channelId: null, sourceId: null, field: null, text: '2024-08-14 10:23:00.120 INFO  加载映射配置 mapping.xlsx（' + channels.length + ' 个报告渠道）' });
+      lines.push({ scope: 'item', channelId: null, sourceId: null, field: null, text: '2024-08-14 10:23:00.140 INFO  初始化逐渠道执行器（' + channels.map(function (c) { return c.name; }).join(' / ') + '）' });
       for (let i = 0; i < 60; i++) {
         const ms = String(100 + i * 7).padStart(3, '0').slice(-3);
         const ch = channels[i % channels.length];
-        lines.push({ scope: 'channel', channel: ch.name, source: null, field: null, text: '2024-08-14 10:23:' + String(i).padStart(2, '0') + '.' + ms + ' INFO  [' + ch.name + '] 执行字段比较步骤 ' + (i + 1) + '：读取 ' + fileEntryName(ch.files.eo[0]) + ' 与 ' + fileEntryName(ch.files.ao[0]) + '，逐字段校验映射关系。' });
+        lines.push({ scope: 'channel', channelId: ch.id, sourceId: null, field: null, text: '2024-08-14 10:23:' + String(i).padStart(2, '0') + '.' + ms + ' INFO  [' + ch.name + '] 执行字段比较步骤 ' + (i + 1) + '：读取 ' + fileEntryName(ch.files.eo[0]) + ' 与 ' + fileEntryName(ch.files.ao[0]) + '，逐字段校验映射关系。' });
       }
-      lines.push({ scope: 'item', channel: null, source: null, field: null, text: '2024-08-14 10:24:00.000 INFO  比较完成，结果已生成' });
+      lines.push({ scope: 'item', channelId: null, sourceId: null, field: null, text: '2024-08-14 10:24:00.000 INFO  比较完成，结果已生成' });
       // 按渠道追加：先该渠道自身的日志（scope=channel），再该渠道各字段关联的日志行（scope=field）。
       (channelLogGroups || []).forEach(function (g) {
         (g.logs || []).forEach(function (l) { lines.push(l); });
@@ -632,6 +670,8 @@ import { writeJSON } from './json-write.js';
 
         // 默认：最后一个 item 仅含 1 个来源渠道（演示单一来源渠道场景）；singleSource 模式下全部 item 均为单来源。
         const sourceCount = singleSource ? 1 : (i === itemCount - 1 ? 1 : 2);
+        // 启用渠道：三分之一样本启用全部渠道，其余只启用其中两个（用于验证「启用口径」在各处一致）。
+        const enabledNames = (i % 3 === 0) ? ['HKTR', 'JSFA', 'CFTC'] : (i % 3 === 1 ? ['HKTR', 'JSFA'] : ['HKTR', 'CFTC']);
 
         const channels = [];
         const warnings = [];
@@ -642,7 +682,9 @@ import { writeJSON } from './json-write.js';
         const idByKey = ctxDefsRes.idByKey;
         CHANNELS.forEach(function (ch) {
           const fieldsDef = fieldDefsForItem(i, ch);
-          const built = buildChannelData(ch, tradeId, reportDate, rng, failRate, fieldsDef, sourceCount, idByKey);
+          // 启用口径：只写 channels[].enabled（历史上的 item.enabledChannels 名单已彻底移除）。
+          const enabled = enabledNames.indexOf(ch.name) !== -1;
+          const built = buildChannelData(ch, tradeId, reportDate, rng, failRate, fieldsDef, sourceCount, idByKey, enabled);
           channels.push(built.channel);
           warnings.push.apply(warnings, built.warnings);
           errors.push.apply(errors, built.errors);
@@ -663,14 +705,18 @@ import { writeJSON } from './json-write.js';
           platformDealId: 'PD-' + tradeId.slice(2),
           ctxDefs: ctxDefsRes.defs,
           channels: channels,
-          enabledChannels: (i % 3 === 0) ? ['HKTR', 'JSFA', 'CFTC'] : (i % 3 === 1 ? ['HKTR', 'JSFA'] : ['HKTR', 'CFTC']),
           warnings: warnings,
           errors: errors,
           uncompared: uncompared,
           logs: buildOverviewLogs(tradeId, reportDate, channels, channelLogGroups),
         });
       }
-      return { mode: 'single', items: items, reportEnv: 'OTCXXX', creationType: 'sample', skippedItems: buildSkippedItems(rng) };
+      // 归一化输出形态：渠道 / 来源渠道的定义提到顶层登记表（channels / sources），
+      // item 里只留 id 引用（见 docs/DATA_SCHEMA.md §1）；查看器加载时用 hydrateDataset() 补回名称。
+      return hoistRegistries({
+        mode: 'single', reportEnv: 'OTCXXX', creationType: 'sample',
+        skippedItems: buildSkippedItems(rng), items: items,
+      });
     }
 
 
@@ -680,25 +726,10 @@ import { writeJSON } from './json-write.js';
     }
 
     // 计算单个 item 的统计摘要（多文件模式清单元数据使用）。
+    // 口径与查看器完全共享（public/core.js itemStatsPure）：只统计启用渠道
+    //（channels[].enabled），消息按作用域过滤——否则侧栏卡片会与字段表条数不一致。
     function itemStats(item) {
-      let total = 0, passed = 0, failed = 0;
-      (item.channels || []).forEach(function (ch) {
-        (ch.sources || []).forEach(function (s) {
-          (s.fields || []).forEach(function (f) {
-            total++;
-            f.result === 'PASSED' ? passed++ : failed++;
-          });
-        });
-      });
-      const warnings = (item.warnings || []).length;
-      const errors = (item.errors || []).length;
-      const uncompared = (item.uncompared || []).length;
-      const logs = (item.logs || []).length;
-      return {
-        total: total, passed: passed, failed: failed,
-        rate: total ? Math.round(passed / total * 100) : 0,
-        warnings: warnings, warningsIgnored: 0, errors: errors, uncompared: uncompared, logs: logs,
-      };
+      return itemStatsPure(item, null);
     }
 
     // 将单文件数据集拆分为多文件模式：
@@ -722,12 +753,32 @@ import { writeJSON } from './json-write.js';
           counterpartyItemId: it.counterpartyItemId,
           platformTradeId: it.platformTradeId,
           platformDealId: it.platformDealId,
-          enabledChannels: it.enabledChannels,
           file: file,
           summary: itemStats(it),
         };
       });
-      const manifest = { mode: 'multi', reportEnv: dataset.reportEnv, creationType: dataset.creationType || 'sample', skippedItems: dataset.skippedItems, items: manifestItems };
+      // 清单与单文件模式保留同一套顶层字段：登记表（channels / sources）必须一并写入，
+      // 否则 item 文件里的 id 引用无从解析（见 docs/DATA_SCHEMA.md §2）。
+      // 健壮性：调用方可能只传 items（例如按切片写批次）。此时若 item 里还残留定义（老形态），
+      // 先补出声明表，避免写出的清单缺声明（id-only 的 item 无法反推定义，只能由调用方传入）。
+      const hasItemDefs = (dataset.items || []).some(function (it) {
+        return (it.channels || []).some(function (ch) { return ch.name != null || ch.desc != null || ch.format != null; });
+      });
+      let declaredChannels = dataset.channels;
+      let declaredSources = dataset.sources;
+      if ((declaredChannels == null || declaredSources == null) && hasItemDefs) {
+        const probe = hoistRegistries({
+          skippedItems: dataset.skippedItems,
+          items: (dataset.items || []).map(function (it) { return { tradeId: it.tradeId, channels: it.channels }; }),
+        });
+        if (declaredChannels == null) declaredChannels = probe.channels;
+        if (declaredSources == null) declaredSources = probe.sources;
+      }
+      const manifest = {
+        mode: 'multi', reportEnv: dataset.reportEnv, creationType: dataset.creationType || 'sample',
+        skippedItems: dataset.skippedItems, channels: declaredChannels, sources: declaredSources,
+        items: manifestItems,
+      };
       writeJSON(path.join(outDir, name), manifest, opts);
       return manifest;
     }

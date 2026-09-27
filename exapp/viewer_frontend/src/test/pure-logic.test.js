@@ -8,7 +8,10 @@ import { buildDataset } from '../lib/sample-data.js';
 const T = app.__test;
 const DATA = buildDataset();
 T.setData(DATA);
-const item = DATA.items[0];
+// 生成器 / 落盘数据是「顶层登记表（channels/sources）+ item 只留 id 引用」的形态；
+// setData 会像生产加载链路一样把定义 hydrate 回 item，因此测试里的 item 必须取自 app 内部数据
+// （直接用 buildDataset() 的返回值会拿不到渠道 / 来源渠道名称）。
+const item = T.getData().items[0];
 
 function fieldsState(over) {
   return Object.assign({
@@ -287,13 +290,14 @@ test('fieldMsgCount 只统计未忽略的警告', () => {
     tradeId: 'W-1',
     platform: 'OTC-PLATFORM-A', product: 'IRS',
     channels: [{
+      id: 1,
       name: 'HKTR',
       fields: [{ id: '1', name: 'notional', userTag: 'productAssertion', type: 'num' }],
-      sources: [{ name: '来源渠道 A', fields: [] }],
+      sources: [{ id: 1, name: '来源渠道 A', fields: [] }],
     }],
     warnings: [
-      { channel: 'HKTR', source: '来源渠道 A', scope: 'field', field: 'notional', type: 'productAssertion', level: 'WARN', text: 'w1' },
-      { channel: 'HKTR', source: '来源渠道 A', scope: 'field', field: 'notional', type: 'platformAssertion', level: 'WARN', text: 'w2' },
+      { channel: 'HKTR', channelId: 1, source: '来源渠道 A', sourceId: 1, scope: 'field', field: 'notional', type: 'productAssertion', level: 'WARN', text: 'w1' },
+      { channel: 'HKTR', channelId: 1, source: '来源渠道 A', sourceId: 1, scope: 'field', field: 'notional', type: 'platformAssertion', level: 'WARN', text: 'w2' },
     ],
     errors: [],
   };

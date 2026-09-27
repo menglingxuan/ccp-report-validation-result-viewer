@@ -20,42 +20,311 @@ export function normalizeItemSummary(raw) {
   return out;
 }
 
-/* ---------- 「完整日志」字段定位（日志锚点） ----------
- * 数据契约见 docs/DATA_SCHEMA.md §3 / §5：scope="field" 的日志行带 field（字段 id）且 channel / source 非空。
- *   - 合成键 = channel + source + field：即数据文件里日志行的关联标识，只放进 data-log-key（原始值，便于调试与扫描兜底）；
- *   - DOM id 用**短标识** log-<渠道>-s<来源渠道序号>-f<字段id>.<同键序号>，例 log-HKTR-s1-f2.1（实测最长 17 字符）。
- *     名称在 [A-Za-z0-9_-] 内直接使用，含中文 / 空白等字符时**整串退化为 36 进制短哈希**并加 x 前缀
- *     （不做部分清洗：`渠道 A` 与 `面 A` 清洗后都只剩 `A`，会互相碰撞）；
- *     来源渠道用它在 channel.sources[] 里的 1-based 序号（短且稳定），未登记时退化为 sx<hash>；
- *     同键序号 = 该行在同键（channel+source+field）行中的次序（按 item.logs 顺序编号，与搜索 / 作用域筛选无关 → id 稳定）。
- *     不要把合成键整串 encodeURIComponent 塞进 id（旧实现 47 字符且不可读）。
+/* ---------- 渠道 / 来源渠道的稳定标识（id）与「启用渠道」口径 ----------
+ * 契约见 docs/DATA_SCHEMA.md §3/§4：
+ *   - 定义侧：渠道 / 来源渠道的 `id` 为正整数；**定义只在顶层登记表里写一次**
+ *     （`$root.channels[] = {id,name,desc,format}`、`$root.sources[] = {id,name}`），
+ *     item 里只保留 `id` 引用；预设 HKTR=1 / JSFA=2 / CFTC=3，来源渠道 A=1 / 来源渠道 B=2；
+ *   - 启用侧：是否参与本次比较由 `item.channels[].enabled` 决定（缺省视为 true）——**唯一口径**，
+ *     flatFields / 计数 / 图表 / 对比 / 全局搜索 / 统计 全部走它（历史上的 item.enabledChannels 名单已彻底移除）；
+ *   - 引用侧：warnings / errors / uncompared / logs / skippedItems 的 `channel` / `source`（名称）与
+ *     `channelId` / `sourceId`（id）**双写**；id 缺省时按名称回退。
+ * 查看器在加载时用 `hydrateDataset()` 把登记表补回 item（老形态数据原样通过，无需转换），
+ * 因此渲染 / 搜索 / 忽略配置 / 深链接仍全部按**名称**工作。
+ * id 只用于**稳定标识**：日志锚点、内部 locator（data-* 属性）、跨 item 关联。
  * ------------------------------------------------------------------ */
-export function logFieldKey(channel, source, fieldId) {
-  return String(channel || '') + '|' + String(source || '') + '|' + String(fieldId || '');
+export const CHANNEL_ID_PRESET = { HKTR: 1, JSFA: 2, CFTC: 3 };
+export const SOURCE_ID_PRESET = { '来源渠道 A': 1, '来源渠道 B': 2 };
+
+export function channelIdOf(ch, index) {
+  if (ch && typeof ch.id === 'number' && Number.isInteger(ch.id) && ch.id > 0) return ch.id;
+  const preset = ch && CHANNEL_ID_PRESET[ch.name];
+  return preset || (Number(index) + 1);
 }
-// FNV-1a 32bit：确定性（同输入同输出），输出为 36 进制短串。
-export function logHash(s) {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
+export function sourceIdOf(src, index) {
+  if (src && typeof src.id === 'number' && Number.isInteger(src.id) && src.id > 0) return src.id;
+  const preset = src && SOURCE_ID_PRESET[src.name];
+  return preset || (Number(index) + 1);
+}
+// 渠道是否启用（缺省启用）。兼容 `enabledChannels` 时代的数据：那时渠道上没有 enabled，一律视为启用。
+export function isChannelEnabled(ch) { return !ch || ch.enabled !== false; }
+// 参与比较的渠道（含 id 归一）：所有计数 / 统计 / 渲染必须经此得到渠道集合。
+export function enabledChannelsOf(item) {
+  const out = [];
+  ((item && item.channels) || []).forEach(function (ch, i) {
+    if (isChannelEnabled(ch)) out.push({ ch: ch, index: i, id: channelIdOf(ch, i) });
+  });
+  return out;
+}
+export function enabledChannelIds(item) {
+  return enabledChannelsOf(item).map(function (e) { return e.id; });
+}
+// 名称 -> id / id -> 名称（边界转换用；未登记时回退预设表，再不行返回 null / ''）。
+export function channelIdByName(item, name) {
+  const chs = (item && item.channels) || [];
+  for (let i = 0; i < chs.length; i++) if (chs[i].name === name) return channelIdOf(chs[i], i);
+  return CHANNEL_ID_PRESET[name] || null;
+}
+export function channelNameById(item, id) {
+  const chs = (item && item.channels) || [];
+  for (let i = 0; i < chs.length; i++) if (channelIdOf(chs[i], i) === id) return chs[i].name;
+  const keys = Object.keys(CHANNEL_ID_PRESET);
+  for (let i = 0; i < keys.length; i++) if (CHANNEL_ID_PRESET[keys[i]] === id) return keys[i];
+  return '';
+}
+// 数据集级 id -> 名称映射（健康总览等跨 item 聚合的展示用）。
+export function channelNameMap(items) {
+  const map = {};
+  Object.keys(CHANNEL_ID_PRESET).forEach(function (n) { map[CHANNEL_ID_PRESET[n]] = n; });
+  (items || []).forEach(function (it) {
+    ((it && it.channels) || []).forEach(function (ch, i) { map[channelIdOf(ch, i)] = ch.name; });
+  });
+  return map;
+}
+// 引用解析（消息 / 日志行 / 跳过条目）：优先 id，缺失时按名称回退。
+export function refChannelId(item, m) {
+  if (!m) return null;
+  if (typeof m.channelId === 'number') return m.channelId;
+  return m.channel ? channelIdByName(item, m.channel) : null;
+}
+export function refSourceId(item, m) {
+  if (!m) return null;
+  if (typeof m.sourceId === 'number') return m.sourceId;
+  const chId = refChannelId(item, m);
+  if (chId == null || !m.source) return null;
+  const chs = (item && item.channels) || [];
+  for (let i = 0; i < chs.length; i++) {
+    if (channelIdOf(chs[i], i) !== chId) continue;
+    const srcs = chs[i].sources || [];
+    for (let j = 0; j < srcs.length; j++) if (srcs[j].name === m.source) return sourceIdOf(srcs[j], j);
   }
-  return (h >>> 0).toString(36);
+  return null;
 }
-export function logSlug(name) {
-  const s = String(name == null ? '' : name);
-  return /^[A-Za-z0-9_-]+$/.test(s) ? s : 'x' + logHash(s);
+
+/* ---------- 顶层登记表（$root.channels / $root.sources）---------------
+ * 归一化形态：渠道与来源渠道的**定义**只在顶层写一次，item 里只留 id 引用。
+ *
+ *   $root.channels = [ { id, name, desc, format } ]           // 报告渠道定义
+ *   $root.sources  = [ { id, name } ]                         // 来源渠道定义（数据集级，id 全局唯一）
+ *   item.channels  = [ { id, enabled?, files, fields, sources: [ { id, fields } ] } ]
+ *
+ * 三个纯函数构成一组可逆变换（都返回新对象，不改动入参）：
+ *   - `registriesOf()`：读出两张 id -> 定义 的映射（没登记表时返回空表）；
+ *   - `hydrateDataset()` / `hydrateItem()`：把定义补回 item（查看器加载时用；老形态原样通过；
+ *     消息 / 日志行里缺失的渠道 / 来源名称也在这里**按 id** 补回，绝不解析日志文本）；
+ *   - `hoistRegistries()`：反向，把 item 里的定义提到顶层并只留 id（生成器 / 迁移工具用）。
+ * 定义冲突（同一 id 指向不同名称，或同一名称使用不同 id）在 `hoistRegistries()` 里直接抛错：
+ * 静默取第一个会把「数据自相矛盾」变成看不见的数据丢失。
+ * ------------------------------------------------------------------ */
+
+/** 顶层渠道定义表：id -> { id, name, desc, format }。无登记表时返回空对象。 */
+export function channelRegistryMap(root) {
+  const map = {};
+  const list = root && Array.isArray(root.channels) ? root.channels : [];
+  list.forEach(function (c) {
+    if (c && typeof c.id === 'number') map[c.id] = { id: c.id, name: c.name || '', desc: c.desc == null ? '' : c.desc, format: c.format || '' };
+  });
+  return map;
 }
-// item 用于按渠道名解析 channel.sources[]（决定来源渠道序号）；跳转取 seq=1（首个关联日志行）。
-export function logAnchorId(item, channel, source, fieldId, seq) {
-  const ch = ((item && item.channels) || []).find(function (c) { return c.name === channel; }) || null;
-  const idx = ((ch && ch.sources) || []).map(function (s) { return s.name; }).indexOf(source) + 1;
-  const srcPart = idx > 0 ? 's' + idx : 'sx' + logHash(String(source == null ? '' : source));
-  return 'log-' + logSlug(channel) + '-' + srcPart + '-f' + logSlug(fieldId) + '.' + (seq || 1);
+
+/** 顶层来源渠道定义表：id -> { id, name }。无登记表时返回空对象。 */
+export function sourceRegistryMap(root) {
+  const map = {};
+  const list = root && Array.isArray(root.sources) ? root.sources : [];
+  list.forEach(function (s) {
+    if (s && typeof s.id === 'number') map[s.id] = { id: s.id, name: s.name || '' };
+  });
+  return map;
 }
-// 带锚点的日志行：scope="field" 且 channel / source / field 三值齐备（数据契约）。
+
+/** 两张登记表一起读（hydrate 用）。 */
+export function registriesOf(root) {
+  return { channels: channelRegistryMap(root), sources: sourceRegistryMap(root) };
+}
+
+// 带渠道 / 来源渠道引用的消息段：item 级的 warnings / errors / uncompared / logs，
+// 以及数据集级的 skippedItems（同构）。
+// 这些段里的 `channel` / `source` 是**展示用名称**，`channelId` / `sourceId` 是稳定标识：
+// 新生成的数据里 logs 只写 id，名称由查看器加载时按 id 解析回来。
+const REF_SECTIONS = ['warnings', 'errors', 'uncompared', 'logs'];
+
+// 按 id 把名称补回消息 / 日志行：**只补缺失的名称**，不覆盖已有的，也**绝不解析 text**
+// （日志文本是给人看的展示内容，真实数据里可能完全不含渠道相关信息）。
+// 名称 -> id 的反向解析是 hoistRegistries / refChannelId 的职责，不在这里做。
+function fillRefNames(entry, chReg, srcReg) {
+  if (!entry || typeof entry !== 'object') return entry;
+  const chDef = entry.channelId != null ? chReg[entry.channelId] : null;
+  const srcDef = entry.sourceId != null ? srcReg[entry.sourceId] : null;
+  const needCh = !!chDef && (entry.channel == null || entry.channel === '');
+  const needSrc = !!srcDef && (entry.source == null || entry.source === '');
+  if (!needCh && !needSrc) return entry;
+  const out = Object.assign({}, entry);
+  if (needCh) out.channel = chDef.name;
+  if (needSrc) out.source = srcDef.name;
+  return out;
+}
+
+/** 把顶层登记表的定义补回单个 item（缺定义时保持原样；老形态数据不受影响）。 */
+export function hydrateItem(item, registries) {
+  const chReg = (registries && registries.channels) || {};
+  const srcReg = (registries && registries.sources) || {};
+  const out = Object.assign({}, item);
+  out.channels = ((item && item.channels) || []).map(function (ch) {
+    const def = chReg[ch.id] || {};
+    const merged = Object.assign({}, ch, {
+      name: ch.name != null && ch.name !== '' ? ch.name : (def.name || ''),
+    });
+    if (merged.desc == null) merged.desc = def.desc || '';
+    if (merged.format == null) merged.format = def.format || '';
+    merged.sources = ((ch.sources) || []).map(function (s) {
+      const sdef = srcReg[s.id] || {};
+      return Object.assign({}, s, { name: s.name != null && s.name !== '' ? s.name : (sdef.name || '') });
+    });
+    return merged;
+  });
+  // 消息 / 日志行的渠道与来源渠道名称：同样按 id 从声明表解析（只在名称缺失时补）。
+  REF_SECTIONS.forEach(function (k) {
+    if (!Array.isArray(item[k])) return;
+    out[k] = item[k].map(function (e) { return fillRefNames(e, chReg, srcReg); });
+  });
+  return out;
+}
+
+/** 把顶层登记表的定义补回整个数据集（查看器加载时的唯一入口；幂等）。 */
+export function hydrateDataset(json) {
+  if (!json || typeof json !== 'object' || !Array.isArray(json.items)) return json;
+  const reg = registriesOf(json);
+  if (!Object.keys(reg.channels).length && !Object.keys(reg.sources).length) return json; // 老形态
+  const out = Object.assign({}, json, { items: json.items.map(function (it) { return hydrateItem(it, reg); }) });
+  // skippedItems 是数据集级条目（引用别的 item 的渠道 / 来源渠道）：名称同样按 id 补回。
+  if (Array.isArray(json.skippedItems)) {
+    out.skippedItems = json.skippedItems.map(function (s) { return fillRefNames(s, reg.channels, reg.sources); });
+  }
+  return out;
+}
+
+/** 收集 item 里的渠道 / 来源渠道定义（hoist 的第一步；同时报出冲突）。 */
+export function collectDefinitions(items) {
+  const channels = [];
+  const sources = [];
+  const chById = {};
+  const chByName = {};
+  const srcById = {};
+  const conflicts = [];
+  (items || []).forEach(function (it, ii) {
+    const label = (it && it.tradeId) || ('items[' + ii + ']');
+    ((it && it.channels) || []).forEach(function (ch) {
+      if (!ch || typeof ch.id !== 'number') return;
+      const name = ch.name || '';
+      if (chById[ch.id] != null && chById[ch.id].name !== name) {
+        conflicts.push(label + ' 渠道 id=' + ch.id + ' 在不同 item 里指向不同名称：「' + chById[ch.id].name + '」/「' + name + '」');
+      } else if (chByName[name] != null && chByName[name].id !== ch.id) {
+        conflicts.push(label + ' 渠道「' + name + '」在不同 item 里使用不同 id：' + chByName[name].id + ' / ' + ch.id);
+      } else if (chById[ch.id] == null) {
+        const def = { id: ch.id, name: name };
+        if (ch.desc != null) def.desc = ch.desc;
+        if (ch.format != null) def.format = ch.format;
+        chById[ch.id] = def;
+        chByName[name] = def;
+        channels.push(def);
+      }
+      ((ch.sources) || []).forEach(function (s) {
+        if (!s || typeof s.id !== 'number') return;
+        const sname = s.name || '';
+        if (srcById[s.id] != null && srcById[s.id].name !== sname) {
+          conflicts.push(label + ' 来源渠道 id=' + s.id + ' 指向不同名称：「' + srcById[s.id].name + '」/「' + sname + '」');
+        } else if (srcById[s.id] == null) {
+          srcById[s.id] = { id: s.id, name: sname };
+          sources.push(srcById[s.id]);
+        }
+      });
+    });
+  });
+  const byId = function (a, b) { return a.id - b.id; };
+  return { channels: channels.sort(byId), sources: sources.sort(byId), conflicts: conflicts };
+}
+
+/**
+ * 把 item 里的渠道 / 来源渠道定义提到顶层，item 只保留 id 引用。
+ * item.channels[] 变为 `{ id, enabled?, files, fields, sources: [{ id, fields }] }`；
+ * 定义冲突（见 collectDefinitions）时直接抛错 —— 生成器数据不可能冲突，只有手写 / 迁移数据才会。
+ *
+ * 同时把 `skippedItems` 里引用的渠道 / 来源渠道也**补进声明表**：被跳过的 item 不在 items 里，
+ * 而契约要求「引用 ⊆ 声明」，否则它的 channelId 在声明表里找不到对应项。
+ */
+export function hoistRegistries(dataset) {
+  if (!dataset || typeof dataset !== 'object' || !Array.isArray(dataset.items)) return dataset;
+  const defs = collectDefinitions(dataset.items);
+  const defineById = function (list, id, def) {
+    if (id == null) return;
+    if (list.some(function (x) { return x.id === id; })) return;
+    list.push(def);
+  };
+  const byId = function (a, b) { return a.id - b.id; };
+  (dataset.skippedItems || []).forEach(function (s) {
+    if (!s) return;
+    if (s.channelId != null && s.channel != null && s.channel !== '') {
+      defineById(defs.channels, s.channelId, { id: s.channelId, name: s.channel });
+    }
+    if (s.sourceId != null && s.source != null && s.source !== '') {
+      defineById(defs.sources, s.sourceId, { id: s.sourceId, name: s.source });
+    }
+  });
+  defs.channels.sort(byId);
+  defs.sources.sort(byId);
+  if (defs.conflicts.length) {
+    throw new Error('渠道 / 来源渠道定义不一致，无法集中到顶层登记表：\n  - ' + defs.conflicts.join('\n  - '));
+  }
+  const items = dataset.items.map(function (it) {
+    const out = Object.assign({}, it);
+    out.channels = ((it && it.channels) || []).map(function (ch) {
+      const c = { id: ch.id };
+      if (ch.enabled === false) c.enabled = false;
+      if (ch.files !== undefined) c.files = ch.files;
+      if (ch.fields !== undefined) c.fields = ch.fields;
+      c.sources = ((ch.sources) || []).map(function (s) {
+        const o = { id: s.id };
+        if (s.fields !== undefined) o.fields = s.fields;
+        return o;
+      });
+      return c;
+    });
+    return out;
+  });
+  const out = {};
+  Object.keys(dataset).forEach(function (k) {
+    if (k === 'channels' || k === 'sources' || k === 'items') return;
+    out[k] = dataset[k];
+  });
+  // 键顺序固定为「其余顶层字段 -> channels -> sources -> items」（登记表读在数据前，便于人读）。
+  out.channels = defs.channels;
+  out.sources = defs.sources;
+  out.items = items;
+  return out;
+}
+
+/* ---------- 「完整日志」字段定位（日志锚点） ----------
+ * 数据契约见 docs/DATA_SCHEMA.md §3：scope="field" 的日志行带 field（字段 id）且 channelId / sourceId 非空。
+ *   - 合成键 = **channelId | sourceId | fieldId**（数字，天然无歧义；不再需要名称 slug / 哈希与碰撞兜底）；
+ *   - DOM id = log-<channelId>-<sourceId>-f<字段id>.<同键序号>，例 log-1-1-f2.1；
+ *     同键序号 = 该行在同键行中的次序（按 item.logs 顺序编号，与搜索 / 作用域筛选无关 -> id 稳定）。
+ * 名称（channel / source）只用于展示，由 hydrateItem() 按 id 从声明表解析回来。
+ * ------------------------------------------------------------------ */
+export function logFieldKey(channelId, sourceId, fieldId) {
+  return String(channelId == null ? '' : channelId) + '|' + String(sourceId == null ? '' : sourceId) + '|' + String(fieldId || '');
+}
+export function logAnchorId(channelId, sourceId, fieldId, seq) {
+  return 'log-' + String(channelId == null ? 'x' : channelId) + '-' + String(sourceId == null ? 'x' : sourceId) +
+    '-f' + String(fieldId || '') + '.' + (seq || 1);
+}
+// 带锚点的日志行：scope="field" 且渠道 / 来源渠道 / field 三值齐备。
+// 判定只认 id 或名称两个**结构化字段**（id 优先），**绝不解析 text**：日志文本是展示内容，
+// 真实数据可能完全不含渠道信息，前缀格式也不保证。
 export function isFieldLogLine(l) {
-  return !!l && l.scope === 'field' && !!l.field && !!l.channel && !!l.source;
+  if (!l || l.scope !== 'field' || !l.field) return false;
+  const hasChannel = l.channelId != null || (typeof l.channel === 'string' && l.channel !== '');
+  const hasSource = l.sourceId != null || (typeof l.source === 'string' && l.source !== '');
+  return hasChannel && hasSource;
 }
 
 export function parseSearchQuery(q) {
@@ -138,11 +407,16 @@ export function flatFields(item, tagLabels) {
   const keyById = {};
   const ctxDefs = item.ctxDefs || {};
   Object.keys(ctxDefs).forEach(function (k) { keyById[ctxDefs[k].id] = k; });
-  (item.channels || []).forEach(ch => {
+  // 「启用渠道」唯一口径：只展开参与本次比较的渠道（channels[].enabled，缺省启用）。
+  // 未启用渠道的字段行不属于本次比较结果，任何地方都不应展示 / 统计（历史上统计卡与字段表就因此各算一套）。
+  enabledChannelsOf(item).forEach(function (entry) {
+    const ch = entry.ch;
+    const chId = entry.id;
     // 字段注册表为 report channel 级别：每个渠道的字段定义不同。
     const defs = {};
     (ch.fields || []).forEach(function (d) { defs[d.id] = d; });
-    (ch.sources || []).forEach(s => {
+    (ch.sources || []).forEach(function (s, si) {
+      const srcId = sourceIdOf(s, si);
       (s.fields || []).forEach(f => {
         const def = defs[f.id] || {};
         // 用户标签的搜索用合并串：原始值（如 platformAssertion）+ 显示标签（如「平台断言」），
@@ -167,7 +441,7 @@ export function flatFields(item, tagLabels) {
           });
         });
         rows.push({
-          channel: ch.name, source: s.name,
+          channel: ch.name, source: s.name, channelId: chId, sourceId: srcId,
           id: f.id, field: def.name, userTag: tagRaw, userTagHay: tagHay,
           // 表达式 / 预览列：aoEl/eoEl 为左右侧定位（XPath 或 CSV 列），其余为各规则的原始表达式与未转换值。
           aoEl: right.el || '', srcType: right.srcType || 1,
@@ -434,22 +708,33 @@ export function diffSegments(a, b) {
 }
 
 /* ---------- 健康总览（跨全部 item，支持按报告日期/渠道过滤） ---------- */
+// 口径：只统计**启用渠道**（channels[].enabled）的字段与消息；channel 参数为**渠道名**（界面/URL 口径）或 'ALL'。
 export function computeHealthPure(items, date, channel, ignoreConfig) {
   let total = 0, passed = 0, failed = 0, warnings = 0, errors = 0;
   const errAgg = {}, warnAgg = {};
   const list = (!date || date === 'ALL') ? items.slice() : items.filter(function (it) { return it.reportDate === date; });
   const perItem = list.map(function (it) {
     let pTotal = 0, pPassed = 0, pFailed = 0, pWarn = 0, pErr = 0;
-    (it.channels || []).forEach(function (ch) {
+    const enabledIds = enabledChannelIds(it);
+    // 消息 / 日志的作用域判定：item 级（无渠道 id）恒在作用域内；渠道级必须已启用且命中渠道筛选。
+    const chInScope = function (m) {
+      const id = refChannelId(it, m);
+      if (id == null) return true;
+      if (enabledIds.indexOf(id) === -1) return false;
+      if (channel && channel !== 'ALL' && channelNameById(it, id) !== channel) return false;
+      return true;
+    };
+    enabledChannelsOf(it).forEach(function (entry) {
+      const ch = entry.ch;
       if (channel && channel !== 'ALL' && ch.name !== channel) return;
       (ch.sources || []).forEach(function (s) { (s.fields || []).forEach(function (fd) { pTotal++; fd.result === 'PASSED' ? pPassed++ : pFailed++; }); });
     });
     (it.errors || []).forEach(function (e) {
-      if (channel && channel !== 'ALL' && e.channel !== channel) return;
+      if (!chInScope(e)) return;
       pErr++; const k = (e.type || '?') + '|' + e.channel; errAgg[k] = (errAgg[k] || 0) + 1;
     });
     (it.warnings || []).forEach(function (w) {
-      if (channel && channel !== 'ALL' && w.channel !== channel) return;
+      if (!chInScope(w)) return;
       // platform 跟随 item：计算忽略 key 时从 item 注入（source 条目自带，可能为空）。
       const wm = Object.assign({}, w, { platform: it.platform });
       if (!msgIsIgnoredPure('warnings', wm, ignoreConfig)) { pWarn++; const k = (w.type || '?') + '|' + w.channel; warnAgg[k] = (warnAgg[k] || 0) + 1; }
@@ -461,8 +746,44 @@ export function computeHealthPure(items, date, channel, ignoreConfig) {
   return { items: list, perItem: perItem, total: total, passed: passed, failed: failed, warnings: warnings, errors: errors, rate: rate, errAgg: errAgg, warnAgg: warnAgg };
 }
 
+/* ---------- item 级统计摘要（侧栏卡片 / 多文件清单 summary，唯一口径） ---------- */
+// 唯一口径：字段只统计**启用渠道**（channels[].enabled）；消息 / 日志按作用域过滤
+// （item 级恒在作用域内，渠道级必须已启用）。
+// 侧栏卡片（app.js itemStatsAll）与写进多文件清单的 summary（sample-data.js）
+// 都走这里，保证「卡片字段数」与「字段表条数」永远一致。
+export function itemStatsPure(item, ignoreConfig) {
+  const enabledIds = enabledChannelIds(item);
+  const inScope = function (m) {
+    const id = refChannelId(item, m);
+    return id == null || enabledIds.indexOf(id) !== -1;
+  };
+  let total = 0, passed = 0, failed = 0;
+  let warnings = 0, warningsIgnored = 0, errors = 0, uncompared = 0, logs = 0;
+  enabledChannelsOf(item).forEach(function (entry) {
+    ((entry.ch && entry.ch.sources) || []).forEach(function (s) {
+      (s.fields || []).forEach(function (fd) { total++; fd.result === 'PASSED' ? passed++ : failed++; });
+    });
+  });
+  ((item && item.errors) || []).forEach(function (e) { if (inScope(e)) errors++; });
+  ((item && item.warnings) || []).forEach(function (w) {
+    if (!inScope(w)) return;
+    // platform 跟随 item：计算忽略 key 时从 item 注入（source 条目自带，可能为空）。
+    const wm = Object.assign({}, w, { platform: item.platform });
+    if (msgIsIgnoredPure('warnings', wm, ignoreConfig)) warningsIgnored++;
+    else warnings++;
+  });
+  ((item && item.uncompared) || []).forEach(function (u) { if (inScope(u)) uncompared++; });
+  ((item && item.logs) || []).forEach(function (l) { if (inScope(l)) logs++; });
+  return {
+    total: total, passed: passed, failed: failed,
+    rate: total ? Math.round(passed / total * 100) : 0,
+    warnings: warnings, warningsIgnored: warningsIgnored, errors: errors, uncompared: uncompared, logs: logs,
+  };
+}
+
 /* ---------- 全局搜索（跨 item） ---------- */
 // opts.tagLabels：用户标签「原始值 → 当前语言显示标签」映射（可选）；传入后可用显示标签搜索。
+// 口径：flatFields 已经只展开**启用渠道**（channels[].enabled），因此这里无需再做渠道过滤。
 export function globalSearchPure(items, q, limit, opts) {
   const pq = parseSearchQuery(q);
   const matcher = makeMatcher(pq);
@@ -470,11 +791,9 @@ export function globalSearchPure(items, q, limit, opts) {
   const results = [];
   if (!matcher) return results;
   items.forEach(function (it) {
-    const enabled = Array.isArray(it.enabledChannels) ? it.enabledChannels : (it.channels || []).map(function (c) { return c.name; });
     flatFields(it, tagLabels).forEach(function (r) {
-      if (enabled.indexOf(r.channel) === -1) return;
       if (matchRow(r, pq, matcher)) {
-        results.push({ itemId: it.tradeId, channel: r.channel, source: r.source, fieldId: r.id, field: r.field, userTag: r.userTag, snippet: r.eo + ' → ' + r.ao });
+        results.push({ itemId: it.tradeId, channel: r.channel, source: r.source, channelId: r.channelId, sourceId: r.sourceId, fieldId: r.id, field: r.field, userTag: r.userTag, snippet: r.eo + ' → ' + r.ao });
       }
     });
   });

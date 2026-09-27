@@ -25,9 +25,13 @@ public class ValidationItem {
     private String counterpartyItemId;
     private String platformTradeId;
     private String platformDealId;
-    private List<String> enabledChannels;
     /** Per-item hit-context definitions ({@code item.ctxDefs}). */
     private Map<String, CtxDef> ctxDefs;
+    /**
+     * Channels taking part in the comparison: a channel is enabled unless it carries
+     * {@code enabled = false} ({@code Channel#getEnabled()}). The former
+     * {@code enabledChannels} name list has been removed - it was a second source of truth.
+     */
     private List<Channel> channels;
     /** Item-level warnings (aggregated from channels). */
     private List<Message> warnings;

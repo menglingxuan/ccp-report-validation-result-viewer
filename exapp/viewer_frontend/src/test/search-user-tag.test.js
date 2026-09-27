@@ -15,14 +15,16 @@ const WORKER = fs.readFileSync(path.join(PUBLIC_DIR, 'worker.js'), 'utf8');
 const I18N = JSON.parse(fs.readFileSync(path.join(PUBLIC_DIR, 'i18n.json'), 'utf8'));
 
 // 最小可用的单文件数据集：一个渠道 / 一个来源 / 三个字段（分别带不同 userTag）。
+// 启用口径写在 channels[].enabled 上（唯一的启用标记；item.enabledChannels 已彻底移除）。
 function makeItem(tags) {
   return {
     tradeId: 'T-1',
-    enabledChannels: ['HKTR'],
     channels: [{
+      id: 1,
       name: 'HKTR',
       fields: tags.map((tg, i) => ({ id: 'f' + i, name: '字段' + i, userTag: tg, type: 'string' })),
       sources: [{
+        id: 1,
         name: 'srcA',
         fields: tags.map((tg, i) => ({
           id: 'f' + i, result: 'PASSED',

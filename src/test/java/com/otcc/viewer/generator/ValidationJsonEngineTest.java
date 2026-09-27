@@ -20,6 +20,7 @@ import com.otcc.viewer.model.ManifestItem;
 import com.otcc.viewer.model.Message;
 import com.otcc.viewer.model.PlatformIgnore;
 import com.otcc.viewer.model.SkippedItem;
+import com.otcc.viewer.model.Source;
 import com.otcc.viewer.model.UncomparedEntry;
 import com.otcc.viewer.model.ValidationConfig;
 import com.otcc.viewer.model.ValidationDataset;
@@ -32,6 +33,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -51,6 +53,8 @@ class ValidationJsonEngineTest {
     static final Path SCHEMA_PATH = Path.of("exapp", "viewer_frontend", "src", "public", "config.schema.json");
 
     static ValidationDataset dataset;
+    /** File dataset after hydrating the top-level registries (semantic assertions use this one). */
+    static ValidationDataset hydrated;
     static ValidationConfig config;
     static Map<String, PlatformIgnore> ignore;
     static BatchIndex batchIndex;
@@ -86,10 +90,45 @@ class ValidationJsonEngineTest {
         metaJson = readTree("batches/2026-08-16/batch-20260816-0400/batch-meta.json");
 
         dataset = ValidationJsonGenerator.MAPPER.treeToValue(dataJson, ValidationDataset.class);
+        // 语义断言用「hydrate 后」的副本（与查看器一致：定义在登记表里，item 只有 id 引用）。
+        // dataset 本身保持文件原样，供 serializationRoundTripsWithoutLoss 做逐字节等价比较。
+        hydrated = ValidationJsonGenerator.MAPPER.treeToValue(dataJson, ValidationDataset.class);
+        hydrateRegistries(hydrated);
         config = ValidationJsonGenerator.MAPPER.treeToValue(configJson, ValidationConfig.class);
         ignore = ValidationJsonGenerator.MAPPER.convertValue(ignoreJson, new TypeReference<>() {});
         batchIndex = ValidationJsonGenerator.MAPPER.treeToValue(indexJson, BatchIndex.class);
         batchMeta = ValidationJsonGenerator.MAPPER.treeToValue(metaJson, BatchMeta.class);
+    }
+
+    /**
+     * Mirrors {@code hydrateDataset()} in {@code public/core.js}: fills channel / source names back
+     * into the items from the dataset-level registries.
+     */
+    private static void hydrateRegistries(ValidationDataset ds) {
+        Map<Integer, Channel> chReg = new HashMap<>();
+        for (Channel c : ds.getChannels() == null ? List.<Channel>of() : ds.getChannels()) {
+            chReg.put(c.getId(), c);
+        }
+        Map<Integer, Source> srcReg = new HashMap<>();
+        for (Source s : ds.getSources() == null ? List.<Source>of() : ds.getSources()) {
+            srcReg.put(s.getId(), s);
+        }
+        for (ValidationItem item : ds.getItems()) {
+            for (Channel ch : item.getChannels() == null ? List.<Channel>of() : item.getChannels()) {
+                Channel def = chReg.get(ch.getId());
+                if (def != null) {
+                    ch.setName(def.getName());
+                    ch.setDesc(def.getDesc());
+                    ch.setFormat(def.getFormat());
+                }
+                for (Source s : ch.getSources() == null ? List.<Source>of() : ch.getSources()) {
+                    Source sdef = srcReg.get(s.getId());
+                    if (sdef != null) {
+                        s.setName(sdef.getName());
+                    }
+                }
+            }
+        }
     }
 
     @AfterAll
@@ -106,6 +145,52 @@ class ValidationJsonEngineTest {
     /* ------------------------------------------------------------------ */
 
     @Test
+    void datasetRegistriesAreHoisted() {
+        // 归一化形态：渠道 / 来源渠道的定义只在 dataset.channels / dataset.sources 里写一次，
+        // item 里只留 id 引用（与查看器 hydrateDataset 的契约一致）。
+        Check c = new Check();
+        JsonNode root = dataJson;
+        c.check(root.path("channels").isArray() && root.path("channels").size() >= 3,
+                "顶层 channels 登记表应存在：" + root.path("channels"));
+        c.check(root.path("sources").isArray() && root.path("sources").size() >= 2,
+                "顶层 sources 登记表应存在：" + root.path("sources"));
+        Set<Integer> chIds = new HashSet<>();
+        for (JsonNode ch : root.path("channels")) {
+            chIds.add(ch.path("id").asInt());
+            c.check(ch.path("id").asInt() > 0, "登记表渠道 id 正整数：" + ch);
+            c.check(nonBlank(ch.path("name").asText()), "登记表渠道 name 非空：" + ch);
+            c.check("xml".equals(ch.path("format").asText()) || "csv".equals(ch.path("format").asText()),
+                    "登记表渠道 format ∈ {xml,csv}：" + ch);
+        }
+        Set<Integer> srcIds = new HashSet<>();
+        for (JsonNode s : root.path("sources")) {
+            srcIds.add(s.path("id").asInt());
+            c.check(s.path("id").asInt() > 0, "登记表来源渠道 id 正整数：" + s);
+            c.check(nonBlank(s.path("name").asText()), "登记表来源渠道 name 非空：" + s);
+            c.check(!s.has("fields"), "登记表的来源渠道不应带 fields：" + s);
+        }
+        // item 里不得重复写定义，且引用必须落在登记表里。
+        for (JsonNode item : root.path("items")) {
+            String it = item.path("tradeId").asText();
+            for (JsonNode ch : item.path("channels")) {
+                c.check(!ch.has("name") && !ch.has("desc") && !ch.has("format"),
+                        it + " 的 item 渠道不应重复写 name/desc/format：" + ch);
+                c.check(chIds.contains(ch.path("id").asInt()), it + " 渠道引用必须已登记：" + ch.path("id"));
+                c.check(ch.has("fields"), it + " 的 item 渠道必须保留 fields：" + ch.path("id"));
+                for (JsonNode s : ch.path("sources")) {
+                    c.check(!s.has("name"), it + " 的 item 来源渠道不应重复写 name：" + s);
+                    c.check(srcIds.contains(s.path("id").asInt()), it + " 来源渠道引用必须已登记：" + s.path("id"));
+                    c.check(s.has("fields"), it + " 的 item 来源渠道必须保留 fields：" + s.path("id"));
+                }
+            }
+        }
+        // 多文件清单同样带登记表（item 文件才可能只有 id 引用）。
+        JsonNode manifest = dataJson; // 单文件已断言；清单路径由 multiMode 用例覆盖
+        c.check(manifest.has("channels") && manifest.has("sources"), "单文件数据集也带两张登记表");
+        c.done();
+    }
+
+    @Test
     void allExpectedFilesAreGenerated() {
         Check c = new Check();
         for (String f : GENERATED_FILES) {
@@ -117,12 +202,12 @@ class ValidationJsonEngineTest {
     @Test
     void dataJsonStructureIsValid() {
         Check c = new Check();
-        c.check("single".equals(dataset.getMode()), "dataset.mode must be 'single'");
-        c.check(dataset.getItems() != null && !dataset.getItems().isEmpty(), "items must be non-empty");
-        c.check(nonBlank(dataset.getReportEnv()), "reportEnv non-blank");
+        c.check("single".equals(hydrated.getMode()), "dataset.mode must be 'single'");
+        c.check(hydrated.getItems() != null && !hydrated.getItems().isEmpty(), "items must be non-empty");
+        c.check(nonBlank(hydrated.getReportEnv()), "reportEnv non-blank");
 
-        for (int i = 0; i < dataset.getItems().size(); i++) {
-            ValidationItem item = dataset.getItems().get(i);
+        for (int i = 0; i < hydrated.getItems().size(); i++) {
+            ValidationItem item = hydrated.getItems().get(i);
             String it = "items[" + i + "]";
             c.check(nonBlank(item.getTradeId()), it + ".tradeId non-blank");
             c.check(nonBlank(item.getReportDate()), it + ".reportDate non-blank");
@@ -138,21 +223,27 @@ class ValidationJsonEngineTest {
 
             // channels（字段注册表在 report channel 级别）
             c.check(item.getChannels() != null && !item.getChannels().isEmpty(), it + ".channels non-empty");
-            Set<String> channelNames = new HashSet<>();
+            Map<String, Integer> channelIds = new HashMap<>();
             if (item.getChannels() != null) {
                 for (Channel ch : item.getChannels()) {
-                    channelNames.add(ch.getName());
                     String chLabel = it + ".channels[" + ch.getName() + "]";
+                    // 稳定标识：正整数且数据集内全局一致（同一 id 对应同一渠道名）。
+                    c.check(ch.getId() != null && ch.getId() > 0, chLabel + ".id positive");
+                    c.check(ch.getName() == null || ch.getId() == null
+                                    || ValidationJsonGenerator.CHANNEL_IDS.get(ch.getName()) == null
+                                    || ValidationJsonGenerator.CHANNEL_IDS.get(ch.getName()).equals(ch.getId()),
+                            chLabel + ".id matches preset: " + ch.getId());
+                    c.check(ch.getEnabled() == null || Boolean.FALSE.equals(ch.getEnabled()),
+                            chLabel + ".enabled is absent (enabled) or false; never an explicit true: " + ch.getEnabled());
+                    channelIds.put(ch.getName(), ch.getId());
                     Set<String> fieldIds = validateRegistry(c, ch, chLabel);
                     validateChannel(c, ch, chLabel, fieldIds);
                 }
             }
-            c.check(item.getEnabledChannels() != null && !item.getEnabledChannels().isEmpty(), it + ".enabledChannels non-empty");
-            if (item.getEnabledChannels() != null) {
-                for (String en : item.getEnabledChannels()) {
-                    c.check(channelNames.contains(en), it + ".enabledChannels references existing channel: " + en);
-                }
-            }
+            // 启用口径：channels[].enabled（缺省 = 启用），不再是 item.enabledChannels 名单。
+            c.check(item.getChannels() != null && item.getChannels().stream()
+                            .anyMatch(ch -> ch.getEnabled() == null || ch.getEnabled()),
+                    it + " has at least one enabled channel");
 
             // item-level messages / uncompared / logs
             validateMessages(c, item.getWarnings(), it + ".warnings");
@@ -167,6 +258,12 @@ class ValidationJsonEngineTest {
                             it + ".uncompared.source valid or null: " + u.getSource());
                     c.check(u.getSource() == null || u.getChannel() != null,
                             it + ".uncompared.source requires non-null channel");
+                    // 名称与 id 双写：id 必须能对回同一渠道 / 来源渠道。
+                    c.check(u.getChannel() == null ? u.getChannelId() == null
+                                    : u.getChannelId().equals(channelIds.get(u.getChannel())),
+                            it + ".uncompared.channelId matches channel name: " + u.getChannelId());
+                    c.check(u.getSourceId() == null || u.getChannelId() != null,
+                            it + ".uncompared.sourceId requires channelId");
                     c.check(nonBlank(u.getValue()), it + ".uncompared.value non-blank");
                     c.check(nonBlank(u.getNote()), it + ".uncompared.note non-blank");
                 }
@@ -178,13 +275,25 @@ class ValidationJsonEngineTest {
                     c.check("item".equals(l.getScope()) || "channel".equals(l.getScope()) || fieldScoped,
                             it + ".logs.scope in {item,channel,field}");
                     c.check(nonBlank(l.getText()), it + ".logs.text non-blank");
-                    // field 仅在 scope=field 时有值；field 非空时 channel / source 都不能为空（数据契约）。
+                    // field 仅在 scope=field 时有值；field 非空时必须有 channelId / sourceId。
+                    // 日志行**只写 id**（渠道 / 来源名称由查看器加载时按 id 从顶层登记表解析）。
                     c.check(fieldScoped == nonBlank(l.getField()),
                             it + ".logs.field only for scope=field: scope=" + l.getScope() + " field=" + l.getField());
                     if (fieldScoped) {
-                        c.check(nonBlank(l.getChannel()) && nonBlank(l.getSource()),
-                                it + ".logs.field requires channel and source");
+                        c.check(l.getChannelId() != null && l.getSourceId() != null,
+                                it + ".logs.field requires channelId and sourceId");
                     }
+                    if ("channel".equals(l.getScope())) {
+                        c.check(l.getChannelId() != null, it + ".logs(channel).channelId present");
+                    }
+                    c.check(l.getChannel() == null && l.getSource() == null,
+                            it + ".logs 不写渠道 / 来源名称（只写 id）：channel=" + l.getChannel() + " source=" + l.getSource());
+                    // 名称若存在（老数据）必须与 id 一致（id 是权威）。
+                    c.check(l.getChannel() == null || l.getChannelId() == null
+                                    || l.getChannelId().equals(channelIds.get(l.getChannel())),
+                            it + ".logs.channelId matches channel name: " + l.getChannelId());
+                    c.check(l.getSourceId() == null || l.getChannelId() != null,
+                            it + ".logs.sourceId requires channelId");
                 }
             }
         }
@@ -196,6 +305,14 @@ class ValidationJsonEngineTest {
                         "skippedItems.channel valid or null: " + s.getChannel());
                 c.check(s.getSource() == null || Set.of("来源渠道 A", "来源渠道 B").contains(s.getSource()),
                         "skippedItems.source valid or null: " + s.getSource());
+                // 被跳过的 item 不在数据集里，id 只能按预设校验。
+                c.check(s.getChannel() == null || s.getChannelId() != null,
+                        "skippedItems.channelId present with channel: " + s.getChannel());
+                c.check(s.getChannelId() == null
+                                || s.getChannelId().equals(ValidationJsonGenerator.CHANNEL_IDS.get(s.getChannel())),
+                        "skippedItems.channelId matches preset: " + s.getChannelId());
+                c.check(s.getSourceId() == null || s.getChannelId() != null,
+                        "skippedItems.sourceId requires channelId");
             }
         }
         c.done();
@@ -469,8 +586,8 @@ class ValidationJsonEngineTest {
     }
 
     private static void validateChannel(Check c, Channel ch, String label, Set<String> fieldIds) {
-        c.check(nonBlank(ch.getName()), label + ".name non-blank");
-        c.check(nonBlank(ch.getDesc()), label + ".desc non-blank");
+        c.check(nonBlank(ch.getName()), label + ".name non-blank（由登记表 hydrate 补回）");
+        c.check(nonBlank(ch.getDesc()), label + ".desc non-blank（由登记表 hydrate 补回）");
         c.check("xml".equals(ch.getFormat()) || "csv".equals(ch.getFormat()), label + ".format in {xml,csv}");
         boolean csv = "csv".equals(ch.getFormat());
 
@@ -488,7 +605,7 @@ class ValidationJsonEngineTest {
         c.check(ch.getSources() != null && !ch.getSources().isEmpty(), label + ".sources non-empty");
         if (ch.getSources() != null) {
             for (var src : ch.getSources()) {
-                c.check(nonBlank(src.getName()), label + ".source.name non-blank");
+                c.check(nonBlank(src.getName()), label + ".source.name non-blank（由登记表 hydrate 补回）");
                 c.check(src.getFields() != null && !src.getFields().isEmpty(), label + ".source.fields non-empty");
                 if (src.getFields() != null) {
                     for (Field f : src.getFields()) {
@@ -545,6 +662,14 @@ class ValidationJsonEngineTest {
             c.check(nonBlank(m.getLevel()), label + ".level non-blank");
             c.check(nonBlank(m.getText()), label + ".text non-blank");
             c.check(m.getField() != null, label + ".field present (may be empty)");
+            // 名称与 id 双写：channelId 必须能对回 channel 名称，sourceId 不能脱离 channelId 单独存在。
+            c.check(m.getChannelId() != null
+                            && m.getChannelId().equals(ValidationJsonGenerator.CHANNEL_IDS.get(m.getChannel())),
+                    label + ".channelId matches channel name: " + m.getChannelId());
+            c.check(m.getSourceId() == null || m.getChannelId() != null,
+                    label + ".sourceId requires channelId");
+            c.check(m.getSourceId() == null || nonBlank(m.getSource()),
+                    label + ".sourceId implies a source name（名称与 id 双写）");
         }
     }
 

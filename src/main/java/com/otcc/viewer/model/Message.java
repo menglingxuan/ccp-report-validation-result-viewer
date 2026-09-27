@@ -18,6 +18,10 @@ public class Message {
     /** Source channel name; may be empty when the source is unknown. */
     private String source;
     private String channel;
+    /** Stable source id (dual written with {@link #source}); only meaningful together with {@link #channelId}. */
+    private Integer sourceId;
+    /** Stable channel id (dual written with {@link #channel}). */
+    private Integer channelId;
     private String type;
     private String level;
     private String text;

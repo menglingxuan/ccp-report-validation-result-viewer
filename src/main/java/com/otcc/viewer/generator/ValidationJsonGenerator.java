@@ -39,10 +39,13 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * Generator for the {@code report-validation-data} JSON files consumed by the viewer.
@@ -67,6 +70,15 @@ public final class ValidationJsonGenerator {
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
     public static final String[] CHANNEL_NAMES = {"HKTR", "JSFA", "CFTC"};
+
+    /**
+     * Stable channel / source ids (identical to {@code public/core.js} presets).
+     * They exist only so anchors, internal locators and cross-item association have a
+     * key that cannot drift when names change - display, URLs and the ignore config
+     * keep using names.
+     */
+    public static final Map<String, Integer> CHANNEL_IDS = Map.of("HKTR", 1, "JSFA", 2, "CFTC", 3);
+    public static final Map<String, Integer> SOURCE_IDS = Map.of("来源渠道 A", 1, "来源渠道 B", 2);
     public static final String[] PLATFORMS = {"OTC-PLATFORM-A", "OTC-PLATFORM-B", "OTC-PLATFORM-C"};
 
     private static final Map<String, String> CHANNEL_DESC = Map.of(
@@ -172,13 +184,122 @@ public final class ValidationJsonGenerator {
         for (int i = 0; i < 18; i++) {
             items.add(generateItem(rng, i));
         }
-        return ValidationDataset.builder()
+        return hoistRegistries(ValidationDataset.builder()
                 .mode("single")
                 .reportEnv("OTCXXX")
                 .creationType("sample")
                 .skippedItems(buildSkippedItems(rng))
                 .items(items)
+                .build());
+    }
+
+    /**
+     * Hoists channel / source definitions into the dataset-level registries and leaves only id
+     * references inside the items (see {@code docs/DATA_SCHEMA.md} §1/§3.1):
+     *
+     * <pre>
+     * dataset.channels = [ { id, name, desc, format } ]              // report channels
+     * dataset.sources  = [ { id, name } ]                            // source channels (dataset-wide)
+     * item.channels    = [ { id, enabled?, files, fields, sources: [ { id, fields } ] } ]
+     * </pre>
+     *
+     * <p>Definitions that disagree (same id with different names, or vice versa) are a data error and
+     * abort generation: silently keeping the first one would hide a self-contradicting dataset.</p>
+     *
+     * <p>Channels / sources referenced by {@code skippedItems} are declared as well: the skipped item
+     * itself is not part of the dataset, while the contract requires every reference to be declared.</p>
+     */
+    public static ValidationDataset hoistRegistries(ValidationDataset dataset) {
+        List<Channel> channelDefs = new ArrayList<>();
+        List<Source> sourceDefs = new ArrayList<>();
+        Map<Integer, String> chNameById = new LinkedHashMap<>();
+        Map<String, Integer> chIdByName = new LinkedHashMap<>();
+        Map<Integer, String> srcNameById = new LinkedHashMap<>();
+        Map<String, Integer> srcIdByName = new LinkedHashMap<>();
+        for (ValidationItem item : dataset.getItems()) {
+            for (Channel ch : nullToEmpty(item.getChannels())) {
+                String chName = ch.getName() == null ? "" : ch.getName();
+                Integer knownChId = chIdByName.get(chName);
+                if (knownChId != null && !knownChId.equals(ch.getId())) {
+                    throw new IllegalStateException("渠道「" + chName + "」在不同 item 里使用了不同 id："
+                            + knownChId + " / " + ch.getId());
+                }
+                String knownChName = chNameById.get(ch.getId());
+                if (knownChName != null && !knownChName.equals(chName)) {
+                    throw new IllegalStateException("渠道 id=" + ch.getId() + " 在不同 item 里指向不同名称："
+                            + knownChName + " / " + chName);
+                }
+                if (knownChName == null) {
+                    channelDefs.add(Channel.builder().id(ch.getId()).name(chName)
+                            .desc(ch.getDesc()).format(ch.getFormat()).build());
+                    chNameById.put(ch.getId(), chName);
+                    chIdByName.put(chName, ch.getId());
+                }
+                for (Source s : nullToEmpty(ch.getSources())) {
+                    String sName = s.getName() == null ? "" : s.getName();
+                    Integer knownSrcId = srcIdByName.get(sName);
+                    if (knownSrcId != null && !knownSrcId.equals(s.getId())) {
+                        throw new IllegalStateException("来源渠道「" + sName + "」在不同渠道里使用了不同 id："
+                                + knownSrcId + " / " + s.getId());
+                    }
+                    String knownSrcName = srcNameById.get(s.getId());
+                    if (knownSrcName != null && !knownSrcName.equals(sName)) {
+                        throw new IllegalStateException("来源渠道 id=" + s.getId() + " 指向不同名称："
+                                + knownSrcName + " / " + sName);
+                    }
+                    if (knownSrcName == null) {
+                        sourceDefs.add(Source.builder().id(s.getId()).name(sName).build());
+                        srcNameById.put(s.getId(), sName);
+                        srcIdByName.put(sName, s.getId());
+                    }
+                }
+            }
+        }
+        // skippedItems 引用的渠道 / 来源渠道也要进声明表（被跳过的 item 不在 items 里，
+        // 而契约要求「引用 ⊆ 声明」）。
+        if (dataset.getSkippedItems() != null) {
+            for (SkippedItem s : dataset.getSkippedItems()) {
+                if (s.getChannelId() != null && s.getChannel() != null && !s.getChannel().isEmpty()
+                        && !chNameById.containsKey(s.getChannelId())) {
+                    channelDefs.add(Channel.builder().id(s.getChannelId()).name(s.getChannel()).build());
+                    chNameById.put(s.getChannelId(), s.getChannel());
+                    chIdByName.put(s.getChannel(), s.getChannelId());
+                }
+                if (s.getSourceId() != null && s.getSource() != null && !s.getSource().isEmpty()
+                        && !srcNameById.containsKey(s.getSourceId())) {
+                    sourceDefs.add(Source.builder().id(s.getSourceId()).name(s.getSource()).build());
+                    srcNameById.put(s.getSourceId(), s.getSource());
+                    srcIdByName.put(s.getSource(), s.getSourceId());
+                }
+            }
+        }
+        for (ValidationItem item : dataset.getItems()) {
+            List<Channel> stripped = new ArrayList<>();
+            for (Channel ch : nullToEmpty(item.getChannels())) {
+                List<Source> srcs = new ArrayList<>();
+                for (Source s : nullToEmpty(ch.getSources())) {
+                    srcs.add(Source.builder().id(s.getId()).fields(s.getFields()).build());
+                }
+                stripped.add(Channel.builder().id(ch.getId()).enabled(ch.getEnabled())
+                        .files(ch.getFiles()).fields(ch.getFields()).sources(srcs).build());
+            }
+            item.setChannels(stripped);
+        }
+        channelDefs.sort(Comparator.comparing(Channel::getId));
+        sourceDefs.sort(Comparator.comparing(Source::getId));
+        return ValidationDataset.builder()
+                .mode(dataset.getMode())
+                .reportEnv(dataset.getReportEnv())
+                .creationType(dataset.getCreationType())
+                .skippedItems(dataset.getSkippedItems())
+                .channels(channelDefs)
+                .sources(sourceDefs)
+                .items(dataset.getItems())
                 .build();
+    }
+
+    private static <T> List<T> nullToEmpty(List<T> list) {
+        return list == null ? List.of() : list;
     }
 
     private static ValidationItem generateItem(Random rng, int i) {
@@ -206,9 +327,16 @@ public final class ValidationJsonGenerator {
         List<ChannelBuild> channelBuilds = new ArrayList<>();
         Map<String, CtxDef> ctxDefs = buildCtxDefs(i);
         Map<String, Integer> ctxIdByKey = ctxIdByKey(ctxDefs);
+        // Enable flag: written as channels[].enabled (the single source of truth).
+        List<String> enabledNames = switch (i % 3) {
+            case 0 -> List.of("HKTR", "JSFA", "CFTC");
+            case 1 -> List.of("HKTR", "JSFA");
+            default -> List.of("HKTR", "CFTC");
+        };
         for (String chName : CHANNEL_NAMES) {
             List<String[]> fieldsDef = fieldDefsForItem(i, chName);
-            ChannelBuild built = buildChannel(chName, tradeId, reportDate, rng, failRate, fieldsDef, sourceCount, ctxIdByKey);
+            ChannelBuild built = buildChannel(chName, tradeId, reportDate, rng, failRate, fieldsDef, sourceCount,
+                    ctxIdByKey, enabledNames.contains(chName));
             channels.add(built.channel);
             warnings.addAll(built.warnings);
             errors.addAll(built.errors);
@@ -216,12 +344,6 @@ public final class ValidationJsonGenerator {
             channelBuilds.add(built);
         }
         uncompared.addAll(buildGlobalUncompared(rng));
-
-        List<String> enabledChannels = switch (i % 3) {
-            case 0 -> List.of("HKTR", "JSFA", "CFTC");
-            case 1 -> List.of("HKTR", "JSFA");
-            default -> List.of("HKTR", "CFTC");
-        };
 
         return ValidationItem.builder()
                 .tradeId(tradeId)
@@ -235,7 +357,6 @@ public final class ValidationJsonGenerator {
                 .platformDealId("PD-" + tradeId.substring(2))
                 .ctxDefs(ctxDefs)
                 .channels(channels)
-                .enabledChannels(enabledChannels)
                 .warnings(warnings)
                 .errors(errors)
                 .uncompared(uncompared)
@@ -313,7 +434,8 @@ public final class ValidationJsonGenerator {
     private static ChannelBuild buildChannel(String chName, String tradeId, String reportDate,
                                              Random rng, double failRate,
                                              List<String[]> fieldsDef, int sourceCount,
-                                             Map<String, Integer> ctxIdByKey) {
+                                             Map<String, Integer> ctxIdByKey, boolean enabled) {
+        int chId = channelId(chName);
         FieldRegistry fr = buildChannelFieldRegistry(fieldsDef);
         boolean csv = "csv".equals(CHANNEL_FORMAT.get(chName));
         String p = chName.toLowerCase();
@@ -366,12 +488,14 @@ public final class ValidationJsonGenerator {
                 idx++;
             }
             String srcName = "来源渠道 " + (sn == 1 ? "A" : "B");
-            sources.add(Source.builder().name(srcName).fields(fields).build());
+            sources.add(Source.builder().id(sourceId(srcName)).name(srcName).fields(fields).build());
             failedBySource.add(new FailedBySource(srcName, failedFields));
         }
 
         Channel channel = Channel.builder()
+                .id(chId)
                 .name(chName)
+                .enabled(enabled ? null : Boolean.FALSE)
                 .desc(CHANNEL_DESC.get(chName))
                 .format(CHANNEL_FORMAT.get(chName))
                 .files(files)
@@ -385,8 +509,28 @@ public final class ValidationJsonGenerator {
                 buildMessages(rng, chName, fieldsDef, failedBySource),
                 buildErrorMessages(rng, chName, failedBySource),
                 buildUncompared(chName, sourceNames, rng, fieldsDef, csv ? 2 : 1),
-                buildChannelLogs(chName, files),
+                buildChannelLogs(chName, chId, files),
                 fieldLogs);
+    }
+
+    /** Channel id: preset table, falling back to a stable 1-based index. */
+    private static int channelId(String chName) {
+        Integer id = CHANNEL_IDS.get(chName);
+        if (id != null) {
+            return id;
+        }
+        for (int i = 0; i < CHANNEL_NAMES.length; i++) {
+            if (CHANNEL_NAMES[i].equals(chName)) {
+                return i + 1;
+            }
+        }
+        return 0;
+    }
+
+    /** Source id: preset table (ids only need to be unique within their channel). */
+    private static int sourceId(String srcName) {
+        Integer id = SOURCE_IDS.get(srcName);
+        return id != null ? id : 0;
     }
 
     /** A built field plus its field-scoped log lines (the latter only ever go into {@code item.logs}). */
@@ -479,7 +623,8 @@ public final class ValidationJsonGenerator {
 
         List<String> prints = buildPrints(f, rawTarget, ctx, chName, "来源渠道 " + (sn == 1 ? "A" : "B"),
                 eo, ao, result, note, csv ? "CSV字段" : "XPath");
-        List<ItemLog> fieldLogs = buildFieldLogs(f, nameToId.get(f), rawTarget, ctx, chName,
+        List<ItemLog> fieldLogs = buildFieldLogs(f, nameToId.get(f), channelId(chName),
+                sourceId("来源渠道 " + (sn == 1 ? "A" : "B")), rawTarget, ctx, chName,
                 "来源渠道 " + (sn == 1 ? "A" : "B"), eo, ao, result, note,
                 csv ? "CSV字段" : "XPath", sn, idx);
 
@@ -512,6 +657,17 @@ public final class ValidationJsonGenerator {
             }
         }
         List<Message> msgs = new ArrayList<>();
+        // 来源渠道只能从该渠道**实际存在**的来源里挑：否则消息会引用不存在的来源渠道
+        // （旧的 enabledChannels 时代这种悬空引用无法被发现，现在 id 引用校验会直接报错）。
+        List<String> srcPool = new ArrayList<>();
+        if (failedBySource != null) {
+            for (FailedBySource s : failedBySource) {
+                srcPool.add(s.name);
+            }
+        }
+        java.util.function.Supplier<String> pickSource = () -> srcPool.isEmpty()
+                ? ""
+                : srcPool.get(rng.nextInt(srcPool.size()));
         for (int i = 0; i < count; i++) {
             String base = WARN_TEXTS[rng.nextInt(WARN_TEXTS.length)];
             String text = rng.nextDouble() < 0.2
@@ -532,16 +688,18 @@ public final class ValidationJsonGenerator {
                     source = src.name;
                 } else {
                     field = fieldsDef.get(rng.nextInt(fieldsDef.size()))[0];
-                    source = rng.nextDouble() < 0.25 ? "" : (rng.nextDouble() < 0.5 ? "来源渠道 A" : "来源渠道 B");
+                    source = rng.nextDouble() < 0.25 ? "" : pickSource.get();
                 }
             } else {
                 // 渠道级警告：部分来源渠道为空（模拟来源信息缺失的样例数据）。
-                source = rng.nextDouble() < 0.25 ? "" : (rng.nextDouble() < 0.5 ? "来源渠道 A" : "来源渠道 B");
+                source = rng.nextDouble() < 0.25 ? "" : pickSource.get();
             }
             msgs.add(Message.builder()
                     .scope(field.isEmpty() ? "channel" : "field")
                     .source(source)
+                    .sourceId(source == null || source.isEmpty() ? null : sourceId(source))
                     .channel(chName)
+                    .channelId(channelId(chName))
                     .type(TYPE_KEYS[rng.nextInt(TYPE_KEYS.length)])
                     .level(WARN_LEVELS[rng.nextInt(WARN_LEVELS.length)])
                     .text(text)
@@ -592,7 +750,9 @@ public final class ValidationJsonGenerator {
             msgs.add(Message.builder()
                     .scope(field.isEmpty() ? "channel" : "field")
                     .source(source)
+                    .sourceId(source == null || source.isEmpty() ? null : sourceId(source))
                     .channel(chName)
+                    .channelId(channelId(chName))
                     .type(ERROR_TYPE_KEYS[rng.nextInt(ERROR_TYPE_KEYS.length)])
                     .level(ERR_LEVELS[rng.nextInt(ERR_LEVELS.length)])
                     .text(text)
@@ -616,7 +776,9 @@ public final class ValidationJsonGenerator {
             } else {
                 note = type == 1 ? "未在映射配置中匹配到对应 CSV 字段" : "未在映射配置中匹配到对应来源字段";
             }
-            list.add(UncomparedEntry.builder().type(type).channel(chName).source(source).value(d[1]).note(note).build());
+            list.add(UncomparedEntry.builder().type(type).channel(chName).channelId(channelId(chName))
+                    .source(source).sourceId(source == null ? null : sourceId(source))
+                    .value(d[1]).note(note).build());
         }
         return list;
     }
@@ -629,7 +791,9 @@ public final class ValidationJsonGenerator {
             list.add(UncomparedEntry.builder()
                     .type(rng.nextDouble() < 0.5 ? 1 : 2)
                     .channel(null)
+                    .channelId(null)
                     .source(null)
+                    .sourceId(null)
                     .value(vals[rng.nextInt(vals.length)])
                     .note("未在任一报告渠道的映射配置中匹配到对应字段")
                     .build());
@@ -654,47 +818,52 @@ public final class ValidationJsonGenerator {
             list.add(SkippedItem.builder()
                     .itemId("T-20240810-0" + (91 + i))
                     .channel(channel)
+                    .channelId(channel == null ? null : CHANNEL_IDS.get(channel))
                     .source(source)
+                    .sourceId(source == null ? null : SOURCE_IDS.get(source))
                     .reason(reason)
                     .build());
         }
         return list;
     }
 
-    private static List<ItemLog> buildChannelLogs(String chName, ChannelFiles files) {
+    private static List<ItemLog> buildChannelLogs(String chName, int chId, ChannelFiles files) {
         String t = "2024-08-14 10:23:0";
+        // 日志行只写**渠道 / 来源渠道 id**（不写名称）：名称由查看器加载时按 id 从顶层声明表补回；
+        // text 里的 `[渠道名]` 只是展示内容，不承载任何数据（见 docs/DATA_SCHEMA.md §3）。
         return List.of(
-                ItemLog.builder().scope("channel").channel(chName).source(null).field(null)
+                ItemLog.builder().scope("channel").channelId(chId).field(null)
                         .text(t + "0.200 INFO  [" + chName + "] 读取报送文件 " + joinNames(files.getAo())).build(),
-                ItemLog.builder().scope("channel").channel(chName).source(null).field(null)
+                ItemLog.builder().scope("channel").channelId(chId).field(null)
                         .text(t + "0.300 INFO  [" + chName + "] 应用映射配置 " + files.getExcel().getFile()
                                 + " [sheet: " + files.getExcel().getSheet() + "]").build(),
-                ItemLog.builder().scope("channel").channel(chName).source(null).field(null)
+                ItemLog.builder().scope("channel").channelId(chId).field(null)
                         .text(t + "0.400 INFO  [" + chName + "] 完成字段比较，渠道结果已生成").build());
     }
 
     /**
      * Item-level log lines: overview ({@code scope=item}) → per-channel step lines ({@code scope=channel})
      * → for every channel its own logs followed by its field-scoped logs ({@code scope=field}).
+     * Channel / source names are intentionally **not** written: only the stable ids are.
      */
     private static List<ItemLog> buildOverviewLogs(String tradeId, String reportDate,
                                                    List<Channel> channels, List<ChannelBuild> channelBuilds) {
         List<ItemLog> lines = new ArrayList<>();
-        lines.add(ItemLog.builder().scope("item").channel(null).source(null).field(null)
+        lines.add(ItemLog.builder().scope("item")
                 .text("2024-08-14 10:23:00.100 INFO  开始比较 item=" + tradeId + "，报告日期=" + reportDate).build());
-        lines.add(ItemLog.builder().scope("item").channel(null).source(null).field(null)
+        lines.add(ItemLog.builder().scope("item")
                 .text("2024-08-14 10:23:00.120 INFO  加载映射配置 mapping.xlsx（" + channels.size() + " 个报告渠道）").build());
-        lines.add(ItemLog.builder().scope("item").channel(null).source(null).field(null)
-                .text("2024-08-14 10:23:00.140 INFO  初始化逐渠道执行器（HKTR / JSFA / CFTC）").build());
+        lines.add(ItemLog.builder().scope("item")
+                .text("2024-08-14 10:23:00.140 INFO  初始化逐渠道执行器（" + String.join(" / ", CHANNEL_NAMES) + "）").build());
         for (int i = 0; i < 60; i++) {
             Channel ch = channels.get(i % channels.size());
             String ms = String.valueOf(100 + i * 7);
-            lines.add(ItemLog.builder().scope("channel").channel(ch.getName()).source(null).field(null)
+            lines.add(ItemLog.builder().scope("channel").channelId(ch.getId())
                     .text("2024-08-14 10:23:" + pad2(i) + "." + ms + " INFO  [" + ch.getName() + "] 执行字段比较步骤 "
                             + (i + 1) + "：读取 " + fileEntryName(ch.getFiles().getEo().get(0))
                             + " 与 " + fileEntryName(ch.getFiles().getAo().get(0)) + "，逐字段校验映射关系。").build());
         }
-        lines.add(ItemLog.builder().scope("item").channel(null).source(null).field(null)
+        lines.add(ItemLog.builder().scope("item")
                 .text("2024-08-14 10:24:00.000 INFO  比较完成，结果已生成").build());
         for (ChannelBuild g : channelBuilds) {
             lines.addAll(g.logs);
@@ -805,11 +974,13 @@ public final class ValidationJsonGenerator {
 
     /**
      * Field-scoped log lines ({@code scope == "field"}) derived from {@link #buildPrints}: every line
-     * carries {@code channel} + {@code source} + {@code field} (the field id) so the viewer can locate
-     * and highlight it in the full-log tab. These lines live **only** in {@code item.logs}: the field
+     * carries {@code field} (the field id) plus {@code channelId} / {@code sourceId} so the viewer can locate
+     * and highlight it in the full-log tab. The channel / source **names are not written** (the viewer resolves
+     * them from the ids at load time). These lines live **only** in {@code item.logs}: the field
      * entries themselves carry no logs (see {@code docs/DATA_SCHEMA.md} §3).
      */
-    private static List<ItemLog> buildFieldLogs(String f, String fieldId, String target, List<String> ctx,
+    private static List<ItemLog> buildFieldLogs(String f, String fieldId, int chId, int srcId,
+                                                String target, List<String> ctx,
                                                 String chName, String srcName, String eo, String ao,
                                                 String result, String note, String targetName,
                                                 int sn, int idx) {
@@ -820,8 +991,8 @@ public final class ValidationJsonGenerator {
         for (String text : buildPrints(f, target, ctx, chName, srcName, eo, ao, result, note, targetName)) {
             out.add(ItemLog.builder()
                     .scope("field")
-                    .channel(chName)
-                    .source(srcName)
+                    .channelId(chId)
+                    .sourceId(srcId)
                     .field(fieldId)
                     .text(stamp + (100 + i * 40) + " INFO  " + prefix + text.replaceFirst("^\\[INFO\\]\\s*", ""))
                     .build());
@@ -996,10 +1167,27 @@ public final class ValidationJsonGenerator {
     /*  Multi-file mode                                                   */
     /* ------------------------------------------------------------------ */
 
-    /** Computes the precomputed summary for one item (manifest metadata). */
+    /**
+     * Computes the precomputed summary for one item (manifest metadata).
+     *
+     * <p>Single source of truth for the counters: only <b>enabled</b> channels
+     * ({@code channels[].enabled}, absent means enabled) contribute fields, and messages /
+     * logs are scoped the same way (item-scoped entries always count, channel-scoped ones
+     * only when their channel is enabled). This mirrors {@code itemStatsPure} in
+     * {@code public/core.js}, so the sidebar card can never disagree with the field table.</p>
+     */
     public static ItemSummary itemStats(ValidationItem item) {
+        Set<Integer> enabledIds = new HashSet<>();
+        for (Channel ch : item.getChannels()) {
+            if (ch.getEnabled() == null || ch.getEnabled()) {
+                enabledIds.add(ch.getId());
+            }
+        }
         int total = 0, passed = 0, failed = 0;
         for (Channel ch : item.getChannels()) {
+            if (ch.getEnabled() != null && !ch.getEnabled()) {
+                continue;
+            }
             for (Source s : ch.getSources()) {
                 for (Field f : s.getFields()) {
                     total++;
@@ -1011,10 +1199,35 @@ public final class ValidationJsonGenerator {
                 }
             }
         }
-        int warnings = item.getWarnings() == null ? 0 : item.getWarnings().size();
-        int errors = item.getErrors() == null ? 0 : item.getErrors().size();
-        int uncompared = item.getUncompared() == null ? 0 : item.getUncompared().size();
-        int logs = item.getLogs() == null ? 0 : item.getLogs().size();
+        int warnings = 0, errors = 0, uncompared = 0, logs = 0;
+        if (item.getErrors() != null) {
+            for (Message m : item.getErrors()) {
+                if (refInScope(m.getChannelId(), m.getChannel(), enabledIds)) {
+                    errors++;
+                }
+            }
+        }
+        if (item.getWarnings() != null) {
+            for (Message m : item.getWarnings()) {
+                if (refInScope(m.getChannelId(), m.getChannel(), enabledIds)) {
+                    warnings++;
+                }
+            }
+        }
+        if (item.getUncompared() != null) {
+            for (UncomparedEntry u : item.getUncompared()) {
+                if (refInScope(u.getChannelId(), u.getChannel(), enabledIds)) {
+                    uncompared++;
+                }
+            }
+        }
+        if (item.getLogs() != null) {
+            for (ItemLog l : item.getLogs()) {
+                if (refInScope(l.getChannelId(), l.getChannel(), enabledIds)) {
+                    logs++;
+                }
+            }
+        }
         return ItemSummary.builder()
                 .total(total)
                 .passed(passed)
@@ -1026,6 +1239,12 @@ public final class ValidationJsonGenerator {
                 .uncompared(uncompared)
                 .logs(logs)
                 .build();
+    }
+
+    /** Scope test for an item-level entry: item-scoped (no channel) always counts. */
+    private static boolean refInScope(Integer channelId, String channelName, Set<Integer> enabledIds) {
+        Integer id = channelId != null ? channelId : (channelName == null ? null : CHANNEL_IDS.get(channelName));
+        return id == null || enabledIds.contains(id);
     }
 
     /**
@@ -1061,7 +1280,6 @@ public final class ValidationJsonGenerator {
                     .counterpartyItemId(it.getCounterpartyItemId())
                     .platformTradeId(it.getPlatformTradeId())
                     .platformDealId(it.getPlatformDealId())
-                    .enabledChannels(it.getEnabledChannels())
                     .file(file)
                     .summary(itemStats(it))
                     .build());
@@ -1070,9 +1288,12 @@ public final class ValidationJsonGenerator {
         manifest.put("mode", "multi");
         manifest.put("reportEnv", dataset.getReportEnv());
         // 顶层字段必须与单文件模式一致（DATA_SCHEMA.md §2）：缺 creationType 会让查看器
-        // 把真实用户数据误判为示例数据（Sample 徽标 / 示例数据提示），缺 skippedItems 会丢失「已跳过 item」。
+        // 把真实用户数据误判为示例数据（Sample 徽标 / 示例数据提示），缺 skippedItems 会丢失「已跳过 item」，
+        // 缺 channels / sources 登记表则 item 文件里的 id 引用无从解析。
         manifest.put("creationType", dataset.getCreationType());
         manifest.put("skippedItems", dataset.getSkippedItems());
+        manifest.put("channels", dataset.getChannels());
+        manifest.put("sources", dataset.getSources());
         manifest.put("items", manifestItems);
         writeJson(outDir.resolve(manifestName), manifest);
         return manifestItems;

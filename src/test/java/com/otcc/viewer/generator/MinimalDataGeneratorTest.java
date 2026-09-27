@@ -44,14 +44,23 @@ class MinimalDataGeneratorTest {
 
     @Test
     void singleItemHasOneChannelOneSourceOneField() {
-        ValidationItem item = MinimalDataGenerator.generate().getItems().get(0);
+        ValidationDataset ds = MinimalDataGenerator.generate();
+        ValidationItem item = ds.getItems().get(0);
+
+        // 定义在顶层登记表里（item 里只有 id 引用）——与查看器 hydrateDataset 的契约一致。
+        assertEquals(1, ds.getChannels().size(), "顶层 channels 登记表");
+        assertEquals(1, ds.getSources().size(), "顶层 sources 登记表");
+        assertEquals("HKTR", ds.getChannels().get(0).getName());
+        assertEquals("xml", ds.getChannels().get(0).getFormat());
+        assertEquals("来源渠道 A", ds.getSources().get(0).getName());
 
         assertEquals(1, item.getChannels().size());
         var channel = item.getChannels().get(0);
-        assertEquals("HKTR", channel.getName());
-        assertEquals("xml", channel.getFormat());
+        assertEquals(ds.getChannels().get(0).getId(), channel.getId(), "item 渠道只留 id 引用");
+        assertEquals(null, channel.getName(), "item 里不重复写渠道名");
 
         assertEquals(1, channel.getSources().size());
+        assertEquals(ds.getSources().get(0).getId(), channel.getSources().get(0).getId(), "item 来源渠道只留 id 引用");
         assertEquals(1, channel.getSources().get(0).getFields().size());
 
         var field = channel.getSources().get(0).getFields().get(0);

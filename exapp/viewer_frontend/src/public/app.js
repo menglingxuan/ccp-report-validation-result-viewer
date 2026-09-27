@@ -6,8 +6,10 @@
      *     -> 字段比较结果 { id, ctxs, cmpLeft, cmpRight, cvtLeft, cvtRight, vdt, result, remarks, resultText, resultDetails, prints, logs }
      *        （prints 保留待用；logs 为该字段关联的日志行，与 item.logs 中 scope="field" 的行同构）
      * item 级别: ctxDefs / warnings[] / errors[] / uncompared[] / logs[]
-     *        （logs 行 { scope, channel, source, field, text }：field 仅 scope="field" 时有值，
-     *          且此时 channel / source 均非空 —— 完整日志的字段定位锚点据此建立）
+     *        （logs 行 { scope, channelId, sourceId, field, text }：渠道 / 来源渠道只存 id，
+     *         名称由加载时的 hydrateItem() 按 id 从顶层声明表补回（展示与筛选仍按名称）；
+     *         field 仅 scope="field" 时有值，且此时 channelId / sourceId 均非空 —— 字段定位锚点据此建立；
+     *         日志文本只是展示内容，**代码逻辑不得解析它**）
      * 字段注册表在 channel.fields（report channel 级别）
      * ============================================================ */
 
@@ -22,6 +24,10 @@
       descExToolsVisible, pageItems, fitColWidths,
       normalizeItemSummary,
       logFieldKey, logAnchorId, isFieldLogLine,
+      // 启用口径（channels[].enabled）与 id 引用解析统一由 core.js 提供，app.js 内不再自行判定。
+      enabledChannelsOf, itemStatsPure, refChannelId, refSourceId,
+      // 顶层登记表（channels / sources）：加载时把定义补回 item，渲染 / 搜索 / 忽略配置仍按名称工作。
+      registriesOf, hydrateDataset, hydrateItem,
     } from './core.js';
 
     const TYPE_META = {
@@ -279,9 +285,14 @@
     function validDataset(json) {
       return !!(json && typeof json === 'object' && Array.isArray(json.items));
     }
+    // 顶层登记表（`channels` / `sources`）的 id -> 定义 映射：多文件模式下清单提供，
+    // item 文件只有 id 引用，因此加载 item 时需要用它补回名称。
+    let DATA_REGISTRIES = { channels: {}, sources: {} };
     function normalizeLoaded(json) {
       DATA_MODE = json.mode === 'multi' ? 'multi' : 'single';
-      return json;
+      // 归一化形态：定义在顶层写一次，item 里只有 id 引用 -> 加载时补回（幂等；老形态数据原样通过）。
+      DATA_REGISTRIES = registriesOf(json);
+      return hydrateDataset(json);
     }
     async function fetchJSON(url) {
       return fetchJSONCached(url);
@@ -390,7 +401,8 @@
       const base = DATA_FILE_URL || location.href;
       try {
         const full = await fetchJSON(resolveUrl(base, meta.file));
-        if (full && typeof full === 'object') return full;
+        // item 文件里的渠道 / 来源渠道只有 id 引用：用清单的登记表补回 name/desc/format。
+        if (full && typeof full === 'object') return hydrateItem(full, DATA_REGISTRIES);
       } catch (e) { console.warn('[data] item 文件加载失败：' + tradeId, e); }
       return null;
     }
@@ -2381,12 +2393,21 @@
       return out;
     }
 
+    // 启用渠道集合（**唯一口径**：channels[].enabled，缺省启用）。
+    // 所有计数 / 列表 / 图表 / 对比 / 侧栏卡片都经此取渠道，避免出现「卡片 48 字段 / 表里 72 条」这类口径不一致。
+    function comparedChannels(item) {
+      return enabledChannelsOf(item).map(function (e) { return e.ch; });
+    }
+    function comparedChannelNames(item) {
+      return enabledChannelsOf(item).map(function (e) { return e.ch.name; });
+    }
+
     function scopeChannels() {
       const it = currentItem();
       if (!it) return [];
-      if (state.channel === 'ALL') return it.channels.filter(function (c) { return it.enabledChannels.indexOf(c.name) !== -1; });
-      if (it.enabledChannels.indexOf(state.channel) === -1) return [];
-      return it.channels.filter(function (c) { return c.name === state.channel; });
+      const enabled = comparedChannels(it);
+      if (state.channel === 'ALL') return enabled;
+      return enabled.filter(function (c) { return c.name === state.channel; });
     }
 
     function isFieldColVisible(c) {
@@ -2398,17 +2419,8 @@
     function itemStatsAll(item) {
       // 多文件模式下未按需加载的 item 只有清单里的预计算 summary（字段可能缺失 -> 归一为 0）。
       if (isMultiMode() && item && !Array.isArray(item.channels)) return normalizeItemSummary(item.summary);
-      let total = 0, passed = 0, failed = 0;
-      item.channels.forEach(ch => ch.sources.forEach(s => s.fields.forEach(f => {
-        total++;
-        f.result === 'PASSED' ? passed++ : failed++;
-      })));
-      let warnings = 0, warningsIgnored = 0;
-      (item.warnings || []).forEach(w => { if (msgIsIgnored('warnings', enrichMsg(w))) warningsIgnored++; else warnings++; });
-      const errors = (item.errors || []).length;
-      const uncompared = (item.uncompared || []).length;
-      const logs = (item.logs || []).length;
-      return { total: total, passed: passed, failed: failed, rate: total ? Math.round(passed / total * 100) : 0, warnings: warnings, warningsIgnored: warningsIgnored, errors: errors, uncompared: uncompared, logs: logs };
+      // 口径与字段表 / 图表 / 多文件清单完全一致（core.js itemStatsPure：只算启用渠道）。
+      return itemStatsPure(item, IGNORE_CONFIG);
     }
 
     // platform 跟随 item：计算忽略 key 时从当前 item 注入（source 条目自带，可能为空）。
@@ -2559,22 +2571,35 @@
       return { channel: p[0] || '', source: p[1] || '', id: p[2] || '' };
     }
 
-    // 日志行定位（「完整日志」中 scope="field" 的行）：合成键与短标识锚点 id 的纯函数在 core.js
-    // （logFieldKey / logSlug / logHash / logAnchorId / isFieldLogLine，便于 Node 直接单测）。
+    // 日志行定位（「完整日志」中 scope="field" 的行）：合成键与锚点 id 的纯函数在 core.js
+    // （logFieldKey / logAnchorId / isFieldLogLine，便于 Node 直接单测）。
+    // 锚点用 **channelId / sourceId**（稳定标识，数字无歧义）：老数据没有 id 时
+    // core.js 的 refChannelId / refSourceId 会按名称 + 预设回退，保证老数据也能定位。
+    function logIdsOf(item, m) {
+      return { channelId: refChannelId(item, m), sourceId: refSourceId(item, m) };
+    }
 
     // 取某字段关联的日志行：**只在「完整日志」的数据源（item.logs）里找**
     // （scope="field" 且 channel + source + field 三者匹配），按原始顺序返回；
     // 字段对象自身不存日志（只有 prints 保留待用），因此没有命中就是「无关联日志行」。
+    // 命中判定**按 id 三元组**（channelId + sourceId + field）：日志行只写 id 时不依赖名称；
+    // 名称侧（字段行、跳转链接）由 refChannelId / refSourceId 解析成 id。**绝不解析 text**。
     function fieldLogLines(item, channel, source, fieldId) {
+      const want = logIdsOf(item, { channel: channel, source: source });
+      if (want.channelId == null || want.sourceId == null) return [];
       return ((item && item.logs) || []).filter(function (l) {
-        return isFieldLogLine(l) && l.channel === channel && l.source === source && l.field === fieldId;
+        if (!isFieldLogLine(l) || l.field !== fieldId) return false;
+        const ids = logIdsOf(item, l);
+        return ids.channelId === want.channelId && ids.sourceId === want.sourceId;
       });
     }
-    // 在「完整日志」已渲染的内容里找锚点元素：先用可推导的 id 直取，再用 data-log-key 复核
-    // （slug / 哈希理论上有碰撞可能），不一致时退回按 data-log-key 扫描（也覆盖「首行被筛选掉」的情况）。
+    // 在「完整日志」已渲染的内容里找锚点元素：先用可推导的 id 直取，再用 data-log-key 复核，
+    // 不一致时退回按 data-log-key 扫描（也覆盖「首行被筛选掉」的情况）。
     function findLogAnchorEl(channel, source, fieldId) {
-      const key = logFieldKey(channel, source, fieldId);
-      const el = document.getElementById(logAnchorId(currentItem(), channel, source, fieldId, 1));
+      const it = currentItem();
+      const ids = logIdsOf(it, { channel: channel, source: source });
+      const key = logFieldKey(ids.channelId, ids.sourceId, fieldId);
+      const el = document.getElementById(logAnchorId(ids.channelId, ids.sourceId, fieldId, 1));
       if (el && el.getAttribute('data-log-key') === key) return el;
       const nodes = document.querySelectorAll('#content [data-log-key]');
       for (let i = 0; i < nodes.length; i++) {
@@ -3345,8 +3370,8 @@
     function channelCount(chName, tab) {
       const it = currentItem();
       if (!it) return 0;
-      const enabled = it.enabledChannels || [];
-      const activeNames = chName === 'ALL' ? enabled : [chName];
+      const enabled = comparedChannelNames(it);
+      const activeNames = chName === 'ALL' ? enabled : (enabled.indexOf(chName) === -1 ? [] : [chName]);
       if (tab === 'fields') return flatFields(it).filter(r => activeNames.indexOf(r.channel) !== -1 && sourceMatches(r.source)).length;
       if (tab === 'warnings') return (it.warnings || []).filter(w => activeNames.indexOf(w.channel) !== -1 && sourceMatches(w.source) && !msgIsIgnored('warnings', enrichMsg(w))).length;
       if (tab === 'errors') return (it.errors || []).filter(e => activeNames.indexOf(e.channel) !== -1 && sourceMatches(e.source)).length;
@@ -3362,8 +3387,8 @@
     function sourceCount(srcName, tab) {
       const it = currentItem();
       if (!it) return 0;
-      const enabled = it.enabledChannels || [];
-      const chNames = state.channel === 'ALL' ? enabled : [state.channel];
+      const enabled = comparedChannelNames(it);
+      const chNames = state.channel === 'ALL' ? enabled : (enabled.indexOf(state.channel) === -1 ? [] : [state.channel]);
       const srcMatch = function (s) { return srcName === 'ALL' || s === srcName; };
       if (tab === 'fields') return flatFields(it).filter(r => chNames.indexOf(r.channel) !== -1 && srcMatch(r.source)).length;
       if (tab === 'warnings') return (it.warnings || []).filter(w => chNames.indexOf(w.channel) !== -1 && srcMatch(w.source) && !msgIsIgnored('warnings', enrichMsg(w))).length;
@@ -3382,9 +3407,10 @@
 
     function renderChannelTabs() {
       const it = currentItem();
+      const enabledSet = comparedChannelNames(it);
       const chs = [['ALL', t('all')]].concat(it.channels.map(ch => [ch.name, ch.name]));
       const html = chs.map(([k, label]) => {
-        const disabled = k !== 'ALL' && it.enabledChannels.indexOf(k) === -1;
+        const disabled = k !== 'ALL' && enabledSet.indexOf(k) === -1;
         const cls = 'ctab' + (state.channel === k ? ' active' : '') + (disabled ? ' disabled' : '');
         const count = disabled ? '—' : channelCount(k, state.tab);
         return '<button class="' + cls + '" data-channel="' + k + '" title="' + (disabled ? t('channelDisabled') : '') + '">' + esc(label) +
@@ -4605,15 +4631,19 @@
         const q = state.search.trim().toLowerCase();
         lines = lines.filter(l => String(l.text || '').toLowerCase().includes(q));
       }
-      // scope="field" 的行带定位锚点（短标识 id + data-log-key），供字段比较 / 关联字段 / 字段详情跳转高亮；
+      // scope="field" 的行带定位锚点（**id 合成键** + data-log-key），供字段比较 / 关联字段 / 字段详情跳转高亮；
       // 其余日志行不带锚点（item / channel 级日志无法从字段侧定位）。
       // 同键序号按 item.logs 顺序编号（与当前搜索 / 作用域筛选无关）→ 同一行 id 稳定，跳转取 .1。
       const it = currentItem() || {};
       const seqByLine = new Map();
       const seqCount = Object.create(null);
+      const keyOf = function (l) {
+        const ids = logIdsOf(it, l);
+        return logFieldKey(ids.channelId, ids.sourceId, l.field);
+      };
       (it.logs || []).forEach(function (l) {
         if (!isFieldLogLine(l)) return;
-        const k = logFieldKey(l.channel, l.source, l.field);
+        const k = keyOf(l);
         seqCount[k] = (seqCount[k] || 0) + 1;
         seqByLine.set(l, seqCount[k]);
       });
@@ -4622,10 +4652,11 @@
       const html = lines.map(function (l) {
         const text = esc(l.text || '');
         if (!isFieldLogLine(l)) return '<div class="log-line">' + text + '</div>';
-        const key = logFieldKey(l.channel, l.source, l.field);
+        const ids = logIdsOf(it, l);
+        const key = logFieldKey(ids.channelId, ids.sourceId, l.field);
         let seq = seqByLine.get(l);
         if (!seq) { seqCount[key] = (seqCount[key] || 0) + 1; seq = seqCount[key]; }
-        const id = logAnchorId(it, l.channel, l.source, l.field, seq);
+        const id = logAnchorId(ids.channelId, ids.sourceId, l.field, seq);
         // tabindex=-1：可被点击聚焦（从而能靠 focusout 取消高亮），但不进 Tab 顺序。
         return '<div class="log-line" tabindex="-1" id="' + esc(id) +
           '" data-log-key="' + esc(key) + '" data-log-field="' + esc(l.field) + '">' + text + '</div>';
@@ -4737,7 +4768,7 @@
     function renderContent() {
       if (!isTabEnabled(state.tab)) state.tab = 'fields';
       if (!currentItem()) { document.getElementById('content').innerHTML = '<div class="empty">' + t('emptyDataHint') + '</div>'; return; }
-      if (state.channel !== 'ALL' && currentItem().enabledChannels.indexOf(state.channel) === -1) {
+      if (state.channel !== 'ALL' && comparedChannelNames(currentItem()).indexOf(state.channel) === -1) {
         renderDisabledChannel(state.channel);
         return;
       }
@@ -5343,7 +5374,7 @@ export function parseHash(raw) {
     /* ---------- 统计图表（纯 CSS） ---------- */
     function renderCharts() {
       const it = currentItem();
-      let chs = it.channels.filter(function (c) { return it.enabledChannels.indexOf(c.name) !== -1; });
+      let chs = comparedChannels(it);
       if (state.channel !== 'ALL') chs = chs.filter(function (c) { return c.name === state.channel; });
       let total = 0, passed = 0, failed = 0;
       const perCh = chs.map(function (ch) {
@@ -5462,7 +5493,7 @@ export function parseHash(raw) {
     }
     function renderCompare() {
       const it = currentItem();
-      const enabled = it.channels.filter(function (c) { return it.enabledChannels.indexOf(c.name) !== -1; });
+      const enabled = comparedChannels(it);
       if (enabled.length === 0) { document.getElementById('content').innerHTML = '<div class="empty">无可用渠道</div>'; return; }
       if (!enabled.some(function (c) { return c.name === state.compare.channelA; })) state.compare.channelA = enabled[0].name;
       if (state.compare.mode === 'channel' && !enabled.some(function (c) { return c.name === state.compare.channelB; })) state.compare.channelB = enabled.length > 1 ? enabled[1].name : enabled[0].name;
@@ -6935,7 +6966,12 @@ export function parseHash(raw) {
     };
     export const __test = {
       setState(s) { state = s; },
-      setData(d) { DATA = d; },
+      // 与生产加载链路一致：先把顶层登记表的定义补回 item，再交给上层使用。
+      setData(d) {
+        DATA_REGISTRIES = registriesOf(d);
+        DATA = hydrateDataset(d);
+        return DATA;
+      },
       setIgnoreConfig(c) { IGNORE_CONFIG = c; },
       getData() { return DATA; },
     };

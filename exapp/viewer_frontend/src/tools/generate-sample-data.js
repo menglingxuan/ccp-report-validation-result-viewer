@@ -29,6 +29,22 @@ const BATCHES_DIR = path.join(PUBLIC_DIR, 'batches');
 function writeDataset(file, obj) {
   return writeJSONFile(file, obj, OUT_OPTS);
 }
+
+// 切片 / 特殊批次的数据集顶层字段必须与完整数据集保持一致：
+// **登记表（channels / sources）一定要带上**，否则 item 里的 id 引用无从解析
+// （顶层没有声明表 → lib/validate.js 报「未在顶层 channels 声明表里声明」，
+// 查看器 hydrate 也补不出名称，见 docs/DATA_SCHEMA.md §3.1）。
+function batchDataset(dataset, items) {
+  return {
+    mode: 'single',
+    reportEnv: dataset.reportEnv,
+    creationType: 'sample',
+    skippedItems: dataset.skippedItems,
+    channels: dataset.channels,
+    sources: dataset.sources,
+    items: items,
+  };
+}
 // batch-meta.json 是人工也会编辑/查看的用户态小文件（服务端写回时也用缩进版），保持缩进。
 function writeBatchMeta(file, obj) {
   return writeJSONFile(file, obj, { pretty: true });
@@ -168,13 +184,7 @@ function writeSpecialBatch(def) {
   if (Array.isArray(def.tags) && def.tags.length) meta.tags = def.tags;
   if (def.descriptionEx) meta.descriptionEx = def.descriptionEx;
   writeBatchMeta(path.join(dir, 'batch-meta.json'), meta);
-  writeDataset(path.join(dir, 'report-validation-data.json'), {
-    mode: 'single',
-    reportEnv: dataset.reportEnv,
-    creationType: 'sample',
-    skippedItems: dataset.skippedItems,
-    items: items,
-  });
+  writeDataset(path.join(dir, 'report-validation-data.json'), batchDataset(dataset, items));
   console.log('特殊批次 -> ' + path.relative(PUBLIC_DIR, path.join(dir, 'report-validation-data.json'))
     + '（' + items.length + ' items' + (def.deleted ? '，deleted 标记' : '') + '）');
 }
@@ -225,11 +235,11 @@ function main() {
       const items = [];
       for (let k = 0; k < n; k++) items.push(dataset.items[(start + k) % dataset.items.length]);
       const file = path.join(dir, 'report-validation-data.json');
-      writeDataset(file, { mode: 'single', reportEnv: dataset.reportEnv, creationType: 'sample', skippedItems: dataset.skippedItems, items });
+      writeDataset(file, batchDataset(dataset, items));
       syncBatchMetaSummary(dir, items.length);
       console.log('批次数据 -> ' + path.relative(PUBLIC_DIR, file) + '（' + items.length + ' items，已同步 batch-meta.json summary.items）');
     });
-    writeMultiBatch(multiBatchDir, { mode: 'single', reportEnv: dataset.reportEnv, skippedItems: dataset.skippedItems, items: dataset.items.slice(0, 4) });
+    writeMultiBatch(multiBatchDir, batchDataset(dataset, dataset.items.slice(0, 4)));
     console.log('多文件批次 -> ' + path.relative(PUBLIC_DIR, multiBatchDir) + '（清单 + data/items/*.json，4 items）');
     writeSpecialBatches();
     if (!dirs.length) {

@@ -152,8 +152,12 @@ async function main() {
 
   const slice = Object.assign({}, dataset, { items: dataset.items.slice(0, 2) });
   const singleBatchDir = path.join(root, 'batches', '2026-08-16', 'batch-verify-single');
+  // 单文件批次必须是「同一套顶层字段」：登记表（channels / sources）也要写，
+  // 否则 item 里的 id 引用无从解析（与 Java / JS 生成器产出一致）。
   writeJSON(path.join(singleBatchDir, 'report-validation-data.json'),
-    { mode: 'single', reportEnv: dataset.reportEnv, creationType: 'sample', items: slice.items });
+    { mode: 'single', reportEnv: dataset.reportEnv, creationType: 'sample',
+      skippedItems: dataset.skippedItems, channels: dataset.channels, sources: dataset.sources,
+      items: slice.items });
   writeJSON(path.join(singleBatchDir, 'batch-meta.json'), batchMeta('batch-verify-single', slice.items.length, dataset));
 
   const multiBatchDir = path.join(root, 'batches', '2026-08-16', 'batch-verify-multi');
@@ -197,16 +201,30 @@ async function main() {
       manifest.json && Array.isArray(manifest.json.skippedItems)
       && manifest.json.skippedItems.length === (dataset.skippedItems || []).length,
       JSON.stringify(manifest.json && manifest.json.skippedItems && manifest.json.skippedItems.length));
+    // 归一化形态：定义只在顶层登记表里写一次（channels / sources），item 里只有 id 引用。
+    check('主清单带顶层 channels / sources 登记表',
+      !!manifest.json && Array.isArray(manifest.json.channels) && manifest.json.channels.length > 0
+      && Array.isArray(manifest.json.sources) && manifest.json.sources.length > 0,
+      JSON.stringify(manifest.json && { c: (manifest.json.channels || []).length, s: (manifest.json.sources || []).length }));
 
     // 每个 item 文件都按「相对清单文件所在目录」解析（与 app.js resolveUrl(DATA_FILE_URL, item.file) 一致）
     const badItems = [];
+    const withDefinitions = [];
     for (const it of mItems) {
       const r = await getJSON(new URL(it.file, manifestUrl).href);
       if (r.status !== 200 || !r.json || r.json.tradeId !== it.tradeId
           || !Array.isArray(r.json.channels) || r.json.channels.length === 0
           || !r.json.ctxDefs) badItems.push(it.tradeId);
+      // item 文件里不得重复写渠道 / 来源渠道定义（只允许 id 引用 + 本 item 的数据）。
+      if (r.json && Array.isArray(r.json.channels)) {
+        r.json.channels.forEach((ch) => {
+          if ('name' in ch || 'desc' in ch || 'format' in ch) withDefinitions.push(it.tradeId + '/' + ch.id);
+          (ch.sources || []).forEach((s) => { if ('name' in s) withDefinitions.push(it.tradeId + '/' + ch.id + '/' + s.id); });
+        });
+      }
     }
     check('全部 ' + mItems.length + ' 个 item 文件可懒加载（含 channels/ctxDefs）', badItems.length === 0, badItems.join(','));
+    check('item 文件只有 id 引用（定义在清单的登记表里）', withDefinitions.length === 0, withDefinitions.slice(0, 5).join(','));
 
     // 默认模板清单：multi 模式下同样必须是清单（回归点）
     const def = await getJSON(base + '/report-validation-data-default.json');

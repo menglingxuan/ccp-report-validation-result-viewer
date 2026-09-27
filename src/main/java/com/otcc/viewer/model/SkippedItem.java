@@ -16,7 +16,11 @@ public class SkippedItem {
     private String itemId;
     /** Report channel; may be {@code null} (null = not tied to a specific channel). */
     private String channel;
+    /** Stable channel id (dual written with {@link #channel}). */
+    private Integer channelId;
     /** Source channel; may be {@code null}. */
     private String source;
+    /** Stable source id (dual written with {@link #source}); only set when {@link #channelId} is set. */
+    private Integer sourceId;
     private String reason;
 }

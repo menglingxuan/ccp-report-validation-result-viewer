@@ -1,12 +1,14 @@
 // 批次模式转换核心：把「多文件模式」批次（清单 + 每 item 一个文件）合并为「单文件模式」批次。
 //
 // 多文件清单结构（见 docs/DATA_SCHEMA.md，与 lib/sample-data.js 的 splitToFiles 互为逆操作）：
-//   { mode: 'multi', reportEnv, creationType, skippedItems, items: [{ tradeId, file: 'data/items/x.json', summary, ... }] }
+//   { mode: 'multi', reportEnv, creationType, skippedItems, channels, sources,
+//     items: [{ tradeId, file: 'data/items/x.json', summary, ... }] }
 // 合并后：
-//   { mode: 'single', reportEnv, creationType, skippedItems, items: [ <item 文件完整内容>, ... ] }
+//   { mode: 'single', reportEnv, creationType, skippedItems, channels, sources, items: [ <item 文件完整内容>, ... ] }
 // 说明：
 //   - item 文件的 `file` 相对**清单所在目录**（即批次目录）解析；
-//   - 清单里除 `mode` / `items` 之外的顶层字段原样保留；
+//   - 清单里除 `mode` / `items` 之外的顶层字段原样保留（含渠道 / 来源渠道登记表 channels / sources，
+//     缺了它们 item 里的 id 引用就无从解析）；
 //   - item 顺序与清单一致；清单里的展示用字段（file / summary 等）不会写进合并结果；
 //   - 本模块不做任何写入以外的事情（写文件由调用方通过 opts 控制），便于单独测试。
 import fs from 'node:fs';

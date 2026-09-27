@@ -69,6 +69,7 @@ public final class MinimalDataGenerator {
                 .build();
 
         Source source = Source.builder()
+                .id(1)
                 .name("来源渠道 A")
                 .fields(List.of(field))
                 .build();
@@ -80,6 +81,7 @@ public final class MinimalDataGenerator {
                 .build();
 
         Channel channel = Channel.builder()
+                .id(1)
                 .name("HKTR")
                 .desc("香港交易资料储存库")
                 .format("xml")
@@ -98,7 +100,6 @@ public final class MinimalDataGenerator {
                 .counterpartyItemId("")
                 .platformTradeId("PT-ME-0001")
                 .platformDealId("PD-ME-0001")
-                .enabledChannels(List.of("HKTR"))
                 .ctxDefs(new LinkedHashMap<>())
                 .channels(List.of(channel))
                 .warnings(List.of())
@@ -107,13 +108,13 @@ public final class MinimalDataGenerator {
                 .logs(List.of())
                 .build();
 
-        return ValidationDataset.builder()
+        return ValidationJsonGenerator.hoistRegistries(ValidationDataset.builder()
                 .mode("single")
                 .reportEnv("OTCXXX")
                 .creationType("sample")
                 .skippedItems(List.of())
                 .items(List.of(item))
-                .build();
+                .build());
     }
 
     public static void writeTo(Path outDir) throws IOException {

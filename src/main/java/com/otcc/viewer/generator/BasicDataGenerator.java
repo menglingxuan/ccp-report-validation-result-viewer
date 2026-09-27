@@ -63,6 +63,14 @@ public final class BasicDataGenerator {
     private static final Map<String, String> CHANNEL_FORMAT = Map.of(
             "HKTR", "xml", "JSFA", "xml", "CFTC", "csv");
 
+    /**
+     * Stable channel ids, identical to the preset table in {@code public/core.js}
+     * (HKTR=1 / JSFA=2 / CFTC=3) and to {@link ValidationJsonGenerator#CHANNEL_IDS}.
+     * The presets are part of the data contract, so they are repeated here rather than
+     * shared - a change must be made in both languages anyway.
+     */
+    private static final Map<String, Integer> CHANNEL_IDS = Map.of("HKTR", 1, "JSFA", 2, "CFTC", 3);
+
     /** Per-channel targets: { tradeId target, notional target }. */
     private static final Map<String, String[]> CHANNEL_TARGETS = Map.of(
             "HKTR", new String[]{
@@ -108,40 +116,42 @@ public final class BasicDataGenerator {
                 .counterpartyItemId("T-20240814-1001")
                 .platformTradeId("PT-BASIC-0001")
                 .platformDealId("PD-BASIC-0001")
-                .enabledChannels(List.of("HKTR", "JSFA", "CFTC"))
                 .ctxDefs(ctxDefs)
                 .channels(channels)
                 .warnings(List.of(Message.builder()
-                        .scope("channel").source("").channel("HKTR")
+                        .scope("channel").source("").sourceId(null).channel("HKTR").channelId(1)
                         .type("productAssertion").level("WARN")
                         .text("字段格式与映射配置不一致，使用默认校验规则").field("notional").build()))
                 .errors(List.of(Message.builder()
-                        .scope("field").source("").channel("HKTR")
+                        .scope("field").source("来源渠道 A").sourceId(1).channel("HKTR").channelId(1)
                         .type("mappingError").level("ERROR")
                         .text("映射配置错误：XPath 语法非法").field("tradeId").build()))
                 .uncompared(List.of(UncomparedEntry.builder()
-                        .type(1).channel("HKTR").source("来源渠道 A")
+                        .type(1).channel("HKTR").channelId(1).source("来源渠道 A").sourceId(1)
                         .value("/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId")
                         .note("未在映射配置中匹配到对应 CSV 字段").build()))
                 .logs(List.of(
-                        ItemLog.builder().scope("item").channel(null).source(null)
+                        // 日志行只写 text（不带渠道 / 来源引用）：需要 id 的行由 buildChannelLogs / buildFieldLogs 写。
+                        ItemLog.builder().scope("item")
                                 .text(date + " 00:00:00.100 INFO  开始比较 item=" + tradeId + "，报告日期=" + date).build(),
-                        ItemLog.builder().scope("item").channel(null).source(null)
+                        ItemLog.builder().scope("item")
                                 .text(date + " 00:00:00.200 INFO  比较完成，结果已生成").build()))
                 .build();
 
-        return ValidationDataset.builder()
+        return ValidationJsonGenerator.hoistRegistries(ValidationDataset.builder()
                 .mode("single")
                 .reportEnv("OTCXXX")
                 .creationType("sample")
                 .skippedItems(List.of(SkippedItem.builder()
                         .itemId("T-" + date.replace("-", "") + "-0001")
                         .channel("JSFA")
+                        .channelId(2)
                         .source("来源渠道 A")
+                        .sourceId(1)
                         .reason("在 JSFA 渠道的来源渠道 A 中未找到该 item 的对应记录，已跳过该来源渠道的比较。")
                         .build()))
                 .items(List.of(item))
-                .build();
+                .build());
     }
 
     private static Channel buildChannel(String name, String tradeId, String date, Map<String, Integer> ctxIdByKey) {
@@ -159,10 +169,11 @@ public final class BasicDataGenerator {
                 .build();
 
         List<Source> sources = List.of(
-                Source.builder().name("来源渠道 A").fields(buildFields(name, 1, targets, csv, mapCtx, ctxIdByKey)).build(),
-                Source.builder().name("来源渠道 B").fields(buildFields(name, 2, targets, csv, mapCtx, ctxIdByKey)).build());
+                Source.builder().id(1).name("来源渠道 A").fields(buildFields(name, 1, targets, csv, mapCtx, ctxIdByKey)).build(),
+                Source.builder().id(2).name("来源渠道 B").fields(buildFields(name, 2, targets, csv, mapCtx, ctxIdByKey)).build());
 
         return Channel.builder()
+                .id(CHANNEL_IDS.get(name))
                 .name(name)
                 .desc(CHANNEL_DESC.get(name))
                 .format(CHANNEL_FORMAT.get(name))
