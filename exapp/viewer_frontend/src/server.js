@@ -21,8 +21,9 @@
 //   GET  /scan/progress    扫描进度（SSE）
 //   GET  /status | /health 服务状态与当前配置
 //   GET|POST /api/favorites 收藏夹读写
-//   POST /api/ignore        忽略配置回写（按租户隔离）
-//   POST /api/batch         批次软删除 / 收藏 / 名称与描述 / 标签
+//   POST /api/ignore        忽略配置回写（按租户隔离，支持 If-Match）
+//   GET  /api/batch         批次元数据 + 当前 ETag（写回前取 If-Match 用）
+//   POST /api/batch         批次软删除 / 收藏 / 名称与描述 / 标签（支持 If-Match 乐观并发）
 //   POST /api/reveal        在系统文件管理器中打开批次目录
 import http from 'node:http';
 import fs from 'node:fs';
@@ -383,6 +384,29 @@ async function rescanIndex() {
 }
 
 // 批次元数据写回：软删除 / 恢复 / 收藏 / 名称与描述 / 标签。
+// 乐观并发：客户端带 If-Match（body 的 ifMatch 或 If-Match 头，值为 GET /api/batch 拿到的 etag），
+// 与服务端当前 batch-meta.json 不一致（或文件已被删除）则 409 且不写入；成功后回传新 etag，
+// 客户端无需重新 GET 即可继续写入。* 视为不校验（与 /api/ignore、/api/favorites 同一语义）。
+function batchMetaPath(batchId) {
+  let idx = { batches: [] };
+  try { idx = JSON.parse(fs.readFileSync(CFG.scan.outAbs, 'utf8')); } catch (e) {}
+  const b = (idx.batches || []).find(function (x) { return x.batchId === batchId; });
+  return (b && b.path) ? path.join(b.path.split('/').join(path.sep), 'batch-meta.json') : null;
+}
+function readIfMatch(data, req) {
+  return (typeof data.ifMatch === 'string' && data.ifMatch) || String((req.headers && req.headers['if-match']) || '');
+}
+function handleBatchGet(res, query) {
+  // id / batchId 两种写法都接受（与 POST body 的 batchId 对齐）。
+  const batchId = String((query && (query.get('id') || query.get('batchId'))) || '').trim();
+  if (!batchId) { json(res, 400, { ok: false, error: 'id 必填' }); return; }
+  const metaPath = batchMetaPath(batchId);
+  if (!metaPath) { json(res, 404, { ok: false, error: '批次不存在：' + batchId }); return; }
+  let meta = {};
+  try { meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')) || {}; } catch (e) {}
+  // etag 为 null 表示该批次还没有 batch-meta.json（首次写入无需 If-Match）。
+  json(res, 200, { ok: true, batchId: batchId, meta: meta, etag: etagOfFile(metaPath) });
+}
 function handleBatchAction(req, res) {
   let body = '';
   req.on('data', function (c) { body += String(c); });
@@ -400,13 +424,17 @@ function handleBatchAction(req, res) {
       const nextName = hasName ? String(data.batchName).trim().slice(0, MAX_BATCH_NAME_LEN) : null;
       if (hasName && !nextName) { json(res, 400, { ok: false, error: 'batchName 不能为空' }); return; }
 
-      let idx = { batches: [] };
-      try { idx = JSON.parse(fs.readFileSync(CFG.scan.outAbs, 'utf8')); } catch (e) {}
-      const b = (idx.batches || []).find(function (x) { return x.batchId === batchId; });
-      if (!b || !b.path) { json(res, 404, { ok: false, error: '批次不存在：' + batchId }); return; }
+      const metaPath = batchMetaPath(batchId);
+      if (!metaPath) { json(res, 404, { ok: false, error: '批次不存在：' + batchId }); return; }
 
-      const dir = b.path.split('/').join(path.sep);
-      const metaPath = path.join(dir, 'batch-meta.json');
+      // 乐观并发：客户端带它读取时的 ETag，与服务端当前文件不一致（或文件已不存在）则拒绝，
+      // 避免多会话并发写同一字段时默默互相覆盖。
+      const cur = etagOfFile(metaPath);
+      const want = readIfMatch(data, req);
+      if (want && want !== '*') {
+        if (!cur || want !== cur) { json(res, 409, { ok: false, error: '批次元数据已被其他会话修改', etag: cur }); return; }
+      }
+
       let meta = {};
       try { meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')) || {}; } catch (e) {}
       meta.batchId = meta.batchId || batchId;
@@ -431,6 +459,7 @@ function handleBatchAction(req, res) {
       json(res, 200, {
         ok: true,
         batchId: batchId,
+        etag: etagOfFile(metaPath),
         deleted: hasDeleted ? data.deleted : undefined,
         favorite: hasFavorite ? data.favorite : undefined,
         batchName: hasName ? meta.batchName : undefined,
@@ -560,7 +589,8 @@ const server = http.createServer(function (req, res) {
   }
 
   if (url === '/api/batch') {
-    handleBatchAction(req, res);
+    if (req.method === 'POST') handleBatchAction(req, res);
+    else handleBatchGet(res, new URL(req.url || '/', 'http://localhost').searchParams);
     return;
   }
 

@@ -10,7 +10,7 @@
 //   - 消息：channels[].warnings/errors 迁移到 item 级（新增 scope/source，移除 platform/product）。
 //   - uncompared/uncomparedCsv 合并为 item.uncompared（新增 type，移除 platform/product/ctx）。
 //   - channels[].logs 与 overviewLogs 合并为 item.logs（对象式 {scope,channel,source,field,text}）；
-//     字段的 prints 同时迁移为 fields[].logs（scope="field"，带 channel/source/field）并追加进 item.logs。
+//     字段的 prints 同时生成 scope="field" 的日志行（带 channel/source/field）追加进 item.logs（字段本身不存日志）。
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -106,8 +106,8 @@ function migrateItem(it) {
   });
 
   // 第二遍：迁移比较字段，id 使用数字字符串，ctx 引用改为 ctxDefs 的 id。
-  //   字段级日志（f.logs）：由旧 prints 生成 scope="field" 的日志行（带 channel / source / field），
-  //   并追加进 item.logs，使这些行可在「完整日志」中定位（channel+source+field）。
+  //   字段级日志（scope="field"）：由旧 prints 生成带 channel / source / field 的日志行，只追加进 item.logs，
+  //   使这些行可在「完整日志」中定位（channel+source+field）；字段对象本身不存日志。
   const fieldLogs = [];
   (it.channels || []).forEach(function (ch) {
     (ch.sources || []).forEach(function (s) {
@@ -116,12 +116,11 @@ function migrateItem(it) {
         const srcName = typeof s.name === 'string' ? s.name : '';
         const fid = nameToId[f.f || f.id || ''] || '';
         const mf = migrateField(f, oldCtxDefs, nameToId, ctxIdByKey);
-        mf.logs = (chName && srcName && fid)
-          ? (mf.prints || []).map(function (text) {
-              return { scope: 'field', channel: chName, source: srcName, field: fid, text: String(text) };
-            })
-          : [];
-        fieldLogs.push.apply(fieldLogs, mf.logs);
+        if (chName && srcName && fid) {
+          (mf.prints || []).forEach(function (text) {
+            fieldLogs.push({ scope: 'field', channel: chName, source: srcName, field: fid, text: String(text) });
+          });
+        }
         Object.keys(f).forEach(function (k) { delete f[k]; });
         Object.assign(f, mf);
       });

@@ -144,6 +144,7 @@ node tools/merge-batch.mjs --batch <id> --tenant[=id] | --no-tenant # 租户 / �
 | `text` | 字符串 | 日志正文（单行；时间戳与渠道前缀包含在正文内） |
 
 > **不变式**（`lib/validate.js` 会报错）：`field` 非空 ⇒ `scope === "field"` 且 `channel` / `source` 均非空。
+> **字段级日志行只在 `item.logs` 里存一份**：`fields[]` 不新增任何字段（字段上的 `prints` 保留待用）。
 >
 > **用途**：查看器用 `channel` + `source` + `field` 三元组给这些行建立**日志锚点**（渲染时记在 `data-log-key`，DOM `id` 用短标识 `log-<渠道>-s<来源渠道序号>-f<字段id>.<同键序号>`），从而实现「字段比较 / 关联字段 / 字段详情 → 完整日志」的定位高亮（详见 `docs/README.md` 的「完整日志的字段定位」）。同一三元组可对应多行日志（字段比较过程打印多行），跳转取**首个**。
 
@@ -235,12 +236,11 @@ node tools/merge-batch.mjs --batch <id> --tenant[=id] | --no-tenant # 租户 / �
 | `remarks` | 字符串 | 说明（原 `note`） |
 | `resultText` | 字符串 | 结果说明（原 `resultNote`） |
 | `resultDetails` | 数组 | 额外结果 `[{label, value}]`（原 `extraResults`） |
-| `prints` | 字符串数组 | 相关打印信息（**保留待用**：字段详情页已改为读取关联日志行 `logs`） |
-| `logs` | 数组 | 该字段关联的日志行：元素与 `item.logs` 同构（`{scope, channel, source, field, text}`），`scope` 恒为 `"field"`、`field` 恒等于该字段的 `id`、`channel` / `source` 恒等于所属渠道 / 来源渠道名；同一批行也会出现在 `item.logs` 中（查看器据此定位高亮） |
+| `prints` | 字符串数组 | 相关打印信息（**保留待用**：字段详情页已改为从 `item.logs` 读取 `channel` + `source` + `field` 匹配的关联日志行） |
 
 > 已移除字段：`eoConverted`（不再需要）与 `field.ctxs`（命中上下文现由 `cmpLeft` / `cmpRight` / `cvtLeft` / `cvtRight` / `vdt` 的 `ctxs` 取并集）。`f` / `t` / `k` 迁移到 `channel.fields`；`x` / `aoCsv` / `ctx` / `eo` / `ao` / `eoUnconverted` / `conversionRule` / `validationRule` / `excelMapping` / `excelConversionRule` / `excelValidationRule` 迁移到上述对象；`ctx`（单数）由 ctx key 字符串/id 改为 **命中 ctxKey 的原始字符串表达式**，`ctxs` 改为 `item.ctxDefs` 的 id 引用数组。
 >
-> `logs` 为新增字段（与 `prints` 同源：同样是字段比较过程的三行文本，但改为带 `channel`/`source`/`field` 的日志行，从而能在「完整日志」里定位）——生成器（Java `ValidationJsonGenerator` / JS `lib/sample-data.js`）与旧数据迁移工具（`tools/migrate-legacy-data.js`）都会同时写 `prints` 与 `logs`。
+> `logs` 为新增字段（与 `prints` 同源：同样是字段比较过程的三行文本，但改为带 `channel`/`source`/`field` 的日志行，从而能在「完整日志」里定位）——生成器（Java `ValidationJsonGenerator` / JS `lib/sample-data.js`）与旧数据迁移工具（`tools/migrate-legacy-data.js`）都会同步写 `prints` 与 `item.logs`；**`fields[]` 不新增任何字段**（字段级日志行只在 `item.logs` 里存一份）。
 
 ## 6. 批次元数据（`batch-meta.json`）与索引（`batches-index.json`）
 
@@ -269,6 +269,7 @@ node tools/merge-batch.mjs --batch <id> --tenant[=id] | --no-tenant # 租户 / �
 | `descriptionEx` | 对象 | 任务说明**扩展内容**（只读）：`{ contentType, plainContent }`，渲染在「任务说明」末尾，见 §6.3 |
 
 > `deleted` / `favorite` / `tags` / `ignoreUrl` 由**查看器与服务端**写入（`POST /api/batch`、`POST /api/ignore`），Java 样例生成器不写这四项；Java 模型 `BatchMeta` 已声明为可选字段（`@JsonInclude(NON_NULL)`，缺失时不序列化）。
+> `POST /api/batch` 为**字段级补丁**（只覆盖请求里出现的字段）+ `If-Match` 乐观并发：写前可用 `GET /api/batch?id=<batchId>` 取当前 `batch-meta.json` 的 `etag` 并作为 `ifMatch` 回传，不匹配（或文件已被删除）则 **409** 且不写入，不匹配响应里带回服务端当前 `etag` 供客户端重放一次（详见 [`README.md`](README.md) 的接口表与乐观并发说明）。
 > `descriptionEx` 也是可选字段（Java 模型 `DescriptionEx`）：样例生成器（Java / `node tools/generate-sample-data.js --batch`）会写一份 `markDownTable` 示例；查看器与 `POST /api/batch` **都不会修改它**（只读）。
 
 ### 6.2 忽略配置（`ignore-config-by-platform.json`）

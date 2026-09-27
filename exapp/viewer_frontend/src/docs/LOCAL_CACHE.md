@@ -53,4 +53,4 @@
 
 - 顶栏「主页」按钮（简约房子图标，hover 提示「回到站点根」/"Back to Site Root"）：回到站点根（`origin + pathname`，不带查询参数与深链接）并重新加载；与启动失败提示条的「回到主页」共用 `webRootUrl()`；开关 `features.homeButton`（prod 默认关闭）。
 - 配置开关：`features.clearLocalCache` / `features.homeButton`，见 [`CONFIG.md` §6](CONFIG.md)。
-- 其它持久化（服务器端）：收藏夹 `GET/POST /api/favorites`、忽略配置 `POST /api/ignore`、批次元数据 `POST /api/batch`，见 [`README.md`](README.md)。
+- 其它持久化（服务器端）：收藏夹 `GET/POST /api/favorites`、忽略配置 `POST /api/ignore`、批次元数据 `GET/POST /api/batch`（均支持 `If-Match` 乐观并发），见 [`README.md`](README.md)。

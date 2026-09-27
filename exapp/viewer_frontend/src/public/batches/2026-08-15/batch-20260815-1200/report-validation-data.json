@@ -403,29 +403,6 @@
                     "[INFO] 比较字段 tradeId（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.default,hktr.ctx.val.v2",
                     "[INFO] EO=TX-2024-887319，AO=TX-2024-887319 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.100 INFO  [HKTR/来源渠道 A] 比较字段 tradeId（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.default,hktr.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.180 INFO  [HKTR/来源渠道 A] EO=TX-2024-887319，AO=TX-2024-887319 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -468,29 +445,6 @@
                     "[INFO] 比较字段 reportId（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.default",
                     "[INFO] EO=TX-2024-449532，AO=TX-2024-449532 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.100 INFO  [HKTR/来源渠道 A] 比较字段 reportId（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.180 INFO  [HKTR/来源渠道 A] EO=TX-2024-449532，AO=TX-2024-449532 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -534,29 +488,6 @@
                     "[INFO] 比较字段 product（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.default,hktr.ctx.val.v2",
                     "[INFO] EO=OIS，AO=OIS → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.100 INFO  [HKTR/来源渠道 A] 比较字段 product（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.default,hktr.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.180 INFO  [HKTR/来源渠道 A] EO=OIS，AO=OIS → PASSED"
-                    }
                   ]
                 },
                 {
@@ -605,29 +536,6 @@
                     "[INFO] 比较字段 notional（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/NotionalValue，命中Ctx=hktr.ctx.v2,hktr.ctx.val.v2",
                     "[INFO] EO=3935078.39，AO=3935078.39 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.100 INFO  [HKTR/来源渠道 A] 比较字段 notional（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Notional/AmountDetails/NotionalValue，命中Ctx=hktr.ctx.v2,hktr.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.180 INFO  [HKTR/来源渠道 A] EO=3935078.39，AO=3935078.39 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -673,29 +581,6 @@
                     "[INFO] 比较字段 currency（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=hktr.ctx.default,hktr.ctx.conv.v2,hktr.ctx.val.default,hktr.ctx.extended.production.region.east.v2024.latest",
                     "[INFO] EO=CNY，AO=CNY → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.100 INFO  [HKTR/来源渠道 A] 比较字段 currency（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=hktr.ctx.default,hktr.ctx.conv.v2,hktr.ctx.val.default,hktr.ctx.extended.production.region.east.v2024.latest"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.180 INFO  [HKTR/来源渠道 A] EO=CNY，AO=CNY → PASSED"
-                    }
                   ]
                 },
                 {
@@ -752,29 +637,6 @@
                     "[INFO] 比较字段 tradeDate（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeDate，命中Ctx=hktr.ctx.default",
                     "[INFO] EO=2024-04-02，AO=2024-04-02 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.100 INFO  [HKTR/来源渠道 A] 比较字段 tradeDate（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Header/TradeDetails/TradeDate，命中Ctx=hktr.ctx.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.180 INFO  [HKTR/来源渠道 A] EO=2024-04-02，AO=2024-04-02 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -831,29 +693,6 @@
                     "[INFO] 比较字段 maturityDate（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Header/TradeDetails/MaturityDate，命中Ctx=hktr.ctx.v2,hktr.ctx.val.v2",
                     "[INFO] EO=2024-08-29，AO=2024-08-29 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.100 INFO  [HKTR/来源渠道 A] 比较字段 maturityDate（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Header/TradeDetails/MaturityDate，命中Ctx=hktr.ctx.v2,hktr.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.180 INFO  [HKTR/来源渠道 A] EO=2024-08-29，AO=2024-08-29 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -896,29 +735,6 @@
                     "[INFO] 比较字段 counterparty（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Counterparty/PartyDetails/PartyName，命中Ctx=hktr.ctx.v2,hktr.ctx.val.v2",
                     "[INFO] EO=HSBC，AO=XYZ Bank → FAILED（值不一致）"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.100 INFO  [HKTR/来源渠道 A] 比较字段 counterparty（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Counterparty/PartyDetails/PartyName，命中Ctx=hktr.ctx.v2,hktr.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.180 INFO  [HKTR/来源渠道 A] EO=HSBC，AO=XYZ Bank → FAILED（值不一致）"
-                    }
                   ]
                 },
                 {
@@ -969,29 +785,6 @@
                     "[INFO] 比较字段 platform（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.default,hktr.ctx.val.v2",
                     "[INFO] EO=，AO=XYZ Bank → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.100 INFO  [HKTR/来源渠道 A] 比较字段 platform（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.default,hktr.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.180 INFO  [HKTR/来源渠道 A] EO=，AO=XYZ Bank → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-                    }
                   ]
                 },
                 {
@@ -1035,29 +828,6 @@
                     "[INFO] 比较字段 price（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Pricing/PriceDetails/PriceValue，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.v2,hktr.ctx.val.v2",
                     "[INFO] EO=6615763.00，AO=6615763.00 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.100 INFO  [HKTR/来源渠道 A] 比较字段 price（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Pricing/PriceDetails/PriceValue，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.v2,hktr.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.180 INFO  [HKTR/来源渠道 A] EO=6615763.00，AO=6615763.00 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -1122,29 +892,6 @@
                     "[INFO] 比较字段 remarks（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Header/AdditionalInformation/Remarks，命中Ctx=hktr.ctx.v3,hktr.ctx.val.v2",
                     "[INFO] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.100 INFO  [HKTR/来源渠道 A] 比较字段 remarks（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Header/AdditionalInformation/Remarks，命中Ctx=hktr.ctx.v3,hktr.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.180 INFO  [HKTR/来源渠道 A] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。 → PASSED"
-                    }
                   ]
                 }
               ]
@@ -1185,29 +932,6 @@
                     "[INFO] 比较字段 tradeId（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId，命中Ctx=hktr.ctx.v2,hktr.ctx.val.default",
                     "[INFO] EO=TX-2024-354658，AO=TX-2024-354658 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.100 INFO  [HKTR/来源渠道 B] 比较字段 tradeId（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId，命中Ctx=hktr.ctx.v2,hktr.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.180 INFO  [HKTR/来源渠道 B] EO=TX-2024-354658，AO=TX-2024-354658 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -1250,29 +974,6 @@
                     "[INFO] 比较字段 reportId（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.default,hktr.ctx.val.v2",
                     "[INFO] EO=TX-2024-741910，AO=TX-2024-741910 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.100 INFO  [HKTR/来源渠道 B] 比较字段 reportId（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.default,hktr.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.180 INFO  [HKTR/来源渠道 B] EO=TX-2024-741910，AO=TX-2024-741910 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -1328,29 +1029,6 @@
                     "[INFO] 比较字段 product（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=hktr.ctx.v2",
                     "[INFO] EO=FXS，AO=FXS → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.100 INFO  [HKTR/来源渠道 B] 比较字段 product（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=hktr.ctx.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.180 INFO  [HKTR/来源渠道 B] EO=FXS，AO=FXS → PASSED"
-                    }
                   ]
                 },
                 {
@@ -1406,29 +1084,6 @@
                     "[INFO] 比较字段 notional（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/NotionalValue，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.v2,hktr.ctx.val.default",
                     "[INFO] EO=5093799.47，AO=5093799.47 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.100 INFO  [HKTR/来源渠道 B] 比较字段 notional（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Notional/AmountDetails/NotionalValue，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.v2,hktr.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.180 INFO  [HKTR/来源渠道 B] EO=5093799.47，AO=5093799.47 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -1479,29 +1134,6 @@
                     "[INFO] 比较字段 currency（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=hktr.ctx.default,hktr.ctx.conv.default,hktr.ctx.val.default,hktr.ctx.v2",
                     "[INFO] EO=USD，AO=USD → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.100 INFO  [HKTR/来源渠道 B] 比较字段 currency（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=hktr.ctx.default,hktr.ctx.conv.default,hktr.ctx.val.default,hktr.ctx.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.180 INFO  [HKTR/来源渠道 B] EO=USD，AO=USD → PASSED"
-                    }
                   ]
                 },
                 {
@@ -1557,29 +1189,6 @@
                     "[INFO] 比较字段 tradeDate（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeDate，命中Ctx=hktr.ctx.default,hktr.ctx.val.default",
                     "[INFO] EO=2024-03-22，AO=2024-03-22 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.100 INFO  [HKTR/来源渠道 B] 比较字段 tradeDate（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Header/TradeDetails/TradeDate，命中Ctx=hktr.ctx.default,hktr.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.180 INFO  [HKTR/来源渠道 B] EO=2024-03-22，AO=2024-03-22 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -1638,29 +1247,6 @@
                     "[INFO] 比较字段 maturityDate（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Header/TradeDetails/MaturityDate，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.default,hktr.ctx.val.default,hktr.ctx.extended.production.region.east.v2024.latest",
                     "[INFO] EO=2024-03-23，AO=2024-03-23 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.100 INFO  [HKTR/来源渠道 B] 比较字段 maturityDate（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Header/TradeDetails/MaturityDate，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.default,hktr.ctx.val.default,hktr.ctx.extended.production.region.east.v2024.latest"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.180 INFO  [HKTR/来源渠道 B] EO=2024-03-23，AO=2024-03-23 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -1726,29 +1312,6 @@
                     "[INFO] 比较字段 counterparty（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Counterparty/PartyDetails/PartyName，命中Ctx=hktr.ctx.v3",
                     "[INFO] EO=Citi Group，AO=Citi Group → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.100 INFO  [HKTR/来源渠道 B] 比较字段 counterparty（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Counterparty/PartyDetails/PartyName，命中Ctx=hktr.ctx.v3"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.180 INFO  [HKTR/来源渠道 B] EO=Citi Group，AO=Citi Group → PASSED"
-                    }
                   ]
                 },
                 {
@@ -1791,29 +1354,6 @@
                     "[INFO] 比较字段 platform（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.val.v2",
                     "[INFO] EO=HSBC，AO=HSBC → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.100 INFO  [HKTR/来源渠道 B] 比较字段 platform（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.180 INFO  [HKTR/来源渠道 B] EO=HSBC，AO=HSBC → PASSED"
-                    }
                   ]
                 },
                 {
@@ -1849,29 +1389,6 @@
                     "[INFO] 比较字段 price（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Pricing/PriceDetails/PriceValue，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.v2,hktr.ctx.val.v2",
                     "[INFO] EO=1695062.31，AO=1695062.31 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.100 INFO  [HKTR/来源渠道 B] 比较字段 price（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Pricing/PriceDetails/PriceValue，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.v2,hktr.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.180 INFO  [HKTR/来源渠道 B] EO=1695062.31，AO=1695062.31 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -1924,29 +1441,6 @@
                     "[INFO] 比较字段 remarks（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Header/AdditionalInformation/Remarks，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.v2,hktr.ctx.v2",
                     "[INFO] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.100 INFO  [HKTR/来源渠道 B] 比较字段 remarks（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Header/AdditionalInformation/Remarks，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.v2,hktr.ctx.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.180 INFO  [HKTR/来源渠道 B] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。 → PASSED"
-                    }
                   ]
                 }
               ]
@@ -2089,29 +1583,6 @@
                     "[INFO] 比较字段 tradeId（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.v2,jsfa.ctx.val.default",
                     "[INFO] EO=TX-2024-320197，AO=TX-2024-320197 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.100 INFO  [JSFA/来源渠道 A] 比较字段 tradeId（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.v2,jsfa.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.180 INFO  [JSFA/来源渠道 A] EO=TX-2024-320197，AO=TX-2024-320197 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -2162,29 +1633,6 @@
                     "[INFO] 比较字段 reportId（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.default",
                     "[INFO] EO=TX-2024-578754，AO=TX-2024-578758 → FAILED（值不一致）"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.100 INFO  [JSFA/来源渠道 A] 比较字段 reportId（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.180 INFO  [JSFA/来源渠道 A] EO=TX-2024-578754，AO=TX-2024-578758 → FAILED（值不一致）"
-                    }
                   ]
                 },
                 {
@@ -2228,29 +1676,6 @@
                     "[INFO] 比较字段 product（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.default",
                     "[INFO] EO=CDS，AO=CDS → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.100 INFO  [JSFA/来源渠道 A] 比较字段 product（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.180 INFO  [JSFA/来源渠道 A] EO=CDS，AO=CDS → PASSED"
-                    }
                   ]
                 },
                 {
@@ -2314,29 +1739,6 @@
                     "[INFO] 比较字段 notional（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/NotionalValue，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.default",
                     "[INFO] EO=798035.44，AO=798035.44 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.100 INFO  [JSFA/来源渠道 A] 比较字段 notional（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Notional/AmountDetails/NotionalValue，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.180 INFO  [JSFA/来源渠道 A] EO=798035.44，AO=798035.44 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -2385,29 +1787,6 @@
                     "[INFO] 比较字段 currency（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=jsfa.ctx.v3,jsfa.ctx.val.default",
                     "[INFO] EO=USD，AO=USD → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.100 INFO  [JSFA/来源渠道 A] 比较字段 currency（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=jsfa.ctx.v3,jsfa.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.180 INFO  [JSFA/来源渠道 A] EO=USD，AO=USD → PASSED"
-                    }
                   ]
                 },
                 {
@@ -2456,29 +1835,6 @@
                     "[INFO] 比较字段 tradeDate（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeDate，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.default",
                     "[INFO] EO=2024-08-12，AO=2024-08-12 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.100 INFO  [JSFA/来源渠道 A] 比较字段 tradeDate（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Header/TransactionDetails/TradeDate，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.180 INFO  [JSFA/来源渠道 A] EO=2024-08-12，AO=2024-08-12 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -2529,29 +1885,6 @@
                     "[INFO] 比较字段 settlementDate（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Header/SettlementDetails/SettlementDate，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.v2",
                     "[INFO] EO=2024-07-01，AO=2024-07-01 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.100 INFO  [JSFA/来源渠道 A] 比较字段 settlementDate（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Header/SettlementDetails/SettlementDate，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.180 INFO  [JSFA/来源渠道 A] EO=2024-07-01，AO=2024-07-01 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -2608,29 +1941,6 @@
                     "[INFO] 比较字段 counterparty（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Counterparty/PartyDetails/PartyName，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.default,jsfa.ctx.val.default",
                     "[INFO] EO=，AO= → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.100 INFO  [JSFA/来源渠道 A] 比较字段 counterparty（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Counterparty/PartyDetails/PartyName，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.default,jsfa.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.180 INFO  [JSFA/来源渠道 A] EO=，AO= → PASSED"
-                    }
                   ]
                 },
                 {
@@ -2694,29 +2004,6 @@
                     "[INFO] 比较字段 platform（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=jsfa.ctx.default,jsfa.ctx.conv.default",
                     "[INFO] EO=Nomura，AO=Nomura → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.100 INFO  [JSFA/来源渠道 A] 比较字段 platform（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=jsfa.ctx.default,jsfa.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.180 INFO  [JSFA/来源渠道 A] EO=Nomura，AO=Nomura → PASSED"
-                    }
                   ]
                 },
                 {
@@ -2762,29 +2049,6 @@
                     "[INFO] 比较字段 price（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Pricing/PriceDetails/PriceValue，命中Ctx=jsfa.ctx.v3,jsfa.ctx.val.v2,jsfa.ctx.extended.production.region.east.v2024.latest",
                     "[INFO] EO=3217594.91，AO=3217635.92 → FAILED（数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.100 INFO  [JSFA/来源渠道 A] 比较字段 price（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Pricing/PriceDetails/PriceValue，命中Ctx=jsfa.ctx.v3,jsfa.ctx.val.v2,jsfa.ctx.extended.production.region.east.v2024.latest"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.180 INFO  [JSFA/来源渠道 A] EO=3217594.91，AO=3217635.92 → FAILED（数值差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-                    }
                   ]
                 },
                 {
@@ -2828,29 +2092,6 @@
                     "[INFO] 比较字段 remarks（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Header/AdditionalInformation/Remarks，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.default,jsfa.ctx.val.v2",
                     "[INFO] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.100 INFO  [JSFA/来源渠道 A] 比较字段 remarks（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Header/AdditionalInformation/Remarks，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.default,jsfa.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.180 INFO  [JSFA/来源渠道 A] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。 → PASSED"
-                    }
                   ]
                 }
               ]
@@ -2907,29 +2148,6 @@
                     "[INFO] 比较字段 tradeId（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.default",
                     "[INFO] EO=TX-2024-796371，AO=TX-2024-796371 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.100 INFO  [JSFA/来源渠道 B] 比较字段 tradeId（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.180 INFO  [JSFA/来源渠道 B] EO=TX-2024-796371，AO=TX-2024-796371 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -2978,29 +2196,6 @@
                     "[INFO] 比较字段 reportId（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=jsfa.ctx.default",
                     "[INFO] EO=TX-2024-586502，AO=TX-2024-586502 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.100 INFO  [JSFA/来源渠道 B] 比较字段 reportId（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=jsfa.ctx.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.180 INFO  [JSFA/来源渠道 B] EO=TX-2024-586502，AO=TX-2024-586502 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -3059,29 +2254,6 @@
                     "[INFO] 比较字段 product（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.val.default,jsfa.ctx.v2",
                     "[INFO] EO=CDS，AO=CDS → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.100 INFO  [JSFA/来源渠道 B] 比较字段 product（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.val.default,jsfa.ctx.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.180 INFO  [JSFA/来源渠道 B] EO=CDS，AO=CDS → PASSED"
-                    }
                   ]
                 },
                 {
@@ -3124,29 +2296,6 @@
                     "[INFO] 比较字段 notional（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/NotionalValue，命中Ctx=jsfa.ctx.v2,jsfa.ctx.val.default",
                     "[INFO] EO=3996212.54，AO=3996212.54 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.100 INFO  [JSFA/来源渠道 B] 比较字段 notional（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Notional/AmountDetails/NotionalValue，命中Ctx=jsfa.ctx.v2,jsfa.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.180 INFO  [JSFA/来源渠道 B] EO=3996212.54，AO=3996212.54 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -3191,29 +2340,6 @@
                     "[INFO] 比较字段 currency（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=jsfa.ctx.default,jsfa.ctx.conv.default",
                     "[INFO] EO=USD，AO=USD → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.100 INFO  [JSFA/来源渠道 B] 比较字段 currency（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=jsfa.ctx.default,jsfa.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.180 INFO  [JSFA/来源渠道 B] EO=USD，AO=USD → PASSED"
-                    }
                   ]
                 },
                 {
@@ -3278,29 +2404,6 @@
                     "[INFO] 比较字段 tradeDate（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeDate，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2",
                     "[INFO] EO=2024-02-22，AO=2024-02-22 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.100 INFO  [JSFA/来源渠道 B] 比较字段 tradeDate（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Header/TransactionDetails/TradeDate，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.180 INFO  [JSFA/来源渠道 B] EO=2024-02-22，AO=2024-02-22 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -3365,29 +2468,6 @@
                     "[INFO] 比较字段 settlementDate（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Header/SettlementDetails/SettlementDate，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.v2,jsfa.ctx.val.default",
                     "[INFO] EO=2024-06-01，AO=2024-06-01 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.100 INFO  [JSFA/来源渠道 B] 比较字段 settlementDate（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Header/SettlementDetails/SettlementDate，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.v2,jsfa.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.180 INFO  [JSFA/来源渠道 B] EO=2024-06-01，AO=2024-06-01 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -3439,29 +2519,6 @@
                     "[INFO] 比较字段 counterparty（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Counterparty/PartyDetails/PartyName，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.val.v2",
                     "[INFO] EO=HSBC，AO=HSBC → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.100 INFO  [JSFA/来源渠道 B] 比较字段 counterparty（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Counterparty/PartyDetails/PartyName，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.180 INFO  [JSFA/来源渠道 B] EO=HSBC，AO=HSBC → PASSED"
-                    }
                   ]
                 },
                 {
@@ -3504,29 +2561,6 @@
                     "[INFO] 比较字段 platform（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.default",
                     "[INFO] EO=Citi Group，AO=Citi Group → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.100 INFO  [JSFA/来源渠道 B] 比较字段 platform（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.180 INFO  [JSFA/来源渠道 B] EO=Citi Group，AO=Citi Group → PASSED"
-                    }
                   ]
                 },
                 {
@@ -3583,29 +2617,6 @@
                     "[INFO] 比较字段 price（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Pricing/PriceDetails/PriceValue，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.default",
                     "[INFO] EO=1707349.55，AO=1707349.55 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.100 INFO  [JSFA/来源渠道 B] 比较字段 price（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Pricing/PriceDetails/PriceValue，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.180 INFO  [JSFA/来源渠道 B] EO=1707349.55，AO=1707349.55 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -3656,29 +2667,6 @@
                     "[INFO] 比较字段 remarks（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Header/AdditionalInformation/Remarks，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.default",
                     "[INFO] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。 → FAILED（内容差异）"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.100 INFO  [JSFA/来源渠道 B] 比较字段 remarks（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Header/AdditionalInformation/Remarks，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.180 INFO  [JSFA/来源渠道 B] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方存在差异条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。\n[差异] 新增差异行：内容不一致。 → FAILED（内容差异）"
-                    }
                   ]
                 }
               ]
@@ -3838,29 +2826,6 @@
                     "[INFO] 比较字段 tradeId（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=trade_id，命中Ctx=cftc.ctx.v2,cftc.ctx.conv.v2,cftc.ctx.default",
                     "[INFO] EO=TX-2024-517922，AO=TX-2024-517922 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.100 INFO  [CFTC/来源渠道 A] 比较字段 tradeId（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.140 INFO  [CFTC/来源渠道 A] CSV字段=trade_id，命中Ctx=cftc.ctx.v2,cftc.ctx.conv.v2,cftc.ctx.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.180 INFO  [CFTC/来源渠道 A] EO=TX-2024-517922，AO=TX-2024-517922 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -3917,29 +2882,6 @@
                     "[INFO] 比较字段 reportId（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=report_id，命中Ctx=cftc.ctx.default,cftc.ctx.conv.default,cftc.ctx.val.default",
                     "[INFO] EO=TX-2024-160738，AO=TX-2024-160738 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.100 INFO  [CFTC/来源渠道 A] 比较字段 reportId（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.140 INFO  [CFTC/来源渠道 A] CSV字段=report_id，命中Ctx=cftc.ctx.default,cftc.ctx.conv.default,cftc.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.180 INFO  [CFTC/来源渠道 A] EO=TX-2024-160738，AO=TX-2024-160738 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -3990,29 +2932,6 @@
                     "[INFO] 比较字段 product（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=product_code，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.v2,cftc.ctx.val.v2,cftc.ctx.extended.production.region.east.v2024.latest",
                     "[INFO] EO=IRS，AO=IRS → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.100 INFO  [CFTC/来源渠道 A] 比较字段 product（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.140 INFO  [CFTC/来源渠道 A] CSV字段=product_code，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.v2,cftc.ctx.val.v2,cftc.ctx.extended.production.region.east.v2024.latest"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.180 INFO  [CFTC/来源渠道 A] EO=IRS，AO=IRS → PASSED"
-                    }
                   ]
                 },
                 {
@@ -4070,29 +2989,6 @@
                     "[INFO] 比较字段 notional（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=notional_amount，命中Ctx=cftc.ctx.default,cftc.ctx.val.default,cftc.ctx.extended.production.region.east.v2024.latest",
                     "[INFO] EO=5289348.23，AO=5289348.23 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.100 INFO  [CFTC/来源渠道 A] 比较字段 notional（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.140 INFO  [CFTC/来源渠道 A] CSV字段=notional_amount，命中Ctx=cftc.ctx.default,cftc.ctx.val.default,cftc.ctx.extended.production.region.east.v2024.latest"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.180 INFO  [CFTC/来源渠道 A] EO=5289348.23，AO=5289348.23 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -4143,29 +3039,6 @@
                     "[INFO] 比较字段 currency（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=ccy，命中Ctx=cftc.ctx.default,cftc.ctx.conv.v2,cftc.ctx.val.v2",
                     "[INFO] EO=CNY，AO=CNY → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.100 INFO  [CFTC/来源渠道 A] 比较字段 currency（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.140 INFO  [CFTC/来源渠道 A] CSV字段=ccy，命中Ctx=cftc.ctx.default,cftc.ctx.conv.v2,cftc.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.180 INFO  [CFTC/来源渠道 A] EO=CNY，AO=CNY → PASSED"
-                    }
                   ]
                 },
                 {
@@ -4222,29 +3095,6 @@
                     "[INFO] 比较字段 tradeDate（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=exec_timestamp，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.default,cftc.ctx.val.v2",
                     "[INFO] EO=2024-08-03，AO=2024-08-03 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.100 INFO  [CFTC/来源渠道 A] 比较字段 tradeDate（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.140 INFO  [CFTC/来源渠道 A] CSV字段=exec_timestamp，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.default,cftc.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.180 INFO  [CFTC/来源渠道 A] EO=2024-08-03，AO=2024-08-03 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -4302,29 +3152,6 @@
                     "[INFO] 比较字段 maturityDate（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=expiration_date，命中Ctx=cftc.ctx.v2,cftc.ctx.conv.default,cftc.ctx.val.default",
                     "[INFO] EO=2024-02-15，AO=2024-02-15 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.100 INFO  [CFTC/来源渠道 A] 比较字段 maturityDate（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.140 INFO  [CFTC/来源渠道 A] CSV字段=expiration_date，命中Ctx=cftc.ctx.v2,cftc.ctx.conv.default,cftc.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.180 INFO  [CFTC/来源渠道 A] EO=2024-02-15，AO=2024-02-15 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -4367,29 +3194,6 @@
                     "[INFO] 比较字段 counterparty（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=cp_name，命中Ctx=cftc.ctx.v2",
                     "[INFO] EO=Nomura，AO=Nomura → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.100 INFO  [CFTC/来源渠道 A] 比较字段 counterparty（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.140 INFO  [CFTC/来源渠道 A] CSV字段=cp_name，命中Ctx=cftc.ctx.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.180 INFO  [CFTC/来源渠道 A] EO=Nomura，AO=Nomura → PASSED"
-                    }
                   ]
                 },
                 {
@@ -4447,29 +3251,6 @@
                     "[INFO] 比较字段 platform（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=platform_id，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.default",
                     "[INFO] EO=HSBC，AO=HSBC → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.100 INFO  [CFTC/来源渠道 A] 比较字段 platform（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.140 INFO  [CFTC/来源渠道 A] CSV字段=platform_id，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.180 INFO  [CFTC/来源渠道 A] EO=HSBC，AO=HSBC → PASSED"
-                    }
                   ]
                 },
                 {
@@ -4529,29 +3310,6 @@
                     "[INFO] 比较字段 price（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=price_amt，命中Ctx=cftc.ctx.v3,cftc.ctx.val.v2,cftc.ctx.default",
                     "[INFO] EO=5311093.45，AO=5311093.45 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.100 INFO  [CFTC/来源渠道 A] 比较字段 price（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.140 INFO  [CFTC/来源渠道 A] CSV字段=price_amt，命中Ctx=cftc.ctx.v3,cftc.ctx.val.v2,cftc.ctx.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.180 INFO  [CFTC/来源渠道 A] EO=5311093.45，AO=5311093.45 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -4604,29 +3362,6 @@
                     "[INFO] 比较字段 remarks（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=remarks，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default,cftc.ctx.val.v2,cftc.ctx.v2",
                     "[INFO] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.100 INFO  [CFTC/来源渠道 A] 比较字段 remarks（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.140 INFO  [CFTC/来源渠道 A] CSV字段=remarks，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default,cftc.ctx.val.v2,cftc.ctx.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.180 INFO  [CFTC/来源渠道 A] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。 → PASSED"
-                    }
                   ]
                 }
               ]
@@ -4667,29 +3402,6 @@
                     "[INFO] 比较字段 tradeId（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=trade_id，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.v2,cftc.ctx.val.v2",
                     "[INFO] EO=TX-2024-265729，AO=TX-2024-265723 → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.100 INFO  [CFTC/来源渠道 B] 比较字段 tradeId（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.140 INFO  [CFTC/来源渠道 B] CSV字段=trade_id，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.v2,cftc.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.180 INFO  [CFTC/来源渠道 B] EO=TX-2024-265729，AO=TX-2024-265723 → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-                    }
                   ]
                 },
                 {
@@ -4732,29 +3444,6 @@
                     "[INFO] 比较字段 reportId（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=report_id，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default,cftc.ctx.val.default",
                     "[INFO] EO=TX-2024-721459，AO=TX-2024-721459 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.100 INFO  [CFTC/来源渠道 B] 比较字段 reportId（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.140 INFO  [CFTC/来源渠道 B] CSV字段=report_id，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default,cftc.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.180 INFO  [CFTC/来源渠道 B] EO=TX-2024-721459，AO=TX-2024-721459 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -4797,29 +3486,6 @@
                     "[INFO] 比较字段 product（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=product_code，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.default,cftc.ctx.val.v2",
                     "[INFO] EO=IRS，AO=IRS → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.100 INFO  [CFTC/来源渠道 B] 比较字段 product（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.140 INFO  [CFTC/来源渠道 B] CSV字段=product_code，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.default,cftc.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.180 INFO  [CFTC/来源渠道 B] EO=IRS，AO=IRS → PASSED"
-                    }
                   ]
                 },
                 {
@@ -4875,29 +3541,6 @@
                     "[INFO] 比较字段 notional（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=notional_amount，命中Ctx=cftc.ctx.v2,cftc.ctx.conv.v2",
                     "[INFO] EO=8797459.01，AO=8797459.01 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.100 INFO  [CFTC/来源渠道 B] 比较字段 notional（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.140 INFO  [CFTC/来源渠道 B] CSV字段=notional_amount，命中Ctx=cftc.ctx.v2,cftc.ctx.conv.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.180 INFO  [CFTC/来源渠道 B] EO=8797459.01，AO=8797459.01 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -4955,29 +3598,6 @@
                     "[INFO] 比较字段 currency（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=ccy，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.default,cftc.ctx.val.default,cftc.ctx.v2",
                     "[INFO] EO=EUR，AO=EUR → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.100 INFO  [CFTC/来源渠道 B] 比较字段 currency（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.140 INFO  [CFTC/来源渠道 B] CSV字段=ccy，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.default,cftc.ctx.val.default,cftc.ctx.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.180 INFO  [CFTC/来源渠道 B] EO=EUR，AO=EUR → PASSED"
-                    }
                   ]
                 },
                 {
@@ -5033,29 +3653,6 @@
                     "[INFO] 比较字段 tradeDate（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=exec_timestamp，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.v2,cftc.ctx.val.default",
                     "[INFO] EO=2024-09-18，AO=2024-09-18 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.100 INFO  [CFTC/来源渠道 B] 比较字段 tradeDate（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.140 INFO  [CFTC/来源渠道 B] CSV字段=exec_timestamp，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.v2,cftc.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.180 INFO  [CFTC/来源渠道 B] EO=2024-09-18，AO=2024-09-18 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -5113,29 +3710,6 @@
                     "[INFO] 比较字段 maturityDate（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=expiration_date，命中Ctx=cftc.ctx.default,cftc.ctx.conv.default,cftc.ctx.val.v2",
                     "[INFO] EO=2024-03-16，AO=2024-03-16 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.100 INFO  [CFTC/来源渠道 B] 比较字段 maturityDate（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.140 INFO  [CFTC/来源渠道 B] CSV字段=expiration_date，命中Ctx=cftc.ctx.default,cftc.ctx.conv.default,cftc.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.180 INFO  [CFTC/来源渠道 B] EO=2024-03-16，AO=2024-03-16 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -5200,29 +3774,6 @@
                     "[INFO] 比较字段 counterparty（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=cp_name，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.v2",
                     "[INFO] EO=Goldman Sachs，AO=Goldman Sachs → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.100 INFO  [CFTC/来源渠道 B] 比较字段 counterparty（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.140 INFO  [CFTC/来源渠道 B] CSV字段=cp_name，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.180 INFO  [CFTC/来源渠道 B] EO=Goldman Sachs，AO=Goldman Sachs → PASSED"
-                    }
                   ]
                 },
                 {
@@ -5266,29 +3817,6 @@
                     "[INFO] 比较字段 platform（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=platform_id，命中Ctx=cftc.ctx.default,cftc.ctx.val.default",
                     "[INFO] EO=，AO=XYZ Bank → FAILED（值不一致）"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.100 INFO  [CFTC/来源渠道 B] 比较字段 platform（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.140 INFO  [CFTC/来源渠道 B] CSV字段=platform_id，命中Ctx=cftc.ctx.default,cftc.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.180 INFO  [CFTC/来源渠道 B] EO=，AO=XYZ Bank → FAILED（值不一致）"
-                    }
                   ]
                 },
                 {
@@ -5348,29 +3876,6 @@
                     "[INFO] 比较字段 price（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=price_amt，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default,cftc.ctx.val.v2,cftc.ctx.default",
                     "[INFO] EO=4981592.77，AO=4981592.77 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.100 INFO  [CFTC/来源渠道 B] 比较字段 price（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.140 INFO  [CFTC/来源渠道 B] CSV字段=price_amt，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default,cftc.ctx.val.v2,cftc.ctx.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.180 INFO  [CFTC/来源渠道 B] EO=4981592.77，AO=4981592.77 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -5413,29 +3918,6 @@
                     "[INFO] 比较字段 remarks（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=remarks，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default,cftc.ctx.val.v2",
                     "[INFO] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.100 INFO  [CFTC/来源渠道 B] 比较字段 remarks（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.140 INFO  [CFTC/来源渠道 B] CSV字段=remarks，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default,cftc.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.180 INFO  [CFTC/来源渠道 B] EO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。，AO=第一行备注：交易双方已确认条款，包含特殊字符 <PartyRole id=\"P1\"> & \"quote\" & 'single'。</PartyRole>\n第二行备注：本字段可能包含较长内容，用于验证多行与特殊字符的展示效果。\n第三行备注：配置驱动比较，命中上下文后取得字段对应关系。 → PASSED"
-                    }
                   ]
                 }
               ]
@@ -7892,29 +6374,6 @@
                     "[INFO] 比较字段 tradeId（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.v2,hktr.ctx.val.default",
                     "[INFO] EO=TX-2024-851559，AO=TX-2024-851559 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.100 INFO  [HKTR/来源渠道 A] 比较字段 tradeId（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.v2,hktr.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.180 INFO  [HKTR/来源渠道 A] EO=TX-2024-851559，AO=TX-2024-851559 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -7952,29 +6411,6 @@
                     "[INFO] 比较字段 reportId（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=hktr.ctx.v2,hktr.ctx.val.default,hktr.ctx.default",
                     "[INFO] EO=TX-2024-490003，AO=TX-2024-490003 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.100 INFO  [HKTR/来源渠道 A] 比较字段 reportId（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=hktr.ctx.v2,hktr.ctx.val.default,hktr.ctx.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.180 INFO  [HKTR/来源渠道 A] EO=TX-2024-490003，AO=TX-2024-490003 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -8041,29 +6477,6 @@
                     "[INFO] 比较字段 product（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=hktr.ctx.v3,hktr.ctx.val.default,hktr.ctx.v2",
                     "[INFO] EO=CDS，AO=CDS → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.100 INFO  [HKTR/来源渠道 A] 比较字段 product（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=hktr.ctx.v3,hktr.ctx.val.default,hktr.ctx.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.180 INFO  [HKTR/来源渠道 A] EO=CDS，AO=CDS → PASSED"
-                    }
                   ]
                 },
                 {
@@ -8120,29 +6533,6 @@
                     "[INFO] 比较字段 notional（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/NotionalValue，命中Ctx=hktr.ctx.v3,hktr.ctx.val.default",
                     "[INFO] EO=5195086.39，AO=5195086.39 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.100 INFO  [HKTR/来源渠道 A] 比较字段 notional（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Notional/AmountDetails/NotionalValue，命中Ctx=hktr.ctx.v3,hktr.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.180 INFO  [HKTR/来源渠道 A] EO=5195086.39，AO=5195086.39 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -8206,29 +6596,6 @@
                     "[INFO] 比较字段 currency（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.v2,hktr.ctx.val.default",
                     "[INFO] EO=HKD，AO=HKD → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.100 INFO  [HKTR/来源渠道 A] 比较字段 currency（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.v2,hktr.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.180 INFO  [HKTR/来源渠道 A] EO=HKD，AO=HKD → PASSED"
-                    }
                   ]
                 },
                 {
@@ -8285,29 +6652,6 @@
                     "[INFO] 比较字段 tradeDate（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeDate，命中Ctx=hktr.ctx.v3,hktr.ctx.val.default",
                     "[INFO] EO=2024-04-26，AO=2024-04-26 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.100 INFO  [HKTR/来源渠道 A] 比较字段 tradeDate（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Header/TradeDetails/TradeDate，命中Ctx=hktr.ctx.v3,hktr.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.180 INFO  [HKTR/来源渠道 A] EO=2024-04-26，AO=2024-04-26 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -8364,29 +6708,6 @@
                     "[INFO] 比较字段 maturityDate（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Header/TradeDetails/MaturityDate，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.v2",
                     "[INFO] EO=2024-10-11，AO=2024-10-11 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.100 INFO  [HKTR/来源渠道 A] 比较字段 maturityDate（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Header/TradeDetails/MaturityDate，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.180 INFO  [HKTR/来源渠道 A] EO=2024-10-11，AO=2024-10-11 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -8422,29 +6743,6 @@
                     "[INFO] 比较字段 counterparty（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Counterparty/PartyDetails/PartyName，命中Ctx=hktr.ctx.v3,hktr.ctx.val.default",
                     "[INFO] EO=Citi Group，AO=Citi Group → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.100 INFO  [HKTR/来源渠道 A] 比较字段 counterparty（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Counterparty/PartyDetails/PartyName，命中Ctx=hktr.ctx.v3,hktr.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.180 INFO  [HKTR/来源渠道 A] EO=Citi Group，AO=Citi Group → PASSED"
-                    }
                   ]
                 },
                 {
@@ -8511,29 +6809,6 @@
                     "[INFO] 比较字段 platform（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=hktr.ctx.v2,hktr.ctx.val.v2,hktr.ctx.default",
                     "[INFO] EO=HSBC，AO=XYZ Bank → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.100 INFO  [HKTR/来源渠道 A] 比较字段 platform（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=hktr.ctx.v2,hktr.ctx.val.v2,hktr.ctx.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.180 INFO  [HKTR/来源渠道 A] EO=HSBC，AO=XYZ Bank → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-                    }
                   ]
                 },
                 {
@@ -8579,29 +6854,6 @@
                     "[INFO] 比较字段 venue（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Execution/VenueDetails/VenueIdentifier，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.default,hktr.ctx.val.default,hktr.ctx.v2",
                     "[INFO] EO=   ，AO=    → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.100 INFO  [HKTR/来源渠道 A] 比较字段 venue（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Execution/VenueDetails/VenueIdentifier，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.default,hktr.ctx.val.default,hktr.ctx.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.180 INFO  [HKTR/来源渠道 A] EO=   ，AO=    → PASSED"
-                    }
                   ]
                 },
                 {
@@ -8658,29 +6910,6 @@
                     "[INFO] 比较字段 quantity（报告渠道 HKTR / 来源渠道 A）",
                     "[INFO] XPath=/HKTR/Report/Pricing/QuantityDetails/QuantityValue，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.default",
                     "[INFO] EO=4436976.79，AO=4436976.79 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.100 INFO  [HKTR/来源渠道 A] 比较字段 quantity（报告渠道 HKTR / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.140 INFO  [HKTR/来源渠道 A] XPath=/HKTR/Report/Pricing/QuantityDetails/QuantityValue，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.180 INFO  [HKTR/来源渠道 A] EO=4436976.79，AO=4436976.79 → PASSED"
-                    }
                   ]
                 }
               ]
@@ -8742,29 +6971,6 @@
                     "[INFO] 比较字段 tradeId（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.default,hktr.ctx.val.v2",
                     "[INFO] EO=TX-2024-809465，AO=TX-2024-809465 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.100 INFO  [HKTR/来源渠道 B] 比较字段 tradeId（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.default,hktr.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.180 INFO  [HKTR/来源渠道 B] EO=TX-2024-809465，AO=TX-2024-809465 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -8816,29 +7022,6 @@
                     "[INFO] 比较字段 reportId（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.v2",
                     "[INFO] EO=TX-2024-644321，AO=TX-2024-644321 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.100 INFO  [HKTR/来源渠道 B] 比较字段 reportId（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.180 INFO  [HKTR/来源渠道 B] EO=TX-2024-644321，AO=TX-2024-644321 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -8883,29 +7066,6 @@
                     "[INFO] 比较字段 product（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.v2,hktr.ctx.val.default,hktr.ctx.v3",
                     "[INFO] EO=FXF，AO=FXF → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.100 INFO  [HKTR/来源渠道 B] 比较字段 product（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.v2,hktr.ctx.val.default,hktr.ctx.v3"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.180 INFO  [HKTR/来源渠道 B] EO=FXF，AO=FXF → PASSED"
-                    }
                   ]
                 },
                 {
@@ -8948,29 +7108,6 @@
                     "[INFO] 比较字段 notional（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/NotionalValue，命中Ctx=hktr.ctx.default,hktr.ctx.conv.v2,hktr.ctx.val.default",
                     "[INFO] EO=7665221.01，AO=7665221.01 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.100 INFO  [HKTR/来源渠道 B] 比较字段 notional（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Notional/AmountDetails/NotionalValue，命中Ctx=hktr.ctx.default,hktr.ctx.conv.v2,hktr.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.180 INFO  [HKTR/来源渠道 B] EO=7665221.01，AO=7665221.01 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -9021,29 +7158,6 @@
                     "[INFO] 比较字段 currency（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.default,hktr.ctx.v3",
                     "[INFO] EO=USD，AO=USD → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.100 INFO  [HKTR/来源渠道 B] 比较字段 currency（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.default,hktr.ctx.v3"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.180 INFO  [HKTR/来源渠道 B] EO=USD，AO=USD → PASSED"
-                    }
                   ]
                 },
                 {
@@ -9102,29 +7216,6 @@
                     "[INFO] 比较字段 tradeDate（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Header/TradeDetails/TradeDate，命中Ctx=hktr.ctx.default,hktr.ctx.val.v2,hktr.ctx.v3",
                     "[INFO] EO=2024-11-16，AO=2024-11-16 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.100 INFO  [HKTR/来源渠道 B] 比较字段 tradeDate（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Header/TradeDetails/TradeDate，命中Ctx=hktr.ctx.default,hktr.ctx.val.v2,hktr.ctx.v3"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.180 INFO  [HKTR/来源渠道 B] EO=2024-11-16，AO=2024-11-16 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -9180,29 +7271,6 @@
                     "[INFO] 比较字段 maturityDate（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Header/TradeDetails/MaturityDate，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.v2,hktr.ctx.val.v2",
                     "[INFO] EO=2024-02-19，AO=2024-02-19 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.100 INFO  [HKTR/来源渠道 B] 比较字段 maturityDate（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Header/TradeDetails/MaturityDate，命中Ctx=hktr.ctx.v3,hktr.ctx.conv.v2,hktr.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.180 INFO  [HKTR/来源渠道 B] EO=2024-02-19，AO=2024-02-19 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -9258,29 +7326,6 @@
                     "[INFO] 比较字段 counterparty（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Counterparty/PartyDetails/PartyName，命中Ctx=hktr.ctx.default,hktr.ctx.val.default",
                     "[INFO] EO=Goldman Sachs，AO=Goldman Sachs → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.100 INFO  [HKTR/来源渠道 B] 比较字段 counterparty（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Counterparty/PartyDetails/PartyName，命中Ctx=hktr.ctx.default,hktr.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.180 INFO  [HKTR/来源渠道 B] EO=Goldman Sachs，AO=Goldman Sachs → PASSED"
-                    }
                   ]
                 },
                 {
@@ -9316,29 +7361,6 @@
                     "[INFO] 比较字段 platform（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=hktr.ctx.default,hktr.ctx.conv.default,hktr.ctx.val.default",
                     "[INFO] EO=Goldman Sachs，AO=Goldman Sachs → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.100 INFO  [HKTR/来源渠道 B] 比较字段 platform（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=hktr.ctx.default,hktr.ctx.conv.default,hktr.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.180 INFO  [HKTR/来源渠道 B] EO=Goldman Sachs，AO=Goldman Sachs → PASSED"
-                    }
                   ]
                 },
                 {
@@ -9394,29 +7416,6 @@
                     "[INFO] 比较字段 venue（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Execution/VenueDetails/VenueIdentifier，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.v2,hktr.ctx.val.v2",
                     "[INFO] EO=Goldman Sachs，AO=Goldman Sachs → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.100 INFO  [HKTR/来源渠道 B] 比较字段 venue（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Execution/VenueDetails/VenueIdentifier，命中Ctx=hktr.ctx.extended.production.region.east.v2024.latest,hktr.ctx.conv.v2,hktr.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.180 INFO  [HKTR/来源渠道 B] EO=Goldman Sachs，AO=Goldman Sachs → PASSED"
-                    }
                   ]
                 },
                 {
@@ -9468,29 +7467,6 @@
                     "[INFO] 比较字段 quantity（报告渠道 HKTR / 来源渠道 B）",
                     "[INFO] XPath=/HKTR/Report/Pricing/QuantityDetails/QuantityValue，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.default,hktr.ctx.val.v2",
                     "[INFO] EO=6415985.01，AO=6415985.01 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.100 INFO  [HKTR/来源渠道 B] 比较字段 quantity（报告渠道 HKTR / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.140 INFO  [HKTR/来源渠道 B] XPath=/HKTR/Report/Pricing/QuantityDetails/QuantityValue，命中Ctx=hktr.ctx.v2,hktr.ctx.conv.default,hktr.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "HKTR",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.180 INFO  [HKTR/来源渠道 B] EO=6415985.01，AO=6415985.01 → PASSED"
-                    }
                   ]
                 }
               ]
@@ -9643,29 +7619,6 @@
                     "[INFO] 比较字段 tradeId（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId，命中Ctx=jsfa.ctx.default,jsfa.ctx.conv.v2,jsfa.ctx.val.v2,jsfa.ctx.v3",
                     "[INFO] EO=TX-2024-965819，AO=TX-2024-965819 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.100 INFO  [JSFA/来源渠道 A] 比较字段 tradeId（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId，命中Ctx=jsfa.ctx.default,jsfa.ctx.conv.v2,jsfa.ctx.val.v2,jsfa.ctx.v3"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.180 INFO  [JSFA/来源渠道 A] EO=TX-2024-965819，AO=TX-2024-965819 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -9708,29 +7661,6 @@
                     "[INFO] 比较字段 reportId（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.default",
                     "[INFO] EO=TX-2024-340926，AO=TX-2024-340926 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.100 INFO  [JSFA/来源渠道 A] 比较字段 reportId（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.180 INFO  [JSFA/来源渠道 A] EO=TX-2024-340926，AO=TX-2024-340926 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -9781,29 +7711,6 @@
                     "[INFO] 比较字段 product（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2",
                     "[INFO] EO=IRS，AO=OIS → FAILED（码值差异）"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.100 INFO  [JSFA/来源渠道 A] 比较字段 product（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.180 INFO  [JSFA/来源渠道 A] EO=IRS，AO=OIS → FAILED（码值差异）"
-                    }
                   ]
                 },
                 {
@@ -9846,29 +7753,6 @@
                     "[INFO] 比较字段 notional（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/NotionalValue，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.default",
                     "[INFO] EO=2515570.29，AO=2515570.29 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.100 INFO  [JSFA/来源渠道 A] 比较字段 notional（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Notional/AmountDetails/NotionalValue，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.180 INFO  [JSFA/来源渠道 A] EO=2515570.29，AO=2515570.29 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -9911,29 +7795,6 @@
                     "[INFO] 比较字段 currency（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.v2,jsfa.ctx.val.default",
                     "[INFO] EO=USD，AO=USD → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.100 INFO  [JSFA/来源渠道 A] 比较字段 currency（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.v2,jsfa.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.180 INFO  [JSFA/来源渠道 A] EO=USD，AO=USD → PASSED"
-                    }
                   ]
                 },
                 {
@@ -9992,29 +7853,6 @@
                     "[INFO] 比较字段 tradeDate（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeDate，命中Ctx=jsfa.ctx.default,jsfa.ctx.val.v2,jsfa.ctx.extended.production.region.east.v2024.latest",
                     "[INFO] EO=2024-11-11，AO=2024-11-11 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.100 INFO  [JSFA/来源渠道 A] 比较字段 tradeDate（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Header/TransactionDetails/TradeDate，命中Ctx=jsfa.ctx.default,jsfa.ctx.val.v2,jsfa.ctx.extended.production.region.east.v2024.latest"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.180 INFO  [JSFA/来源渠道 A] EO=2024-11-11，AO=2024-11-11 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -10057,29 +7895,6 @@
                     "[INFO] 比较字段 settlementDate（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Header/SettlementDetails/SettlementDate，命中Ctx=jsfa.ctx.default,jsfa.ctx.conv.default",
                     "[INFO] EO=2024-03-20，AO=2024-03-20 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.100 INFO  [JSFA/来源渠道 A] 比较字段 settlementDate（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Header/SettlementDetails/SettlementDate，命中Ctx=jsfa.ctx.default,jsfa.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.180 INFO  [JSFA/来源渠道 A] EO=2024-03-20，AO=2024-03-20 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -10123,29 +7938,6 @@
                     "[INFO] 比较字段 counterparty（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Counterparty/PartyDetails/PartyName，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.val.v2",
                     "[INFO] EO=，AO= → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.100 INFO  [JSFA/来源渠道 A] 比较字段 counterparty（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Counterparty/PartyDetails/PartyName，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.180 INFO  [JSFA/来源渠道 A] EO=，AO= → PASSED"
-                    }
                   ]
                 },
                 {
@@ -10202,29 +7994,6 @@
                     "[INFO] 比较字段 platform（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=jsfa.ctx.v3,jsfa.ctx.val.default",
                     "[INFO] EO=Citi Group，AO=Citi Group → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.100 INFO  [JSFA/来源渠道 A] 比较字段 platform（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=jsfa.ctx.v3,jsfa.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.180 INFO  [JSFA/来源渠道 A] EO=Citi Group，AO=Citi Group → PASSED"
-                    }
                   ]
                 },
                 {
@@ -10267,29 +8036,6 @@
                     "[INFO] 比较字段 venue（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Execution/VenueDetails/VenueIdentifier，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.default",
                     "[INFO] EO=HSBC，AO=HSBC → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.100 INFO  [JSFA/来源渠道 A] 比较字段 venue（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Execution/VenueDetails/VenueIdentifier，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.180 INFO  [JSFA/来源渠道 A] EO=HSBC，AO=HSBC → PASSED"
-                    }
                   ]
                 },
                 {
@@ -10345,29 +8091,6 @@
                     "[INFO] 比较字段 quantity（报告渠道 JSFA / 来源渠道 A）",
                     "[INFO] XPath=/JSFA/Report/Pricing/QuantityDetails/QuantityValue，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.default,jsfa.ctx.val.default",
                     "[INFO] EO=4865626.76，AO=4865624.75 → FAILED（数值差异）"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.100 INFO  [JSFA/来源渠道 A] 比较字段 quantity（报告渠道 JSFA / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.140 INFO  [JSFA/来源渠道 A] XPath=/JSFA/Report/Pricing/QuantityDetails/QuantityValue，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.default,jsfa.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.180 INFO  [JSFA/来源渠道 A] EO=4865626.76，AO=4865624.75 → FAILED（数值差异）"
-                    }
                   ]
                 }
               ]
@@ -10424,29 +8147,6 @@
                     "[INFO] 比较字段 tradeId（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId，命中Ctx=jsfa.ctx.default,jsfa.ctx.conv.default",
                     "[INFO] EO=TX-2024-716374，AO=TX-2024-716374 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.100 INFO  [JSFA/来源渠道 B] 比较字段 tradeId（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Header/TransactionDetails/TradeIdentifier/TradeId，命中Ctx=jsfa.ctx.default,jsfa.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.180 INFO  [JSFA/来源渠道 B] EO=TX-2024-716374，AO=TX-2024-716374 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -10489,29 +8189,6 @@
                     "[INFO] 比较字段 reportId（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest",
                     "[INFO] EO=TX-2024-948598，AO=TX-2024-948598 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.100 INFO  [JSFA/来源渠道 B] 比较字段 reportId（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Header/ReportDetails/ReportIdentifier/ReportId，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.180 INFO  [JSFA/来源渠道 B] EO=TX-2024-948598，AO=TX-2024-948598 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -10555,29 +8232,6 @@
                     "[INFO] 比较字段 product（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.default",
                     "[INFO] EO=OIS，AO=OIS → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.100 INFO  [JSFA/来源渠道 B] 比较字段 product（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Product/ProductDetails/ProductIdentifier，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.180 INFO  [JSFA/来源渠道 B] EO=OIS，AO=OIS → PASSED"
-                    }
                   ]
                 },
                 {
@@ -10633,29 +8287,6 @@
                     "[INFO] 比较字段 notional（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/NotionalValue，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.v2",
                     "[INFO] EO=7761157.82，AO=7761140.81 → FAILED（数值差异）"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.100 INFO  [JSFA/来源渠道 B] 比较字段 notional（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Notional/AmountDetails/NotionalValue，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.180 INFO  [JSFA/来源渠道 B] EO=7761157.82，AO=7761140.81 → FAILED（数值差异）"
-                    }
                   ]
                 },
                 {
@@ -10698,29 +8329,6 @@
                     "[INFO] 比较字段 currency（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=jsfa.ctx.v2,jsfa.ctx.val.v2",
                     "[INFO] EO=USD，AO=USD → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.100 INFO  [JSFA/来源渠道 B] 比较字段 currency（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Notional/AmountDetails/CurrencyCode，命中Ctx=jsfa.ctx.v2,jsfa.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.180 INFO  [JSFA/来源渠道 B] EO=USD，AO=USD → PASSED"
-                    }
                   ]
                 },
                 {
@@ -10765,29 +8373,6 @@
                     "[INFO] 比较字段 tradeDate（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Header/TransactionDetails/TradeDate，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.v2,jsfa.ctx.default",
                     "[INFO] EO=2024-08-07，AO=2024-08-09 → FAILED（日期差异）"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.100 INFO  [JSFA/来源渠道 B] 比较字段 tradeDate（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Header/TransactionDetails/TradeDate，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.v2,jsfa.ctx.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.180 INFO  [JSFA/来源渠道 B] EO=2024-08-07，AO=2024-08-09 → FAILED（日期差异）"
-                    }
                   ]
                 },
                 {
@@ -10838,29 +8423,6 @@
                     "[INFO] 比较字段 settlementDate（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Header/SettlementDetails/SettlementDate，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.v2,jsfa.ctx.val.default",
                     "[INFO] EO=2024-03-10，AO=2024-03-10 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.100 INFO  [JSFA/来源渠道 B] 比较字段 settlementDate（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Header/SettlementDetails/SettlementDate，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.v2,jsfa.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.180 INFO  [JSFA/来源渠道 B] EO=2024-03-10，AO=2024-03-10 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -10914,29 +8476,6 @@
                     "[INFO] 比较字段 counterparty（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Counterparty/PartyDetails/PartyName，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.v2,jsfa.ctx.val.v2,jsfa.ctx.extended.production.region.east.v2024.latest",
                     "[INFO] EO=Nomura，AO=Nomura → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.100 INFO  [JSFA/来源渠道 B] 比较字段 counterparty（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Counterparty/PartyDetails/PartyName，命中Ctx=jsfa.ctx.v3,jsfa.ctx.conv.v2,jsfa.ctx.val.v2,jsfa.ctx.extended.production.region.east.v2024.latest"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.180 INFO  [JSFA/来源渠道 B] EO=Nomura，AO=Nomura → PASSED"
-                    }
                   ]
                 },
                 {
@@ -10993,29 +8532,6 @@
                     "[INFO] 比较字段 platform（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.v2,jsfa.ctx.val.v2",
                     "[INFO] EO=   ，AO=    → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.100 INFO  [JSFA/来源渠道 B] 比较字段 platform（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Execution/PlatformDetails/PlatformIdentifier，命中Ctx=jsfa.ctx.extended.production.region.east.v2024.latest,jsfa.ctx.conv.v2,jsfa.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.180 INFO  [JSFA/来源渠道 B] EO=   ，AO=    → PASSED"
-                    }
                   ]
                 },
                 {
@@ -11072,29 +8588,6 @@
                     "[INFO] 比较字段 venue（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Execution/VenueDetails/VenueIdentifier，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2",
                     "[INFO] EO=，AO= → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.100 INFO  [JSFA/来源渠道 B] 比较字段 venue（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Execution/VenueDetails/VenueIdentifier，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.180 INFO  [JSFA/来源渠道 B] EO=，AO= → PASSED"
-                    }
                   ]
                 },
                 {
@@ -11151,29 +8644,6 @@
                     "[INFO] 比较字段 quantity（报告渠道 JSFA / 来源渠道 B）",
                     "[INFO] XPath=/JSFA/Report/Pricing/QuantityDetails/QuantityValue，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.v2",
                     "[INFO] EO=8724884.78，AO=8724884.78 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.100 INFO  [JSFA/来源渠道 B] 比较字段 quantity（报告渠道 JSFA / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.140 INFO  [JSFA/来源渠道 B] XPath=/JSFA/Report/Pricing/QuantityDetails/QuantityValue，命中Ctx=jsfa.ctx.v2,jsfa.ctx.conv.v2,jsfa.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "JSFA",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.180 INFO  [JSFA/来源渠道 B] EO=8724884.78，AO=8724884.78 → PASSED"
-                    }
                   ]
                 }
               ]
@@ -11336,29 +8806,6 @@
                     "[INFO] 比较字段 tradeId（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=trade_id，命中Ctx=cftc.ctx.v2",
                     "[INFO] EO=TX-2024-893004，AO=TX-2024-893004 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.100 INFO  [CFTC/来源渠道 A] 比较字段 tradeId（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.140 INFO  [CFTC/来源渠道 A] CSV字段=trade_id，命中Ctx=cftc.ctx.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:10.180 INFO  [CFTC/来源渠道 A] EO=TX-2024-893004，AO=TX-2024-893004 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -11394,29 +8841,6 @@
                     "[INFO] 比较字段 reportId（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=report_id，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.v2,cftc.ctx.val.default",
                     "[INFO] EO=TX-2024-261902，AO=TX-2024-261902 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.100 INFO  [CFTC/来源渠道 A] 比较字段 reportId（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.140 INFO  [CFTC/来源渠道 A] CSV字段=report_id，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.v2,cftc.ctx.val.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:11.180 INFO  [CFTC/来源渠道 A] EO=TX-2024-261902，AO=TX-2024-261902 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -11472,29 +8896,6 @@
                     "[INFO] 比较字段 product（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=product_code，命中Ctx=cftc.ctx.default,cftc.ctx.conv.v2",
                     "[INFO] EO=OIS，AO=OIS → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.100 INFO  [CFTC/来源渠道 A] 比较字段 product（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.140 INFO  [CFTC/来源渠道 A] CSV字段=product_code，命中Ctx=cftc.ctx.default,cftc.ctx.conv.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:12.180 INFO  [CFTC/来源渠道 A] EO=OIS，AO=OIS → PASSED"
-                    }
                   ]
                 },
                 {
@@ -11550,29 +8951,6 @@
                     "[INFO] 比较字段 notional（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=notional_amount，命中Ctx=cftc.ctx.v3",
                     "[INFO] EO=1193853.87，AO=1193853.87 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.100 INFO  [CFTC/来源渠道 A] 比较字段 notional（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.140 INFO  [CFTC/来源渠道 A] CSV字段=notional_amount，命中Ctx=cftc.ctx.v3"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:13.180 INFO  [CFTC/来源渠道 A] EO=1193853.87，AO=1193853.87 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -11636,29 +9014,6 @@
                     "[INFO] 比较字段 currency（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=ccy，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default",
                     "[INFO] EO=JPY，AO=JPY → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.100 INFO  [CFTC/来源渠道 A] 比较字段 currency（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.140 INFO  [CFTC/来源渠道 A] CSV字段=ccy，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:14.180 INFO  [CFTC/来源渠道 A] EO=JPY，AO=JPY → PASSED"
-                    }
                   ]
                 },
                 {
@@ -11717,29 +9072,6 @@
                     "[INFO] 比较字段 tradeDate（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=exec_timestamp，命中Ctx=cftc.ctx.default,cftc.ctx.val.default,cftc.ctx.extended.production.region.east.v2024.latest",
                     "[INFO] EO=2024-07-17，AO=2024-07-17 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.100 INFO  [CFTC/来源渠道 A] 比较字段 tradeDate（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.140 INFO  [CFTC/来源渠道 A] CSV字段=exec_timestamp，命中Ctx=cftc.ctx.default,cftc.ctx.val.default,cftc.ctx.extended.production.region.east.v2024.latest"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:15.180 INFO  [CFTC/来源渠道 A] EO=2024-07-17，AO=2024-07-17 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -11783,29 +9115,6 @@
                     "[INFO] 比较字段 maturityDate（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=expiration_date，命中Ctx=cftc.ctx.default,cftc.ctx.conv.v2,cftc.ctx.val.v2",
                     "[INFO] EO=2024-09-15，AO=2024-09-23 → FAILED（日期差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.100 INFO  [CFTC/来源渠道 A] 比较字段 maturityDate（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.140 INFO  [CFTC/来源渠道 A] CSV字段=expiration_date，命中Ctx=cftc.ctx.default,cftc.ctx.conv.v2,cftc.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:16.180 INFO  [CFTC/来源渠道 A] EO=2024-09-15，AO=2024-09-23 → FAILED（日期差异\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-                    }
                   ]
                 },
                 {
@@ -11871,29 +9180,6 @@
                     "[INFO] 比较字段 counterparty（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=cp_name，命中Ctx=cftc.ctx.v3,cftc.ctx.v2",
                     "[INFO] EO=Citi Group，AO=XYZ Bank → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.100 INFO  [CFTC/来源渠道 A] 比较字段 counterparty（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.140 INFO  [CFTC/来源渠道 A] CSV字段=cp_name，命中Ctx=cftc.ctx.v3,cftc.ctx.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:17.180 INFO  [CFTC/来源渠道 A] EO=Citi Group，AO=XYZ Bank → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-                    }
                   ]
                 },
                 {
@@ -11937,29 +9223,6 @@
                     "[INFO] 比较字段 platform（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=platform_id，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default",
                     "[INFO] EO=HSBC，AO=HSBC → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.100 INFO  [CFTC/来源渠道 A] 比较字段 platform（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.140 INFO  [CFTC/来源渠道 A] CSV字段=platform_id，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:18.180 INFO  [CFTC/来源渠道 A] EO=HSBC，AO=HSBC → PASSED"
-                    }
                   ]
                 },
                 {
@@ -12027,29 +9290,6 @@
                     "[INFO] 比较字段 venue（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=venue_id，命中Ctx=cftc.ctx.v2,cftc.ctx.val.default,cftc.ctx.v3",
                     "[INFO] EO=Goldman Sachs，AO=Goldman Sachs → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.100 INFO  [CFTC/来源渠道 A] 比较字段 venue（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.140 INFO  [CFTC/来源渠道 A] CSV字段=venue_id，命中Ctx=cftc.ctx.v2,cftc.ctx.val.default,cftc.ctx.v3"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:19.180 INFO  [CFTC/来源渠道 A] EO=Goldman Sachs，AO=Goldman Sachs → PASSED"
-                    }
                   ]
                 },
                 {
@@ -12087,29 +9327,6 @@
                     "[INFO] 比较字段 quantity（报告渠道 CFTC / 来源渠道 A）",
                     "[INFO] CSV字段=qty，命中Ctx=cftc.ctx.default,cftc.ctx.conv.default,cftc.ctx.val.v2,cftc.ctx.v3",
                     "[INFO] EO=415203.54，AO=415203.54 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.100 INFO  [CFTC/来源渠道 A] 比较字段 quantity（报告渠道 CFTC / 来源渠道 A）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.140 INFO  [CFTC/来源渠道 A] CSV字段=qty，命中Ctx=cftc.ctx.default,cftc.ctx.conv.default,cftc.ctx.val.v2,cftc.ctx.v3"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 A",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:10.180 INFO  [CFTC/来源渠道 A] EO=415203.54，AO=415203.54 → PASSED"
-                    }
                   ]
                 }
               ]
@@ -12170,29 +9387,6 @@
                     "[INFO] 比较字段 tradeId（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=trade_id，命中Ctx=cftc.ctx.v2",
                     "[INFO] EO=TX-2024-480038，AO=TX-2024-480038 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.100 INFO  [CFTC/来源渠道 B] 比较字段 tradeId（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.140 INFO  [CFTC/来源渠道 B] CSV字段=trade_id，命中Ctx=cftc.ctx.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "1",
-                      "text": "2024-08-14 10:24:20.180 INFO  [CFTC/来源渠道 B] EO=TX-2024-480038，AO=TX-2024-480038 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -12243,29 +9437,6 @@
                     "[INFO] 比较字段 reportId（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=report_id，命中Ctx=cftc.ctx.default",
                     "[INFO] EO=TX-2024-704977，AO=TX-2024-704977 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.100 INFO  [CFTC/来源渠道 B] 比较字段 reportId（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.140 INFO  [CFTC/来源渠道 B] CSV字段=report_id，命中Ctx=cftc.ctx.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "2",
-                      "text": "2024-08-14 10:24:21.180 INFO  [CFTC/来源渠道 B] EO=TX-2024-704977，AO=TX-2024-704977 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -12323,29 +9494,6 @@
                     "[INFO] 比较字段 product（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=product_code，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.v2,cftc.ctx.val.v2,cftc.ctx.default",
                     "[INFO] EO=FXS，AO=FXS → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.100 INFO  [CFTC/来源渠道 B] 比较字段 product（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.140 INFO  [CFTC/来源渠道 B] CSV字段=product_code，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.v2,cftc.ctx.val.v2,cftc.ctx.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "3",
-                      "text": "2024-08-14 10:24:22.180 INFO  [CFTC/来源渠道 B] EO=FXS，AO=FXS → PASSED"
-                    }
                   ]
                 },
                 {
@@ -12396,29 +9544,6 @@
                     "[INFO] 比较字段 notional（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=notional_amount，命中Ctx=cftc.ctx.v2,cftc.ctx.conv.v2",
                     "[INFO] EO=7730799.34，AO=7730799.34 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.100 INFO  [CFTC/来源渠道 B] 比较字段 notional（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.140 INFO  [CFTC/来源渠道 B] CSV字段=notional_amount，命中Ctx=cftc.ctx.v2,cftc.ctx.conv.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "4",
-                      "text": "2024-08-14 10:24:23.180 INFO  [CFTC/来源渠道 B] EO=7730799.34，AO=7730799.34 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -12482,29 +9607,6 @@
                     "[INFO] 比较字段 currency（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=ccy，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.default",
                     "[INFO] EO=JPY，AO=JPY → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.100 INFO  [CFTC/来源渠道 B] 比较字段 currency（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.140 INFO  [CFTC/来源渠道 B] CSV字段=ccy，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.conv.default"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "5",
-                      "text": "2024-08-14 10:24:24.180 INFO  [CFTC/来源渠道 B] EO=JPY，AO=JPY → PASSED"
-                    }
                   ]
                 },
                 {
@@ -12570,29 +9672,6 @@
                     "[INFO] 比较字段 tradeDate（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=exec_timestamp，命中Ctx=cftc.ctx.v2,cftc.ctx.val.v2,cftc.ctx.v3",
                     "[INFO] EO=2024-06-13，AO=2024-06-13 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.100 INFO  [CFTC/来源渠道 B] 比较字段 tradeDate（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.140 INFO  [CFTC/来源渠道 B] CSV字段=exec_timestamp，命中Ctx=cftc.ctx.v2,cftc.ctx.val.v2,cftc.ctx.v3"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "6",
-                      "text": "2024-08-14 10:24:25.180 INFO  [CFTC/来源渠道 B] EO=2024-06-13，AO=2024-06-13 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -12650,29 +9729,6 @@
                     "[INFO] 比较字段 maturityDate（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=expiration_date，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.val.v2,cftc.ctx.v3",
                     "[INFO] EO=2024-02-16，AO=2024-02-16 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.100 INFO  [CFTC/来源渠道 B] 比较字段 maturityDate（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.140 INFO  [CFTC/来源渠道 B] CSV字段=expiration_date，命中Ctx=cftc.ctx.extended.production.region.east.v2024.latest,cftc.ctx.val.v2,cftc.ctx.v3"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "7",
-                      "text": "2024-08-14 10:24:26.180 INFO  [CFTC/来源渠道 B] EO=2024-02-16，AO=2024-02-16 → PASSED"
-                    }
                   ]
                 },
                 {
@@ -12723,29 +9779,6 @@
                     "[INFO] 比较字段 counterparty（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=cp_name，命中Ctx=cftc.ctx.v2,cftc.ctx.val.v2",
                     "[INFO] EO=ABC​Bank，AO=XYZ Bank → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.100 INFO  [CFTC/来源渠道 B] 比较字段 counterparty（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.140 INFO  [CFTC/来源渠道 B] CSV字段=cp_name，命中Ctx=cftc.ctx.v2,cftc.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "8",
-                      "text": "2024-08-14 10:24:27.180 INFO  [CFTC/来源渠道 B] EO=ABC​Bank，AO=XYZ Bank → FAILED（值不一致\n详情：期望值与实际值存在差异，可能由来源数据更新或报送数据延迟导致。\n建议核对上游系统该字段的最新取值，确认差异是否为业务允许范围。）"
-                    }
                   ]
                 },
                 {
@@ -12809,29 +9842,6 @@
                     "[INFO] 比较字段 platform（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=platform_id，命中Ctx=cftc.ctx.v3",
                     "[INFO] EO=Goldman Sachs，AO=Goldman Sachs → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.100 INFO  [CFTC/来源渠道 B] 比较字段 platform（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.140 INFO  [CFTC/来源渠道 B] CSV字段=platform_id，命中Ctx=cftc.ctx.v3"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "9",
-                      "text": "2024-08-14 10:24:28.180 INFO  [CFTC/来源渠道 B] EO=Goldman Sachs，AO=Goldman Sachs → PASSED"
-                    }
                   ]
                 },
                 {
@@ -12874,29 +9884,6 @@
                     "[INFO] 比较字段 venue（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=venue_id，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default,cftc.ctx.val.v2",
                     "[INFO] EO=HSBC，AO=HSBC → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.100 INFO  [CFTC/来源渠道 B] 比较字段 venue（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.140 INFO  [CFTC/来源渠道 B] CSV字段=venue_id，命中Ctx=cftc.ctx.v3,cftc.ctx.conv.default,cftc.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "10",
-                      "text": "2024-08-14 10:24:29.180 INFO  [CFTC/来源渠道 B] EO=HSBC，AO=HSBC → PASSED"
-                    }
                   ]
                 },
                 {
@@ -12952,29 +9939,6 @@
                     "[INFO] 比较字段 quantity（报告渠道 CFTC / 来源渠道 B）",
                     "[INFO] CSV字段=qty，命中Ctx=cftc.ctx.default,cftc.ctx.conv.v2,cftc.ctx.val.v2",
                     "[INFO] EO=7125984.63，AO=7125984.63 → PASSED"
-                  ],
-                  "logs": [
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.100 INFO  [CFTC/来源渠道 B] 比较字段 quantity（报告渠道 CFTC / 来源渠道 B）"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.140 INFO  [CFTC/来源渠道 B] CSV字段=qty，命中Ctx=cftc.ctx.default,cftc.ctx.conv.v2,cftc.ctx.val.v2"
-                    },
-                    {
-                      "scope": "field",
-                      "channel": "CFTC",
-                      "source": "来源渠道 B",
-                      "field": "11",
-                      "text": "2024-08-14 10:24:20.180 INFO  [CFTC/来源渠道 B] EO=7125984.63，AO=7125984.63 → PASSED"
-                    }
                   ]
                 }
               ]

@@ -38,12 +38,9 @@ public class Field {
     private String resultText;
     /** Extra results {@code [{label, value}]}. */
     private List<ExtraResult> resultDetails;
-    /** Related print lines (reserved: the viewer now renders {@code logs} instead). */
-    private List<String> prints;
     /**
-     * Related log lines for this field ({@code scope == "field"}, each carrying its
-     * {@code channel} / {@code source} / {@code field}). The same lines are also present in
-     * {@code item.logs}, which is what the viewer uses to locate and highlight them.
+     * Related print lines, reserved: the viewer renders this field's related log lines from
+     * {@code item.logs} (matched by {@code channel} + {@code source} + {@code field}) instead.
      */
-    private List<ItemLog> logs;
+    private List<String> prints;
 }

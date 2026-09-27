@@ -358,7 +358,8 @@ import path from 'node:path';
       ];
     }
 
-    // 字段级日志行（item.logs 中 scope="field" 的行，同时冗余进 fields[].logs）：
+    // 字段级日志行（item.logs 中 scope="field" 的行）：
+    //   - **只在 item.logs 里存一份**（fields[] 不新增任何字段，字段自身只有 prints 保留待用）；
     //   - 每行都带 channel + source + field（field 为该字段的 id），供「完整日志」选项卡定位与详情页展示；
     //   - 文本沿用原 prints 的语义，补上时间戳与 `[报告渠道/来源渠道]` 前缀，使其与其它日志行一致可读；
     //   - scope="field" 的行必须同时有 channel / source / field（见 docs/DATA_SCHEMA.md §3）。
@@ -429,6 +430,8 @@ import path from 'node:path';
       const sourceIndexes = sourceCount === 1 ? [1] : [1, 2];
       // 记录各来源渠道中 FAILED 的字段名，供错误消息只关联到实际失败字段。
       const failedBySource = [];
+      // 该来源渠道的字段级日志行（scope=field）：只进 item.logs（item.logs 里按渠道分组）。
+      const sourceFieldLogs = [];
       const sources = sourceIndexes.map(sn => {
         const failedFields = [];
         const fields = fieldsDef.map(([f, rawTarget, t, k], idx) => {
@@ -482,6 +485,9 @@ import path from 'node:path';
           const valCtxIds = toIds(valCtxs);
           const srcName = '来源渠道 ' + (sn === 1 ? 'A' : 'B');
           const fieldId = fr.nameToId[f];
+          // 字段级日志行（scope=field）：只进 item.logs，不写进字段对象。
+          sourceFieldLogs.push.apply(sourceFieldLogs,
+            buildFieldLogs(f, fieldId, el, ctx, ch.name, srcName, eo, ao, result, note, isCsv ? 'CSV字段' : 'XPath', sn, idx));
           return {
             id: fieldId,
             cmpLeft: { value: eo, ctx: ctxExpr(mapCtxs), ctxs: mapCtxIds, elRaw: eoMapping, el: eoCol, srcType: 2 },
@@ -493,9 +499,8 @@ import path from 'node:path';
             remarks: note,
             resultText: resultNote,
             resultDetails: resultDetails,
-            // prints 保留待用（查看器详情页已改为读取关联日志行）；logs 为该字段关联的日志行（scope=field）。
+            // prints 保留待用（查看器详情页已改为从 item.logs 读取该字段的关联日志行）。
             prints: buildPrints(f, el, ctx, ch.name, srcName, eo, ao, result, note, isCsv ? 'CSV字段' : 'XPath'),
-            logs: buildFieldLogs(f, fieldId, el, ctx, ch.name, srcName, eo, ao, result, note, isCsv ? 'CSV字段' : 'XPath', sn, idx),
           };
         });
         const srcName = '来源渠道 ' + (sn === 1 ? 'A' : 'B');
@@ -503,11 +508,7 @@ import path from 'node:path';
         return { name: srcName, fields: fields };
       });
 
-      // 该渠道的字段级日志行（scope=field）：按来源渠道 / 字段出现顺序汇总，供 item.logs 与渠道分组使用。
-      const fieldLogs = [];
-      sources.forEach(function (s) {
-        (s.fields || []).forEach(function (fd) { fieldLogs.push.apply(fieldLogs, fd.logs || []); });
-      });
+      // 该渠道的字段级日志行（scope=field）：按来源渠道 / 字段出现顺序汇总，只用于 item.logs（按渠道分组）。
 
       const aoExt = isCsv ? '.csv' : '.xml';
       const eoNameA = ch.name.toLowerCase() + '_srcA_' + tradeId + '.csv';
@@ -530,7 +531,7 @@ import path from 'node:path';
         errors: buildErrorMessages(rng, ch.name, failedBySource),
         uncompared: buildUncompared(ch.name, sources.map(function (s) { return s.name; }), rng, fieldsDef, isCsv ? 2 : 1),
         logs: buildChannelLogs({ name: ch.name, files: files }, tradeId),
-        fieldLogs: fieldLogs,
+        fieldLogs: sourceFieldLogs,
       };
     }
 

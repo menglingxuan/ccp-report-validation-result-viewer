@@ -1114,9 +1114,11 @@
     }
     async function confirmBatchDelete(id) {
       try {
-        const res = await fetch('/api/batch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ batchId: id, deleted: true }) });
-        const j = await res.json().catch(function () { return null; });
-        if (!res.ok || !j || j.ok !== true) throw new Error(j && j.error ? j.error : ('HTTP ' + res.status));
+        // 经统一入口回写（带 If-Match 乐观并发；冲突时提示并重放一次）。
+        const out = await postBatchMeta({ batchId: id, deleted: true });
+        if (!out.res.ok || !out.json || out.json.ok !== true) {
+          throw new Error(out.json && out.json.error ? out.json.error : ('HTTP ' + out.res.status));
+        }
       } catch (e) {
         setBatchNotice(t('batchDeleteError') + ' ' + (e && e.message ? e.message : e));
         return;
@@ -1129,6 +1131,48 @@
       if (BATCH_STATE.active && BATCH_STATE.active.batchId === id) { BATCH_STATE.active = null; saveBatchActive(); }
       setBatchNotice('');
       renderBatchPanel(); renderBatchDock(); renderBatchBadge(); renderForceBanner();
+    }
+
+    /* ---------- 批次元数据写回的乐观并发（If-Match） ----------
+     * POST /api/batch 是**字段级补丁**（只覆盖请求里出现的字段），但多会话并发写同一字段仍会互相覆盖，
+     * 因此写回前先取该批次 batch-meta.json 的当前 ETag（GET /api/batch），写回时作为 If-Match 发回；
+     * 服务端发现与服务端当前文件不一致则返回 409（不写入）并回传最新 etag。
+     * 409 处理与忽略配置同一套思路：提示 + 用服务端返回的最新 ETag **重放一次**
+     * （补丁语义下重放是安全的：其它会话改动的字段不会被本请求覆盖）。 */
+    const BATCH_META_ETAG = {};        // batchId -> etag（'' 表示该批次还没有 batch-meta.json）
+    async function batchMetaEtag(batchId) {
+      if (BATCH_META_ETAG[batchId] !== undefined) return BATCH_META_ETAG[batchId];
+      try {
+        const res = await fetch('/api/batch?id=' + encodeURIComponent(batchId), { cache: 'no-store' });
+        const j = await res.json().catch(function () { return null; });
+        if (res.ok && j && j.ok === true && typeof j.etag === 'string') {
+          BATCH_META_ETAG[batchId] = j.etag;
+          return j.etag;
+        }
+      } catch (e) {}
+      return undefined;               // 取不到就不带 If-Match（服务端按无校验处理，行为与旧版一致）
+    }
+    // 回写批次元数据（统一入口）：自动带 If-Match；409 时提示并重放一次。
+    async function postBatchMeta(payload) {
+      const batchId = payload && payload.batchId;
+      const send = function (ifMatch) {
+        const body = Object.assign({}, payload);
+        if (ifMatch !== undefined) body.ifMatch = ifMatch;
+        return fetch('/api/batch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+          .then(function (r) {
+            return r.json().catch(function () { return null; }).then(function (j) { return { res: r, json: j }; });
+          });
+      };
+      let out = await send(batchId ? await batchMetaEtag(batchId) : undefined);
+      if (out.res.status === 409 && batchId) {
+        if (out.json && typeof out.json.etag === 'string') BATCH_META_ETAG[batchId] = out.json.etag;
+        setBatchNotice(t('batchMetaConflict'));
+        out = await send(BATCH_META_ETAG[batchId]);
+      }
+      if (out.res.ok && out.json && batchId && typeof out.json.etag === 'string') {
+        BATCH_META_ETAG[batchId] = out.json.etag;   // 写回成功后同步最新 etag，后续写回无需再取
+      }
+      return out;
     }
 
     /* ---------- 收藏夹（按包名 aa.bb.cc 分层折叠） ---------- */
@@ -1179,7 +1223,7 @@
     function setBatchFavoriteFlag(batchId, flag) {
       const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === batchId; });
       if (b) b.favorite = flag;
-      fetch('/api/batch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ batchId: batchId, favorite: flag }) }).catch(function () {});
+      postBatchMeta({ batchId: batchId, favorite: flag }).catch(function () {});
     }
     // 收藏状态：元数据 favorite 为冗余缓存（索引可能滞后），收藏夹树为权威来源，任一命中即为已收藏。
     function isBatchFavorited(b) { return !!(b && (b.favorite || favoriteCountFor(b.batchId) > 0)); }
@@ -1975,13 +2019,10 @@
         const name = nameEl.value.trim();
         if (!name) { checkName(); nameEl.focus(); return; }
         try {
-          const res = await fetch('/api/batch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ batchId: batchId, batchName: name, description: descEl.value, tags: draft }),
-          });
-          const j = await res.json().catch(function () { return null; });
-          if (!res.ok || !j || j.ok !== true) throw new Error(j && j.error ? j.error : ('HTTP ' + res.status));
+          // 统一入口：带 If-Match 乐观并发，冲突时提示并重放一次（避免多会话并发修改被默默覆盖）。
+          const out = await postBatchMeta({ batchId: batchId, batchName: name, description: descEl.value, tags: draft });
+          const j = out.json;
+          if (!out.res.ok || !j || j.ok !== true) throw new Error(j && j.error ? j.error : ('HTTP ' + out.res.status));
           b.batchName = j.batchName || name;
           if (j.description) b.description = j.description; else delete b.description;
           const tags = Array.isArray(j.tags) ? j.tags : [];
@@ -2521,16 +2562,13 @@
     // 日志行定位（「完整日志」中 scope="field" 的行）：合成键与短标识锚点 id 的纯函数在 core.js
     // （logFieldKey / logSlug / logHash / logAnchorId / isFieldLogLine，便于 Node 直接单测）。
 
-    // 取某字段关联的完整日志行（item.logs 中 channel + source + field 匹配的行），返回 { lines, anchored }：
-    //   - anchored=true 表示这些行来自「完整日志」选项卡渲染的数据，可在其中定位高亮；
-    //   - 兜底：item.logs 未冗余字段日志时，退回该字段自身的 logs（无锚点，因此不提供跳转）。
-    function fieldLogLines(item, channel, source, fieldId, fieldEntry) {
-      const hit = ((item && item.logs) || []).filter(function (l) {
+    // 取某字段关联的日志行：**只在「完整日志」的数据源（item.logs）里找**
+    // （scope="field" 且 channel + source + field 三者匹配），按原始顺序返回；
+    // 字段对象自身不存日志（只有 prints 保留待用），因此没有命中就是「无关联日志行」。
+    function fieldLogLines(item, channel, source, fieldId) {
+      return ((item && item.logs) || []).filter(function (l) {
         return isFieldLogLine(l) && l.channel === channel && l.source === source && l.field === fieldId;
       });
-      if (hit.length) return { lines: hit, anchored: true };
-      const own = ((fieldEntry && fieldEntry.logs) || []).filter(function (l) { return l && typeof l.text === 'string'; });
-      return { lines: own, anchored: false };
     }
     // 在「完整日志」已渲染的内容里找锚点元素：先用可推导的 id 直取，再用 data-log-key 复核
     // （slug / 哈希理论上有碰撞可能），不一致时退回按 data-log-key 扫描（也覆盖「首行被筛选掉」的情况）。
@@ -4557,6 +4595,10 @@
       renderMsgTable('uncomparedItems', getMsgRows('uncomparedItems').length + ' ' + t('metaUncomparedItems') + scopeLabel() + t('metaClose'));
     }
 
+    /* 「完整日志」字段关联行高亮的选择状态：当前高亮的字段合成键（channel|source|field），空串表示无高亮。
+     * 重绘（renderLogs）会重建 DOM，因此渲染时清空；失去焦点时清空（见 clearLogFieldHighlight）。 */
+    let LOG_FIELD_SELECTION = '';
+
     function renderLogs() {
       let lines = scopeLogs();
       if (state.search.trim()) {
@@ -4575,6 +4617,8 @@
         seqCount[k] = (seqCount[k] || 0) + 1;
         seqByLine.set(l, seqCount[k]);
       });
+      // 重绘后旧的高亮节点已不存在：清掉选择状态（否则会留下指向已移除节点的悬空记录）。
+      LOG_FIELD_SELECTION = '';
       const html = lines.map(function (l) {
         const text = esc(l.text || '');
         if (!isFieldLogLine(l)) return '<div class="log-line">' + text + '</div>';
@@ -4582,7 +4626,8 @@
         let seq = seqByLine.get(l);
         if (!seq) { seqCount[key] = (seqCount[key] || 0) + 1; seq = seqCount[key]; }
         const id = logAnchorId(it, l.channel, l.source, l.field, seq);
-        return '<div class="log-line" id="' + esc(id) +
+        // tabindex=-1：可被点击聚焦（从而能靠 focusout 取消高亮），但不进 Tab 顺序。
+        return '<div class="log-line" tabindex="-1" id="' + esc(id) +
           '" data-log-key="' + esc(key) + '" data-log-field="' + esc(l.field) + '">' + text + '</div>';
       }).join('');
       document.getElementById('content').innerHTML =
@@ -4601,7 +4646,7 @@
       const fd = (ch.fields || []).find(function (f) { return f.id === field; })
         || (ch.fields || []).find(function (f) { return f.name === field; });
       if (!fd) return null;
-      if (!fieldLogLines(it, ch.name, source, fd.id, fd).anchored) return null;
+      if (!fieldLogLines(it, ch.name, source, fd.id).length) return null;
       return { item: it, channel: ch.name, source: source, fieldId: fd.id };
     }
     function canJumpToFieldLog(channel, source, field) { return !!resolveFieldLogTarget(channel, source, field); }
@@ -4643,11 +4688,32 @@
       setTimeout(function () { el.classList.remove('flash-log'); }, 1800);
     }
 
-    /* 单击 / 双击共用链接（字段比较的「报告字段」、警告 / 错误的「关联字段」）：
-     * 单击保持原行为（打开比较详情 / 跳到字段行），双击跳「完整日志」中该字段的关联日志行。
-     * 单击动作会切换选项卡或弹出详情页（元素被重建），浏览器便不会再派发第二个 click，
+    /* 「完整日志」字段关联行高亮：单击某条 scope="field" 的日志行 → 属于同一字段
+     * （channel + source + field 合成键相同）的所有日志行一起淡色高亮；焦点消失（点到别处 / 切走）即取消。
+     * 实现要点：字段日志行渲染时带 tabindex="-1"，单击会把它聚焦，因此 focusout 就是「焦点消失」的天然信号。 */
+    function clearLogFieldHighlight() {
+      if (!LOG_FIELD_SELECTION) return;
+      const nodes = document.querySelectorAll('#content .log-line.log-hi');
+      for (let i = 0; i < nodes.length; i++) nodes[i].classList.remove('log-hi');
+      LOG_FIELD_SELECTION = '';
+    }
+    function highlightLogField(key) {
+      clearLogFieldHighlight();
+      if (!key) return;
+      const nodes = document.querySelectorAll('#content .log-line[data-log-key]');
+      let hit = false;
+      for (let i = 0; i < nodes.length; i++) {
+        if (nodes[i].getAttribute('data-log-key') === key) { nodes[i].classList.add('log-hi'); hit = true; }
+      }
+      LOG_FIELD_SELECTION = hit ? key : '';
+    }
+
+    /* 单击 / 双击共用链接（警告 / 错误的「关联字段」）：单击跳到主列表该字段位置，双击跳「完整日志」中
+     * 该字段的关联日志行。单击动作会切换选项卡（元素被重建），浏览器便不会再派发第二个 click，
      * 因此「可跳日志」的链接把单击动作延后到双击判定窗口之后执行（窗口内出现第二次点击即视为双击）。
-     * 没有可定位日志行的链接不受影响，保持即时响应。 */
+     * 没有可定位日志行的链接不受影响，保持即时响应。
+     * 注：字段比较的「报告字段」已改为单击即时打开详情页（不再用双击手势）——那边详情页自带 ▸ 跳日志，
+     * 没必要让单击白白等 300ms。 */
     const FIELD_CLICK_DELAY_MS = 300;
     let FIELD_CLICK_TIMER = 0;
     function cancelFieldClick() {
@@ -4898,6 +4964,10 @@
       const backdrop = document.createElement('div');
       backdrop.className = 'modal-backdrop';
       document.body.appendChild(backdrop);
+      // 记录创建时刻：刚弹出的一小段时间内忽略「点遮罩关闭」。字段比较里用惯了双击的用户，
+      // 第二次点击往往紧跟第一次（几十~几百 ms）落在遮罩上，会把刚打开的详情页瞬间关掉，看起来像“没反应”。
+      const openedAt = Date.now();
+      const BACKDROP_GUARD_MS = 350;
 
       const navState = { channel: channel, source: source, id: id, fromGlobal: !!fromGlobal };
       const view = { navInfo: null, rulesExpanded: false };
@@ -4959,14 +5029,14 @@
 
         // 「相关打印信息」改为读取完整日志中与该字段关联的日志行（channel + source + field）：
         // 原 field.prints 保留待用（不再读取）。标题后的三角图标可跳转到「完整日志」中该字段的首个日志行
-        // （仅当这些日志行确实来自完整日志、即能定位到锚点时才显示）。
-        const relatedLogs = fieldLogLines(currentItem(), found.channel, found.source, fid, f);
-        const relatedLogsHtml = relatedLogs.lines.length
-          ? relatedLogs.lines.map(function (l) { return '<div class="log-line">' + esc(l.text || '') + '</div>'; }).join('')
+        // （有可定位的日志行时才显示）。
+        const relatedLogs = fieldLogLines(currentItem(), found.channel, found.source, fid);
+        const relatedLogsHtml = relatedLogs.length
+          ? relatedLogs.map(function (l) { return '<div class="log-line">' + esc(l.text || '') + '</div>'; }).join('')
           : '<div class="log-empty">' + t('modalPrintsEmpty') + '</div>';
         const printsHtml = APP_FEATURES.modalPrints
           ? '<div class="print-box"><div class="pb-head"><span>' + t('modalPrints') + '</span>' +
-            (relatedLogs.anchored
+            (relatedLogs.length
               ? '<button class="log-jump" data-log-jump="1" title="' + esc(t('modalPrintsJumpTip')) + '" aria-label="' + esc(t('modalPrintsJumpTip')) + '">▸</button>'
               : '') +
             '</div>' +
@@ -5087,7 +5157,11 @@
           }
           return;
         }
-        if (e.target === backdrop || e.target.closest('.modal-close')) closeModal();
+        if (e.target === backdrop || e.target.closest('.modal-close')) {
+          // 误触保护：刚打开时的点击不关（见 openModal 里的 BACKDROP_GUARD_MS）。
+          if (e.target === backdrop && Date.now() - openedAt < BACKDROP_GUARD_MS) return;
+          closeModal();
+        }
       });
 
       backdrop.addEventListener('keydown', function (e) {
@@ -6493,6 +6567,16 @@ export function parseHash(raw) {
       });
 
       document.getElementById('content').addEventListener('click', function (e) {
+        // 「完整日志」：单击某条 scope="field" 的日志行 → 同字段（channel+source+field）的所有行一起淡色高亮。
+        // 非字段级日志行（item / channel）没有 data-log-key，不参与。
+        const logLine = e.target.closest('.log-line[data-log-key]');
+        if (logLine) {
+          // 显式聚焦：按下时浏览器通常已给焦点，但个别浏览器点击 div[tabindex] 不给；
+          // 而 focusout 是「焦点消失取消高亮」的唯一信号，必须保证它一定能触发。
+          if (document.activeElement !== logLine) logLine.focus();
+          highlightLogField(logLine.getAttribute('data-log-key'));
+          return;
+        }
         const ctxTag = e.target.closest('.ctx-tag');
         if (ctxTag) { showCtxDefPopup(ctxTag, ctxTag.getAttribute('data-ctx')); return; }
         const valExp = e.target.closest('[data-val-expand]');
@@ -6520,7 +6604,8 @@ export function parseHash(raw) {
           const jch = jfield.getAttribute('data-jch');
           const jsrc = jfield.getAttribute('data-jsrc');
           const jname = jfield.getAttribute('data-jump-field');
-          // 双击：跳「完整日志」中该字段的关联日志行（仅关联字段有值时才渲染为链接）。
+          // 双击：跳「完整日志」中该字段的关联日志行（仅关联字段有值时才渲染为链接；
+          // 该列没有详情页，所以双击是它的唯一日志入口，单击因此需延后判定）。
           if (e.detail > 1) { cancelFieldClick(); jumpToFieldLog(jch, jsrc, jname); return; }
           scheduleFieldClick(function () { jumpToFieldRow(jch, jsrc, jname); }, jch, jsrc, jname);
           return;
@@ -6529,10 +6614,10 @@ export function parseHash(raw) {
         if (fmsg) { jumpToFieldMsg(fmsg.getAttribute('data-field-msg'), fmsg.getAttribute('data-fch'), fmsg.getAttribute('data-fsrc'), fmsg.getAttribute('data-ffield')); return; }
         const detail = e.target.closest('[data-detail]');
         if (detail) {
+          // 单击「报告字段」即时打开比较详情：不做双击判定（详情页标题后的 ▸ 可跳到该字段的关联日志行，
+          // 因此这里不需要双击手势，避免单击要等 300ms 才弹窗）。
           const loc = parseFieldLoc(detail.getAttribute('data-detail'));
-          // 双击「报告字段」：跳「完整日志」中该字段的关联日志行；单击：打开比较详情（可跳日志时延后判定）。
-          if (e.detail > 1) { cancelFieldClick(); jumpToFieldLog(loc.channel, loc.source, loc.id); return; }
-          scheduleFieldClick(function () { openModal(loc.channel, loc.source, loc.id); }, loc.channel, loc.source, loc.id);
+          openModal(loc.channel, loc.source, loc.id);
           return;
         }
         const ign = e.target.closest('.ignore-btn');
@@ -6567,6 +6652,14 @@ export function parseHash(raw) {
           state.msgPage = 1;
           renderContent();
         }
+      });
+
+      // 「完整日志」字段关联行高亮：焦点消失即取消（字段日志行带 tabindex=-1，点击会聚焦它；
+      // 点到别处 / 切到别的行 / 窗口失焦都会触发 focusout → 清掉上一组高亮；
+      // 若焦点紧接着落到另一条字段日志行，随后的 click 会重新高亮它那一组）。
+      document.getElementById('content').addEventListener('focusout', function (e) {
+        if (!LOG_FIELD_SELECTION) return;
+        if (e.target && e.target.closest && e.target.closest('.log-line[data-log-key]')) clearLogFieldHighlight();
       });
 
       document.getElementById('content').addEventListener('mousedown', function (e) {

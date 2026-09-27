@@ -197,6 +197,57 @@ test('服务器：静态站点、配置与扫描 API', async () => {
     assert.equal(idxEntry.batchName, '重命名批次', '写回批次名后索引应立即可见新值');
     assert.equal(idxEntry.tags, undefined, '清除标签后索引应立即可见');
 
+    // 批次元数据写回的乐观并发（If-Match）：
+    //   ① GET /api/batch?id=<batchId> 返回当前 batch-meta.json 的 ETag；
+    //   ② 过期的 If-Match -> 409 且不写入（避免多会话并发覆盖）；
+    //   ③ 正确的 If-Match（body 或请求头）-> 200 并回传新 etag；* 表示不校验。
+    const metaGet = await fetch(base + '/api/batch?id=b-tags');
+    assert.equal(metaGet.status, 200);
+    const metaGetBody = await metaGet.json();
+    assert.equal(metaGetBody.ok, true);
+    assert.equal(typeof metaGetBody.etag, 'string', 'GET /api/batch 应回传当前 ETag');
+    assert.equal(metaGetBody.meta.batchName, '重命名批次', 'GET /api/batch 应回传元数据内容');
+
+    const beforeConflict = fs.readFileSync(metaFile, 'utf8');
+    const conflict = await fetch(base + '/api/batch', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batchId: 'b-tags', tags: ['冲突'], ifMatch: '"0000000000000000"' }),
+    });
+    assert.equal(conflict.status, 409, '过期 If-Match 应返回 409');
+    const conflictBody = await conflict.json();
+    assert.equal(conflictBody.ok, false);
+    assert.equal(conflictBody.etag, metaGetBody.etag, '409 应回传服务端当前 etag 供客户端重放');
+    assert.equal(fs.readFileSync(metaFile, 'utf8'), beforeConflict, '409 时不得写入');
+
+    // 请求头形式同样生效（与服务端 /api/ignore、/api/favorites 一致）
+    const staleHeader = await fetch(base + '/api/batch', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'If-Match': '"0000000000000000"' },
+      body: JSON.stringify({ batchId: 'b-tags', tags: ['冲突'] }),
+    });
+    assert.equal(staleHeader.status, 409, 'If-Match 请求头也应参与校验');
+    assert.equal(fs.readFileSync(metaFile, 'utf8'), beforeConflict, '请求头 409 时同样不得写入');
+
+    const okAfterConflict = await fetch(base + '/api/batch', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batchId: 'b-tags', tags: ['顺带'], ifMatch: conflictBody.etag }),
+    });
+    assert.equal(okAfterConflict.status, 200, '用服务端返回的最新 etag 重放应成功');
+    const okAfterBody = await okAfterConflict.json();
+    assert.equal(typeof okAfterBody.etag, 'string', '成功写回应回传新 etag');
+    assert.notEqual(okAfterBody.etag, conflictBody.etag, '内容变化后 etag 必须变化');
+    assert.deepEqual(JSON.parse(fs.readFileSync(metaFile, 'utf8')).tags, ['顺带'], '重放应写入新标签');
+
+    const wildcard = await fetch(base + '/api/batch', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batchId: 'b-tags', tags: [], ifMatch: '*' }),
+    });
+    assert.equal(wildcard.status, 200, 'If-Match: * 表示不校验');
+
+    const missingGet = await fetch(base + '/api/batch?id=不存在');
+    assert.equal(missingGet.status, 404, '未知批次应返回 404');
+    const noIdGet = await fetch(base + '/api/batch');
+    assert.equal(noIdGet.status, 400, '缺少 id 应返回 400');
+
     // 打开目录接口：拒绝批次根目录之外的路径（不触发真实打开行为）
     const revealRes = await fetch(base + '/api/reveal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: os.tmpdir() }) });
     assert.equal(revealRes.status, 403, '批次目录之外的路径应被拒绝');

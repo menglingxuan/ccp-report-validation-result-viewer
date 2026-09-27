@@ -492,15 +492,14 @@ class ValidationJsonEngineTest {
                 c.check(src.getFields() != null && !src.getFields().isEmpty(), label + ".source.fields non-empty");
                 if (src.getFields() != null) {
                     for (Field f : src.getFields()) {
-                        validateField(c, f, label, csv, fieldIds, ch.getName(), src.getName());
+                        validateField(c, f, label, csv, fieldIds);
                     }
                 }
             }
         }
     }
 
-    private static void validateField(Check c, Field f, String label, boolean csv, Set<String> fieldIds,
-                                      String chName, String srcName) {
+    private static void validateField(Check c, Field f, String label, boolean csv, Set<String> fieldIds) {
         c.check(nonBlank(f.getId()), label + ".field.id non-blank");
         c.check(fieldIds.contains(f.getId()), label + ".field.id references item.fields: " + f.getId());
         c.check(f.getCmpLeft() != null && f.getCmpLeft().getCtxs() != null && !f.getCmpLeft().getCtxs().isEmpty(),
@@ -529,18 +528,9 @@ class ValidationJsonEngineTest {
             }
         }
 
-        // prints 保留待用（查看器详情页改为读取关联日志行）；logs 必须带 channel / source / field（日志锚点契约）。
+        // prints 保留待用（查看器详情页改为从 item.logs 读取该字段的关联日志行）；
+        // 字段级日志行只在 item.logs 里存一份，字段对象本身不写 logs。
         c.check(f.getPrints() != null && !f.getPrints().isEmpty(), label + ".field.prints non-empty");
-        c.check(f.getLogs() != null && !f.getLogs().isEmpty(), label + ".field.logs non-empty");
-        if (f.getLogs() != null) {
-            for (ItemLog l : f.getLogs()) {
-                c.check("field".equals(l.getScope()), label + ".field.logs.scope == field");
-                c.check(f.getId().equals(l.getField()), label + ".field.logs.field == field.id: " + l.getField());
-                c.check(chName.equals(l.getChannel()), label + ".field.logs.channel == channel name: " + l.getChannel());
-                c.check(srcName.equals(l.getSource()), label + ".field.logs.source == source name: " + l.getSource());
-                c.check(nonBlank(l.getText()), label + ".field.logs.text non-blank");
-            }
-        }
     }
 
     private static void validateMessages(Check c, List<Message> msgs, String label) {

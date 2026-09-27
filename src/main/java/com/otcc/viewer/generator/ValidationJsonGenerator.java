@@ -347,15 +347,20 @@ public final class ValidationJsonGenerator {
         List<Source> sources = new ArrayList<>();
         // 记录各来源渠道中 FAILED 的字段名，供错误消息只关联到实际失败字段。
         List<FailedBySource> failedBySource = new ArrayList<>();
+        // Field-scoped log lines of this channel (scope=field): kept in source/field order so they can be
+        // appended to item.logs right after the channel-level logs of the same channel. They are the only
+        // place field-scoped lines live: the field entries themselves carry no logs.
+        List<ItemLog> fieldLogs = new ArrayList<>();
         for (int sn : sourceIndexes) {
             List<Field> fields = new ArrayList<>();
             List<String> failedFields = new ArrayList<>();
             int idx = 0;
             for (String[] def : fieldsDef) {
-                Field fld = buildField(chName, def, idx, sn, csv, tradeId, rng, failRate,
+                FieldBuild fb = buildField(chName, def, idx, sn, csv, tradeId, rng, failRate,
                         fr.nameToId, mapPool, convPool, valPool, ctxIdByKey);
-                fields.add(fld);
-                if ("FAILED".equals(fld.getResult())) {
+                fields.add(fb.field);
+                fieldLogs.addAll(fb.logs);
+                if ("FAILED".equals(fb.field.getResult())) {
                     failedFields.add(def[0]);
                 }
                 idx++;
@@ -375,16 +380,6 @@ public final class ValidationJsonGenerator {
                 .build();
 
         List<String> sourceNames = sources.stream().map(Source::getName).toList();
-        // Field-scoped log lines of this channel: kept in source/field order so they can be
-        // appended to item.logs right after the channel-level logs of the same channel.
-        List<ItemLog> fieldLogs = new ArrayList<>();
-        for (Source s : sources) {
-            for (Field fd : s.getFields()) {
-                if (fd.getLogs() != null) {
-                    fieldLogs.addAll(fd.getLogs());
-                }
-            }
-        }
         return new ChannelBuild(
                 channel,
                 buildMessages(rng, chName, fieldsDef, failedBySource),
@@ -394,7 +389,10 @@ public final class ValidationJsonGenerator {
                 fieldLogs);
     }
 
-    private static Field buildField(String chName, String[] def, int idx, int sn, boolean csv,
+    /** A built field plus its field-scoped log lines (the latter only ever go into {@code item.logs}). */
+    private record FieldBuild(Field field, List<ItemLog> logs) {}
+
+    private static FieldBuild buildField(String chName, String[] def, int idx, int sn, boolean csv,
                                     String tradeId, Random rng, double failRate,
                                     Map<String, String> nameToId, List<String> mapPool,
                                     List<String> convPool, List<String> valPool,
@@ -485,7 +483,7 @@ public final class ValidationJsonGenerator {
                 "来源渠道 " + (sn == 1 ? "A" : "B"), eo, ao, result, note,
                 csv ? "CSV字段" : "XPath", sn, idx);
 
-        return Field.builder()
+        Field field = Field.builder()
                 .id(nameToId.get(f))
                 .cmpLeft(cmpLeft)
                 .cmpRight(cmpRight)
@@ -497,8 +495,8 @@ public final class ValidationJsonGenerator {
                 .resultText(resultNote)
                 .resultDetails(resultDetails)
                 .prints(prints)
-                .logs(fieldLogs)
                 .build();
+        return new FieldBuild(field, fieldLogs);
     }
 
     private static List<Message> buildMessages(Random rng, String chName, List<String[]> fieldsDef,
@@ -808,8 +806,8 @@ public final class ValidationJsonGenerator {
     /**
      * Field-scoped log lines ({@code scope == "field"}) derived from {@link #buildPrints}: every line
      * carries {@code channel} + {@code source} + {@code field} (the field id) so the viewer can locate
-     * and highlight it in the full-log tab. The same list is written to {@code field.logs} and appended
-     * to {@code item.logs} (see {@code docs/DATA_SCHEMA.md} §3 / §5).
+     * and highlight it in the full-log tab. These lines live **only** in {@code item.logs}: the field
+     * entries themselves carry no logs (see {@code docs/DATA_SCHEMA.md} §3).
      */
     private static List<ItemLog> buildFieldLogs(String f, String fieldId, String target, List<String> ctx,
                                                 String chName, String srcName, String eo, String ao,
