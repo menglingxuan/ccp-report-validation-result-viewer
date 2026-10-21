@@ -6,9 +6,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * {@code item.fields[]} registry entry: one report field definition shared by all
- * channels / sources of an item. Comparison fields reference it through the
- * numeric-string {@code id} (per-item unique, ordered by first appearance).
+ * One report field definition: {@code reportChannelDefs[].fieldDefs[]} entry.
+ *
+ * <p>Field ids are unique within their report channel (the sample data also keeps them unique
+ * dataset-wide: HKTR 1..13 / JSFA 21..33 / CFTC 41..53). Comparison results reference the definition
+ * through the numeric-string {@code id}: {@code channels[].sources[].fields[].id}, resolved against
+ * the fieldDefs of the parent report channel.</p>
  */
 @Data
 @Builder

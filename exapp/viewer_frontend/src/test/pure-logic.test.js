@@ -321,17 +321,22 @@ test('diffSegments 基于 LCS 输出删除与新增段', () => {
 });
 
 test('每个 item 都有独立的 ctxDefs（需求 9）', () => {
-  assert.ok(item.ctxDefs, 'item 应内联 ctxDefs');
-  assert.equal(DATA.ctxDefs, undefined, '顶层不应再有 ctxDefs');
+  const raw = buildDataset();       // 落盘形态（定义在顶层 usedCtxKeyDefs）
+  const hydrated = T.setData(raw);  // 查看器加载形态（hydrate 补回定义）
+  assert.ok(hydrated.items[0].ctxDefs, 'item 应内联 ctxDefs');
+  assert.equal(hydrated.ctxDefs, undefined, '顶层不应再有 ctxDefs（定义在顶层 usedCtxKeyDefs）');
+  // 落盘形态：item 内只留 { id, hits }（定义在顶层 usedCtxKeyDefs，加载时补回）。
+  assert.deepEqual(Object.keys(raw.items[0].ctxDefs['hktr.ctx.default']).sort(), ['hits', 'id']);
   assert.notEqual(
-    DATA.items[0].ctxDefs['hktr.ctx.default'].hits,
-    DATA.items[1].ctxDefs['hktr.ctx.default'].hits,
+    hydrated.items[0].ctxDefs['hktr.ctx.default'].hits,
+    hydrated.items[1].ctxDefs['hktr.ctx.default'].hits,
     '不同 item 的 ctx hits 定义应不同',
   );
-  // 新 ctxDefs 结构：id(int) / scopes(数组) / type(builtin|user)。
-  const d0 = DATA.items[0].ctxDefs['hktr.ctx.default'];
+  // hydrate 后：id(int) / rules(规则名数组) / type(builtin|user) 齐备。
+  const d0 = hydrated.items[0].ctxDefs['hktr.ctx.default'];
   assert.ok(Number.isInteger(d0.id) && d0.id > 0, 'ctxDef 应有正整数 id');
-  assert.ok(Array.isArray(d0.scopes) && d0.scopes.length > 0, 'ctxDef 应有 scopes 数组');
+  assert.ok(Array.isArray(d0.rules) && d0.rules.length > 0, 'hydrate 后 ctxDef 应有 rules 数组');
+  assert.ok(d0.rules.every((r) => ['fdm', 'cvt', 'vdt'].includes(r)), 'rules 只能是 fdm / cvt / vdt');
   assert.ok(d0.type === 'builtin' || d0.type === 'user', 'ctxDef.type 应为 builtin 或 user');
 });
 

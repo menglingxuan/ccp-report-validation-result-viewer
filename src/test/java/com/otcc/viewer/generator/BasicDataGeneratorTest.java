@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -59,9 +60,17 @@ class BasicDataGeneratorTest {
         assertFalse(item.getCtxDefs().isEmpty(), "ctxDefs filled");
 
         for (Channel ch : item.getChannels()) {
-            String label = "channel " + ch.getName();
+            String label = "channel " + ch.getId();
+            // item 内只有 id 引用：名称 / 字段定义 / format 都在顶层声明表里。
+            assertNull(ch.getName(), label + " item 内不写名称");
+            assertNull(ch.getFieldDefs(), label + " item 内不写字段定义");
 
-            assertFalse(ch.getFields().isEmpty(), label + " fields registry filled");
+            Channel def = ds.getReportChannelDefs().stream()
+                    .filter(c -> c.getId().equals(ch.getId())).findFirst().orElse(null);
+            assertNotNull(def, label + " 在 reportChannelDefs 里有声明");
+            assertFalse(def.getFieldDefs() == null || def.getFieldDefs().isEmpty(),
+                    label + " 声明表里 fieldDefs 已填");
+
             assertFalse(ch.getFiles().getEo().isEmpty(), label + " files.eo filled");
             assertFalse(ch.getFiles().getAo().isEmpty(), label + " files.ao filled");
             assertNotNull(ch.getFiles().getExcel(), label + " files.excel present");

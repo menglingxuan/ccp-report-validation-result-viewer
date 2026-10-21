@@ -40,20 +40,22 @@ function bodyOf(sig, len = 1200) {
 function minimalDataset(items, extra) {
   return Object.assign({
     mode: 'single',
-    channels: [{ id: CHANNEL_ID_PRESET.HKTR, name: 'HKTR', desc: '香港交易资料储存库', format: 'xml' }],
-    sources: [{ id: SOURCE_ID_PRESET['来源渠道 A'], name: '来源渠道 A' }],
+    reportChannelDefs: [{
+      id: CHANNEL_ID_PRESET.HKTR, name: 'HKTR', desc: '香港交易资料储存库', format: 'xml',
+      fieldDefs: [{ id: '1', name: 'tradeId', userTag: 'contextAssertion', type: 'id' }],
+    }],
+    sourceChannelDefs: [{ id: SOURCE_ID_PRESET['来源渠道 A'], name: '来源渠道 A', format: 'csv' }],
     items: items,
   }, extra || {});
 }
 
-// 最小合法 item：渠道 / 来源渠道都只有 id 引用 + 本 item 的数据。
+// 最小合法 item：渠道 / 来源渠道只写 id 引用，字段定义在顶层 fieldDefs 里。
 function minimalItem(logs) {
   return {
     tradeId: 'T-1',
     reportDate: '2026-08-16',
     channels: [{
       id: CHANNEL_ID_PRESET.HKTR,
-      fields: [{ id: '1', name: 'tradeId', userTag: 'contextAssertion', type: 'id' }],
       sources: [{
         id: SOURCE_ID_PRESET['来源渠道 A'],
         fields: [{ id: '1', result: 'PASSED' }],
@@ -200,7 +202,7 @@ test('迁移工具：旧 prints 生成字段级日志行并只追加进 item.log
   });
 });
 
-test('样例数据：落盘日志行只写 channelId / sourceId，消息段仍保留名称（双写）', () => {
+test('样例数据：落盘日志行只写 channelId / sourceId，消息段只写名称', () => {
   const raw = JSON.parse(fs.readFileSync(path.join(PUBLIC_DIR, 'report-validation-data.json'), 'utf8'));
   let logLines = 0;
   let msgRefs = 0;
@@ -214,7 +216,8 @@ test('样例数据：落盘日志行只写 channelId / sourceId，消息段仍�
       (item[k] || []).forEach((m) => {
         if (m.channel == null) return;
         msgRefs++;
-        assert.ok(typeof m.channelId === 'number', k + ' 仍应是名称 + id 双写（channelId 缺失）');
+        assert.equal('channelId' in m, false, k + ' 只写名称（不带 channelId）');
+        assert.equal('sourceId' in m, false, k + ' 只写名称（不带 sourceId）');
       });
     });
   });
@@ -229,11 +232,11 @@ test('样例数据：落盘日志行只写 channelId / sourceId，消息段仍�
 test('hydrate：渠道 / 来源渠道名称只按 id 解析，绝不从日志文本（text）推断', () => {
   const data = {
     mode: 'single',
-    channels: [
+    reportChannelDefs: [
       { id: CHANNEL_ID_PRESET.HKTR, name: 'HKTR', desc: '香港交易资料储存库', format: 'xml' },
       { id: CHANNEL_ID_PRESET.JSFA, name: 'JSFA' },
     ],
-    sources: [{ id: SOURCE_ID_PRESET['来源渠道 A'], name: '来源渠道 A' }],
+    sourceChannelDefs: [{ id: SOURCE_ID_PRESET['来源渠道 A'], name: '来源渠道 A' }],
     items: [{
       tradeId: 'T-1',
       channels: [{ id: CHANNEL_ID_PRESET.HKTR, fields: [], sources: [{ id: SOURCE_ID_PRESET['来源渠道 A'], fields: [] }] }],
@@ -351,32 +354,28 @@ test('跳转：可传字段 id 或字段名，且无可定位日志行时返回 
     'jumpToFieldLog 应先用 resolveFieldLogTarget 判定');
 });
 
-test('跳转接线：报告字段单击即时开详情页；关联字段双击跳日志、单击延迟判定', () => {
-  const block = bodyOf("const jfield = e.target.closest('[data-jump-field]');", 1400);
-  assert.match(block, /if \(e\.detail > 1\) \{ cancelFieldClick\(\); jumpToFieldLog\(jch, jsrc, jname\); return; \}/,
-    '关联字段双击应跳日志（并取消待执行的单击动作）');
-  assert.match(block, /scheduleFieldClick\(function \(\) \{ jumpToFieldRow\(jch, jsrc, jname\); \}, jch, jsrc, jname\);/, 
-    '关联字段单击仍跳字段行，但经 scheduleFieldClick 延迟判定');
-  // 字段比较的「报告字段」：单击直接开详情页（不再延后、不再有双击手势）。
+test('跳转接线：报告字段与关联字段都是单击即时响应（无双击手势、无延迟判定）', () => {
+  const block = bodyOf("const jfield = e.target.closest('[data-jump-field]');", 900);
+  assert.match(block, /jumpToFieldRow\(jfield\.getAttribute\('data-jch'\), jfield\.getAttribute\('data-jsrc'\),\s*jfield\.getAttribute\('data-jump-field'\)\);/,
+    '关联字段单击应直接跳主列表字段行');
+  assert.equal(block.includes('e.detail > 1'), false, '关联字段不应再有双击分支');
+  assert.equal(block.includes('jumpToFieldLog'), false, '关联字段不应再直接跳日志（改走字段详情页的 ▸）');
+  // 字段比较的「报告字段」：单击直接开详情页（同样不做双击判定）。
   const detailBlock = bodyOf("const detail = e.target.closest('[data-detail]');", 600);
   assert.match(detailBlock, /openModal\(loc\.channel, loc\.source, loc\.id\);/, '报告字段单击应直接打开比较详情');
-  assert.equal(detailBlock.includes('scheduleFieldClick'), false, '报告字段不应再经过延迟判定（单击立即响应）');
-  assert.equal(detailBlock.includes('e.detail > 1'), false, '报告字段不应再有双击分支');
-  const sch = bodyOf('function scheduleFieldClick(', 400);
-  assert.match(sch, /if \(!canJumpToFieldLog\(channel, source, field\)\) \{ single\(\); return; \}/,
-    '不可跳日志的链接应保持即时响应（不引入延迟）');
-  assert.match(sch, /setTimeout\(function \(\) \{ FIELD_CLICK_TIMER = 0; single\(\); \}, FIELD_CLICK_DELAY_MS\);/,
-    '可跳日志时单击动作延迟到双击判定窗口后执行');
-  assert.match(APP, /const FIELD_CLICK_DELAY_MS = 300;/, '双击判定窗口 300ms');
-  assert.match(bodyOf('function cancelFieldClick(', 200), /clearTimeout\(FIELD_CLICK_TIMER\)/, '双击应取消待执行的单击动作');
-  // 误触保护：刚打开的详情页不因紧跟的双击落在遮罩上而被瞬间关闭。
+  assert.equal(detailBlock.includes('e.detail > 1'), false, '报告字段不应有双击分支');
+  // 延迟判定机制整体移除（否则单击会白白等 300ms）。
+  assert.equal(APP.includes('FIELD_CLICK_DELAY_MS'), false, '不应再有双击判定窗口常量');
+  assert.equal(APP.includes('scheduleFieldClick'), false, '不应再有单击延迟调度');
+  assert.equal(APP.includes('cancelFieldClick'), false, '不应再有取消待执行单击动作的逻辑');
+  // 误触保护：刚打开的详情页不因紧跟的第二次点击（落在遮罩上）而被瞬间关闭。
   const om = bodyOf('function openModal(', 400);
   assert.match(om, /const openedAt = Date\.now\(\);/, 'openModal 应记录打开时刻');
   assert.match(APP, /if \(e\.target === backdrop && Date\.now\(\) - openedAt < BACKDROP_GUARD_MS\) return;/,
     '遮罩点击关闭应带误触保护（刚打开的一小段时间内不关）');
 });
 
-test('链接 tooltip：报告字段只说单击（跳日志在详情页 ▸）；关联字段仍点明单击 / 双击', () => {
+test('链接 tooltip：报告字段与关联字段都只说单击（两者都不再有双击手势）', () => {
   assert.match(bodyOf('function fieldCellHTML(', 2500), /esc\(t\('viewCompareDetailTip'\)\)/, '报告字段链接应使用新的 tooltip');
   assert.match(APP, /title="' \+ esc\(t\('jumpToFieldTip'\)\) \+ '">'/, '关联字段链接 tooltip 应转义');
   ['zh-CN', 'zh-HK', 'en'].forEach((lang) => {
@@ -385,9 +384,10 @@ test('链接 tooltip：报告字段只说单击（跳日志在详情页 ▸）�
     // 报告字段已改为单击即时开详情页：文案不能再提双击（否则用户会去双击）。
     assert.equal(/双击|雙擊|double-click/i.test(I18N[lang].viewCompareDetailTip), false,
       lang + '.viewCompareDetailTip 不应再提双击手势');
+    // 关联字段同样已取消双击手势（单击即跳字段行），文案也不能再提双击。
+    assert.equal(/双击|雙擊|double-click/i.test(I18N[lang].jumpToFieldTip), false,
+      lang + '.jumpToFieldTip 不应再提双击手势');
   });
-  assert.match(I18N['zh-CN'].jumpToFieldTip, /双击/, '关联字段保留双击跳日志，文案需点明');
-  assert.match(I18N['en'].jumpToFieldTip, /double-click/i, 'en 关联字段 tooltip 需点明双击');
   assert.equal('viewCompareDetail' in I18N['zh-CN'], false, '旧的 viewCompareDetail 已被 *_Tip 取代（避免死键）');
 });
 

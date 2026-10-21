@@ -12,18 +12,20 @@
 - **单文件 / 多文件数据模式**：
   - 单文件：一个 `report-validation-data.json` 包含全部 item。
   - 多文件：`report-validation-data.json` 为清单（manifest），每个 item 一个独立文件，支持**动态加载**、跨文件**搜索/筛选/统计**。
-  - 清单的**顶层字段与单文件模式完全一致**（`mode` / `reportEnv` / `creationType` / `skippedItems`），只把 `items` 换成轻量条目（`file` + 预计算 `summary`）；Java 生成器（`validationJsonJob -m multi`）与 `splitToFiles()`（JS / Java）都会写出这些字段。
+  - 清单的**顶层字段与单文件模式完全一致**（`mode` / `reportEnv` / `creationType` / 三张声明表 `reportChannelDefs`·`sourceChannelDefs`·`usedCtxKeyDefs` / `skippedItems`），只把 `items` 换成轻量条目（`file` + 预计算 `summary`）；Java 生成器（`validationJsonJob -m multi`）与 `splitToFiles()`（JS / Java）都会写出这些字段，且**键顺序一致**：`mode` → `reportEnv` → `creationType` → `reportChannelDefs` → `sourceChannelDefs` → `usedCtxKeyDefs` → `skippedItems` → `items`。
   - 所有近期功能（typed Ctx 标签/弹框、批次删除/收藏、新增徽章、可配置默认数据源、空数据占位、来源渠道筛选、字段详情左右导航与规则折叠、任务说明扩展内容等）均同时适配单文件与多文件模式。
 - **任务说明扩展内容（`descriptionEx`，只读）**：`batch-meta.json` 可选字段 `{ contentType, plainContent }`；`contentType: "markDownTable"` 时把 Markdown 表格渲染到「任务说明」**末尾**（**表头 `⚲` 字段筛选**（与主列表同款浮层输入框，列间 AND）/ **列排序**（升序 → 降序 → 原序）/ **分页**（紧凑页码 17×17 + 轻灰当前页，位于表格右上，每页 `limits.descExPageSize` 默认 5））；
   总页数 `≤ 3` 时不显示排序/筛选图标；列宽按**整表最大内容宽度**定宽（分页/排序切换时宽度固定，单列 56–360px）；页码控件位于表格右侧、**默认收起**（`▸` 展开 / `▾` 收起）、展开后为简约主题色竖向页码，仅 1 页时不显示；
   该块采用**弱化配色 + 虚线边框**的描述性样式（无独立工具条、无强调色、无冗余提示文案），与主题内容拉开层次；
   内容**不进批次索引**（索引只写 `metaUrl`，打开「任务说明」时懒加载 `batch-meta.json`），不显示在批次详情，也不可通过「编辑批次描述」/ `POST /api/batch` 修改；
   开关 `features.descriptionEx`（所有配置文件默认 `true`），契约与扩展步骤见 [`docs/DATA_SCHEMA.md` §6.3](DATA_SCHEMA.md)。
-- **每个 item 独立 ctx 定义**：`id` / `scopes` / `type` / `def` / `hits` 内联到每个 item（`item.ctxDefs`），不再全局共享。
-  - `scopes` 为**数组**：`[1]` 字段映射规则 / `[2]` 值转换规则 / `[3]` 终值校验规则；同一 ctx 可配置在多种规则中；`type` 为 `builtin`（内置）/ `user`（用户自定义）。
+- **item 只保留 ctx 命中，定义在顶层 `usedCtxKeyDefs`**：`item.ctxDefs[<ctxKey>] = { id, hits }`（id 引用声明表，`hits` 是本 item 的命中摘要），
+  ctxKey 的 `id` / `type` / `rules` / `def` 只在顶层声明表里写一次（见 `docs/DATA_SCHEMA.md` §3.1）。
+  - `rules` 为**规则名数组**：`fdm` 字段映射 / `cvt` 值转换 / `vdt` 终值校验；同一 ctx 可配置在多种规则中；`type` 为 `builtin`（内置）/ `user`（用户自定义）。旧的数字 `scopes: [1,2,3]` 已废弃（查看器仍能读老数据）。
   - 主列表「命中Ctx」列展示各规则 `ctxs` 的 id 并集（解析为 CtxKey），统一使用主题配色标签；字段详情页各规则 section 直接展示各自 `ctxs` 的 id 引用。
-  - 「命中Ctx」标签单击即弹出定义/命中详情（主列表与详情页均可，弹框跟随标签，长文本/多行可滚动），命中详情内展示该 CtxKey 的**全部 scopes** 徽章。
-- **字段定义注册表在 report channel 级别**：`channel.fields`（`id` / `name` / `userTag` / `type`）每个报告渠道各自维护（不同渠道的字段定义不同）；比较字段通过 `id` 关联所在渠道的注册表。
+  - 「命中Ctx」标签单击即弹出定义/命中详情（主列表与详情页均可，弹框跟随标签，长文本/多行可滚动），命中详情内展示该 CtxKey 的**全部 rules** 徽章。
+- **字段定义注册表在 report channel 级别**：`reportChannelDefs[].fieldDefs`（`id` / `name` / `userTag` / `type`）每个报告渠道各自维护（不同渠道的字段定义不同）；
+  比较字段通过 `id` 关联**其父报告渠道**的 fieldDefs（同名不同渠道的字段 id 也不相同）；查看器 hydrate 时会把它注入 item 渠道，下游逻辑无感。
 - **默认数据源可配置**：`urls.defaultDataMode` 取值 `init`（加载 `report-validation-data-init.json`）、`default`（加载 `report-validation-data-default.json`）或某个已扫描批次名（加载该批次数据）；其他值等同 `default`。
   - 加载 init 空占位数据时，「运行环境」显示为空。
 - **空占位数据**：`report-validation-data-init.json`（0 个 item）可临时改名为 default 文件，查看器展示友好空状态。
@@ -79,14 +81,22 @@
 - **启动期兜底**：`initApp()` 的任何未预期异常都会移除加载骨架层并**贴底**显示固定提示条（`--warn` 配色，「页面初始化失败，请刷新重试…」），避免用户停留在全屏骨架层（观感等同空白页），也不会遮挡页头；提示条不依赖任何页面容器，DOM 缺元素时同样可见。提示条末尾附「或 回到主页」超链接，指向 web 根（`origin + pathname`，不含查询参数与深链接），便于从失效的深链接回到干净主页。
 - **主列表分页在选项卡切换间保留**：字段比较用 `state.page`、消息类（警告 / 错误 / 未比较 / 未比较项）用 `state.msgPage`，两者互不干扰，所以切换选项卡（含点当前选项卡）**不再把页码重置为 1**；页码越界由 `computeFieldPage()` / `renderMsgTable()` 调用 `paginateRows()` 自动收敛。会改变数据集的操作仍各自重置页码：切换 item、全局搜索、列 / 特殊值筛选浮层、清除筛选标签与「清除全部」、汇总卡片跳转、字段警告图标的选项卡跳转、每页条数下拉。副作用是 hash 里的 `page=` 在非字段选项卡下也会保留，刷新后可按深链接还原字段比较所在页。
 - **键盘导航**：字段表与消息表行可聚焦（↑/↓ 移动、`Enter` 打开字段详情、`Space` 切换忽略）。
-- **渠道 / 来源渠道登记表（定义与引用分离）**：渠道与来源渠道的**定义只在顶层写一次**——`$root.channels = [{id,name,desc,format}]`、`$root.sources = [{id,name}]`（与 `items` / `skippedItems` 同级）；item 里只保留 `id` 引用（`item.channels[] = {id, enabled?, files, fields, sources:[{id, fields}]}`），不再重复写 `name`/`desc`/`format`。查看器加载时用 `core.js` 的 `hydrateDataset()`（多文件模式逐 item 用清单的声明表 `hydrateItem()`）把定义补回内存中的 item，因此**渲染 / 搜索 / 忽略配置 / 深链接仍全部按名称工作**；生成器（JS `hoistRegistries()` / Java `ValidationJsonGenerator.hoistRegistries()`）与 `tools/migrate-legacy-data.js` 做反向变换，两者互为逆操作（`hoist(hydrate(x)) === x`，有测试断言）。`files` / `fields` 有意留在 item 内：文件名含 tradeId、字段注册表逐 item 可变（同渠道在不同 item 的字段集可以不同）。
-- **数据契约：引用 ⊆ 声明**：`item.channels[].id` 与 `item.channels[].sources[].id` **必须**能在顶层 `channels` / `sources` 里解析；`skippedItems` 引用的渠道 / 来源渠道同样必须已声明（`hoistRegistries()` 会把它们一起补进声明表）。item 里可以重复写名称（便于人读），但必须与声明一致；两项声明**只有在该数据集没有任何引用时**才可以省略。因此**旧形态（定义写在 item 里、顶层无声明）不再合法**：校验器报「未在顶层 channels / sources 声明表里声明」，查看器仍能读（`hydrateDataset()` 不依赖声明），但契约要求先 `node tools/migrate-legacy-data.js <文件>` 迁移。声明表内部冲突（同 id 不同名称 / 同名不同 id）在生成与迁移时**直接报错**，不静默取第一个。这条契约让「id 指向哪个渠道」只有一处答案，是后续「引用只留 id」的前提。
-- **渠道 / 来源渠道稳定标识（id）**：`channels[].id`（预设 `HKTR=1` / `JSFA=2` / `CFTC=3`）与 `sources[].id`（预设 `来源渠道 A=1` / `来源渠道 B=2`）是必填正整数；登记表是**数据集级**的，因此来源渠道的 id 与名称同样数据集内唯一（不再只按渠道内唯一）。`warnings` / `errors` / `uncompared` / `skippedItems` 里的渠道 / 来源渠道引用为**名称 + id 双写**（`channel`/`channelId`、`source`/`sourceId`）；**`logs` 只写 id**（名称冗余、每行重复且量最大）：加载时 `hydrateItem()` 按 `channelId` / `sourceId` 从声明表把名称补回（只补缺的、不覆盖已有的），因此**展示 / 筛选 / 深链接仍全部按名称工作**。两种写法都能解析：只给 id 时按登记表解析名称，只给名称（老数据）时反查 id。id 的职责是**稳定标识**：日志锚点、内部 locator（`data-log-key` 等）、跨 item 关联；**URL / 深链接、忽略配置、界面展示仍用名称**——忽略配置是跨 item / 跨批次按平台共享的，深链接也要能跨批次通用，改成 id 会让已有配置与老链接失效。校验器在**数据集内**校验双向一致性（同一 id 必须指向同一名称、同一名称必须用同一 id，且不得与预设冲突；item 里只写 id 但没有登记表、或重复写了 `name`/`desc`/`format` 且与登记表不一致都会报错）。
+- **声明表（定义与引用分离，三张表）**：报告渠道、来源渠道、ctxKey 与字段定义的**定义只在顶层写一次** ——
+  `$root.reportChannelDefs = [{id,name,desc,format,fieldDefs}]`、`$root.sourceChannelDefs = [{id,name,format}]`、`$root.usedCtxKeyDefs = {<ctxKey>:{id,type,rules,def}}`（与 `items` / `skippedItems` 同级）；
+  item 里只保留 id 引用（`item.channels[] = {id, enabled?, files, sources:[{id, fields}]}`、`item.ctxDefs[<ctxKey>] = {id, hits}`），不再重复写定义。
+  （旧的根键 `channels` / `sources` 已改名为 `reportChannelDefs` / `sourceChannelDefs`；旧的 item 级 `fields` 已迁到 `reportChannelDefs[].fieldDefs`。**无向后兼容**：校验器对旧键名直接报错，老数据先 `node tools/migrate-legacy-data.js <文件>`。）
+  查看器加载时用 `core.js` 的 `hydrateDataset()`（多文件模式逐 item 用清单的声明表 `hydrateItem()`）把定义补回内存中的 item，因此**渲染 / 搜索 / 忽略配置 / 深链接仍全部按名称工作**；生成器（JS `hoistRegistries()` / Java `ValidationJsonGenerator.hoistRegistries()`）做反向变换，两者互为逆操作（`hoist(hydrate(x)) === x`，有测试断言）。`files` 与 `sources[].fields`（本 item 的比较结果）有意留在 item 内：文件名含 tradeId，字段集也逐 item 可变。
+- **数据契约：引用 ⊆ 声明**：`item.channels[].id` 与 `item.channels[].sources[].id` **必须**能在 `reportChannelDefs` / `sourceChannelDefs` 里解析；`item.ctxDefs` 的 key 必须在 `usedCtxKeyDefs` 里声明且 id 一致；`sources[].fields[].id` 必须在**父报告渠道的** `fieldDefs` 里声明；`skippedItems` 引用的渠道 / 来源渠道同样必须已声明（`hoistRegistries()` 会把它们一起补进声明表）。item 里不再接受新定义（写 `name` / `desc` / `format` / `fieldDefs` / ctxKey 的 `type`·`def`·`rules` 都会被报错）；三张声明表**只有在该数据集没有任何引用时**才可以省略。声明表内部冲突（同 id 不同名称 / 同名不同 id / `fieldDefs[].id` 重复）在生成与迁移时**直接报错**，不静默取第一个。这条契约让「id 指向哪个渠道 / ctxKey / 字段」各只有一处答案，是「引用只留 id」的前提。
+- **渠道 / 来源渠道 / ctxKey / 字段稳定标识（id）**：`reportChannelDefs[].id`（预设 `HKTR=1` / `JSFA=2` / `CFTC=3`）、`sourceChannelDefs[].id`（预设 `来源渠道 A=1` / `来源渠道 B=2`）、`usedCtxKeyDefs[].id` 与 `fieldDefs[].id`（数字字符串，**数据集内唯一**：HKTR 从 1 起 / JSFA 从 21 起 / CFTC 从 41 起）都是必填；声明表是**数据集级**的，因此来源渠道的 id 与名称同样数据集内唯一（不再只按渠道内唯一）。
+  引用写法：`logs` 与 `skippedItems` **保留 id**（名字 + id 双写），`warnings` / `errors` / `uncompared` **只写名称**（消息量小、以人读为主，双写 id 纯冗余）。加载时 `hydrateItem()` 按 `channelId` / `sourceId` 从声明表把名称补回（只补缺的、不覆盖已有的），因此**展示 / 筛选 / 深链接仍全部按名称工作**。
+  id 的职责是**稳定标识**：日志锚点、内部 locator（`data-log-key` 等）、跨 item 关联；**URL / 深链接、忽略配置、界面展示仍用名称** —— 忽略配置是跨 item / 跨批次按平台共享的，深链接也要能跨批次通用，改成 id 会让已有配置与老链接失效。
+- **来源渠道数据格式（`format`）**：`csv`（默认）或 `xml`；由生成器从该来源比较值侧的 `cmpLeft.valueSrcFmt` 推导。字段两侧的 `valueSrcFmt`（`csv`/`xml`）取代了旧的数字 `srcType`（数字在 raw JSON 里不自解释）：左侧（EO，来自映射表）恒为 `csv`，右侧（AO）随所在渠道的 `format`；CSV/XPath 图表也由它决定。
 - **日志文本不是数据通道**：`item.logs[].text` 只是展示内容（含时间戳与 `[渠道/来源]` 前缀，为了人读），代码**不得**从文本里提取渠道 / 来源渠道（真实数据的文本可能完全不含渠道信息）。日志行的归属一律看 `channelId` / `sourceId`（老数据回退看 `channel` / `source` 字段）；`isFieldLogLine()` 与字段日志取数同样只看结构化字段。两种形态的重活量收益实测（18 item 样例，含 9513 个引用点）：raw −6.96%、gzip −3.30%、brotli 约 −0.75%（其中 `logs` 占 91% 的引用）。
 - **启用口径单点化（`channels[].enabled`）**：渠道是否参与本次比较**只有一处**——`channels[].enabled`（**省略 = 启用**，只在禁用时写 `false`）；历史上的 `item.enabledChannels` 名单**已彻底移除**（出现即校验报错，不允许两份口径共存）。`public/core.js` 的 `enabledChannelsOf` / `isChannelEnabled` 是唯一入口，字段表展开、侧栏卡片、统计卡、图表、对比、全局搜索、健康总览与多文件清单的 `summary` 全部经它取渠道集合。此前**只有部分消费方尊重启用名单**（选项卡与顶部卡片按启用口径、侧栏卡片按全部渠道直接算），同一个 item 会出现「卡片 48 个字段 / 字段表 72 条」这种自相矛盾的显示；现在所有数字都由 `itemStatsPure` 与 `flatFields` 两个同源函数算出，不可能再对不上。
-- **完整日志的字段定位（日志锚点）**：`item.logs[]` 的 `field`（字段 id，**仅 `scope: "field"` 的日志行有值，且此时 `channelId` / `sourceId` 必须非空**；渠道 / 来源名称不再是日志行的必填项，查看器加载时按 id 补回）；字段级日志行即原 `field.prints` 的日志化版本，**只在 `item.logs` 里存一份**（`fields[]` 不新增任何字段，字段上只有 `prints` 保留待用）。查看器渲染「完整日志」时给这些行打**id 锚点**：`data-log-key="<渠道id>|<来源id>|<字段id>"`（例 `1|1|2`）+ `id="log-<渠道id>-<来源id>-f<字段id>.<同键序号>"`（例 `log-1-1-f2.1`，不超过 18 字符）。用 id 而非名称是刻意的：**数字天然无歧义**，不需要再把名称 slug 化 / 哈希（旧实现的 36 进制短哈希与碰撞兜底已删除），因此改渠道显示名不会让锚点漂移，**跨 item 也能用同一个合成键关联**同一实体；同键序号按 `item.logs` 顺序编号，与当前搜索 / 作用域筛选无关，因此同一行 id 稳定。跳转时用 `getElementById(logAnchorId(...,1))` 直取并**用 `data-log-key` 复核一致**，不一致或未命中再按 `data-log-key` 扫描兜底（同时覆盖「首个日志行被筛选掉」的情况）。于是可以**从字段侧跳回日志**：字段比较的「报告字段」链接**单击即打开比较详情**（不做双击判定、无延迟；要跳该字段的关联日志行用详情页标题后的 ▸）；警告 / 错误选项卡的「关联字段」链接单击跳到字段行、双击定位该字段的首个关联日志行（该列没有详情页，双击是它的唯一日志入口，因此单击动作**仅在可跳转时**延后 300 ms 到双击判定窗口后再执行，否则视图重建会吞掉第二次点击；无可定位日志行的链接保持即时响应）。详情页刚弹出的 350 ms 内忽略「点遮罩关闭」，避免用惯双击的用户第二次点击把刚打开的详情页瞬间关掉（看起来像没反应）。跳转前清空文本搜索、并把会遮住目标行的渠道 / 来源作用域放宽到 `ALL` 后重绘定位，落到目标行时以 `.flash-log` 高亮 1.8s（与字段行 `.flash-row` 同配色）。此外，在「完整日志」里**单击**任意一条字段级日志行（行带 `tabindex="-1"`，可聚焦但不进 Tab 顺序），会把**同一字段（id 合成键相同）的所有日志行一起整行高亮**（`.log-hi`，通栏底色带左右外扩到日志框内边距、文字位置不变；底色用专色 `--log-hi-bg`，比 `--accent-bg` 再深一档，9 套主题各自定义），便于一眼看清该字段这次的完整打印；**焦点消失即取消**（点击别处 / 切到别的选项卡 / 窗口失焦都会触发 `focusout` 清掉高亮，单击另一条字段日志行则自动切到那一组）。单击高亮与跳转闪烁可并存（`.flash-log` 动画结束后归位到整行高亮）。
+- **完整日志的字段定位（日志锚点）**：`item.logs[]` 的 `field`（字段 id，**仅 `scope: "field"` 的日志行有值，且此时 `channelId` / `sourceId` 必须非空**；渠道 / 来源名称不再是日志行的必填项，查看器加载时按 id 补回）；字段级日志行即原 `field.prints` 的日志化版本，**只在 `item.logs` 里存一份**（`fields[]` 不新增任何字段，字段上只有 `prints` 保留待用）。查看器渲染「完整日志」时给这些行打**id 锚点**：`data-log-key="<渠道id>|<来源id>|<字段id>"`（例 `1|1|2`）+ `id="log-<渠道id>-<来源id>-f<字段id>.<同键序号>"`（例 `log-1-1-f2.1`，不超过 18 字符）。用 id 而非名称是刻意的：**数字天然无歧义**，不需要再把名称 slug 化 / 哈希（旧实现的 36 进制短哈希与碰撞兜底已删除），因此改渠道显示名不会让锚点漂移，**跨 item 也能用同一个合成键关联**同一实体；同键序号按 `item.logs` 顺序编号，与当前搜索 / 作用域筛选无关，因此同一行 id 稳定。跳转时用 `getElementById(logAnchorId(...,1))` 直取并**用 `data-log-key` 复核一致**，不一致或未命中再按 `data-log-key` 扫描兜底（同时覆盖「首个日志行被筛选掉」的情况）。于是可以**从字段侧跳回日志**：字段比较的「报告字段」链接**单击即打开比较详情**；警告 / 错误选项卡的「关联字段」链接**单击即跳到主列表该字段行**（两个链接都是单击即时响应，不做双击判定、无 300ms 延迟）；要跳某字段的关联日志行，统一走**字段详情页**标题后的 ▸（详情页自带日志入口，因此不需要双击手势）。详情页刚弹出的 350 ms 内忽略「点遮罩关闭」，避免对『报告字段』链接习惯性双击时，第二次点击落在遮罩上把刚打开的详情页瞬间关掉。跳转前清空文本搜索、并把会遮住目标行的渠道 / 来源作用域放宽到 `ALL` 后重绘定位，落到目标行时以 `.flash-log` 高亮 1.8s（与字段行 `.flash-row` 同配色）。此外，在「完整日志」里**单击**任意一条字段级日志行（行带 `tabindex="-1"`，可聚焦但不进 Tab 顺序），会把**同一字段（id 合成键相同）的所有日志行一起整行高亮**（`.log-hi`，通栏底色带左右外扩到日志框内边距、文字位置不变；底色用专色 `--log-hi-bg`，比 `--accent-bg` 再深一档，9 套主题各自定义），便于一眼看清该字段这次的完整打印；**焦点消失即取消**（点击别处 / 切到别的选项卡 / 窗口失焦都会触发 `focusout` 清掉高亮，单击另一条字段日志行则自动切到那一组）。单击高亮与跳转闪烁可并存（`.flash-log` 动画结束后归位到整行高亮）。
 - **字段详情页的「相关打印信息」改为读取关联日志行**：由 `field.prints` 改为从**完整日志**（`item.logs`）中取 `channelId` + `sourceId` + `field` 三者匹配的行（按 id 匹配，不依赖名称是否存在），按原始顺序渲染（字段对象不存日志，没有命中就是「无关联日志行」）；旧 `prints` 字段保留待用（不再读取）。标题标签后新增三角图标（`data-log-jump`）可关闭详情页并跳回「完整日志」中该字段的首个关联日志行——有可定位的日志行时才显示，否则只展示「该字段暂无关联日志行」占位。
-- **数据校验**：`lib/validate.js` 校验数据文件结构（顶层 / `reportEnv` / `creationType`（`sample`|`user`）/ `skippedItems` 数组与条目字段 / ctxDefs / 字段注册表 / 比较字段；可选规则对象 `cvtLeft`·`cvtRight`·`vdt` 允许为 `null`；`item.logs[]` 的日志行契约：`scope` ∈ `item`/`channel`/`field`、`text` 必为字符串、`field` 仅 `scope="field"` 时有值且要求 `channelId` / `sourceId` 非空（名称可省，由查看器按 id 解析；**`text` 不参与任何逻辑**）；**渠道 / 来源渠道 id 契约**：`channels[].id` 与 `channels[].sources[].id` 必填正整数、渠道 id 数据集内全局一致且不得与预设冲突、`enabled` 只能布尔、`enabledChannels` 出现即报错；`warnings` / `errors` / `uncompared` / `logs` / `skippedItems` 的 `channelId`·`sourceId` 必须是正整数或 null、`sourceId` 必须与 `channelId` 成对、且与 `channel`·`source` 名称互相一致（悬空 id 会在扫描时被指出——这类历史数据问题就是引入 id 后第一次被发现），服务启动时对默认数据文件告警。
+- **数据校验**：`lib/validate.js` 校验数据文件结构（顶层三张声明表 `reportChannelDefs` / `sourceChannelDefs` / `usedCtxKeyDefs`（旧键名 `channels` / `sources` / `ctxKeyDefs`、以及旧 item 元数据 `platformTradeId` / `platformDealId` 都直接报错）/ `reportEnv` / `creationType`（`sample`|`user`）/ `skippedItems` 数组与条目字段 / item 只写引用的 `ctxDefs`（`{id,hits}`）/ 声明表的 `fieldDefs`（数字字符串 id、数据集内唯一）/ 比较字段的 `valueSrcFmt`（`csv`|`xml`，旧 `srcType` 报错）；可选规则对象 `cvtLeft`·`cvtRight`·`vdt` 允许为 `null`；`item.logs[]` 的日志行契约：`scope` ∈ `item`/`channel`/`field`、`text` 必为字符串、`field` 仅 `scope="field"` 时有值且要求 `channelId` / `sourceId` 非空（名称可省，由查看器按 id 解析；**`text` 不参与任何逻辑**）；`warnings` / `errors` / `uncompared` 只写名称（不得再写 id），`skippedItems` 的名字 + id 双写必须与声明表一致（悬空 id 会在扫描时被指出——这类历史数据问题就是引入 id 后第一次被发现），服务启动时对默认数据文件告警。
+- **item 元数据改名**：`item.platformTradeId` / `item.platformDealId` 改名为 `platformOriTradeId` / `platformOriTradeDealId`（旧键名会被校验器直接报错，避免筛选静默失效；侧栏「平台 Trade ID」筛选与 item 属性浮层已同步改为新键，**界面文案不变**）。
 - **独立打包部署**：`npm pack` / `npx report-viewer` 即可运行。
 
 ## 环境要求
@@ -233,7 +243,9 @@ src/
 └── docs/
     ├── README.md
     ├── CONFIG.md
-    └── DATA_SCHEMA.md
+    ├── DATA_SCHEMA.md
+    ├── LOCAL_CACHE.md
+    └── REFACTOR_PLAN.md        # 项目级重构计划与实施方案（兼容层清理 / 生成器去重 / 前端拆模块 / 体积优化）
 ```
 
 ## 配置
@@ -255,8 +267,8 @@ src/
 - **两种模式的顶层字段一致**：`reportEnv` / `creationType`（`sample`|`user`）/ `skippedItems` 在单文件数据集与多文件清单中都存在（`creationType` 决定 Sample 徽标与「示例数据」提示，缺省按 `sample` 处理）。
 - 多文件模式：清单中的每个 item 带 `file` 与预计算 `summary`，查看器动态加载 item 文件；搜索/筛选/统计仍作用于全部 item 的合并数据。
 - 多文件模式下 item 文件路径**相对清单文件所在目录**解析（根目录与批次目录清单都适用）；主数据 / 默认模板数据 / 批次数据在两种模式下的文件形态一致（`multi` 时均为清单）。
-- 每个 item 内联 `ctxDefs`（`id` / `scopes` / `type` / `def` / `hits`）。
-- 字段定义注册表在每个 `channel` 内（`channel.fields`，`id` / `name` / `userTag` / `type`）。
+- 每个 item 内联 `ctxDefs`，但只写 `{ id, hits }`（定义在顶层 `usedCtxKeyDefs`，`id` / `type` / `rules` / `def`）。
+- 字段定义声明表在每个报告渠道里（`reportChannelDefs[].fieldDefs`，`id` / `name` / `userTag` / `type`），item 只写字段 id 引用。
 - **模式转换**：`node tools/merge-batch.mjs --batch <id>` 可把多文件批次合并为单文件（清单 `mode` 改为 `single`、item 内联；
   除 `mode` / `items` 外的清单顶层字段与 item 顺序原样保留；合并前自动备份原清单为 `<清单名>.multi.bak`，**item 文件不删除**，
   因此可用 `splitToFiles` 再拆回去）；命令默认会刷新 `batches-index.json`，使 `summary.items` 与 `mode` 立即生效（`--no-scan` 可跳过）。
@@ -284,10 +296,10 @@ node tools/verify-multi-mode.mjs --keep       # 同上，但保留临时 web 根
 
 生成批次后需触发一次扫描（`GET /scan` 或界面「刷新批次」）以更新 `batches-index.json`。
 
-> 切片批次与特殊用途批次是从完整数据集里**重新拼出顶层对象**写的（`batchDataset()`），因此必须把 `channels` / `sources`
-> 两个声明表一起带上：漏掉就会变成「item 引用了未声明的渠道」形态，`lib/validate.js` 会拒绝、查看器也补不出名称。
-> 多文件批次的清单同理必须声明 item 文件里出现的全部渠道 / 来源渠道（`splitToFiles()` 在缺少声明表时会尝试从 item 里的定义补出）。
-> 这两点都有落盘样例数据的守卫测试（`test/declaration-contract.test.js`）。
+> 切片批次与特殊用途批次是从完整数据集里**重新拼出顶层对象**写的（`batchDataset()`），因此必须把三张声明表
+> （`reportChannelDefs` / `sourceChannelDefs` / `usedCtxKeyDefs`）一起带上：漏掉就会变成「item 引用了未声明的渠道」形态，
+> `lib/validate.js` 会拒绝、查看器也补不出名称。多文件批次的清单同理必须声明 item 文件里出现的全部渠道 / 来源渠道
+> （`splitToFiles()` 在缺少声明表时会尝试从 item 里的定义补出）。这两点都有落盘样例数据的守卫测试（`test/declaration-contract.test.js`）。
 
 ### 特殊用途样例批次
 

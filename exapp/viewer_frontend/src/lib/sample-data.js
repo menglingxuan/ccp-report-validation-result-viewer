@@ -27,13 +27,9 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
       { id: CHANNEL_ID_PRESET.CFTC, name: 'CFTC', desc: '美国商品期货交易委员会', format: 'csv' },
     ];
 
-    // 引用双写（名称 + id）：warnings / errors / uncompared / logs / skippedItems 同时写
-    // channel|channelId 与 source|sourceId。名称缺失（'' / null）时对应 id 为 null。
-    function refIds(channelName, sourceName) {
-      const chId = (channelName && CHANNEL_ID_PRESET[channelName]) || null;
-      const srcId = (chId != null && sourceName && SOURCE_ID_PRESET[sourceName]) || null;
-      return { channelId: chId, sourceId: srcId };
-    }
+    // 注意：渠道 / 来源渠道 / 字段 / ctxKey 的**定义**最终都写到顶层声明表
+    // （reportChannelDefs / sourceChannelDefs / usedCtxKeyDefs，见 buildDataset 的 hoistRegistries）；
+    // warnings / errors / uncompared **只写名称**（不带 id）；只有 logs / skippedItems 写 id。
 
     // 产品类别 -> 子产品（示例：利率类 IR 包含 IRS/OIS/BSW 等）
     const PRODUCT_CATEGORIES = {
@@ -267,13 +263,10 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
           // 渠道级警告：部分来源渠道为空（模拟来源信息缺失的样例数据）。
           source = rng() < 0.25 ? '' : pickSource();
         }
-        const defIds = refIds(channelName, source);
         msgs.push({
           scope: field ? 'field' : 'channel',
           source: source,
           channel: channelName,
-          channelId: defIds.channelId,
-          sourceId: defIds.sourceId,
           type: typeKeys[Math.floor(rng() * typeKeys.length)],
           level: levelPool[Math.floor(rng() * levelPool.length)],
           text: text,
@@ -309,13 +302,10 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
           : base;
         // 字段级错误必须携带失败字段所在的来源渠道；渠道级错误偶尔来源为空（模拟缺失）。
         const source = field ? src.name : (rng() < 0.3 ? '' : src.name);
-        const ids = refIds(channelName, source);
         msgs.push({
           scope: field ? 'field' : 'channel',
           source: source,
           channel: channelName,
-          channelId: ids.channelId,
-          sourceId: ids.sourceId,
           type: typeKeys[Math.floor(rng() * typeKeys.length)],
           level: levelPool[Math.floor(rng() * levelPool.length)],
           text: text,
@@ -341,8 +331,7 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
             ? '未在映射配置中匹配到对应 CSV 字段\n详情：Excel 映射配置中未找到与该 XPath 对应的条目，可能因 context 定义变化导致。\n请检查映射表并确认该 XPath 是否仍需要参与比较。'
             : '未在映射配置中匹配到对应来源字段\n详情：Excel 映射配置中未找到与该 AO CSV 字段对应的条目，可能因 context 定义变化导致。\n请检查映射表并确认该 CSV 字段是否仍需要参与比较。')
           : (type === 1 ? '未在映射配置中匹配到对应 CSV 字段' : '未在映射配置中匹配到对应来源字段');
-        const ids = refIds(channelName, source);
-        list.push({ type: type, channel: channelName, source: source, channelId: ids.channelId, sourceId: ids.sourceId, value: d[1], note: note });
+        list.push({ type: type, channel: channelName, source: source, value: d[1], note: note });
       }
       return list;
     }
@@ -356,8 +345,6 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
           type: rng() < 0.5 ? 1 : 2,
           channel: null,
           source: null,
-          channelId: null,
-          sourceId: null,
           value: ['/Common/Header/TradeId', '/Common/Header/DealId', '/Common/Header/ReportDate'][Math.floor(rng() * 3)],
           note: '未在任一报告渠道的映射配置中匹配到对应字段',
         });
@@ -420,13 +407,18 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
       return base.filter(function (def) { return drop.indexOf(def[0]) === -1; });
     }
 
-    // report channel 级字段注册表：每个报告渠道各自构建（不同渠道的字段定义不同）。
-    // id 按该渠道字段出现顺序编号："1"、"2"、…；name 为字段名。
-    function buildChannelFieldRegistry(fieldsDef) {
+    // report channel 级字段定义注册表：每个报告渠道各自构建（不同渠道的字段定义不同）。
+    // 字段 id 在**数据集内唯一**：不同报告渠道即便字段同名，id 也不同（按渠道分配 id 区间，
+    // 如 HKTR 1..13 / JSFA 21..33 / CFTC 41..53），因此 `sources[].fields[].id` 的引用天然唯一。
+    // 编号始终按渠道的**完整**字段列表编（而不是某个 item 的子集：不同 item 可以缺字段，
+    // 但同一字段的 id 必须全局一致 —— 定义是数据集级的）。
+    const FIELD_ID_BASE = { HKTR: 0, JSFA: 20, CFTC: 40 };
+    function buildChannelFieldRegistry(chName) {
       const registry = [];
       const nameToId = {};
-      fieldsDef.forEach(function (def) {
-        const id = String(registry.length + 1);
+      const base = FIELD_ID_BASE[chName] || 0;
+      (FIELD_DEFS[chName] || []).forEach(function (def) {
+        const id = String(base + registry.length + 1);
         nameToId[def[0]] = id;
         registry.push({ id: id, name: def[0], userTag: def[2], type: def[3] });
       });
@@ -436,7 +428,7 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
     // enabled：该渠道是否参与本次比较（唯一口径 channels[].enabled）。
     // 仅在被禁用时输出 `enabled: false`（缺省 = 启用），避免无意义的 `enabled: true` 噪声。
     function buildChannelData(ch, tradeId, reportDate, rng, failRate, fieldsDef, sourceCount, idByKey, enabled) {
-      const fr = buildChannelFieldRegistry(fieldsDef);
+      const fr = buildChannelFieldRegistry(ch.name);
       const base = ch.name.toLowerCase();
       const mapPool = [
         base + '.ctx.default',
@@ -466,7 +458,8 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
         const failedFields = [];
         const fields = fieldsDef.map(([f, rawTarget, t, k], idx) => {
           const el = rawTarget;
-          const srcType = isCsv ? 2 : 1; // 1=xpath（XML），2=csv
+          // 值来源格式：EO 侧恒为 CSV（来源数据），AO 侧随渠道格式（XPath/XML 或 CSV）。
+          const valueSrcFmt = isCsv ? 'csv' : 'xml';
           const eo = genValue(k, rng);
           const failed = rng() < failRate;
           if (failed) failedFields.push(f);
@@ -520,8 +513,8 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
             buildFieldLogs(f, fieldId, ch.id, SOURCE_ID_PRESET[srcName], el, ctx, ch.name, srcName, eo, ao, result, note, isCsv ? 'CSV字段' : 'XPath', sn, idx));
           return {
             id: fieldId,
-            cmpLeft: { value: eo, ctx: ctxExpr(mapCtxs), ctxs: mapCtxIds, elRaw: eoMapping, el: eoCol, srcType: 2 },
-            cmpRight: { value: ao, ctx: ctxExpr(mapCtxs), ctxs: mapCtxIds, elRaw: excelMapping, el: el, srcType: srcType },
+            cmpLeft: { value: eo, ctx: ctxExpr(mapCtxs), ctxs: mapCtxIds, elRaw: eoMapping, el: eoCol, valueSrcFmt: 'csv' },
+            cmpRight: { value: ao, ctx: ctxExpr(mapCtxs), ctxs: mapCtxIds, elRaw: excelMapping, el: el, valueSrcFmt: valueSrcFmt },
             cvtLeft: conversionRule ? { ctx: ctxExpr(convCtxs), ctxs: convCtxIds, el: conversionRule.value, elRaw: excelConversionRule, raw: eoUnconverted } : null,
             cvtRight: aoConversionRule ? { ctx: ctxExpr(aoConvCtxs), ctxs: aoConvCtxIds, el: aoConversionRule.value, elRaw: genExcelRuleText(aoConversionRule.value, ctx, isExcelSample), raw: aoUnconverted } : null,
             vdt: validationRule ? { ctx: ctxExpr(valCtxs), ctxs: valCtxIds, el: validationRule.value, elRaw: excelValidationRule } : null,
@@ -588,7 +581,12 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
         else if (source === null) reason = '在 ' + channel + ' 渠道中未找到该 item 的对应记录，已跳过该渠道的比较。';
         else reason = '在 ' + channel + ' 渠道的 ' + source + ' 中未找到该 item 的对应记录，已跳过该来源渠道的比较。';
         if (rng() < 0.35) reason += '\n详情：该 item 在来源 CSV 与报送 XML 中均未出现对应记录，可能因数据采集或报送延迟导致。\n建议核对上游系统是否已产生该 item 的数据。';
-        const ids = refIds(channel, source);
+        // skippedItems 保持「名称 + id」双写：被跳过的 item 不在 items 里，名称便于人读、id 便于定位。
+        const ids = {
+          channelId: (channel && CHANNEL_ID_PRESET[channel]) || null,
+          sourceId: null,
+        };
+        if (ids.channelId != null && source) ids.sourceId = SOURCE_ID_PRESET[source] || null;
         list.push({ itemId: itemId, channel: channel, source: source, channelId: ids.channelId, sourceId: ids.sourceId, reason: reason });
       }
       return list;
@@ -618,31 +616,32 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
       return lines;
     }
 
-    // 每个 item 的 ctx 定义（def/hits/type）与 item 绑定，而非全局共享。
-    // type 为数组：1 字段映射规则 / 2 值转换规则 / 3 终值校验规则（一个 ctx key 可配置在多种规则中）。
+    // 每个 item 的 ctxKey 定义：**定义只写一次**（hoistRegistries 会把 type / rules / def 提到
+    // 顶层 `usedCtxKeyDefs`，item 内只留 `{ id, hits }`），hits（命中数）与 item 绑定。
+    // rules 为规则名数组：fdm 字段映射规则 / cvt 值转换规则 / vdt 终值校验规则。
     function buildCtxDefs(itemIndex) {
       const seed = itemIndex || 0;
       const defs = {};
       const idByKey = {};
       let nextId = 1;
-      const add = function (key, scopes, type, defText, hitsText) {
-        defs[key] = { id: nextId, scopes: scopes, type: type, def: defText, hits: hitsText };
+      const add = function (key, rules, type, defText, hitsText) {
+        defs[key] = { id: nextId, rules: rules, type: type, def: defText, hits: hitsText };
         idByKey[key] = nextId;
         nextId++;
       };
       CHANNELS.forEach(function (ch) {
         const p = ch.name.toLowerCase();
-        // scopes 1：字段映射规则
-        add(p + '.ctx.default', [1], 'builtin', ch.name + ' 默认上下文（标准报送场景）', '命中 ' + (3 + seed % 3) + ' 个映射条目（EO 2 / AO 1）');
-        add(p + '.ctx.v2', [1], 'builtin', ch.name + ' v2 上下文（2024 新版映射）', '命中 ' + (2 + seed % 2) + ' 个映射条目（EO 1 / AO 1）');
-        add(p + '.ctx.v3', [1], 'builtin', ch.name + ' v3 上下文（最新版映射）', '命中 ' + (1 + seed % 2) + ' 个映射条目（EO 1 / AO 0）');
-        add(p + '.ctx.extended.production.region.east.v2024.latest', [1], 'user', ch.name + ' 扩展上下文（生产·东部区域·2024 最新）', '命中 ' + (4 + seed % 2) + ' 个映射条目（EO 2 / AO 2）');
-        // scopes 2：值转换规则
-        add(p + '.ctx.conv.default', [2], 'builtin', ch.name + ' 值转换默认上下文（EO 归一化）', '命中 ' + (2 + seed % 2) + ' 个转换规则（@trim / @toUpper 等）');
-        add(p + '.ctx.conv.v2', [2], 'builtin', ch.name + ' 值转换 v2 上下文', '命中 ' + (1 + seed % 2) + ' 个转换规则');
-        // scopes 3：终值校验规则
-        add(p + '.ctx.val.default', [3], 'builtin', ch.name + ' 终值校验默认上下文', '命中 ' + (3 + seed % 3) + ' 个校验规则（枚举/正则/非空）');
-        add(p + '.ctx.val.v2', [3], 'builtin', ch.name + ' 终值校验 v2 上下文', '命中 ' + (2 + seed % 2) + ' 个校验规则');
+        // rules: fdm（字段映射规则）
+        add(p + '.ctx.default', ['fdm'], 'builtin', ch.name + ' 默认上下文（标准报送场景）', '命中 ' + (3 + seed % 3) + ' 个映射条目（EO 2 / AO 1）');
+        add(p + '.ctx.v2', ['fdm'], 'builtin', ch.name + ' v2 上下文（2024 新版映射）', '命中 ' + (2 + seed % 2) + ' 个映射条目（EO 1 / AO 1）');
+        add(p + '.ctx.v3', ['fdm'], 'builtin', ch.name + ' v3 上下文（最新版映射）', '命中 ' + (1 + seed % 2) + ' 个映射条目（EO 1 / AO 0）');
+        add(p + '.ctx.extended.production.region.east.v2024.latest', ['fdm'], 'user', ch.name + ' 扩展上下文（生产·东部区域·2024 最新）', '命中 ' + (4 + seed % 2) + ' 个映射条目（EO 2 / AO 2）');
+        // rules: cvt（值转换规则）
+        add(p + '.ctx.conv.default', ['cvt'], 'builtin', ch.name + ' 值转换默认上下文（EO 归一化）', '命中 ' + (2 + seed % 2) + ' 个转换规则（@trim / @toUpper 等）');
+        add(p + '.ctx.conv.v2', ['cvt'], 'builtin', ch.name + ' 值转换 v2 上下文', '命中 ' + (1 + seed % 2) + ' 个转换规则');
+        // rules: vdt（终值校验规则）
+        add(p + '.ctx.val.default', ['vdt'], 'builtin', ch.name + ' 终值校验默认上下文', '命中 ' + (3 + seed % 3) + ' 个校验规则（枚举/正则/非空）');
+        add(p + '.ctx.val.v2', ['vdt'], 'builtin', ch.name + ' 终值校验 v2 上下文', '命中 ' + (2 + seed % 2) + ' 个校验规则');
       });
       return { defs: defs, idByKey: idByKey };
     }
@@ -701,8 +700,8 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
           product: product,
           productCategory: productCategory,
           counterpartyItemId: counterpartyItemId,
-          platformTradeId: 'PT-' + tradeId.slice(2),
-          platformDealId: 'PD-' + tradeId.slice(2),
+          platformOriTradeId: 'PT-' + tradeId.slice(2),
+          platformOriTradeDealId: 'PD-' + tradeId.slice(2),
           ctxDefs: ctxDefsRes.defs,
           channels: channels,
           warnings: warnings,
@@ -751,32 +750,38 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
           product: it.product,
           productCategory: it.productCategory,
           counterpartyItemId: it.counterpartyItemId,
-          platformTradeId: it.platformTradeId,
-          platformDealId: it.platformDealId,
+          platformOriTradeId: it.platformOriTradeId,
+          platformOriTradeDealId: it.platformOriTradeDealId,
           file: file,
           summary: itemStats(it),
         };
       });
-      // 清单与单文件模式保留同一套顶层字段：登记表（channels / sources）必须一并写入，
-      // 否则 item 文件里的 id 引用无从解析（见 docs/DATA_SCHEMA.md §2）。
+      // 清单与单文件模式保留同一套顶层字段：三张声明表（reportChannelDefs / sourceChannelDefs /
+      // usedCtxKeyDefs）必须一并写入，否则 item 文件里的 id 引用无从解析（见 docs/DATA_SCHEMA.md §2）。
+      // 键顺序固定为 `…声明表 → usedCtxKeyDefs → skippedItems → items`。
       // 健壮性：调用方可能只传 items（例如按切片写批次）。此时若 item 里还残留定义（老形态），
       // 先补出声明表，避免写出的清单缺声明（id-only 的 item 无法反推定义，只能由调用方传入）。
       const hasItemDefs = (dataset.items || []).some(function (it) {
         return (it.channels || []).some(function (ch) { return ch.name != null || ch.desc != null || ch.format != null; });
       });
-      let declaredChannels = dataset.channels;
-      let declaredSources = dataset.sources;
-      if ((declaredChannels == null || declaredSources == null) && hasItemDefs) {
+      let declaredChannels = dataset.reportChannelDefs;
+      let declaredSources = dataset.sourceChannelDefs;
+      let declaredCtx = dataset.usedCtxKeyDefs;
+      if ((declaredChannels == null || declaredSources == null || declaredCtx == null) && hasItemDefs) {
         const probe = hoistRegistries({
           skippedItems: dataset.skippedItems,
-          items: (dataset.items || []).map(function (it) { return { tradeId: it.tradeId, channels: it.channels }; }),
+          items: (dataset.items || []).map(function (it) {
+            return { tradeId: it.tradeId, channels: it.channels, ctxDefs: it.ctxDefs };
+          }),
         });
-        if (declaredChannels == null) declaredChannels = probe.channels;
-        if (declaredSources == null) declaredSources = probe.sources;
+        if (declaredChannels == null) declaredChannels = probe.reportChannelDefs;
+        if (declaredSources == null) declaredSources = probe.sourceChannelDefs;
+        if (declaredCtx == null) declaredCtx = probe.usedCtxKeyDefs;
       }
       const manifest = {
         mode: 'multi', reportEnv: dataset.reportEnv, creationType: dataset.creationType || 'sample',
-        skippedItems: dataset.skippedItems, channels: declaredChannels, sources: declaredSources,
+        reportChannelDefs: declaredChannels, sourceChannelDefs: declaredSources, usedCtxKeyDefs: declaredCtx,
+        skippedItems: dataset.skippedItems,
         items: manifestItems,
       };
       writeJSON(path.join(outDir, name), manifest, opts);

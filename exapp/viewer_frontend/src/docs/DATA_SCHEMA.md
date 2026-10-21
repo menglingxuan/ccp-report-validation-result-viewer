@@ -20,10 +20,11 @@
   "mode": "single",
   "reportEnv": "OTCXXX",
   "creationType": "sample",
-  "skippedItems": [ { "itemId": "...", "channel": "HKTR", "source": "来源渠道 A", "reason": "..." } ],
-  "channels": [ { "id": 1, "name": "HKTR", "desc": "香港交易资料储存库", "format": "xml" } ],
-  "sources":  [ { "id": 1, "name": "来源渠道 A" } ],
-  "items": [ { "tradeId": "...", "ctxDefs": { }, "channels": [ { "id": 1, "fields": [], "sources": [ { "id": 1, "fields": [] } ] } ] } ]
+  "reportChannelDefs": [ { "id": 1, "name": "HKTR", "desc": "香港交易资料储存库", "format": "xml", "fieldDefs": [ { "id": "1", "name": "tradeId", "userTag": "contextAssertion", "type": "id" } ] } ],
+  "sourceChannelDefs": [ { "id": 1, "name": "来源渠道 A", "format": "csv" } ],
+  "usedCtxKeyDefs": { "hktr.ctx.default": { "id": 1, "type": "builtin", "rules": ["fdm"], "def": "HKTR 默认上下文（标准报送场景）" } },
+  "skippedItems": [ { "itemId": "...", "channel": "HKTR", "channelId": 1, "source": "来源渠道 A", "sourceId": 1, "reason": "..." } ],
+  "items": [ { "tradeId": "...", "ctxDefs": { "hktr.ctx.default": { "id": 1, "hits": "..." } }, "channels": [ { "id": 1, "files": {}, "sources": [ { "id": 1, "fields": [] } ] } ] } ]
 }
 ```
 
@@ -32,13 +33,24 @@
 | `mode` | 字符串 | `"single"` |
 | `reportEnv` | 字符串 | 运行环境标识（可选） |
 | `creationType` | 字符串 | 数据来源：`"sample"`（内置样例）/ `"user"`（真实用户数据） |
+| `reportChannelDefs` | 数组 | **报告渠道声明表**：`{ id, name, desc, format, fieldDefs }`（定义只写一次，见 §3.1） |
+| `sourceChannelDefs` | 数组 | **来源渠道声明表**：`{ id, name, format }`（数据集级，id 全局唯一） |
+| `usedCtxKeyDefs` | 对象 | **被用到的 ctxKey 声明表**：`<ctxKey> -> { id, type, rules, def }`（`rules` 为规则名数组，见 §3.1） |
 | `skippedItems` | 数组 | 未能参与比较的 item 记录（顶层，`channel`/`source` 可为 null） |
-| `channels` | 数组 | **报告渠道登记表**：`{ id, name, desc, format }`（定义只写一次，见 §3.1） |
-| `sources` | 数组 | **来源渠道登记表**：`{ id, name }`（数据集级，id 全局唯一） |
-| `items` | 数组 | 完整 item 列表（每个 item 内联 `ctxDefs`；渠道 / 来源渠道只写 id 引用） |
+| `items` | 数组 | 完整 item 列表（每个 item 内联 `ctxDefs`；渠道 / 来源渠道 / 字段定义只写 id 引用） |
 
-> 键顺序固定为 `mode` → `reportEnv` → `creationType` → `skippedItems` → `channels` → `sources` → `items`
-> （登记表写在数据前，便于人读；JSON 对象键顺序不影响解析）。
+> 键顺序固定为 `mode` → `reportEnv` → `creationType` → `reportChannelDefs` → `sourceChannelDefs` → `usedCtxKeyDefs` → `skippedItems` → `items`
+> （声明表写在数据前、`skippedItems` 紧跟声明表之后，然后才是 `items`；JSON 对象键顺序不影响解析）。
+>
+> **改名说明（无向后兼容）**：以下旧键名会被 `lib/validate.js` 直接报错，老数据先跑 `node tools/migrate-legacy-data.js <文件>`：
+>
+> | 旧键名 | 新键名 |
+> |---|---|
+> | 根级 `channels` | `reportChannelDefs` |
+> | 根级 `sources` | `sourceChannelDefs` |
+> | 根级 `ctxKeyDefs` | `usedCtxKeyDefs` |
+> | `item.platformTradeId` | `item.platformOriTradeId` |
+> | `item.platformDealId` | `item.platformOriTradeDealId` |
 
 ## 2. 多文件模式（`mode: "multi"`）
 
@@ -49,9 +61,10 @@
   "mode": "multi",
   "reportEnv": "OTCXXX",
   "creationType": "sample",
+  "reportChannelDefs": [ { "id": 1, "name": "HKTR", "desc": "香港交易资料储存库", "format": "xml", "fieldDefs": [ … ] } ],
+  "sourceChannelDefs": [ { "id": 1, "name": "来源渠道 A", "format": "csv" } ],
+  "usedCtxKeyDefs": { "hktr.ctx.default": { "id": 1, "type": "builtin", "rules": ["fdm"], "def": "…" } },
   "skippedItems": [ { "itemId": "...", "channel": null, "source": null, "reason": "..." } ],
-  "channels": [ { "id": 1, "name": "HKTR", "desc": "香港交易资料储存库", "format": "xml" } ],
-  "sources":  [ { "id": 1, "name": "来源渠道 A" } ],
   "items": [
     {
       "tradeId": "T-20240814-1001",
@@ -61,8 +74,8 @@
       "product": "IRS",
       "productCategory": "IR",
       "counterpartyItemId": "T-20240814-1002",
-      "platformTradeId": "PT-20240814-1001",
-      "platformDealId": "PD-20240814-1001",
+      "platformOriTradeId": "PT-20240814-1001",
+      "platformOriTradeDealId": "PD-20240814-1001",
       "file": "data/items/T-20240814-1001.json",
       "summary": {
         "total": 78, "passed": 64, "failed": 14, "rate": 82,
@@ -81,19 +94,20 @@
 | `reportEnv` | 字符串 | 运行环境标识（可选） |
 | `creationType` | 字符串 | 数据来源：`"sample"`（内置样例）/ `"user"`（真实用户数据）；查看器据此决定是否展示 Sample 徽标与「示例数据」提示，缺省按 `"sample"` 处理 |
 | `skippedItems` | 数组 | 未能参与比较的 item 记录（结构见 §3 的 `skippedItems`） |
-| `channels` / `sources` | 数组 | 登记表（与单文件模式同一套定义）；**清单必须携带**，否则 item 文件里的 id 引用无从解析 |
+| `reportChannelDefs` / `sourceChannelDefs` / `usedCtxKeyDefs` | 数组 / 数组 / 对象 | 三张声明表（与单文件模式同一套定义）；**清单必须携带**，否则 item 文件里的 id 引用无从解析 |
 | `items` | 数组 | 轻量清单条目（下表） |
 
 | 清单 item 键 | 类型 | 说明 |
 |---|---|---|
 | `tradeId` / `reportDate` / `generatedAt` / `platform` / `product` / `productCategory` | 字符串 | item 元数据（供侧栏搜索/筛选） |
-| `counterpartyItemId` / `platformTradeId` / `platformDealId` | 字符串 | 可选元数据 |
+| `counterpartyItemId` / `platformOriTradeId` / `platformOriTradeDealId` | 字符串 | 可选元数据 |
 | `file` | 字符串 | 该 item 完整数据文件的路径（**相对清单文件所在目录**；因此根目录清单用 `data/items/<tradeId>.json`，批次清单也一样） |
 | `summary` | 对象 | 预计算统计摘要（侧栏与统计卡无需加载完整 item） |
 
 > 可选字段的显式 `null` 视为「未提供」（Java 生成器的 ObjectMapper 保留 null）：顶层 `reportEnv` / `creationType` / `skippedItems` 与 item 的 `summary` 均允许为 `null`。
 
-每个 item 文件内容与单文件模式中的 item 结构相同（含 `ctxDefs`、`channels`、`logs`；字段注册表在各 channel 内）。
+每个 item 文件内容与单文件模式中的 item 结构相同（含 `ctxDefs`、`channels`、`logs`；
+字段定义不在 item 里，而在清单的 `reportChannelDefs[].fieldDefs` —— item 只写字段 id 引用，见 §3.1）。
 
 > 多文件模式下：查看器先加载清单（轻量），点击 item 时按需加载完整文件；搜索/筛选/统计对全部 item 的合并数据生效。
 > 清单未加载的 item 只有元数据（无 `channels` / `ctxDefs` / `logs`），需要完整 item 的功能（忽略开关、字段比较、关联错误、日志）都先确保 item 已加载。
@@ -146,56 +160,77 @@ node tools/merge-batch.mjs --batch <id> --tenant[=id] | --no-tenant # 租户 / �
 | `reportDate` | 字符串 | 报告日期（`YYYY-mm-dd`） |
 | `generatedAt` | 字符串 | 生成时间 |
 | `platform` / `product` / `productCategory` | 字符串 | 平台 / 产品 / 产品类别 |
-| `counterpartyItemId` / `platformTradeId` / `platformDealId` | 字符串\|空 | 对手方 / 平台标识 |
-| `ctxDefs` | 对象 | **命中上下文定义（每个 item 独立）** |
-| `channels` | 数组 | 各渠道比较结果：**只写 id 引用**（渠道定义在顶层 `channels` 登记表；启用标记为 `channels[].enabled`），见 §3.1 |
-| `warnings` / `errors` | 数组 | item 级警告 / 错误（含 scope / source 与双写的 channelId / sourceId；source 可能为空） |
-| `uncompared` | 数组 | item 级未比较条目（合并 XPath 与 CSV，含 type / source 与双写的 channelId / sourceId；channel、source 可为 null，source 非空时 channel 不可为空） |
+| `counterpartyItemId` / `platformOriTradeId` / `platformOriTradeDealId` | 字符串\|空 | 对手方 / 原始平台标识（旧键 `platformTradeId` / `platformDealId` 已改名） |
+| `ctxDefs` | 对象 | **本 item 命中的 ctxKey**：`<ctxKey> -> { id, hits }`（定义在顶层 `usedCtxKeyDefs`，见 §3.1） |
+| `channels` | 数组 | 各渠道比较结果：**只写 id 引用**（渠道定义在顶层 `reportChannelDefs`；启用标记为 `channels[].enabled`），见 §3.1 |
+| `warnings` / `errors` | 数组 | item 级警告 / 错误（**只写名称**：scope / source / channel / type / level / text / field；source 可能为空） |
+| `uncompared` | 数组 | item 级未比较条目（合并 XPath 与 CSV，**只写名称**：type / channel / source / value / note；channel、source 可为 null，source 非空时 channel 不可为空） |
 | `logs` | 数组 | item 级日志（对象式 `{scope, channelId, sourceId, field, text}`：**只写 id**，名称为展示用、不落盘；见下方「`item.logs` 日志行」） |
 
-### 3.1 渠道 / 来源渠道的定义（顶层登记表）与 id 引用
+### 3.1 声明表（`reportChannelDefs` / `sourceChannelDefs` / `usedCtxKeyDefs`）与 id 引用
 
-**渠道与来源渠道的定义只在顶层写一次**，item 里只留 `id` 引用：
+**渠道、来源渠道、ctxKey、字段的定义只在顶层声明表里写一次**，item 里只留 id 引用：
 
 ```json
-// 顶层登记表（定义）
-"channels": [ { "id": 1, "name": "HKTR", "desc": "香港交易资料储存库", "format": "xml" } ],
-"sources":  [ { "id": 1, "name": "来源渠道 A" } ],
+// 顶层三张声明表（定义）
+"reportChannelDefs": [
+  { "id": 1, "name": "HKTR", "desc": "香港交易资料储存库", "format": "xml",
+    "fieldDefs": [ { "id": "1", "name": "tradeId", "userTag": "contextAssertion", "type": "id" } ] }
+],
+"sourceChannelDefs": [ { "id": 1, "name": "来源渠道 A", "format": "csv" } ],
+"usedCtxKeyDefs": {
+  "hktr.ctx.default": { "id": 1, "type": "builtin", "rules": ["fdm"], "def": "HKTR 默认上下文（标准报送场景）" }
+},
 
-// item 里的引用（本 item 自身的数据：files / fields / sources[].fields）
+// item 里的引用（本 item 自身的数据：files / sources[].fields）
 "channels": [
-  { "id": 1, "files": { … }, "fields": [ … ], "sources": [ { "id": 1, "fields": [ … ] } ] },
-  { "id": 2, "enabled": false, "files": { … }, "fields": [ … ], "sources": [ … ] }   // 不参与本次比较
+  { "id": 1, "files": { … }, "sources": [ { "id": 1, "fields": [ { "id": "1", … } ] } ] },
+  { "id": 2, "enabled": false, "files": { … }, "sources": [ … ] }   // 不参与本次比较
 ]
 ```
 
 | 键 | 类型 | 说明 |
 |---|---|---|
-| `channels[].id`（顶层） | 正整数 | 渠道稳定标识，**数据集内全局唯一且一致**（同一 id ↔ 同一名称）；预设 `HKTR=1` / `JSFA=2` / `CFTC=3` |
-| `channels[].name` / `.desc` / `.format`（顶层） | 字符串 | 渠道定义（`format` ∈ `xml` / `csv`） |
-| `sources[].id` / `.name`（顶层） | 正整数 / 字符串 | 来源渠道定义，**id 与名称都数据集内唯一**（登记表是数据集级，不再按渠道分割）；预设 `来源渠道 A=1` / `来源渠道 B=2` |
-| `item.channels[].id` | 正整数 | 引用顶层登记表；必须在登记表里存在 |
+| `reportChannelDefs[].id` | 正整数 | 渠道稳定标识，**数据集内全局唯一且一致**（同一 id ↔ 同一名称）；预设 `HKTR=1` / `JSFA=2` / `CFTC=3` |
+| `reportChannelDefs[].name` / `.desc` / `.format` | 字符串 | 渠道定义（`format` ∈ `xml` / `csv`） |
+| `reportChannelDefs[].fieldDefs` | 数组 | **该报告渠道的字段定义**：`{ id, name, userTag, type }`（结构见「`fieldDefs` 字段定义声明表」） |
+| `sourceChannelDefs[].id` / `.name` | 正整数 / 字符串 | 来源渠道定义，**id 与名称都数据集内唯一**；预设 `来源渠道 A=1` / `来源渠道 B=2` |
+| `sourceChannelDefs[].format` | 字符串 | 来源渠道数据格式：`csv`（默认）或 `xml` —— 由生成器从该来源比对值侧的 `cmpLeft.valueSrcFmt` 推导 |
+| `usedCtxKeyDefs[<ctxKey>].id` | 正整数 | ctxKey 稳定标识，引用方为字段各规则的 `ctxs`（id 数组）与 item 的 `ctxDefs[<ctxKey>].id` |
+| `usedCtxKeyDefs[<ctxKey>].type` / `.def` | 字符串 | 上下文来源类型（`builtin` / `user`）与定义文本 |
+| `usedCtxKeyDefs[<ctxKey>].rules` | 字符串数组 | **规则名数组**：`fdm`（字段映射）/ `cvt`（值转换）/ `vdt`（终值校验）；同一个 ctxKey 可参与多种规则，故为数组 |
+| `item.ctxDefs[<ctxKey>]` | 对象 | **只写** `{ id, hits }`：id 引用 `usedCtxKeyDefs`，`hits` 是本 item 的命中摘要（item 级信息，不能提到顶层） |
+| `item.channels[].id` | 正整数 | 引用 `reportChannelDefs`；必须在声明表里存在 |
 | `item.channels[].enabled` | 布尔（可省略） | 是否参与本次比较；**省略 = 启用**，只需在被禁用时写 `false` |
-| `item.channels[].sources[].id` | 正整数 | 引用顶层 `sources` 登记表 |
-| `item.channels[].files` / `.fields` / `.sources[].fields` | 对象 / 数组 | **保留在 item 内**：文件名含 tradeId，字段注册表逐 item 可变（同渠道在不同 item 的字段集可以不同） |
+| `item.channels[].sources[].id` | 正整数 | 引用 `sourceChannelDefs` 声明表 |
+| `item.channels[].sources[].fields[].id` | 数字字符串 | **引用父报告渠道的 `fieldDefs[].id`**（字段定义不在 item 里） |
+| `item.channels[].files` | 对象 | **保留在 item 内**：文件名含 tradeId，故逐 item |
+
+> 字段定义的查找规则：`sources[].fields[].id` 只在**父报告渠道**的 `fieldDefs` 里有意义。
+> 不同报告渠道的字段**即便名称相同，id 也必然不同**（例如 HKTR 的 `notional` 与 CFTC 的 `notional` 是两个 id），
+> 因此查看器 / 工具在按字段 id 查定义时，先按 `channels[].id` 定位到父报告渠道，再读它的 `fieldDefs`（`public/core.js` 的
+> `hydrateItem()` 已经把 `fieldDefs` 注入到 item 渠道上，下游渲染 / 搜索逻辑无需感知声明表）。
 
 **谁负责把定义补回去（hydrate）**：查看器加载数据时调用 `core.js` 的 `hydrateDataset()`（多文件模式逐 item 调 `hydrateItem()` 并传入清单的声明表），
-把 `name` / `desc` / `format` / 来源名称补回内存中的 item，**并同样按 id 补回 `warnings` / `errors` / `uncompared` / `logs` / `skippedItems` 里缺失的渠道 / 来源渠道名称**
-（只补缺的、不覆盖已有的，也**不解析日志文本**）；生成器（JS `hoistRegistries()` / Java `ValidationJsonGenerator.hoistRegistries()`）做的是反向变换。
+把 `name` / `desc` / `format` / 来源名称 / `fieldDefs` / ctxKey 的 `type`·`rules`·`def` 补回内存中的 item，
+**并同样按 id 补回 `warnings` / `errors` / `uncompared` / `logs` / `skippedItems` 里缺失的渠道 / 来源渠道名称**
+（只补缺的、不覆盖已有的，也**不解析日志文本**）；生成器（JS `hoistRegistries()` / Java `ValidationJsonGenerator.hoistRegistries()`）做的是反向变换：
+把定义提到三张声明表、item 只留引用，并**删掉消息里的 `channelId` / `sourceId`**（消息只留名称）。
 两者互为逆操作（`hoist(hydrate(x)) === x`，已有测试断言），因此两形态可以互相转换。
 
 **契约：引用 ⊆ 声明**（`lib/validate.js` 强制）：
 
-- `item.channels[].id` 与 `item.channels[].sources[].id` **必须**能在顶层 `channels` / `sources` 里解析；item 里不再接受新定义（写新渠道不会“顺带声明”）。
-- item 里可以重复写 `name` / `desc` / `format` / 来源名称（双写便于人读），但**必须与声明一致**。
+- `item.channels[].id` 与 `item.channels[].sources[].id` **必须**能在 `reportChannelDefs` / `sourceChannelDefs` 里解析。
+- `item.ctxDefs` 的 key **必须**在 `usedCtxKeyDefs` 里声明，且 `id` 与声明一致；`sources[].fields[].id` **必须**在父报告渠道的 `fieldDefs` 里声明。
+- item 里不再接受新定义：写 `channels[].name` / `desc` / `format` / `fieldDefs`、来源 `name` / `format`、ctxKey 的 `type` / `def` / `rules` 都会被校验器报错。
 - `skippedItems` 引用的渠道 / 来源渠道**同样必须已声明**（被跳过的 item 不在 `items` 里，而引用要在声明表里解析）；
   `hoistRegistries()` 会把 `skippedItems` 的引用一起补进声明表，保证生成的数据天然满足该契约。
-- 两项声明都可以省略，**只有在没有任何引用时**才不需要（空数据集 / 没有 channels 的夹具）。
-- 因此**旧形态（定义写在 item 里、顶层无声明）不再合法**：校验器会报「未在顶层 channels / sources 声明表里声明」。
-  查看器仍然能读它（`hydrateDataset()` 不依赖声明，item 自带的名称优先），但**数据契约要求先迁移**：`node tools/migrate-legacy-data.js <文件>`。
+- 三张声明表都可以省略，**只有在没有任何引用时**才不需要（空数据集 / 没有 channels 的夹具）。
+- 因此**旧形态（定义写在 item 里、顶层无声明；或旧的键名 `channels` / `sources`）不再合法**，
+  查看器仍然能读（`hydrateDataset()` 不依赖声明），但**数据契约要求先迁移**：`node tools/migrate-legacy-data.js <文件>`。
 
-这条契约的意义：声明集是**完备且权威**的，所以「某个 id 指向哪个渠道 / 来源渠道」只有一处答案，
-`lib/validate.js` 不必再用预设表或名称反查做回退，这同时也是「引用只留 id」方案的前提（见 `docs/README.md` 的登记表条目）。
+这条契约的意义：声明集是**完备且权威**的，所以「某个 id 指向哪个渠道 / 来源渠道 / ctxKey / 字段」只有一处答案，
+`lib/validate.js` 不必再用预设表或名称反查做回退，这同时也是「引用只留 id」方案的前提（见 `docs/README.md` 的声明表条目）。
 
 **id 用在哪里 / 不用在哪里**（这是数据契约的一部分，不要混用）：
 
@@ -212,28 +247,39 @@ node tools/merge-batch.mjs --batch <id> --tenant[=id] | --no-tenant # 租户 / �
 
 | 数据段 | 渠道 / 来源渠道引用写法 |
 |---|---|
-| `warnings` / `errors` / `uncompared` / `skippedItems` | **名称 + id 双写**：`{ "channel": "HKTR", "channelId": 1, "source": "来源渠道 A", "sourceId": 1, … }` |
+| `warnings` / `errors` / `uncompared` | **只写名称**：`{ "channel": "HKTR", "source": "来源渠道 A", … }`（不再双写 `channelId` / `sourceId`） |
 | `logs`（日志行） | **只写 id**：`{ "channelId": 1, "sourceId": 1, "field": "2", "text": "…" }` |
+| `skippedItems`（顶层） | **名称 + id 双写**：`{ "channel": "HKTR", "channelId": 1, "source": "来源渠道 A", "sourceId": 1, … }` |
 
-日志量最大（样例数据里 9 成以上的引用都在 `logs`），名称在每一行重复写入纯属冗余：日志行只写 id，名称由查看器在加载时
-`hydrateItem()` **按 id** 从顶层声明表解析（见 `public/core.js`），因此展示 / 筛选 / 深链接仍全部按名称工作。
+只有日志行保留 id：日志量最大（样例数据里 9 成以上的引用点都在 `logs`），名称在每一行重复写入纯属冗余，
+且日志需要**稳定的锚点**（`channelId` + `sourceId` + `field`）用于跳转高亮；名称由查看器在加载时
+`hydrateItem()` **按 id** 从声明表解析（见 `public/core.js`），展示 / 筛选 / 深链接仍全部按名称工作。
+
+反过来，消息（`warnings` / `errors` / `uncompared`）数量少、以人读为主，**双写的 id 纯属冗余**（名称已经能唯一确定渠道），
+所以直接去掉 `channelId` / `sourceId`；`skippedItems` 则因为“被跳过的 item 不在数据集里、锚点无从推断”而继续保留 id。
 
 > **`text` 是展示内容，不是数据通道**：任何代码都**不得**从日志文本（包括 `[渠道名]` 前缀）推断渠道 / 来源渠道；
-> 真实数据的文本可能完全不含渠道信息（生产环境由外部系统生成）。查看器侧因此只认 `channelId` / `sourceId`
+> 真实数据的文本可能完全不含渠道信息（生产环境由外部系统生成）。查看器侧只认 `channelId` / `sourceId`
 > 与（老数据的）`channel` / `source` 字段，与文本内容无关。
 
-两种写法都能解析：只给 id（`{ "channelId": 1, "sourceId": 1 }`）时校验器与查看器都从声明表解析名称；
-只给名称（老写法）时按名称反查 id。`lib/validate.js` 会对以下情形报错（`channelId` / `sourceId` 可为 `null` / 省略，视为“未关联”）：
+`lib/validate.js` 会对以下情形报错：
 
-1. `channelId` / `sourceId` 不是正整数；
-2. `sourceId` 存在但 `channelId` 为空（引用一个来源总归要指明所在渠道）；
-3. `channelId` / `sourceId` 在声明表里解析不到（悬空引用：item 侧未声明、或消息引用了未声明的 id）；
-4. 名称与 id **不一致**（双写两边指向了不同渠道 / 来源渠道）；
-5. `channels[].id` / `sources[].id` 缺失、非正整数，或声明表内部冲突（同 id 不同名称 / 同名不同 id）、与预设（HKTR=1 / JSFA=2 / CFTC=3、来源渠道 A=1 / B=2）冲突；
-6. item 引用的渠道 / 来源渠道未在顶层声明（**引用 ⊆ 声明**）；item 重复写了 `name` / `desc` / `format` 但与声明不一致；
-7. 出现 `enabledChannels`（顶层或 item 级）—— 已移除，不允许两份口径共存。
+1. 顶层出现旧键名 `channels` / `sources` / `ctxKeyDefs`（分别改名为 `reportChannelDefs` / `sourceChannelDefs` / `usedCtxKeyDefs`），
+   或 item 出现旧键名 `platformTradeId` / `platformDealId`（改名为 `platformOriTradeId` / `platformOriTradeDealId`）；
+2. 三张声明表内部冲突：同 id 不同名称 / 同名不同 id / ctxKey `id` 重复 / 同一渠道内 `fieldDefs[].id` 重复
+   （`fieldDefs[].id` 必须**数据集内唯一**，即不同报告渠道的同名字段也不能同 id）；
+3. 声明表字段非法：`reportChannelDefs[].format` / `sourceChannelDefs[].format` ∉ `csv`·`xml`、`usedCtxKeyDefs[].rules` ∉ `fdm`·`cvt`·`vdt`、
+   `fieldDefs[].id` 不是数字字符串、`usedCtxKeyDefs[].hits` 出现（hits 是 item 级信息）、声明里写 `scopes`（旧键名，已改为 `rules`）；
+4. item 里的悬空引用：`channels[].id` / `sources[].id` 未在声明表里声明；`ctxDefs` 的 key 未在 `usedCtxKeyDefs` 里声明；
+   `sources[].fields[].id` 不在**父报告渠道的 `fieldDefs`** 里；
+5. item 里重复写定义：渠道 `name` / `desc` / `format` / `fieldDefs`、来源 `name` / `format`、ctxKey 的 `type` / `def` / `rules`，
+   或 item 级 `fields`（已迁到 `reportChannelDefs[].fieldDefs`）；
+6. 字段三元组 `valueSrcFmt` 不是 `csv` / `xml`，或出现旧键 `srcType`（int，已改名 `valueSrcFmt`）；
+7. 日志行：`field` 非空 ⇒ `scope === "field"` 且 `channelId` / `sourceId` 均非空；写了 `channel` / `source` 名称（只写 id）；
+8. `skippedItems` 的 `channelId` / `sourceId` 未在声明表里声明；`sourceId` 非空时 `channelId` 必须非空；
+9. 出现 `enabledChannels`（顶层或 item 级）—— 已移除，不允许两份口径共存。
 
-> `skippedItems` 是**数据集级**条目，它引用的 item 往往不在本数据集里：因此它的渠道 id 按预设校验，来源 id **不作要求**（无从验证，不报错）。
+> `skippedItems` 是**数据集级**条目，它引用的 item 往往不在本数据集里，但渠道 / 来源渠道本身仍是数据集级的声明（`hoistRegistries()` 会为它们补声明）。
 
 ### `item.logs` 日志行
 
@@ -248,10 +294,10 @@ node tools/merge-batch.mjs --batch <id> --tenant[=id] | --no-tenant # 租户 / �
 | 键 | 类型 | 说明 |
 |---|---|---|
 | `scope` | 字符串 | `item`（item 级，开始/加载/初始化/完成）/ `channel`（渠道执行步骤与该渠道自身日志）/ `field`（字段比较过程日志） |
-| `channelId` | 正整数\|null | 渠道的**稳定标识**（引用顶层 `channels` 声明表）；`scope=item` 时为 `null` |
-| `sourceId` | 正整数\|null | 来源渠道的**稳定标识**（引用顶层 `sources` 声明表）；`sourceId` 非空时 `channelId` 必须非空 |
+| `channelId` | 正整数\|null | 渠道的**稳定标识**（引用 `reportChannelDefs` 声明表）；`scope=item` 时为 `null` |
+| `sourceId` | 正整数\|null | 来源渠道的**稳定标识**（引用 `sourceChannelDefs` 声明表）；`sourceId` 非空时 `channelId` 必须非空 |
 | `channel` / `source` | 字符串\|null | **新数据不再写入**（可选、老数据仍可读）：仅在需要人读的分段数据里出现，且必须与声明一致 |
-| `field` | 字符串\|null | **字段 id（引用该渠道的 `channel.fields`）**；仅 `scope="field"` 的行有值（string），其余行必须为 `null` / 省略 |
+| `field` | 字符串\|null | **字段 id（引用父报告渠道的 `reportChannelDefs[].fieldDefs[].id`）**；仅 `scope="field"` 的行有值（string），其余行必须为 `null` / 省略 |
 | `text` | 字符串 | 日志正文（单行；时间戳与渠道前缀包含在正文内）——**仅展示，代码不得解析** |
 
 > **不变式**（`lib/validate.js` 会报错）：`field` 非空 ⇒ `scope === "field"` 且 `channelId` / `sourceId` 均非空。
@@ -284,40 +330,68 @@ node tools/merge-batch.mjs --batch <id> --tenant[=id] | --no-tenant # 租户 / �
 
 ### `item.ctxDefs`
 
+item 里只保留**命中引用 + 命中摘要**：
+
 ```json
 "ctxDefs": {
-  "hktr.ctx.default": { "id": 1, "scopes": [1], "type": "builtin", "def": "HKTR 默认上下文（标准报送场景）", "hits": "命中 3 个映射条目（EO 2 / AO 1）" },
-  "hktr.ctx.conv.default": { "id": 5, "scopes": [2], "type": "builtin", "def": "…", "hits": "…" },
-  "hktr.ctx.val.default": { "id": 7, "scopes": [3], "type": "builtin", "def": "…", "hits": "…" }
+  "hktr.ctx.default":      { "id": 1, "hits": "命中 3 个映射条目（EO 2 / AO 1）" },
+  "hktr.ctx.conv.default": { "id": 5, "hits": "…" },
+  "hktr.ctx.val.default":  { "id": 7, "hits": "…" }
 }
 ```
 
 | 键 | 类型 | 说明 |
 |---|---|---|
-| `id` | 正整数 | 该 item 内唯一的上下文 id，供字段各规则的 `ctxs`（id 数组）引用 |
-| `scopes` | 整数数组 | 上下文作用域：`1` 字段映射 / `2` 值转换 / `3` 终值校验；同一 ctx 可配置在多种规则中，故为数组 |
-| `type` | 字符串 | 来源类型：`builtin`（内置）/ `user`（用户自定义） |
-| `def` | 字符串 | 上下文定义 |
-| `hits` | 字符串 | 命中说明 |
+| `id` | 正整数 | 引用顶层 `usedCtxKeyDefs[<ctxKey>].id`（必须一致） |
+| `hits` | 字符串 | 命中说明（**item 级**信息，故留在 item 里） |
 
-### `channel.fields`（字段定义注册表，位于 channel 对象内）
+### `usedCtxKeyDefs`（被用到的 ctxKey 定义声明表，顶层）
 
 ```json
-"fields": [
-  { "id": "1", "name": "tradeId", "userTag": "contextAssertion", "type": "id" },
-  { "id": "2", "name": "notional", "userTag": "productAssertion", "type": "num" }
+"usedCtxKeyDefs": {
+  "hktr.ctx.default":      { "id": 1, "type": "builtin", "rules": ["fdm"],         "def": "HKTR 默认上下文（标准报送场景）" },
+  "hktr.ctx.conv.default": { "id": 5, "type": "builtin", "rules": ["cvt"],         "def": "…" },
+  "hktr.ctx.val.default":  { "id": 7, "type": "user",    "rules": ["fdm", "vdt"], "def": "…" }
+}
+```
+
+| 键 | 类型 | 说明 |
+|---|---|---|
+| （对象 key） | 字符串 | ctxKey 名（如 `hktr.ctx.default`），item 的 `ctxDefs` 用同一 key 引用 |
+| `id` | 正整数 | 数据集内唯一；字段各规则的 `ctxs`（id 数组）与 item 的 `ctxDefs[].id` 都引用它 |
+| `type` | 字符串 | `builtin`（内置）/ `user`（用户自定义） |
+| `rules` | 字符串数组 | **规则名**：`fdm`（字段映射）/ `cvt`（值转换）/ `vdt`（终值校验）；同一个 ctxKey 可参与多种规则，故为数组 |
+| `def` | 字符串 | 上下文定义 |
+
+> `rules` 的取值有意用**名称而非数字**（旧的 `scopes: [1,2,3]` 已废弃）：数字在 raw JSON 里无法自解释，而 `fdm` / `cvt` / `vdt` 直接可读。
+> 同一组名称也用于查看器侧展示（`public/i18n.json` 的 `ctxTypeMapping` / `ctxTypeConversion` / `ctxTypeValidation` 标签）。
+> **`hits` 不在声明表里**：同一个 ctxKey 在不同 item 里的命中数完全不同，放进声明表会变成错的。
+
+### `fieldDefs`（字段定义声明表，位于 `reportChannelDefs[]` 内）
+
+```json
+"reportChannelDefs": [
+  { "id": 1, "name": "HKTR", "format": "xml",
+    "fieldDefs": [
+      { "id": "1", "name": "tradeId", "userTag": "contextAssertion", "type": "id" },
+      { "id": "2", "name": "notional", "userTag": "productAssertion", "type": "num" }
+    ] }
 ]
 ```
 
 | 键 | 类型 | 说明 |
 |---|---|---|
-| `id` | 数字字符串 | 字段标识（如 `"1"`、`"2"`…，按该渠道字段出现顺序编号，用于关联比较字段） |
+| `id` | 数字字符串 | 字段标识（如 `"1"`、`"2"`…）；**数据集内唯一**（不同渠道各自一段编号：HKTR 从 1 起、JSFA 从 21 起、CFTC 从 41 起） |
 | `name` | 字符串 | 字段名（原 `f`） |
 | `userTag` | 字符串 | 断言类型（原 `t`：platformAssertion / productAssertion / contextAssertion） |
 | `type` | 字符串 | 值类型（原 `k`：id/num/date/code/product/text/multi） |
 
-> 说明：`fields` 属于 **report channel**（每个报告渠道的字段定义不同），按 id（数字字符串）在该渠道内唯一；同一字段名在不同渠道可复用同一个 `name`，但 id 按各渠道自身顺序编号。
-> 比较字段通过 `id` 关联所在渠道的注册表，查看器用 (channel, source, id) 三元组唯一定位某个比较字段。
+> 说明：字段定义属于 **report channel**，故写在 `reportChannelDefs[]` 里；`sources[].fields[].id` 只在其**父报告渠道**的 `fieldDefs` 内解析。
+> 不同报告渠道的字段**即便名称相同，id 也必然不同**（同名不同 id 才能让“字段 id → 定义”只有一种答案）。
+> 查看器用 (channel, source, field) 三元组唯一定位某个比较字段；`hydrateItem()` 会把 `fieldDefs` 注入到 item 渠道上。
+>
+> **编写字段定义编号时不能按“每个 item 的字段子集”编号**（样例数据的字段集会逐 item 变化）：同一个字段名在不同 item 里会拿到不同 id，声明表无法归一。
+> 生成器（JS `buildChannelFieldRegistry(chName)` / Java `buildChannelFieldRegistry(chName, 全量字段表)`）都是按**渠道的全量字段名单**编号的。
 
 ## 空占位数据（`report-validation-data-init.json`）
 
@@ -331,31 +405,31 @@ node tools/merge-batch.mjs --batch <id> --tenant[=id] | --no-tenant # 租户 / �
 
 ## 4. channel
 
-渠道对象有**两种形态**：顶层登记表的**定义**（键顺序 `id` / `name` / `desc` / `format`）与 item 里的**引用 + 本 item 数据**（`id` / `enabled?` / `files` / `fields` / `sources`）。
+渠道对象有**两种形态**：`reportChannelDefs[]` 里的**声明**（键顺序 `id` / `name` / `desc` / `format` / `fieldDefs`）与 item 里的**引用 + 本 item 数据**（`id` / `enabled?` / `files` / `sources`）。
 定义不重复写在 item 里（见 §3.1）。
 
 | 键 | 出现在 | 类型 | 说明 |
 |---|---|---|---|
 | `id` | 两处 | 正整数 | 渠道**稳定标识**（数据集内全局唯一；预设 HKTR=1 / JSFA=2 / CFTC=3） |
-| `name` | 顶层定义 | 字符串 | 渠道名（HKTR/JSFA/CFTC） |
-| `desc` | 顶层定义 | 字符串 | 渠道描述 |
-| `format` | 顶层定义 | 字符串 | `xml` 或 `csv` |
+| `name` | 声明 | 字符串 | 渠道名（HKTR/JSFA/CFTC） |
+| `desc` | 声明 | 字符串 | 渠道描述 |
+| `format` | 声明 | 字符串 | `xml` 或 `csv` |
+| `fieldDefs` | 声明 | 数组 | 该渠道的字段定义声明表（见 `fieldDefs`） |
 | `enabled` | item | 布尔（可省略） | 是否参与本次比较；**省略 = 启用**（唯一的启用标记） |
 | `files` | item | 对象 | 输入/配置文件（`eo` / `ao` / `excel`）；文件名含 tradeId，故逐 item |
-| `fields` | item | 数组 | 字段定义注册表（该渠道在该 item 的字段定义，见 `channel.fields`） |
-| `sources` | item | 数组 | 来源渠道引用 + 比较结果：`{ id, fields }`（`id` 引用顶层 `sources` 登记表） |
+| `sources` | item | 数组 | 来源渠道引用 + 比较结果：`{ id, fields }`（`id` 引用 `sourceChannelDefs`） |
 
 > 启用口径只有一处：`item.channels[].enabled`。查看器与服务端的**所有**展开 / 计数 / 统计（字段表、侧栏卡片、统计卡、图表、对比、全局搜索、健康总览）都经 `public/core.js` 的 `enabledChannelsOf` 取渠道集合，
 > 因此“卡片说 48 个字段、字段表里却有 72 条”这类口径不一致不会再出现（多文件清单里的 `summary` 也由同一个 `itemStatsPure` 口径生成）。
-> 单文件数据集里两张登记表也**必须**存在：`lib/validate.js` 要求 item 里的 `id` 引用能落到登记表上。
+> 三张声明表必须存在：`lib/validate.js` 要求 item 里的 id 引用能落到声明表上。
 
 ## 5. field（`channel.sources[].fields[]`）
 
 | 键 | 类型 | 说明 |
 |---|---|---|
-| `id` | 数字字符串 | 关联 `channel.fields` 的字段标识 |
-| `cmpLeft` | 对象 | 左侧（EO/来源）：`{ value, ctx, ctxs, elRaw, el, srcType }`；`ctx` 为命中 ctxKey 的 **原始字符串表达式**（如 `"hktr.ctx.default and hktr.ctx.v2"`，其中每个元 ctxKey 的 id 见 `ctxs`）；`ctxs` 为 `item.ctxDefs` 的 **id 引用数组**；`el` 为 EO 来源元素（CSV 列），`elRaw` 为 EO 字段映射原始配置 |
-| `cmpRight` | 对象 | 右侧（AO/报送）：`{ value, ctx, ctxs, elRaw, el, srcType }`；`ctx` 为原始字符串表达式、`ctxs` 为 id 引用数组；`el` 即原 `x`（srcType=1）或 `aoCsv`（srcType=2），`elRaw` 即原 `excelMapping` |
+| `id` | 数字字符串 | 引用**父报告渠道**的 `reportChannelDefs[].fieldDefs[].id`（字段定义不在 item 里） |
+| `cmpLeft` | 对象 | 左侧（EO/来源）：`{ value, ctx, ctxs, elRaw, el, valueSrcFmt }`；`ctx` 为命中 ctxKey 的 **原始字符串表达式**（如 `"hktr.ctx.default and hktr.ctx.v2"`，其中每个元 ctxKey 的 id 见 `ctxs`）；`ctxs` 为 `item.ctxDefs` 的 **id 引用数组**；`el` 为 EO 来源元素（CSV 列），`elRaw` 为 EO 字段映射原始配置 |
+| `cmpRight` | 对象 | 右侧（AO/报送）：`{ value, ctx, ctxs, elRaw, el, valueSrcFmt }`；`ctx` 为原始字符串表达式、`ctxs` 为 id 引用数组；`el` 即原 `x`（`valueSrcFmt=xml`）或 `aoCsv`（`valueSrcFmt=csv`），`elRaw` 即原 `excelMapping` |
 | `cvtLeft` | 对象\|null | EO 值转换规则：`{ ctx, ctxs, el, elRaw, raw }`；`ctx` 为原始字符串表达式、`ctxs` 为 id 引用数组；`el` 即原 `conversionRule.value`，`elRaw` 即原 `excelConversionRule`，`raw` 即原 `eoUnconverted`；未配置时为 `null` |
 | `cvtRight` | 对象\|null | AO 值转换规则（结构同 `cvtLeft`）；`ctx` 为原始字符串表达式、`ctxs` 为 id 引用数组；`raw` 为 AO 未转换值；未配置时为 `null` |
 | `vdt` | 对象\|null | AO 终值校验规则：`{ ctx, ctxs, el, elRaw }`；`ctx` 为原始字符串表达式、`ctxs` 为 id 引用数组；`el` 即原 `validationRule.value`，`elRaw` 即原 `excelValidationRule`；未配置时为 `null` |
@@ -365,7 +439,11 @@ node tools/merge-batch.mjs --batch <id> --tenant[=id] | --no-tenant # 租户 / �
 | `resultDetails` | 数组 | 额外结果 `[{label, value}]`（原 `extraResults`） |
 | `prints` | 字符串数组 | 相关打印信息（**保留待用**：字段详情页已改为从 `item.logs` 读取按 `channelId` + `sourceId` + `field` 匹配的关联日志行） |
 
-> 已移除字段：`eoConverted`（不再需要）与 `field.ctxs`（命中上下文现由 `cmpLeft` / `cmpRight` / `cvtLeft` / `cvtRight` / `vdt` 的 `ctxs` 取并集）。`f` / `t` / `k` 迁移到 `channel.fields`；`x` / `aoCsv` / `ctx` / `eo` / `ao` / `eoUnconverted` / `conversionRule` / `validationRule` / `excelMapping` / `excelConversionRule` / `excelValidationRule` 迁移到上述对象；`ctx`（单数）由 ctx key 字符串/id 改为 **命中 ctxKey 的原始字符串表达式**，`ctxs` 改为 `item.ctxDefs` 的 id 引用数组。
+> `valueSrcFmt`（`csv` / `xml`）取代了旧的数字 `srcType`（`1` = XPath、`2` = CSV）：数字在 raw JSON 里不自解释，而 `csv` / `xml` 直接可读。
+> 约定：**左侧（EO，来自映射表）永远是 `csv`**，右侧（AO，来自被比较的报文）随所在渠道的 `format`。
+> 来源渠道声明表的 `format` 即由该来源比较值侧的 `cmpLeft.valueSrcFmt` 推导（缺省 `csv`）。
+
+> 已移除字段：`eoConverted`（不再需要）、`field.ctxs`（命中上下文现由 `cmpLeft` / `cmpRight` / `cvtLeft` / `cvtRight` / `vdt` 的 `ctxs` 取并集）与 `srcType`（已改名 `valueSrcFmt`）。`f` / `t` / `k` 迁移到 `reportChannelDefs[].fieldDefs`；`x` / `aoCsv` / `ctx` / `eo` / `ao` / `eoUnconverted` / `conversionRule` / `validationRule` / `excelMapping` / `excelConversionRule` / `excelValidationRule` 迁移到上述对象；`ctx`（单数）由 ctx key 字符串/id 改为 **命中 ctxKey 的原始字符串表达式**，`ctxs` 改为 `item.ctxDefs` 的 id 引用数组。
 >
 > `logs` 为新增字段（与 `prints` 同源：同样是字段比较过程的三行文本，但改为带 `channelId`/`sourceId`/`field` 的日志行，从而能在「完整日志」里定位）——生成器（Java `ValidationJsonGenerator` / JS `lib/sample-data.js`）与旧数据迁移工具（`tools/migrate-legacy-data.js`）都会同步写 `prints` 与 `item.logs`；**`fields[]` 不新增任何字段**（字段级日志行只在 `item.logs` 里存一份）。
 

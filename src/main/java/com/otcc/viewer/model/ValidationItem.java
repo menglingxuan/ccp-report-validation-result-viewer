@@ -23,8 +23,10 @@ public class ValidationItem {
     private String product;
     private String productCategory;
     private String counterpartyItemId;
-    private String platformTradeId;
-    private String platformDealId;
+    /** Original platform trade id ({@code platformOriTradeId}). */
+    private String platformOriTradeId;
+    /** Original platform trade deal id ({@code platformOriTradeDealId}). */
+    private String platformOriTradeDealId;
     /** Per-item hit-context definitions ({@code item.ctxDefs}). */
     private Map<String, CtxDef> ctxDefs;
     /**

@@ -31,17 +31,19 @@ function writeDataset(file, obj) {
 }
 
 // 切片 / 特殊批次的数据集顶层字段必须与完整数据集保持一致：
-// **登记表（channels / sources）一定要带上**，否则 item 里的 id 引用无从解析
-// （顶层没有声明表 → lib/validate.js 报「未在顶层 channels 声明表里声明」，
+// **三张声明表（reportChannelDefs / sourceChannelDefs / usedCtxKeyDefs）一定要带上**，
+// 否则 item 里的 id 引用无从解析（顶层没有声明表 → lib/validate.js 报错，
 // 查看器 hydrate 也补不出名称，见 docs/DATA_SCHEMA.md §3.1）。
+// 键顺序与生成器一致：`…声明表 → usedCtxKeyDefs → skippedItems → items`。
 function batchDataset(dataset, items) {
   return {
     mode: 'single',
     reportEnv: dataset.reportEnv,
     creationType: 'sample',
+    reportChannelDefs: dataset.reportChannelDefs,
+    sourceChannelDefs: dataset.sourceChannelDefs,
+    usedCtxKeyDefs: dataset.usedCtxKeyDefs,
     skippedItems: dataset.skippedItems,
-    channels: dataset.channels,
-    sources: dataset.sources,
     items: items,
   };
 }

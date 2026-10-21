@@ -22,14 +22,15 @@ export function normalizeItemSummary(raw) {
 
 /* ---------- 渠道 / 来源渠道的稳定标识（id）与「启用渠道」口径 ----------
  * 契约见 docs/DATA_SCHEMA.md §3/§4：
- *   - 定义侧：渠道 / 来源渠道的 `id` 为正整数；**定义只在顶层登记表里写一次**
- *     （`$root.channels[] = {id,name,desc,format}`、`$root.sources[] = {id,name}`），
+ *   - 定义侧：渠道 / 来源渠道 / 字段 / ctxKey 的**定义只在顶层声明表里写一次**
+ *     （`$root.reportChannelDefs[] = {id,name,desc,format,fieldDefs}`、
+ *      `$root.sourceChannelDefs[] = {id,name,format}`、`$root.usedCtxKeyDefs{} = {id,type,rules,def}`），
  *     item 里只保留 `id` 引用；预设 HKTR=1 / JSFA=2 / CFTC=3，来源渠道 A=1 / 来源渠道 B=2；
  *   - 启用侧：是否参与本次比较由 `item.channels[].enabled` 决定（缺省视为 true）——**唯一口径**，
  *     flatFields / 计数 / 图表 / 对比 / 全局搜索 / 统计 全部走它（历史上的 item.enabledChannels 名单已彻底移除）；
- *   - 引用侧：warnings / errors / uncompared / logs / skippedItems 的 `channel` / `source`（名称）与
- *     `channelId` / `sourceId`（id）**双写**；id 缺省时按名称回退。
- * 查看器在加载时用 `hydrateDataset()` 把登记表补回 item（老形态数据原样通过，无需转换），
+ *   - 引用侧：logs 与 skippedItems 写 id（logs 只写 id；skippedItems 名称 + id 双写）；
+ *     warnings / errors / uncompared **只写名称**（不带 id，保持原始可读性）。
+ * 查看器在加载时用 `hydrateDataset()` 把声明表整套补回 item（只有名称的老形态数据原样通过），
  * 因此渲染 / 搜索 / 忽略配置 / 深链接仍全部按**名称**工作。
  * id 只用于**稳定标识**：日志锚点、内部 locator（data-* 属性）、跨 item 关联。
  * ------------------------------------------------------------------ */
@@ -101,51 +102,93 @@ export function refSourceId(item, m) {
   return null;
 }
 
-/* ---------- 顶层登记表（$root.channels / $root.sources）---------------
- * 归一化形态：渠道与来源渠道的**定义**只在顶层写一次，item 里只留 id 引用。
+/* ---------- 顶层声明表（$root.reportChannelDefs / sourceChannelDefs / usedCtxKeyDefs）----------
+ * 归一化形态：所有**定义**只在顶层写一次，item 里只留 id 引用。
  *
- *   $root.channels = [ { id, name, desc, format } ]           // 报告渠道定义
- *   $root.sources  = [ { id, name } ]                         // 来源渠道定义（数据集级，id 全局唯一）
- *   item.channels  = [ { id, enabled?, files, fields, sources: [ { id, fields } ] } ]
+ *   $root.reportChannelDefs = [ { id, name, desc, format, fieldDefs: [ {id,name,userTag,type} ] } ]
+ *   $root.sourceChannelDefs = [ { id, name, format } ]                       // format: csv / xml
+ *   $root.usedCtxKeyDefs    = { <ctxKey>: { id, type, rules, def } }         // rules: fdm / cvt / vdt
+ *   item.ctxDefs            = { <ctxKey>: { id, hits } }                     // 只留 id 引用 + 命中数
+ *   item.channels           = [ { id, enabled?, files, sources: [ { id, fields: [ …比较结果… ] } ] } ]
  *
  * 三个纯函数构成一组可逆变换（都返回新对象，不改动入参）：
- *   - `registriesOf()`：读出两张 id -> 定义 的映射（没登记表时返回空表）；
- *   - `hydrateDataset()` / `hydrateItem()`：把定义补回 item（查看器加载时用；老形态原样通过；
- *     消息 / 日志行里缺失的渠道 / 来源名称也在这里**按 id** 补回，绝不解析日志文本）；
- *   - `hoistRegistries()`：反向，把 item 里的定义提到顶层并只留 id（生成器 / 迁移工具用）。
- * 定义冲突（同一 id 指向不同名称，或同一名称使用不同 id）在 `hoistRegistries()` 里直接抛错：
- * 静默取第一个会把「数据自相矛盾」变成看不见的数据丢失。
+ *   - `registriesOf()`：读出 id -> 定义 的映射（没声明表时返回空表）；
+ *   - `hydrateDataset()` / `hydrateItem()`：把定义**整套**补回 item，使查看器其余代码继续按
+ *     「item 里什么都有」的旧口径工作：渠道 name/desc/format、渠道 fieldDefs -> ch.fields、
+ *     usedCtxKeyDefs 的 type/rules/def -> item.ctxDefs、消息与日志行缺失的名称按 id 补回。
+ *     **绝不解析日志文本**（text 只是展示内容）；只有名称的老形态数据原样通过。
+ *   - `hoistRegistries()`：反向，把定义提到顶层、item 只留 id（生成器 / 迁移工具用）。
+ * 定义冲突（同一 id 指向不同名称、同一名称使用不同 id、同一字段 id 定义不一致、同一 ctxKey 定义不一致）
+ * 在 `hoistRegistries()` 里直接抛错：静默取第一个会把「数据自相矛盾」变成看不见的数据丢失。
  * ------------------------------------------------------------------ */
 
-/** 顶层渠道定义表：id -> { id, name, desc, format }。无登记表时返回空对象。 */
+/** 顶层报告渠道声明表：id -> { id, name, desc, format, fieldDefs, fieldById }。无声明表时返回空对象。 */
 export function channelRegistryMap(root) {
   const map = {};
-  const list = root && Array.isArray(root.channels) ? root.channels : [];
+  const list = root && Array.isArray(root.reportChannelDefs) ? root.reportChannelDefs : [];
   list.forEach(function (c) {
-    if (c && typeof c.id === 'number') map[c.id] = { id: c.id, name: c.name || '', desc: c.desc == null ? '' : c.desc, format: c.format || '' };
+    if (!c || typeof c.id !== 'number') return;
+    const fieldDefs = Array.isArray(c.fieldDefs) ? c.fieldDefs : [];
+    const fieldById = {};
+    fieldDefs.forEach(function (d) {
+      if (d && d.id != null) fieldById[String(d.id)] = d;
+    });
+    map[c.id] = {
+      id: c.id,
+      name: c.name || '',
+      desc: c.desc == null ? '' : c.desc,
+      format: c.format || '',
+      fieldDefs: fieldDefs,
+      fieldById: fieldById,
+    };
   });
   return map;
 }
 
-/** 顶层来源渠道定义表：id -> { id, name }。无登记表时返回空对象。 */
+/** 顶层来源渠道声明表：id -> { id, name, format }。无声明表时返回空对象。 */
 export function sourceRegistryMap(root) {
   const map = {};
-  const list = root && Array.isArray(root.sources) ? root.sources : [];
+  const list = root && Array.isArray(root.sourceChannelDefs) ? root.sourceChannelDefs : [];
   list.forEach(function (s) {
-    if (s && typeof s.id === 'number') map[s.id] = { id: s.id, name: s.name || '' };
+    if (s && typeof s.id === 'number') map[s.id] = { id: s.id, name: s.name || '', format: s.format || '' };
   });
   return map;
 }
 
-/** 两张登记表一起读（hydrate 用）。 */
+/** 顶层 ctxKey 声明表：{ byId, byKey }（byKey[key] = { id, key, type, rules, def }）。无声明表时返回空表。 */
+export function ctxKeyRegistry(root) {
+  const byId = {};
+  const byKey = {};
+  const defs = (root && root.usedCtxKeyDefs) || {};
+  Object.keys(defs).forEach(function (k) {
+    const d = defs[k] || {};
+    const entry = {
+      id: typeof d.id === 'number' ? d.id : null,
+      key: k,
+      type: d.type === 'user' ? 'user' : 'builtin',
+      rules: normalizeCtxRules(d),
+      def: d.def == null ? '' : d.def,
+    };
+    byKey[k] = entry;
+    if (entry.id != null) byId[entry.id] = entry;
+  });
+  return { byId: byId, byKey: byKey };
+}
+
+/** 三张声明表一起读（hydrate 用）。 */
 export function registriesOf(root) {
-  return { channels: channelRegistryMap(root), sources: sourceRegistryMap(root) };
+  return {
+    channels: channelRegistryMap(root),
+    sources: sourceRegistryMap(root),
+    ctxKeys: ctxKeyRegistry(root),
+  };
 }
 
 // 带渠道 / 来源渠道引用的消息段：item 级的 warnings / errors / uncompared / logs，
 // 以及数据集级的 skippedItems（同构）。
 // 这些段里的 `channel` / `source` 是**展示用名称**，`channelId` / `sourceId` 是稳定标识：
-// 新生成的数据里 logs 只写 id，名称由查看器加载时按 id 解析回来。
+// 新生成的数据里 logs / skippedItems 只写 id，名称由查看器加载时按 id 解析回来；
+// warnings / errors / uncompared 反过来只写名称（不带 id，保持原始可读性）。
 const REF_SECTIONS = ['warnings', 'errors', 'uncompared', 'logs'];
 
 // 按 id 把名称补回消息 / 日志行：**只补缺失的名称**，不覆盖已有的，也**绝不解析 text**
@@ -164,10 +207,11 @@ function fillRefNames(entry, chReg, srcReg) {
   return out;
 }
 
-/** 把顶层登记表的定义补回单个 item（缺定义时保持原样；老形态数据不受影响）。 */
+/** 把顶层声明表的定义补回单个 item（缺定义时保持原样；老形态数据不受影响）。 */
 export function hydrateItem(item, registries) {
   const chReg = (registries && registries.channels) || {};
   const srcReg = (registries && registries.sources) || {};
+  const ctxReg = (registries && registries.ctxKeys) || { byId: {}, byKey: {} };
   const out = Object.assign({}, item);
   out.channels = ((item && item.channels) || []).map(function (ch) {
     const def = chReg[ch.id] || {};
@@ -176,12 +220,33 @@ export function hydrateItem(item, registries) {
     });
     if (merged.desc == null) merged.desc = def.desc || '';
     if (merged.format == null) merged.format = def.format || '';
+    // 字段定义注册表在顶层（reportChannelDefs[].fieldDefs）：补回 item，后续所有字段查找照旧。
+    if (!Array.isArray(merged.fields)) merged.fields = def.fieldDefs || [];
     merged.sources = ((ch.sources) || []).map(function (s) {
       const sdef = srcReg[s.id] || {};
-      return Object.assign({}, s, { name: s.name != null && s.name !== '' ? s.name : (sdef.name || '') });
+      const smerged = Object.assign({}, s, {
+        name: s.name != null && s.name !== '' ? s.name : (sdef.name || ''),
+      });
+      if (smerged.format == null || smerged.format === '') smerged.format = sdef.format || '';
+      return smerged;
     });
     return merged;
   });
+  // item.ctxDefs：文件里只有 { id, hits }，type / rules / def 从顶层 usedCtxKeyDefs 补回。
+  if (item.ctxDefs && typeof item.ctxDefs === 'object' && !Array.isArray(item.ctxDefs)) {
+    const mergedDefs = {};
+    Object.keys(item.ctxDefs).forEach(function (key) {
+      const local = item.ctxDefs[key] || {};
+      const decl = (typeof local.id === 'number' ? ctxReg.byId[local.id] : null) || ctxReg.byKey[key] || {};
+      const m = Object.assign({}, local);
+      if (m.id == null && decl.id != null) m.id = decl.id;
+      if (m.type == null) m.type = decl.type || 'builtin';
+      if (!Array.isArray(m.rules)) m.rules = Array.isArray(decl.rules) ? decl.rules.slice() : [];
+      if (m.def == null || m.def === '') m.def = decl.def || '';
+      mergedDefs[key] = m;
+    });
+    out.ctxDefs = mergedDefs;
+  }
   // 消息 / 日志行的渠道与来源渠道名称：同样按 id 从声明表解析（只在名称缺失时补）。
   REF_SECTIONS.forEach(function (k) {
     if (!Array.isArray(item[k])) return;
@@ -190,11 +255,13 @@ export function hydrateItem(item, registries) {
   return out;
 }
 
-/** 把顶层登记表的定义补回整个数据集（查看器加载时的唯一入口；幂等）。 */
+/** 把顶层声明表的定义补回整个数据集（查看器加载时的唯一入口；幂等）。 */
 export function hydrateDataset(json) {
   if (!json || typeof json !== 'object' || !Array.isArray(json.items)) return json;
   const reg = registriesOf(json);
-  if (!Object.keys(reg.channels).length && !Object.keys(reg.sources).length) return json; // 老形态
+  if (!Object.keys(reg.channels).length && !Object.keys(reg.sources).length && !Object.keys(reg.ctxKeys.byId).length) {
+    return json; // 只有名称、无 id / 声明的老形态
+  }
   const out = Object.assign({}, json, { items: json.items.map(function (it) { return hydrateItem(it, reg); }) });
   // skippedItems 是数据集级条目（引用别的 item 的渠道 / 来源渠道）：名称同样按 id 补回。
   if (Array.isArray(json.skippedItems)) {
@@ -203,7 +270,27 @@ export function hydrateDataset(json) {
   return out;
 }
 
-/** 收集 item 里的渠道 / 来源渠道定义（hoist 的第一步；同时报出冲突）。 */
+// 比较规则对象上的「值来源格式」：旧形态是 srcType 数字（1=XPath/XML、2=CSV），
+// 新形态是 valueSrcFmt 字符串（xml / csv）。hoist 时把旧值归一成字符串。
+const SIDE_KEYS = ['cmpLeft', 'cmpRight', 'cvtLeft', 'cvtRight', 'vdt'];
+function normalizeSide(o) {
+  if (!o || typeof o !== 'object') return o;
+  if (o.srcType === undefined) return o;
+  const out = Object.assign({}, o);
+  out.valueSrcFmt = o.srcType === 1 ? 'xml' : (o.srcType === 2 ? 'csv' : '');
+  delete out.srcType;
+  return out;
+}
+function normalizeFieldResult(f) {
+  if (!f || typeof f !== 'object') return f;
+  const out = Object.assign({}, f);
+  SIDE_KEYS.forEach(function (k) {
+    if (out[k]) out[k] = normalizeSide(out[k]);
+  });
+  return out;
+}
+
+/** 收集 item 里的报告渠道 / 来源渠道 / 字段定义（hoist 的第一步；同时报出冲突）。 */
 export function collectDefinitions(items) {
   const channels = [];
   const sources = [];
@@ -213,48 +300,131 @@ export function collectDefinitions(items) {
   const conflicts = [];
   (items || []).forEach(function (it, ii) {
     const label = (it && it.tradeId) || ('items[' + ii + ']');
+    // 老形态：字段定义注册表曾经在 item 级（`item.fields`），视为该 item 所有渠道共用。
+    const legacyFields = Array.isArray(it && it.fields) ? it.fields : null;
     ((it && it.channels) || []).forEach(function (ch) {
       if (!ch || typeof ch.id !== 'number') return;
       const name = ch.name || '';
-      if (chById[ch.id] != null && chById[ch.id].name !== name) {
-        conflicts.push(label + ' 渠道 id=' + ch.id + ' 在不同 item 里指向不同名称：「' + chById[ch.id].name + '」/「' + name + '」');
+      let chDef = chById[ch.id];
+      if (chDef != null && chDef.name !== name) {
+        conflicts.push(label + ' 报告渠道 id=' + ch.id + ' 在不同 item 里指向不同名称：「' + chDef.name + '」/「' + name + '」');
       } else if (chByName[name] != null && chByName[name].id !== ch.id) {
-        conflicts.push(label + ' 渠道「' + name + '」在不同 item 里使用不同 id：' + chByName[name].id + ' / ' + ch.id);
-      } else if (chById[ch.id] == null) {
-        const def = { id: ch.id, name: name };
-        if (ch.desc != null) def.desc = ch.desc;
-        if (ch.format != null) def.format = ch.format;
-        chById[ch.id] = def;
-        chByName[name] = def;
-        channels.push(def);
+        conflicts.push(label + ' 报告渠道「' + name + '」在不同 item 里使用不同 id：' + chByName[name].id + ' / ' + ch.id);
+      } else if (chDef == null) {
+        chDef = { id: ch.id, name: name, fieldDefs: [], __fieldById: {} };
+        if (ch.desc != null && ch.desc !== '') chDef.desc = ch.desc;
+        if (ch.format != null && ch.format !== '') chDef.format = ch.format;
+        chById[ch.id] = chDef;
+        chByName[name] = chDef;
+        channels.push(chDef);
       }
+      // 报告渠道的字段定义注册表（item.channels[].fields，老形态回退 item.fields）：
+      // 定义是数据集级的，因此取所有 item 的并集（同一字段 id 的定义必须一致）。
+      const fieldDefs = Array.isArray(ch.fields) ? ch.fields : (legacyFields || []);
+      fieldDefs.forEach(function (d) {
+        if (!d || d.id == null) return;
+        const key = String(d.id);
+        const prev = chDef.__fieldById[key];
+        if (prev == null) {
+          const copy = Object.assign({}, d, { id: key });
+          chDef.__fieldById[key] = copy;
+          chDef.fieldDefs.push(copy);
+        } else if (prev.name !== d.name || prev.userTag !== d.userTag || prev.type !== d.type) {
+          conflicts.push(label + ' 报告渠道「' + name + '」的字段 id=' + key + ' 定义在不同 item 里不一致');
+        }
+      });
       ((ch.sources) || []).forEach(function (s) {
         if (!s || typeof s.id !== 'number') return;
         const sname = s.name || '';
         if (srcById[s.id] != null && srcById[s.id].name !== sname) {
           conflicts.push(label + ' 来源渠道 id=' + s.id + ' 指向不同名称：「' + srcById[s.id].name + '」/「' + sname + '」');
         } else if (srcById[s.id] == null) {
-          srcById[s.id] = { id: s.id, name: sname };
+          // 来源渠道的数据格式 = 该来源比对值侧的格式（cmpLeft.valueSrcFmt；老形态 srcType；缺省 csv）。
+          let fmt = '';
+          (s.fields || []).forEach(function (f) {
+            const side = (f && f.cmpLeft) || {};
+            const v = side.valueSrcFmt || (side.srcType === 1 ? 'xml' : (side.srcType === 2 ? 'csv' : ''));
+            if (!fmt && v) fmt = v;
+          });
+          srcById[s.id] = { id: s.id, name: sname, format: fmt || 'csv' };
           sources.push(srcById[s.id]);
         }
       });
     });
   });
   const byId = function (a, b) { return a.id - b.id; };
+  channels.forEach(function (c) {
+    c.fieldDefs.sort(function (a, b) { return Number(a.id) - Number(b.id); });
+    delete c.__fieldById;
+  });
   return { channels: channels.sort(byId), sources: sources.sort(byId), conflicts: conflicts };
 }
 
+// ctxKey 规则的规范顺序（展示 / 输出都用它，保证数据稳定可控）。
+export const CTX_RULES = ['fdm', 'cvt', 'vdt'];
+
+// 旧数据的规则编号 -> 规则名（1 字段映射 / 2 值转换 / 3 终值校验）。只用于兼容读取与迁移。
+const RULES_BY_LEGACY_CODE = { 1: 'fdm', 2: 'cvt', 3: 'vdt' };
+function normalizeCtxRules(def) {
+  const raw = Array.isArray(def.rules) ? def.rules
+    : (Array.isArray(def.scopes) ? def.scopes : (def.scopes != null ? [def.scopes] : []));
+  const out = [];
+  raw.forEach(function (r) {
+    const name = typeof r === 'number' ? RULES_BY_LEGACY_CODE[r] : r;
+    if (CTX_RULES.indexOf(name) >= 0 && out.indexOf(name) === -1) out.push(name);
+  });
+  return CTX_RULES.filter(function (n) { return out.indexOf(n) !== -1; });
+}
+
+/** 收集 item 里的 ctxKey 定义（hoist 用）：<ctxKey> -> { id, type, rules, def }；定义冲突时报错。 */
+export function collectCtxDefs(items) {
+  const byKey = {};
+  const conflicts = [];
+  (items || []).forEach(function (it, ii) {
+    const label = (it && it.tradeId) || ('items[' + ii + ']');
+    const defs = (it && it.ctxDefs) || {};
+    Object.keys(defs).forEach(function (key) {
+      const local = defs[key] || {};
+      const id = typeof local.id === 'number' ? local.id : null;
+      const type = local.type === 'user' ? 'user' : 'builtin';
+      const rules = normalizeCtxRules(local);
+      const def = local.def == null ? '' : local.def;
+      const prev = byKey[key];
+      if (prev == null) {
+        byKey[key] = { id: id, type: type, rules: rules, def: def };
+        return;
+      }
+      if (prev.id !== id) {
+        conflicts.push(label + ' ctxKey「' + key + '」在不同 item 里使用不同 id：' + prev.id + ' / ' + id);
+      } else if (prev.def !== def || prev.type !== type) {
+        conflicts.push(label + ' ctxKey「' + key + '」的定义在不同 item 里不一致');
+      }
+      rules.forEach(function (r) { if (prev.rules.indexOf(r) === -1) prev.rules.push(r); });
+    });
+  });
+  Object.keys(byKey).forEach(function (k) {
+    byKey[k].rules = CTX_RULES.filter(function (r) { return byKey[k].rules.indexOf(r) >= 0; });
+  });
+  return { byKey: byKey, conflicts: conflicts };
+}
+
 /**
- * 把 item 里的渠道 / 来源渠道定义提到顶层，item 只保留 id 引用。
- * item.channels[] 变为 `{ id, enabled?, files, fields, sources: [{ id, fields }] }`；
- * 定义冲突（见 collectDefinitions）时直接抛错 —— 生成器数据不可能冲突，只有手写 / 迁移数据才会。
+ * 把定义提到顶层、item 只留 id 引用（生成器 / 迁移工具的最后一步）。
  *
- * 同时把 `skippedItems` 里引用的渠道 / 来源渠道也**补进声明表**：被跳过的 item 不在 items 里，
- * 而契约要求「引用 ⊆ 声明」，否则它的 channelId 在声明表里找不到对应项。
+ *   - 渠道 / 来源渠道 / 字段定义 -> `$root.reportChannelDefs`（含 `fieldDefs`）；
+ *   - ctxKey 定义（除 `hits`）-> `$root.usedCtxKeyDefs`，item 内只留 `{ id, hits }`；
+ *   - `warnings` / `errors` / `uncompared` 去掉 `channelId` / `sourceId`（只保留名称，原始可读）；
+ *   - `logs` / `skippedItems` 保持 id（logs 只写 id，skippedItems 名称 + id 双写）;
+ *   - 比较规则对象的 `srcType`（数字）归一为 `valueSrcFmt`（xml / csv）。
+ *
+ * 定义冲突时直接抛错 —— 生成器数据不可能冲突，只有手写 / 迁移数据才会。
+ * `skippedItems` 引用的渠道 / 来源渠道也会被补进声明表（被跳过的 item 不在 items 里，
+ * 而契约要求「引用 ⊆ 声明」）。
  */
 export function hoistRegistries(dataset) {
   if (!dataset || typeof dataset !== 'object' || !Array.isArray(dataset.items)) return dataset;
   const defs = collectDefinitions(dataset.items);
+  const ctxDefs = collectCtxDefs(dataset.items);
   const defineById = function (list, id, def) {
     if (id == null) return;
     if (list.some(function (x) { return x.id === id; })) return;
@@ -264,27 +434,54 @@ export function hoistRegistries(dataset) {
   (dataset.skippedItems || []).forEach(function (s) {
     if (!s) return;
     if (s.channelId != null && s.channel != null && s.channel !== '') {
-      defineById(defs.channels, s.channelId, { id: s.channelId, name: s.channel });
+      defineById(defs.channels, s.channelId, { id: s.channelId, name: s.channel, fieldDefs: [] });
     }
     if (s.sourceId != null && s.source != null && s.source !== '') {
-      defineById(defs.sources, s.sourceId, { id: s.sourceId, name: s.source });
+      defineById(defs.sources, s.sourceId, { id: s.sourceId, name: s.source, format: 'csv' });
     }
   });
+  defs.channels.forEach(function (c) { if (!Array.isArray(c.fieldDefs)) c.fieldDefs = []; });
   defs.channels.sort(byId);
   defs.sources.sort(byId);
-  if (defs.conflicts.length) {
-    throw new Error('渠道 / 来源渠道定义不一致，无法集中到顶层登记表：\n  - ' + defs.conflicts.join('\n  - '));
+  const conflicts = defs.conflicts.concat(ctxDefs.conflicts);
+  if (conflicts.length) {
+    throw new Error('渠道 / 来源渠道 / ctxKey 定义不一致，无法集中到顶层声明表：\n  - ' + conflicts.join('\n  - '));
   }
   const items = dataset.items.map(function (it) {
     const out = Object.assign({}, it);
+    // 消息只保留名称（channelId / sourceId 属于冗余：日志行才需要 id 定位）。
+    ['warnings', 'errors', 'uncompared'].forEach(function (k) {
+      if (!Array.isArray(it[k])) return;
+      out[k] = it[k].map(function (m) {
+        if (!m || typeof m !== 'object' || Array.isArray(m)) return m;
+        const copy = Object.assign({}, m);
+        delete copy.channelId;
+        delete copy.sourceId;
+        return copy;
+      });
+    });
+    // ctxDefs：定义提到顶层，item 只留 { id, hits }。
+    if (it.ctxDefs && typeof it.ctxDefs === 'object' && !Array.isArray(it.ctxDefs)) {
+      const slim = {};
+      Object.keys(it.ctxDefs).forEach(function (key) {
+        const local = it.ctxDefs[key] || {};
+        const decl = ctxDefs.byKey[key];
+        const entry = {};
+        const id = decl && typeof decl.id === 'number' ? decl.id : local.id;
+        if (typeof id === 'number') entry.id = id;
+        if (local.hits !== undefined) entry.hits = local.hits;
+        slim[key] = entry;
+      });
+      out.ctxDefs = slim;
+    }
+    delete out.fields; // 老形态的 item 级字段注册表：已提到顶层 fieldDefs
     out.channels = ((it && it.channels) || []).map(function (ch) {
       const c = { id: ch.id };
       if (ch.enabled === false) c.enabled = false;
       if (ch.files !== undefined) c.files = ch.files;
-      if (ch.fields !== undefined) c.fields = ch.fields;
       c.sources = ((ch.sources) || []).map(function (s) {
         const o = { id: s.id };
-        if (s.fields !== undefined) o.fields = s.fields;
+        if (s.fields !== undefined) o.fields = (s.fields || []).map(normalizeFieldResult);
         return o;
       });
       return c;
@@ -293,12 +490,18 @@ export function hoistRegistries(dataset) {
   });
   const out = {};
   Object.keys(dataset).forEach(function (k) {
-    if (k === 'channels' || k === 'sources' || k === 'items') return;
+    // 已经重新写出的顶层成员（含被移动了位置的 skippedItems）与旧形态顶层键都不再复制。
+    if (k === 'reportChannelDefs' || k === 'sourceChannelDefs' || k === 'usedCtxKeyDefs'
+      || k === 'ctxKeyDefs' || k === 'channels' || k === 'sources'
+      || k === 'skippedItems' || k === 'items') return;
     out[k] = dataset[k];
   });
-  // 键顺序固定为「其余顶层字段 -> channels -> sources -> items」（登记表读在数据前，便于人读）。
-  out.channels = defs.channels;
-  out.sources = defs.sources;
+  // 键顺序固定为「其余顶层字段 -> 三张声明表 -> skippedItems -> items」
+  // （声明表读在数据前、skippedItems 紧跟声明表之后，便于人读；JSON 键顺序不影响解析）。
+  out.reportChannelDefs = defs.channels;
+  out.sourceChannelDefs = defs.sources;
+  out.usedCtxKeyDefs = ctxDefs.byKey;
+  if (dataset.skippedItems !== undefined) out.skippedItems = dataset.skippedItems;
   out.items = items;
   return out;
 }
@@ -444,7 +647,7 @@ export function flatFields(item, tagLabels) {
           channel: ch.name, source: s.name, channelId: chId, sourceId: srcId,
           id: f.id, field: def.name, userTag: tagRaw, userTagHay: tagHay,
           // 表达式 / 预览列：aoEl/eoEl 为左右侧定位（XPath 或 CSV 列），其余为各规则的原始表达式与未转换值。
-          aoEl: right.el || '', srcType: right.srcType || 1,
+          aoEl: right.el || '', valueSrcFmt: right.valueSrcFmt || 'xml',
           eoEl: left.el || '',
           eoCvtEl: cvtL.el || '',
           aoCvtEl: cvtR.el || '',

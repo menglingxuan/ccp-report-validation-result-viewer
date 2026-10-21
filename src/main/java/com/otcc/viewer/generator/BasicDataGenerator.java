@@ -114,20 +114,20 @@ public final class BasicDataGenerator {
                 .product(product)
                 .productCategory("IR")
                 .counterpartyItemId("T-20240814-1001")
-                .platformTradeId("PT-BASIC-0001")
-                .platformDealId("PD-BASIC-0001")
+                .platformOriTradeId("PT-BASIC-0001")
+                .platformOriTradeDealId("PD-BASIC-0001")
                 .ctxDefs(ctxDefs)
                 .channels(channels)
                 .warnings(List.of(Message.builder()
-                        .scope("channel").source("").sourceId(null).channel("HKTR").channelId(1)
+                        .scope("channel").source("").channel("HKTR")
                         .type("productAssertion").level("WARN")
                         .text("字段格式与映射配置不一致，使用默认校验规则").field("notional").build()))
                 .errors(List.of(Message.builder()
-                        .scope("field").source("来源渠道 A").sourceId(1).channel("HKTR").channelId(1)
+                        .scope("field").source("来源渠道 A").channel("HKTR")
                         .type("mappingError").level("ERROR")
                         .text("映射配置错误：XPath 语法非法").field("tradeId").build()))
                 .uncompared(List.of(UncomparedEntry.builder()
-                        .type(1).channel("HKTR").channelId(1).source("来源渠道 A").sourceId(1)
+                        .type(1).channel("HKTR").source("来源渠道 A")
                         .value("/HKTR/Report/Header/TradeDetails/TradeIdentifier/TradeId")
                         .note("未在映射配置中匹配到对应 CSV 字段").build()))
                 .logs(List.of(
@@ -142,6 +142,7 @@ public final class BasicDataGenerator {
                 .mode("single")
                 .reportEnv("OTCXXX")
                 .creationType("sample")
+                .usedCtxKeyDefs(ValidationJsonGenerator.buildUsedCtxKeyDefs())
                 .skippedItems(List.of(SkippedItem.builder()
                         .itemId("T-" + date.replace("-", "") + "-0001")
                         .channel("JSFA")
@@ -178,7 +179,7 @@ public final class BasicDataGenerator {
                 .desc(CHANNEL_DESC.get(name))
                 .format(CHANNEL_FORMAT.get(name))
                 .files(files)
-                .fields(REGISTRY)
+                .fieldDefs(REGISTRY)
                 .sources(sources)
                 .build();
     }
@@ -199,16 +200,15 @@ public final class BasicDataGenerator {
                                     List<String> ctx, String eo, String ao, String result, String note,
                                     String eoUnconverted, String aoUnconverted, String convRule, String valRule, boolean csv,
                                     Map<String, Integer> ctxIdByKey) {
-        int srcType = csv ? 2 : 1;
         String eoCol = "src_" + f;
         List<Integer> ctxIds = toIds(ctx, ctxIdByKey);
 
         CmpSide cmpLeft = CmpSide.builder()
                 .value(eo).ctx(ctxExpr(ctx)).ctxs(ctxIds)
-                .elRaw(genMapping(eoCol, ctx)).el(eoCol).srcType(2).build();
+                .elRaw(genMapping(eoCol, ctx)).el(eoCol).valueSrcFmt("csv").build();
         CmpSide cmpRight = CmpSide.builder()
                 .value(ao).ctx(ctxExpr(ctx)).ctxs(ctxIds)
-                .elRaw(genMapping(target, ctx)).el(target).srcType(srcType).build();
+                .elRaw(genMapping(target, ctx)).el(target).valueSrcFmt(csv ? "csv" : "xml").build();
 
         ConversionRule cvtLeft = ConversionRule.builder()
                 .ctx(ctxExpr(ctx)).ctxs(ctxIds).el(convRule).elRaw(genRule(convRule, ctx)).raw(eoUnconverted).build();
@@ -253,10 +253,10 @@ public final class BasicDataGenerator {
         int id = 1;
         for (String name : List.of("HKTR", "JSFA", "CFTC")) {
             String p = name.toLowerCase();
-            defs.put(p + ".ctx.default", CtxDef.builder().id(id++).scopes(List.of(1)).type("builtin")
-                    .def(name + " 默认上下文（标准报送场景）").hits("命中 3 个映射条目（EO 2 / AO 1）").build());
-            defs.put(p + ".ctx.v2", CtxDef.builder().id(id++).scopes(List.of(1)).type("builtin")
-                    .def(name + " v2 上下文（2024 新版映射）").hits("命中 2 个映射条目（EO 1 / AO 1）").build());
+            defs.put(p + ".ctx.default", CtxDef.builder().id(id++)
+                    .hits("命中 3 个映射条目（EO 2 / AO 1）").build());
+            defs.put(p + ".ctx.v2", CtxDef.builder().id(id++)
+                    .hits("命中 2 个映射条目（EO 1 / AO 1）").build());
         }
         return defs;
     }

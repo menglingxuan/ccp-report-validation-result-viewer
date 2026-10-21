@@ -14,14 +14,19 @@
 //   - 渠道 / 来源渠道稳定标识：channels[].id / channels[].sources[].id（预设 HKTR=1/JSFA=2/CFTC=3、
 //     来源渠道 A=1/B=2；未登记的名称按出现顺序编号）。
 //   - 启用口径：item.enabledChannels 名单 → 各渠道的 channels[].enabled（不在名单里的置 false），并删除 enabledChannels。
-//   - 引用双写：warnings / errors / uncompared / skippedItems 同时写 channel|channelId 与 source|sourceId；
-//     logs 只写 channelId / sourceId（名称由查看器按 id 从顶层声明表解析回来，text 不承载数据）。
-//   - 归一化形态：渠道 / 来源渠道的定义（id/name/desc/format、id/name）提到**顶层登记表**
-//     （`$root.channels` / `$root.sources`），item 里只留 id 引用（见 docs/DATA_SCHEMA.md §1）。
+//   - 引用：logs 与 skippedItems 写 id（logs 只写 channelId / sourceId，skippedItems 名称 + id 双写）；
+//     warnings / errors / uncompared **只写名称**（不带 id，保持原始可读性）。
+//   - 归一化形态：渠道 / 来源渠道 / 字段 / ctxKey 的定义提到**顶层声明表**
+//     （`$root.reportChannelDefs`（含 fieldDefs）/ `$root.sourceChannelDefs` / `$root.usedCtxKeyDefs`），
+//     item 里只留 id 引用（见 docs/DATA_SCHEMA.md §1）。
 import fs from 'node:fs';
 import path from 'node:path';
 import { writeJSON } from '../lib/json-write.js';
 import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, hoistRegistries } from '../public/core.js';
+
+// 规则名（新契约）：字段映射规则 -> fdm、值转换规则 -> cvt、终值校验规则 -> vdt。
+// 旧数据用 1 / 2 / 3 表示三种规则，标注在 ctxDef.type 上（数组或单值）。
+const RULES_BY_LEGACY = { 1: 'fdm', 2: 'cvt', 3: 'vdt' };
 
 // 稳定标识：数据里已有合法 id 就用它，否则回退预设表，再不行按出现顺序编号（保证确定性）。
 function channelIdFor(name, index, existing) {
@@ -59,8 +64,8 @@ function migrateField(f, ctxDefs, nameToId, ctxIdByKey) {
   const el = isCsv ? (f.aoCsv || '') : (f.x || '');
   return {
     id: nameToId[f.f || f.id || ''] || '',
-    cmpLeft: { value: f.eo == null ? '' : f.eo, ctx: null, ctxs: [], elRaw: null, el: null, srcType: null },
-    cmpRight: { value: f.ao == null ? '' : f.ao, ctx: mapCtxIds.length ? mapCtxIds[0] : null, ctxs: mapCtxIds, elRaw: f.excelMapping || '', el: el, srcType: isCsv ? 2 : 1 },
+    cmpLeft: { value: f.eo == null ? '' : f.eo, ctx: null, ctxs: [], elRaw: null, el: null, valueSrcFmt: 'csv' },
+    cmpRight: { value: f.ao == null ? '' : f.ao, ctx: mapCtxIds.length ? mapCtxIds[0] : null, ctxs: mapCtxIds, elRaw: f.excelMapping || '', el: el, valueSrcFmt: isCsv ? 'csv' : 'xml' },
     // cvtLeft / cvtRight / vdt 为可选配置：旧数据未配置时迁移为 null（而非空对象）。
     cvtLeft: convRule
       ? {
@@ -124,6 +129,15 @@ function migrateItem(it) {
     });
   }
   delete out.enabledChannels;
+  // item 元数据改名（无向后兼容）：旧键名统一迁移为新名；否则新契约校验会直接报错。
+  if (out.platformTradeId !== undefined) {
+    out.platformOriTradeId = out.platformTradeId;
+    delete out.platformTradeId;
+  }
+  if (out.platformDealId !== undefined) {
+    out.platformOriTradeDealId = out.platformDealId;
+    delete out.platformDealId;
+  }
 
   // 第一遍：按 id（数字字符串）去重收集字段定义，按出现顺序分配编号。
   const nameToId = {};
@@ -140,7 +154,7 @@ function migrateItem(it) {
     });
   });
 
-  // 构建新的 ctxDefs（id/scopes/type）与 key→id 映射。
+  // 构建新的 ctxDefs（item 级只留 id + hits；type / rules / def 会在 hoistRegistries 时提到顶层 usedCtxKeyDefs）。
   const ctxIdByKey = {};
   const ctxDefsNew = {};
   let ctxId = 1;
@@ -148,9 +162,10 @@ function migrateItem(it) {
   Object.keys(oldCtxDefs).forEach(function (key) {
     const def = oldCtxDefs[key] || {};
     const tp = def.type;
-    const scopes = Array.isArray(tp) ? tp : (tp === 1 || tp === 2 || tp === 3 ? [tp] : []);
+    const legacy = Array.isArray(tp) ? tp : (tp === 1 || tp === 2 || tp === 3 ? [tp] : []);
+    const rules = legacy.map(function (n) { return RULES_BY_LEGACY[n]; }).filter(Boolean);
     ctxIdByKey[key] = ctxId;
-    ctxDefsNew[key] = { id: ctxId, scopes: scopes, type: 'builtin', def: def.def || '', hits: def.hits || '' };
+    ctxDefsNew[key] = { id: ctxId, rules: rules, type: 'builtin', def: def.def || '', hits: def.hits || '' };
     ctxId++;
   });
 
@@ -178,23 +193,20 @@ function migrateItem(it) {
     });
   });
 
-  // 消息迁移（引用双写：名称 + id）
+  // 消息迁移（只写名称：消息段不带 id）。
   (it.channels || []).forEach(function (ch) {
     const chId = idsOf(ch.name, null).channelId;
-    const msgIds = function (sourceName) { return idsOf(ch.name, sourceName); };
     (ch.warnings || []).forEach(function (w) {
-      const ids = msgIds(w.source);
-      warnings.push({ scope: w.field ? 'field' : 'channel', source: w.source || null, channel: w.channel || ch.name, channelId: ids.channelId, sourceId: ids.sourceId, type: w.type || '', level: w.level || '', text: w.text || '', field: w.field || '' });
+      warnings.push({ scope: w.field ? 'field' : 'channel', source: w.source || null, channel: w.channel || ch.name, type: w.type || '', level: w.level || '', text: w.text || '', field: w.field || '' });
     });
     (ch.errors || []).forEach(function (e) {
-      const ids = msgIds(e.source);
-      errors.push({ scope: e.field ? 'field' : 'channel', source: e.source || null, channel: e.channel || ch.name, channelId: ids.channelId, sourceId: ids.sourceId, type: e.type || '', level: e.level || '', text: e.text || '', field: e.field || '' });
+      errors.push({ scope: e.field ? 'field' : 'channel', source: e.source || null, channel: e.channel || ch.name, type: e.type || '', level: e.level || '', text: e.text || '', field: e.field || '' });
     });
     (ch.uncompared || []).forEach(function (u) {
-      uncompared.push({ type: 1, channel: u.channel || ch.name, source: null, channelId: chId, sourceId: null, value: u.xpath || '', note: u.note || '' });
+      uncompared.push({ type: 1, channel: u.channel || ch.name, source: null, value: u.xpath || '', note: u.note || '' });
     });
     (ch.uncomparedCsv || []).forEach(function (u) {
-      uncompared.push({ type: 2, channel: u.channel || ch.name, source: null, channelId: chId, sourceId: null, value: u.csvField || '', note: u.note || '' });
+      uncompared.push({ type: 2, channel: u.channel || ch.name, source: null, value: u.csvField || '', note: u.note || '' });
     });
     (ch.logs || []).forEach(function (l) {
       logs.push({ scope: 'channel', channelId: chId, sourceId: null, field: null, text: String(l) });
@@ -212,7 +224,9 @@ function migrateItem(it) {
   });
   delete out.overviewLogs;
 
-  out.fields = fields;
+  // 字段定义注册表：写入每个报告渠道的 `fields`（hoistRegistries 会提到顶层 reportChannelDefs[].fieldDefs）。
+  // 旧数据所有渠道共用一张表，因此每个渠道写同一份（渠道内 id 唯一即可）。
+  (it.channels || []).forEach(function (ch) { ch.fields = fields; });
   out.ctxDefs = ctxDefsNew;
   out.warnings = warnings;
   out.errors = errors;

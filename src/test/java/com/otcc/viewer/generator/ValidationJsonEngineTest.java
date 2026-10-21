@@ -11,6 +11,7 @@ import com.otcc.viewer.model.BatchMeta;
 import com.otcc.viewer.model.Channel;
 import com.otcc.viewer.model.CmpSide;
 import com.otcc.viewer.model.CtxDef;
+import com.otcc.viewer.model.CtxKeyDef;
 import com.otcc.viewer.model.DescriptionEx;
 import com.otcc.viewer.model.Field;
 import com.otcc.viewer.model.FieldDef;
@@ -51,6 +52,13 @@ class ValidationJsonEngineTest {
 
     static final Path OUT_DIR = Path.of("generated");
     static final Path SCHEMA_PATH = Path.of("exapp", "viewer_frontend", "src", "public", "config.schema.json");
+    /**
+     * 顶层键顺序（docs/DATA_SCHEMA.md §1）：声明表读在数据前，{@code skippedItems} 紧随声明表之后。
+     */
+    static final List<String> ROOT_KEY_ORDER = List.of(
+            "mode", "reportEnv", "creationType",
+            "reportChannelDefs", "sourceChannelDefs", "usedCtxKeyDefs",
+            "skippedItems", "items");
 
     static ValidationDataset dataset;
     /** File dataset after hydrating the top-level registries (semantic assertions use this one). */
@@ -101,30 +109,44 @@ class ValidationJsonEngineTest {
     }
 
     /**
-     * Mirrors {@code hydrateDataset()} in {@code public/core.js}: fills channel / source names back
-     * into the items from the dataset-level registries.
+     * Mirrors {@code hydrateDataset()} in {@code public/core.js}: fills the definitions from the three
+     * dataset-level declaration tables ({@code reportChannelDefs} / {@code sourceChannelDefs} /
+     * {@code usedCtxKeyDefs}) back into every item, so the semantic assertions below can run on the same
+     * shape the viewer renders.
      */
     private static void hydrateRegistries(ValidationDataset ds) {
         Map<Integer, Channel> chReg = new HashMap<>();
-        for (Channel c : ds.getChannels() == null ? List.<Channel>of() : ds.getChannels()) {
+        for (Channel c : ds.getReportChannelDefs() == null ? List.<Channel>of() : ds.getReportChannelDefs()) {
             chReg.put(c.getId(), c);
         }
         Map<Integer, Source> srcReg = new HashMap<>();
-        for (Source s : ds.getSources() == null ? List.<Source>of() : ds.getSources()) {
+        for (Source s : ds.getSourceChannelDefs() == null ? List.<Source>of() : ds.getSourceChannelDefs()) {
             srcReg.put(s.getId(), s);
         }
+        Map<String, CtxKeyDef> ctxReg = ds.getUsedCtxKeyDefs() == null ? Map.of() : ds.getUsedCtxKeyDefs();
         for (ValidationItem item : ds.getItems()) {
+            if (item.getCtxDefs() != null) {
+                for (Map.Entry<String, CtxDef> e : item.getCtxDefs().entrySet()) {
+                    CtxKeyDef kdef = ctxReg.get(e.getKey());
+                    if (kdef != null) {
+                        e.getValue().setId(kdef.getId());
+                    }
+                }
+            }
             for (Channel ch : item.getChannels() == null ? List.<Channel>of() : item.getChannels()) {
                 Channel def = chReg.get(ch.getId());
                 if (def != null) {
                     ch.setName(def.getName());
                     ch.setDesc(def.getDesc());
                     ch.setFormat(def.getFormat());
+                    // 查看器同样把 fieldDefs 注入 item 渠道，让字段查找逻辑无需感知登记表。
+                    ch.setFieldDefs(def.getFieldDefs());
                 }
                 for (Source s : ch.getSources() == null ? List.<Source>of() : ch.getSources()) {
                     Source sdef = srcReg.get(s.getId());
                     if (sdef != null) {
                         s.setName(sdef.getName());
+                        s.setFormat(sdef.getFormat());
                     }
                 }
             }
@@ -146,47 +168,118 @@ class ValidationJsonEngineTest {
 
     @Test
     void datasetRegistriesAreHoisted() {
-        // 归一化形态：渠道 / 来源渠道的定义只在 dataset.channels / dataset.sources 里写一次，
+        // 归一化形态：渠道（含字段定义）/ 来源渠道 / ctxKey 的定义只在顶层三张登记表里写一次，
         // item 里只留 id 引用（与查看器 hydrateDataset 的契约一致）。
         Check c = new Check();
         JsonNode root = dataJson;
-        c.check(root.path("channels").isArray() && root.path("channels").size() >= 3,
-                "顶层 channels 登记表应存在：" + root.path("channels"));
-        c.check(root.path("sources").isArray() && root.path("sources").size() >= 2,
-                "顶层 sources 登记表应存在：" + root.path("sources"));
+
+        // 旧的根键已改名（不再并存，避免同一份数据两套写法）。
+        c.check(!root.has("channels") && !root.has("sources"),
+                "根级别的 channels / sources 已改名为 reportChannelDefs / sourceChannelDefs");
+        c.check(!root.has("ctxKeyDefs"), "根级别的 ctxKeyDefs 已改名为 usedCtxKeyDefs");
+        // 顶层键顺序固定（DATA_SCHEMA.md §1）：…声明表 → usedCtxKeyDefs → skippedItems → items。
+        List<String> rootKeys = new ArrayList<>();
+        root.fieldNames().forEachRemaining(rootKeys::add);
+        c.check(ROOT_KEY_ORDER.equals(rootKeys), "单文件数据顶层键顺序：" + rootKeys);
+
+        JsonNode chDefs = root.path("reportChannelDefs");
+        c.check(chDefs.isArray() && chDefs.size() >= 3, "顶层 reportChannelDefs 登记表应存在：" + chDefs);
         Set<Integer> chIds = new HashSet<>();
-        for (JsonNode ch : root.path("channels")) {
-            chIds.add(ch.path("id").asInt());
-            c.check(ch.path("id").asInt() > 0, "登记表渠道 id 正整数：" + ch);
-            c.check(nonBlank(ch.path("name").asText()), "登记表渠道 name 非空：" + ch);
+        Map<Integer, Set<String>> fieldIdsByChannel = new HashMap<>();
+        Set<String> allFieldIds = new HashSet<>();
+        for (JsonNode ch : chDefs) {
+            int id = ch.path("id").asInt();
+            chIds.add(id);
+            c.check(id > 0, "reportChannelDefs[].id 正整数：" + ch);
+            c.check(nonBlank(ch.path("name").asText()), "reportChannelDefs[].name 非空：" + ch);
             c.check("xml".equals(ch.path("format").asText()) || "csv".equals(ch.path("format").asText()),
-                    "登记表渠道 format ∈ {xml,csv}：" + ch);
+                    "reportChannelDefs[].format ∈ {xml,csv}：" + ch);
+            JsonNode fds = ch.path("fieldDefs");
+            c.check(fds.isArray() && !fds.isEmpty(), "reportChannelDefs[].fieldDefs 非空：" + ch.path("name"));
+            Set<String> ids = new HashSet<>();
+            for (JsonNode fd : fds) {
+                c.check(nonBlank(fd.path("id").asText()), "fieldDefs[].id 非空：" + fd);
+                c.check(nonBlank(fd.path("name").asText()), "fieldDefs[].name 非空：" + fd);
+                c.check(nonBlank(fd.path("userTag").asText()), "fieldDefs[].userTag 非空：" + fd);
+                c.check(nonBlank(fd.path("type").asText()), "fieldDefs[].type 非空：" + fd);
+                c.check(ids.add(fd.path("id").asText()), "同一渠道内 fieldDefs[].id 唯一：" + fd.path("id"));
+                // 不同报告渠道的字段即便同名，id 也必须不同（否则 item 里的 id 引用会有歧义）。
+                c.check(allFieldIds.add(fd.path("id").asText()),
+                        "fieldDefs[].id 必须数据集内唯一：" + fd.path("id") + "（" + fd.path("name") + "）");
+            }
+            fieldIdsByChannel.put(id, ids);
         }
+
+        JsonNode srcDefs = root.path("sourceChannelDefs");
+        c.check(srcDefs.isArray() && srcDefs.size() >= 2, "顶层 sourceChannelDefs 登记表应存在：" + srcDefs);
         Set<Integer> srcIds = new HashSet<>();
-        for (JsonNode s : root.path("sources")) {
-            srcIds.add(s.path("id").asInt());
-            c.check(s.path("id").asInt() > 0, "登记表来源渠道 id 正整数：" + s);
-            c.check(nonBlank(s.path("name").asText()), "登记表来源渠道 name 非空：" + s);
-            c.check(!s.has("fields"), "登记表的来源渠道不应带 fields：" + s);
+        for (JsonNode s : srcDefs) {
+            int id = s.path("id").asInt();
+            srcIds.add(id);
+            c.check(id > 0, "sourceChannelDefs[].id 正整数：" + s);
+            c.check(nonBlank(s.path("name").asText()), "sourceChannelDefs[].name 非空：" + s);
+            c.check("csv".equals(s.path("format").asText()) || "xml".equals(s.path("format").asText()),
+                    "sourceChannelDefs[].format ∈ {csv,xml}：" + s);
+            c.check(!s.has("fields"), "sourceChannelDefs[] 不应带 fields：" + s);
         }
+
+        JsonNode ctxDefs = root.path("usedCtxKeyDefs");
+        c.check(ctxDefs.isObject() && !ctxDefs.isEmpty(), "顶层 usedCtxKeyDefs 登记表应存在：" + ctxDefs);
+        Set<Integer> ctxIds = new HashSet<>();
+        ctxDefs.fields().forEachRemaining(e -> {
+            JsonNode d = e.getValue();
+            c.check(nonBlank(e.getKey()), "usedCtxKeyDefs 的 key 非空");
+            c.check(d.path("id").asInt() > 0, "usedCtxKeyDefs[].id 正整数：" + d);
+            c.check(ctxIds.add(d.path("id").asInt()), "usedCtxKeyDefs[].id 唯一：" + d.path("id"));
+            c.check("builtin".equals(d.path("type").asText()) || "user".equals(d.path("type").asText()),
+                    "usedCtxKeyDefs[].type ∈ {builtin,user}：" + d);
+            c.check(nonBlank(d.path("def").asText()), "usedCtxKeyDefs[].def 非空：" + d);
+            JsonNode rules = d.path("rules");
+            c.check(rules.isArray() && !rules.isEmpty(), "usedCtxKeyDefs[].rules 非空（规则名数组）：" + d);
+            for (JsonNode r : rules) {
+                c.check(Set.of("fdm", "cvt", "vdt").contains(r.asText()),
+                        "usedCtxKeyDefs[].rules ∈ {fdm,cvt,vdt}：" + r + "（旧的 1/2/3 数字已废弃）");
+            }
+            c.check(!d.has("scopes"), "usedCtxKeyDefs[] 里不应出现旧的 scopes：" + d);
+            c.check(!d.has("hits"), "hits 是 item 级信息，不应写在 usedCtxKeyDefs 里：" + d);
+        });
+
         // item 里不得重复写定义，且引用必须落在登记表里。
         for (JsonNode item : root.path("items")) {
             String it = item.path("tradeId").asText();
+            for (JsonNode ctx : item.path("ctxDefs")) {
+                c.check(ctx.has("id") && ctx.has("hits"), it + " 的 ctxDef 只保留 id / hits：" + ctx);
+                c.check(!ctx.has("type") && !ctx.has("def") && !ctx.has("scopes") && !ctx.has("rules"),
+                        it + " 的 ctxDef 不应重复写 type/def/rules：" + ctx);
+            }
             for (JsonNode ch : item.path("channels")) {
                 c.check(!ch.has("name") && !ch.has("desc") && !ch.has("format"),
                         it + " 的 item 渠道不应重复写 name/desc/format：" + ch);
-                c.check(chIds.contains(ch.path("id").asInt()), it + " 渠道引用必须已登记：" + ch.path("id"));
-                c.check(ch.has("fields"), it + " 的 item 渠道必须保留 fields：" + ch.path("id"));
+                c.check(!ch.has("fieldDefs"), it + " 的 item 渠道不应重复写 fieldDefs：" + ch);
+                c.check(!ch.has("fields"),
+                        it + " 的 item 渠道不应再有 fields（字段定义已迁到 reportChannelDefs[].fieldDefs）：" + ch);
+                int chId = ch.path("id").asInt();
+                c.check(chIds.contains(chId), it + " 渠道引用必须已登记：" + chId);
+                Set<String> declared = fieldIdsByChannel.getOrDefault(chId, Set.of());
                 for (JsonNode s : ch.path("sources")) {
-                    c.check(!s.has("name"), it + " 的 item 来源渠道不应重复写 name：" + s);
-                    c.check(srcIds.contains(s.path("id").asInt()), it + " 来源渠道引用必须已登记：" + s.path("id"));
+                    c.check(!s.has("name") && !s.has("format"),
+                            it + " 的 item 来源渠道不应重复写 name/format：" + s);
+                    c.check(srcIds.contains(s.path("id").asInt()),
+                            it + " 来源渠道引用必须已登记：" + s.path("id"));
                     c.check(s.has("fields"), it + " 的 item 来源渠道必须保留 fields：" + s.path("id"));
+                    for (JsonNode f : s.path("fields")) {
+                        c.check(declared.contains(f.path("id").asText()),
+                                it + " 字段 id 必须在其父渠道的 fieldDefs 里声明：" + f.path("id"));
+                        c.check(!f.has("srcType"), it + " 字段不应再写 srcType（已改名 valueSrcFmt）：" + f.path("id"));
+                        for (String side : List.of("cmpLeft", "cmpRight")) {
+                            String v = f.path(side).path("valueSrcFmt").asText();
+                            c.check("csv".equals(v) || "xml".equals(v),
+                                    it + " " + side + ".valueSrcFmt ∈ {csv,xml}：" + v);
+                        }
+                    }
                 }
             }
         }
-        // 多文件清单同样带登记表（item 文件才可能只有 id 引用）。
-        JsonNode manifest = dataJson; // 单文件已断言；清单路径由 multiMode 用例覆盖
-        c.check(manifest.has("channels") && manifest.has("sources"), "单文件数据集也带两张登记表");
         c.done();
     }
 
@@ -215,28 +308,26 @@ class ValidationJsonEngineTest {
             c.check(nonBlank(item.getPlatform()), it + ".platform non-blank");
             c.check(nonBlank(item.getProduct()), it + ".product non-blank");
             c.check(nonBlank(item.getProductCategory()), it + ".productCategory non-blank");
-            c.check(item.getPlatformTradeId() != null, it + ".platformTradeId present");
-            c.check(item.getPlatformDealId() != null, it + ".platformDealId present");
+            c.check(item.getPlatformOriTradeId() != null, it + ".platformOriTradeId present");
+            c.check(item.getPlatformOriTradeDealId() != null, it + ".platformOriTradeDealId present");
 
-            // per-item ctxDefs
-            validateCtxDefs(c, item, it);
+            // per-item ctxDefs（{ id, hits }，定义在顶层 usedCtxKeyDefs）
+            validateCtxDefs(c, item, it, hydrated);
 
-            // channels（字段注册表在 report channel 级别）
+            // channels（字段定义在 reportChannelDefs[].fieldDefs，由 hydrateRegistries 注入回来）
             c.check(item.getChannels() != null && !item.getChannels().isEmpty(), it + ".channels non-empty");
-            Map<String, Integer> channelIds = new HashMap<>();
+            Map<Integer, Channel> chById = new HashMap<>();
             if (item.getChannels() != null) {
                 for (Channel ch : item.getChannels()) {
-                    String chLabel = it + ".channels[" + ch.getName() + "]";
-                    // 稳定标识：正整数且数据集内全局一致（同一 id 对应同一渠道名）。
+                    String chLabel = it + ".channels[id=" + ch.getId() + "]";
                     c.check(ch.getId() != null && ch.getId() > 0, chLabel + ".id positive");
-                    c.check(ch.getName() == null || ch.getId() == null
-                                    || ValidationJsonGenerator.CHANNEL_IDS.get(ch.getName()) == null
-                                    || ValidationJsonGenerator.CHANNEL_IDS.get(ch.getName()).equals(ch.getId()),
-                            chLabel + ".id matches preset: " + ch.getId());
+                    c.check(chById.put(ch.getId(), ch) == null, chLabel + ".id unique within item");
+                    Channel def = hydrated.getReportChannelDefs().stream()
+                            .filter(d -> d.getId().equals(ch.getId())).findFirst().orElse(null);
+                    c.check(def != null, chLabel + " 必须在 reportChannelDefs 里声明");
                     c.check(ch.getEnabled() == null || Boolean.FALSE.equals(ch.getEnabled()),
                             chLabel + ".enabled is absent (enabled) or false; never an explicit true: " + ch.getEnabled());
-                    channelIds.put(ch.getName(), ch.getId());
-                    Set<String> fieldIds = validateRegistry(c, ch, chLabel);
+                    Set<String> fieldIds = def == null ? Set.of() : validateRegistry(c, def, chLabel + " 声明");
                     validateChannel(c, ch, chLabel, fieldIds);
                 }
             }
@@ -258,12 +349,6 @@ class ValidationJsonEngineTest {
                             it + ".uncompared.source valid or null: " + u.getSource());
                     c.check(u.getSource() == null || u.getChannel() != null,
                             it + ".uncompared.source requires non-null channel");
-                    // 名称与 id 双写：id 必须能对回同一渠道 / 来源渠道。
-                    c.check(u.getChannel() == null ? u.getChannelId() == null
-                                    : u.getChannelId().equals(channelIds.get(u.getChannel())),
-                            it + ".uncompared.channelId matches channel name: " + u.getChannelId());
-                    c.check(u.getSourceId() == null || u.getChannelId() != null,
-                            it + ".uncompared.sourceId requires channelId");
                     c.check(nonBlank(u.getValue()), it + ".uncompared.value non-blank");
                     c.check(nonBlank(u.getNote()), it + ".uncompared.note non-blank");
                 }
@@ -275,29 +360,36 @@ class ValidationJsonEngineTest {
                     c.check("item".equals(l.getScope()) || "channel".equals(l.getScope()) || fieldScoped,
                             it + ".logs.scope in {item,channel,field}");
                     c.check(nonBlank(l.getText()), it + ".logs.text non-blank");
-                    // field 仅在 scope=field 时有值；field 非空时必须有 channelId / sourceId。
                     // 日志行**只写 id**（渠道 / 来源名称由查看器加载时按 id 从顶层登记表解析）。
                     c.check(fieldScoped == nonBlank(l.getField()),
                             it + ".logs.field only for scope=field: scope=" + l.getScope() + " field=" + l.getField());
-                    if (fieldScoped) {
-                        c.check(l.getChannelId() != null && l.getSourceId() != null,
-                                it + ".logs.field requires channelId and sourceId");
-                    }
-                    if ("channel".equals(l.getScope())) {
-                        c.check(l.getChannelId() != null, it + ".logs(channel).channelId present");
-                    }
                     c.check(l.getChannel() == null && l.getSource() == null,
                             it + ".logs 不写渠道 / 来源名称（只写 id）：channel=" + l.getChannel() + " source=" + l.getSource());
-                    // 名称若存在（老数据）必须与 id 一致（id 是权威）。
-                    c.check(l.getChannel() == null || l.getChannelId() == null
-                                    || l.getChannelId().equals(channelIds.get(l.getChannel())),
-                            it + ".logs.channelId matches channel name: " + l.getChannelId());
-                    c.check(l.getSourceId() == null || l.getChannelId() != null,
-                            it + ".logs.sourceId requires channelId");
+                    // id 必须能解析到本 item 里真实存在的渠道 / 来源，否则查看器会丢锚点。
+                    boolean channelScoped = l.getChannelId() != null;
+                    c.check(("item".equals(l.getScope())) == !channelScoped,
+                            it + ".logs item 级日志无 channelId，其余 scope 必须有：" + l.getChannelId());
+                    if (fieldScoped) {
+                        c.check(l.getSourceId() != null, it + ".logs(field) 需要 sourceId：" + l.getChannelId());
+                    }
+                    if (channelScoped) {
+                        Channel ch = chById.get(l.getChannelId());
+                        c.check(ch != null, it + ".logs.channelId 能解析到本 item 的渠道：" + l.getChannelId());
+                        if (ch != null && l.getSourceId() != null) {
+                            c.check(ch.getSources().stream().anyMatch(s -> s.getId().equals(l.getSourceId())),
+                                    it + ".logs.sourceId 能解析到该渠道下的来源渠道：" + l.getSourceId());
+                        }
+                    }
                 }
             }
         }
         if (dataset.getSkippedItems() != null) {
+            // skippedItems 仍保留 id（被跳过的 item 不在数据集里，锚点只能靠 id），
+            // 但 id 必须落在顶层登记表声明的范围内。
+            Set<Integer> declaredChIds = new HashSet<>();
+            dataset.getReportChannelDefs().forEach(d -> declaredChIds.add(d.getId()));
+            Set<Integer> declaredSrcIds = new HashSet<>();
+            dataset.getSourceChannelDefs().forEach(d -> declaredSrcIds.add(d.getId()));
             for (SkippedItem s : dataset.getSkippedItems()) {
                 c.check(nonBlank(s.getItemId()), "skippedItems.itemId non-blank");
                 c.check(nonBlank(s.getReason()), "skippedItems.reason non-blank");
@@ -305,14 +397,14 @@ class ValidationJsonEngineTest {
                         "skippedItems.channel valid or null: " + s.getChannel());
                 c.check(s.getSource() == null || Set.of("来源渠道 A", "来源渠道 B").contains(s.getSource()),
                         "skippedItems.source valid or null: " + s.getSource());
-                // 被跳过的 item 不在数据集里，id 只能按预设校验。
                 c.check(s.getChannel() == null || s.getChannelId() != null,
                         "skippedItems.channelId present with channel: " + s.getChannel());
-                c.check(s.getChannelId() == null
-                                || s.getChannelId().equals(ValidationJsonGenerator.CHANNEL_IDS.get(s.getChannel())),
-                        "skippedItems.channelId matches preset: " + s.getChannelId());
+                c.check(s.getChannelId() == null || declaredChIds.contains(s.getChannelId()),
+                        "skippedItems.channelId 必须已在 reportChannelDefs 里声明：" + s.getChannelId());
                 c.check(s.getSourceId() == null || s.getChannelId() != null,
                         "skippedItems.sourceId requires channelId");
+                c.check(s.getSourceId() == null || declaredSrcIds.contains(s.getSourceId()),
+                        "skippedItems.sourceId 必须已在 sourceChannelDefs 里声明：" + s.getSourceId());
             }
         }
         c.done();
@@ -455,7 +547,17 @@ class ValidationJsonEngineTest {
         c.check("multi".equals(manifest.path("mode").asText()), "manifest.mode == 'multi'");
         c.check(manifest.path("items").size() == dataset.getItems().size(), "manifest.items count matches");
         c.check(manifestItems.size() == dataset.getItems().size(), "splitToFiles returned one entry per item");
-        // 清单必须保留单文件模式的所有顶层字段（DATA_SCHEMA.md §2）。
+        // 清单必须保留单文件模式的所有顶层字段（DATA_SCHEMA.md §2）：三张登记表也在清单里。
+        c.check(manifest.path("reportChannelDefs").isArray() && manifest.path("reportChannelDefs").size() >= 3,
+                "manifest.reportChannelDefs 声明表存在");
+        c.check(manifest.path("sourceChannelDefs").isArray() && manifest.path("sourceChannelDefs").size() >= 2,
+                "manifest.sourceChannelDefs 声明表存在");
+        c.check(manifest.path("usedCtxKeyDefs").isObject() && !manifest.path("usedCtxKeyDefs").isEmpty(),
+                "manifest.usedCtxKeyDefs 声明表存在");
+        // 键顺序固定（docs/DATA_SCHEMA.md §1）：声明表 → usedCtxKeyDefs → skippedItems → items。
+        List<String> manifestKeys = new ArrayList<>();
+        manifest.fieldNames().forEachRemaining(manifestKeys::add);
+        c.check(ROOT_KEY_ORDER.equals(manifestKeys), "manifest 顶层键顺序：" + manifestKeys);
         c.check(manifest.path("reportEnv").asText().equals(dataset.getReportEnv()), "manifest.reportEnv matches");
         c.check(manifest.path("creationType").asText().equals(dataset.getCreationType()),
                 "manifest.creationType == dataset.creationType");
@@ -480,10 +582,15 @@ class ValidationJsonEngineTest {
 
             JsonNode itemJson = ValidationJsonGenerator.MAPPER.readTree(itemFile.toFile());
             c.check(it.getTradeId().equals(itemJson.path("tradeId").asText()), "item file tradeId matches");
+            // item 文件里只有 id 引用：字段定义在清单的 reportChannelDefs[].fieldDefs 里。
             c.check(itemJson.has("ctxDefs") && itemJson.has("channels")
-                            && itemJson.path("channels").size() > 0
-                            && itemJson.path("channels").get(0).has("fields"),
-                    "item file has ctxDefs/channels and channel.fields");
+                            && itemJson.path("channels").size() > 0,
+                    "item file has ctxDefs/channels");
+            JsonNode firstCh = itemJson.path("channels").get(0);
+            c.check(!firstCh.has("fieldDefs") && !firstCh.has("fields") && !firstCh.has("name"),
+                    "item 文件里的渠道只有 id 引用：" + firstCh);
+            c.check(firstCh.path("sources").size() > 0 && firstCh.path("sources").get(0).has("fields"),
+                    "item 文件里的来源渠道保留 fields（比对结果）：" + firstCh.path("sources"));
 
             ItemSummary s = mi.getSummary();
             c.check(s != null, "manifest[" + i + "].summary present");
@@ -545,47 +652,52 @@ class ValidationJsonEngineTest {
         return ValidationJsonGenerator.MAPPER.readTree(OUT_DIR.resolve(rel).toFile());
     }
 
-    private static Set<String> validateRegistry(Check c, Channel ch, String label) {
+    /** 字段定义登记表（{@code reportChannelDefs[].fieldDefs}）：返回该渠道里声明的字段 id 集合。 */
+    private static Set<String> validateRegistry(Check c, Channel def, String label) {
         Set<String> ids = new HashSet<>();
-        c.check(ch.getFields() != null && !ch.getFields().isEmpty(), label + ".fields non-empty");
-        if (ch.getFields() != null) {
-            for (FieldDef fd : ch.getFields()) {
-                c.check(nonBlank(fd.getId()), label + ".fields.id non-blank");
-                c.check(nonBlank(fd.getName()), label + ".fields.name non-blank");
-                c.check(nonBlank(fd.getUserTag()), label + ".fields.userTag non-blank");
-                c.check(nonBlank(fd.getType()), label + ".fields.type non-blank");
-                c.check(ids.add(fd.getId()), label + ".fields.id unique: " + fd.getId());
+        c.check(def.getFieldDefs() != null && !def.getFieldDefs().isEmpty(), label + ".fieldDefs non-empty");
+        if (def.getFieldDefs() != null) {
+            for (FieldDef fd : def.getFieldDefs()) {
+                c.check(nonBlank(fd.getId()), label + ".fieldDefs.id non-blank");
+                c.check(nonBlank(fd.getName()), label + ".fieldDefs.name non-blank");
+                c.check(nonBlank(fd.getUserTag()), label + ".fieldDefs.userTag non-blank");
+                c.check(nonBlank(fd.getType()), label + ".fieldDefs.type non-blank");
+                c.check(ids.add(fd.getId()), label + ".fieldDefs.id unique: " + fd.getId());
             }
         }
         return ids;
     }
 
-    private static void validateCtxDefs(Check c, ValidationItem item, String it) {
+    /**
+     * {@code item.ctxDefs[<ctxKey>] = { id, hits }}：定义在 {@code usedCtxKeyDefs} 里，
+     * item 只保留 id 引用与命中摘要。
+     */
+    private static void validateCtxDefs(Check c, ValidationItem item, String it, ValidationDataset ds) {
         c.check(item.getCtxDefs() != null && !item.getCtxDefs().isEmpty(), it + ".ctxDefs non-empty");
-        if (item.getCtxDefs() != null) {
-            Set<Integer> ids = new HashSet<>();
-            for (Map.Entry<String, CtxDef> e : item.getCtxDefs().entrySet()) {
-                CtxDef def = e.getValue();
-                c.check(nonBlank(e.getKey()), it + ".ctxDef key non-blank");
-                c.check(def.getId() != null && def.getId() > 0, it + ".ctxDef[" + e.getKey() + "].id positive");
-                if (def.getId() != null) {
-                    c.check(ids.add(def.getId()), it + ".ctxDef[" + e.getKey() + "].id unique: " + def.getId());
-                }
-                c.check(def.getScopes() != null && !def.getScopes().isEmpty(), it + ".ctxDef[" + e.getKey() + "].scopes non-empty");
-                if (def.getScopes() != null) {
-                    for (Integer t : def.getScopes()) {
-                        c.check(t != null && t >= 1 && t <= 3, it + ".ctxDef[" + e.getKey() + "].scopes in {1,2,3}");
-                    }
-                }
-                c.check("builtin".equals(def.getType()) || "user".equals(def.getType()),
-                        it + ".ctxDef[" + e.getKey() + "].type in {builtin,user}");
-                c.check(nonBlank(def.getDef()), it + ".ctxDef[" + e.getKey() + "].def non-blank");
-                c.check(nonBlank(def.getHits()), it + ".ctxDef[" + e.getKey() + "].hits non-blank");
+        if (item.getCtxDefs() == null) {
+            return;
+        }
+        Map<String, CtxKeyDef> defs = ds.getUsedCtxKeyDefs() == null ? Map.of() : ds.getUsedCtxKeyDefs();
+        Set<Integer> ids = new HashSet<>();
+        for (Map.Entry<String, CtxDef> e : item.getCtxDefs().entrySet()) {
+            CtxDef def = e.getValue();
+            String label = it + ".ctxDef[" + e.getKey() + "]";
+            c.check(nonBlank(e.getKey()), it + ".ctxDef key non-blank");
+            CtxKeyDef decl = defs.get(e.getKey());
+            c.check(decl != null, label + " 的 ctxKey 必须在 usedCtxKeyDefs 里声明");
+            c.check(def.getId() != null && def.getId() > 0, label + ".id positive");
+            if (decl != null) {
+                c.check(decl.getId().equals(def.getId()), label + ".id 与 usedCtxKeyDefs 声明一致：" + def.getId());
             }
+            if (def.getId() != null) {
+                c.check(ids.add(def.getId()), label + ".id unique: " + def.getId());
+            }
+            c.check(nonBlank(def.getHits()), label + ".hits non-blank");
         }
     }
 
     private static void validateChannel(Check c, Channel ch, String label, Set<String> fieldIds) {
+        // 这些定义由查看器 hydrate 从 reportChannelDefs 补回（item 文件里不重复写）。
         c.check(nonBlank(ch.getName()), label + ".name non-blank（由登记表 hydrate 补回）");
         c.check(nonBlank(ch.getDesc()), label + ".desc non-blank（由登记表 hydrate 补回）");
         c.check("xml".equals(ch.getFormat()) || "csv".equals(ch.getFormat()), label + ".format in {xml,csv}");
@@ -618,7 +730,7 @@ class ValidationJsonEngineTest {
 
     private static void validateField(Check c, Field f, String label, boolean csv, Set<String> fieldIds) {
         c.check(nonBlank(f.getId()), label + ".field.id non-blank");
-        c.check(fieldIds.contains(f.getId()), label + ".field.id references item.fields: " + f.getId());
+        c.check(fieldIds.contains(f.getId()), label + ".field.id references the channel fieldDefs: " + f.getId());
         c.check(f.getCmpLeft() != null && f.getCmpLeft().getCtxs() != null && !f.getCmpLeft().getCtxs().isEmpty(),
                 label + ".field.cmpLeft.ctxs non-empty");
         c.check("PASSED".equals(f.getResult()) || "FAILED".equals(f.getResult()), label + ".field.result in {PASSED,FAILED}");
@@ -630,19 +742,14 @@ class ValidationJsonEngineTest {
         if (left != null) {
             c.check(left.getValue() != null, label + ".field.cmpLeft.value present (may be empty for text fields)");
             c.check(nonBlank(left.getCtx()), label + ".field.cmpLeft.ctx non-blank (raw ctx expression)");
-            c.check(left.getSrcType() != null && (left.getSrcType() == 1 || left.getSrcType() == 2),
-                    label + ".field.cmpLeft.srcType in {1,2}");
+            // 期望值（EO）来自映射表，永远是 csv；实际值（AO）来自被比较的报文，格式随渠道。
+            c.check("csv".equals(left.getValueSrcFmt()), label + ".field.cmpLeft.valueSrcFmt == csv: " + left.getValueSrcFmt());
         }
         if (right != null) {
             c.check(right.getValue() != null, label + ".field.cmpRight.value present (may be empty for text fields)");
             c.check(nonBlank(right.getCtx()), label + ".field.cmpRight.ctx non-blank (raw ctx expression)");
-            c.check(right.getSrcType() != null && (right.getSrcType() == 1 || right.getSrcType() == 2),
-                    label + ".field.cmpRight.srcType in {1,2}");
-            if (csv) {
-                c.check(right.getSrcType() == 2, label + ".field.cmpRight.srcType == 2 for csv");
-            } else {
-                c.check(right.getSrcType() == 1, label + ".field.cmpRight.srcType == 1 for xml");
-            }
+            c.check((csv ? "csv" : "xml").equals(right.getValueSrcFmt()),
+                    label + ".field.cmpRight.valueSrcFmt 与渠道 format 一致：" + right.getValueSrcFmt());
         }
 
         // prints 保留待用（查看器详情页改为从 item.logs 读取该字段的关联日志行）；
@@ -662,14 +769,9 @@ class ValidationJsonEngineTest {
             c.check(nonBlank(m.getLevel()), label + ".level non-blank");
             c.check(nonBlank(m.getText()), label + ".text non-blank");
             c.check(m.getField() != null, label + ".field present (may be empty)");
-            // 名称与 id 双写：channelId 必须能对回 channel 名称，sourceId 不能脱离 channelId 单独存在。
-            c.check(m.getChannelId() != null
-                            && m.getChannelId().equals(ValidationJsonGenerator.CHANNEL_IDS.get(m.getChannel())),
-                    label + ".channelId matches channel name: " + m.getChannelId());
-            c.check(m.getSourceId() == null || m.getChannelId() != null,
-                    label + ".sourceId requires channelId");
-            c.check(m.getSourceId() == null || nonBlank(m.getSource()),
-                    label + ".sourceId implies a source name（名称与 id 双写）");
+            // 名称与 id 双写已移除：warnings / errors 只写名称（人工读的内容，名字更有可读性）。
+            c.check(!m.getChannel().isEmpty() && !m.getChannel().matches("\\d+"),
+                    label + ".channel 为渠道名称而非 id：" + m.getChannel());
         }
     }
 

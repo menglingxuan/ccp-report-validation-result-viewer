@@ -6,11 +6,12 @@
      *     -> 字段比较结果 { id, ctxs, cmpLeft, cmpRight, cvtLeft, cvtRight, vdt, result, remarks, resultText, resultDetails, prints, logs }
      *        （prints 保留待用；logs 为该字段关联的日志行，与 item.logs 中 scope="field" 的行同构）
      * item 级别: ctxDefs / warnings[] / errors[] / uncompared[] / logs[]
+     *        （ctxDefs 为 { <ctxKey>: { id, hits } }，定义在顶层 $root.usedCtxKeyDefs，加载时 hydrate 补回）；
      *        （logs 行 { scope, channelId, sourceId, field, text }：渠道 / 来源渠道只存 id，
      *         名称由加载时的 hydrateItem() 按 id 从顶层声明表补回（展示与筛选仍按名称）；
      *         field 仅 scope="field" 时有值，且此时 channelId / sourceId 均非空 —— 字段定位锚点据此建立；
      *         日志文本只是展示内容，**代码逻辑不得解析它**）
-     * 字段注册表在 channel.fields（report channel 级别）
+     * 字段注册表在顶层 reportChannelDefs[].fieldDefs（report channel 级别，加载时补回 item.channels[].fields）
      * ============================================================ */
 
     import {
@@ -2635,7 +2636,7 @@
         if (state.itemFilter === 'WARN' && s.warnings === 0) return false;
         if (state.itemPlatforms.length && state.itemPlatforms.indexOf(it.platform) === -1) return false;
         if (state.itemProducts.length && state.itemProducts.indexOf(it.product) === -1) return false;
-        if (state.itemTradeIds.length && state.itemTradeIds.indexOf(it.platformTradeId) === -1) return false;
+        if (state.itemTradeIds.length && state.itemTradeIds.indexOf(it.platformOriTradeId) === -1) return false;
         return true;
       });
       list.sort(function (a, b) { return b.reportDate.localeCompare(a.reportDate); });
@@ -2955,8 +2956,8 @@
         '<div class="item-info-row"><span class="iir-label">' + t('itemIdLabel') + '</span><span class="mono">' + esc(item.tradeId) + '</span>' + copyBtn(item.tradeId) + '</div>' +
         '<div class="item-info-row"><span class="iir-label">' + t('counterpartyLabel') + '</span>' + cp + copyBtn(item.counterpartyItemId) + '</div>' +
         cpNote +
-        '<div class="item-info-row"><span class="iir-label">' + t('platformTradeIdLabel') + '</span><span class="mono">' + esc(item.platformTradeId || t('counterpartyNone')) + '</span>' + copyBtn(item.platformTradeId) + '</div>' +
-        '<div class="item-info-row"><span class="iir-label">' + t('platformDealIdLabel') + '</span><span class="mono">' + esc(item.platformDealId || t('counterpartyNone')) + '</span>' + copyBtn(item.platformDealId) + '</div>';
+        '<div class="item-info-row"><span class="iir-label">' + t('platformOriTradeIdLabel') + '</span><span class="mono">' + esc(item.platformOriTradeId || t('counterpartyNone')) + '</span>' + copyBtn(item.platformOriTradeId) + '</div>' +
+        '<div class="item-info-row"><span class="iir-label">' + t('platformOriTradeDealIdLabel') + '</span><span class="mono">' + esc(item.platformOriTradeDealId || t('counterpartyNone')) + '</span>' + copyBtn(item.platformOriTradeDealId) + '</div>';
       const pop = openPopover(anchor, html, '', 340);
       // 鼠标进入浮层时保持展开，移出后延迟收起。
       pop.addEventListener('mouseover', function () { pop.__itemInfoHover = true; clearTimeout(ITEM_INFO_HIDE_TIMER); });
@@ -3781,7 +3782,7 @@
           });
           if (!pairs.length) html += '<div class="pop-empty">—</div>';
         } else {
-          const prop = isTradeId ? 'platformTradeId' : 'platform';
+          const prop = isTradeId ? 'platformOriTradeId' : 'platform';
           distinctValues(prop).forEach(v => {
             html += '<label class="col-option"><input type="checkbox" data-val="' + esc(v) + '"' + (state[field].indexOf(v) !== -1 ? ' checked' : '') + '> ' + esc(v) + '</label>';
           });
@@ -3873,7 +3874,7 @@
         case 'userTag': return '<td>' + userTagHTML(r.userTag) + '</td>';
         case 'aoEl': {
           const chip = COL_TAG
-            ? (r.srcType === 2
+            ? (r.valueSrcFmt === 'csv'
               ? '<span class="chip vt-code" title="' + t('modalAoCsvField') + '">CSV</span> '
               : '<span class="chip channel-chip" title="' + t('modalXPath') + '">XPath</span> ')
             : '';
@@ -4680,9 +4681,7 @@
       if (!fieldLogLines(it, ch.name, source, fd.id).length) return null;
       return { item: it, channel: ch.name, source: source, fieldId: fd.id };
     }
-    function canJumpToFieldLog(channel, source, field) { return !!resolveFieldLogTarget(channel, source, field); }
-
-    // 从字段比较 / 关联字段 / 字段详情跳转到「完整日志」中该字段关联的首个日志行并高亮。
+    // 从字段比较 / 字段详情跳转到「完整日志」中该字段关联的首个日志行并高亮。
     //   - 日志锚点要求 channel / source / field 三者齐备（数据契约）；
     //   - 文本搜索会过滤掉目标行，故先清空搜索；渠道 / 来源作用域同理——先按当前作用域尝试，
     //     找不到锚点时放宽到 ALL 再定位（保证「能跳过去」，同时尽量不动用户的筛选）。
@@ -4739,22 +4738,10 @@
       LOG_FIELD_SELECTION = hit ? key : '';
     }
 
-    /* 单击 / 双击共用链接（警告 / 错误的「关联字段」）：单击跳到主列表该字段位置，双击跳「完整日志」中
-     * 该字段的关联日志行。单击动作会切换选项卡（元素被重建），浏览器便不会再派发第二个 click，
-     * 因此「可跳日志」的链接把单击动作延后到双击判定窗口之后执行（窗口内出现第二次点击即视为双击）。
-     * 没有可定位日志行的链接不受影响，保持即时响应。
-     * 注：字段比较的「报告字段」已改为单击即时打开详情页（不再用双击手势）——那边详情页自带 ▸ 跳日志，
-     * 没必要让单击白白等 300ms。 */
-    const FIELD_CLICK_DELAY_MS = 300;
-    let FIELD_CLICK_TIMER = 0;
-    function cancelFieldClick() {
-      if (FIELD_CLICK_TIMER) { clearTimeout(FIELD_CLICK_TIMER); FIELD_CLICK_TIMER = 0; }
-    }
-    function scheduleFieldClick(single, channel, source, field) {
-      cancelFieldClick();
-      if (!canJumpToFieldLog(channel, source, field)) { single(); return; }
-      FIELD_CLICK_TIMER = setTimeout(function () { FIELD_CLICK_TIMER = 0; single(); }, FIELD_CLICK_DELAY_MS);
-    }
+    /* 字段比较的「报告字段」与警告 / 错误的「关联字段」都是**单击即时响应**（不做双击手势）：
+     * 前者的单击动作是打开比较详情页，后者是跳到主列表该字段位置。
+     * 要看某字段的关联日志行，统一走字段详情页标题后的 ▸（详情页自带日志入口），
+     * 因此两个入口都不需要延迟判定，也不会因双击而抢掉单击。 */
 
     function renderDisabledChannel(name) {
       const ch = CHANNELS.find(function (c) { return c.name === name; });
@@ -4853,14 +4840,27 @@
       LAST_FOCUS = null;
     }
 
-    // CtxKey 类型（数组）：1 字段映射规则 / 2 值转换规则 / 3 终值校验规则。
-    // 同一个 ctx key 的定义与求值可被多种规则共享，因此 type 为数组；
-    // 兼容旧数据的单值 number（归一化为单元素数组）。
-    const CTX_TYPE_META = {
-      1: { label: 'ctxTypeMapping' },
-      2: { label: 'ctxTypeConversion' },
-      3: { label: 'ctxTypeValidation' },
+    // ctxKey 参与哪些规则（数据契约，见 docs/DATA_SCHEMA.md §3）：
+    //   fdm = 字段映射规则 / cvt = 值转换规则 / vdt = 终值校验规则。
+    // 同一个 ctxKey 可被多种规则共享，因此 `rules` 是名称数组；旧数据的 1/2/3 编号会归一化为规则名。
+    const RULE_META = {
+      fdm: { label: 'ctxTypeMapping', cls: 't1' },
+      cvt: { label: 'ctxTypeConversion', cls: 't2' },
+      vdt: { label: 'ctxTypeValidation', cls: 't3' },
     };
+    const RULE_ORDER = ['fdm', 'cvt', 'vdt'];
+    const RULE_LEGACY = { 1: 'fdm', 2: 'cvt', 3: 'vdt' };
+    function ctxRulesOf(def) {
+      // rules 为规则名数组（fdm / cvt / vdt）；旧数据的 scopes（1/2/3 编号）也接受。
+      const source = def && def.rules != null ? def.rules : (def ? def.scopes : null);
+      const arr = Array.isArray(source) ? source : (source == null ? [] : [source]);
+      const picked = [];
+      arr.forEach(function (x) {
+        const name = typeof x === 'number' ? RULE_LEGACY[x] : String(x);
+        if (RULE_META[name] && picked.indexOf(name) === -1) picked.push(name);
+      });
+      return RULE_ORDER.filter(function (n) { return picked.indexOf(n) !== -1; });
+    }
     function ctxDefsOf() {
       const it = currentItem();
       return (it && it.ctxDefs) || {};
@@ -4874,12 +4874,8 @@
       }
       return { key: String(id), def: {} };
     }
-    function ctxScopes(id) {
-      const d = ctxDefById(id).def;
-      const s = d.scopes;
-      if (Array.isArray(s)) return s.filter(function (t) { return t === 1 || t === 2 || t === 3; });
-      if (s === 1 || s === 2 || s === 3) return [s];
-      return [];
+    function ctxRules(id) {
+      return ctxRulesOf(ctxDefById(id).def);
     }
     function ctxTagsHTML(ctxArr) {
       return (ctxArr || []).map(function (id) {
@@ -4908,12 +4904,12 @@
       closeRulePopup();
       const found = ctxDefById(ctxId);
       const def = found.def;
-      // 来源类型（builtin / user）放在 scopes 标签最前面，以不同样式区分。
+      // 来源类型（builtin / user）放在 rules 标签最前面，以不同样式区分。
       const origin = def.type === 'user' ? 'user' : 'builtin';
       const originBadge = '<span class="ctx-origin-badge ' + origin + '">' + (origin === 'user' ? t('ctxOriginUser') : t('ctxOriginBuiltin')) + '</span>';
-      // 命中详情显示所有 scopes（一个 ctx 可能同时用于多种规则）。
-      const typeBadges = ctxScopes(ctxId).map(function (tp) {
-        return '<span class="ctx-type-badge t' + tp + '">' + t(CTX_TYPE_META[tp].label) + '</span>';
+      // 命中详情显示该 ctx 参与的全部规则（一个 ctx 可能同时用于多种规则）。
+      const typeBadges = ctxRules(ctxId).map(function (r) {
+        return '<span class="ctx-type-badge ' + RULE_META[r].cls + '">' + t(RULE_META[r].label) + '</span>';
       }).join(' ');
       const pop = document.createElement('div');
       pop.className = 'ctx-def-popup';
@@ -6632,13 +6628,10 @@ export function parseHash(raw) {
         }
         const jfield = e.target.closest('[data-jump-field]');
         if (jfield) {
-          const jch = jfield.getAttribute('data-jch');
-          const jsrc = jfield.getAttribute('data-jsrc');
-          const jname = jfield.getAttribute('data-jump-field');
-          // 双击：跳「完整日志」中该字段的关联日志行（仅关联字段有值时才渲染为链接；
-          // 该列没有详情页，所以双击是它的唯一日志入口，单击因此需延后判定）。
-          if (e.detail > 1) { cancelFieldClick(); jumpToFieldLog(jch, jsrc, jname); return; }
-          scheduleFieldClick(function () { jumpToFieldRow(jch, jsrc, jname); }, jch, jsrc, jname);
+          // 单击即跳到主列表该字段位置。该链接**不再有双击手势**（双击要等 300ms 判定，
+          // 体验差；要看该字段的关联日志行请用字段详情页标题后的 ▸）。
+          jumpToFieldRow(jfield.getAttribute('data-jch'), jfield.getAttribute('data-jsrc'),
+            jfield.getAttribute('data-jump-field'));
           return;
         }
         const fmsg = e.target.closest('[data-field-msg]');

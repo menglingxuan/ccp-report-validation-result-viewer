@@ -250,37 +250,68 @@ test('enabledChannels 已彻底移除：落盘样例数据里也没有，且全�
   });
 });
 
-/* ---------------- 4.1 顶层登记表（channels / sources） ---------------- */
+/* ---------------- 4.1 顶层声明表（reportChannelDefs / sourceChannelDefs / usedCtxKeyDefs） ---------------- */
 
-test('登记表形态：定义只在顶层写一次（id/name/desc/format），item 里只留 id 引用', () => {
+test('声明表形态：定义只在顶层写一次（含 fieldDefs / format / usedCtxKeyDefs），item 里只留 id 引用', () => {
   const json = JSON.parse(read(path.join(PUBLIC_DIR, 'report-validation-data.json')));
-  assert.ok(Array.isArray(json.channels) && json.channels.length >= 3, '顶层 channels 登记表应存在');
-  assert.ok(Array.isArray(json.sources) && json.sources.length >= 2, '顶层 sources 登记表应存在');
-  // 登记表字段齐全，且与预设一致。
-  json.channels.forEach((c) => {
-    assert.equal(Number.isInteger(c.id) && c.id > 0, true, '登记表渠道必须有正整数 id');
-    assert.ok(c.name, '登记表渠道必须有 name');
-    assert.ok(['xml', 'csv'].includes(c.format), '登记表渠道必须有 format');
-    assert.equal(CHANNEL_ID_PRESET[c.name], c.id, '登记表渠道 ' + c.name + ' 的 id 应为预设值');
+  assert.ok(Array.isArray(json.reportChannelDefs) && json.reportChannelDefs.length >= 3, '顶层 reportChannelDefs 声明表应存在');
+  assert.ok(Array.isArray(json.sourceChannelDefs) && json.sourceChannelDefs.length >= 2, '顶层 sourceChannelDefs 声明表应存在');
+  assert.ok(json.usedCtxKeyDefs && Object.keys(json.usedCtxKeyDefs).length > 0, '顶层 usedCtxKeyDefs 声明表应存在');
+  // 声明表字段齐全，且与预设一致。
+  json.reportChannelDefs.forEach((c) => {
+    assert.equal(Number.isInteger(c.id) && c.id > 0, true, '声明表渠道必须有正整数 id');
+    assert.ok(c.name, '声明表渠道必须有 name');
+    assert.ok(['xml', 'csv'].includes(c.format), '声明表渠道必须有 format');
+    assert.equal(CHANNEL_ID_PRESET[c.name], c.id, '声明表渠道 ' + c.name + ' 的 id 应为预设值');
+    assert.ok(Array.isArray(c.fieldDefs) && c.fieldDefs.length > 0, '声明表渠道必须带 fieldDefs');
+    const ids = c.fieldDefs.map((d) => d.id);
+    assert.equal(new Set(ids).size, ids.length, '同一渠道内字段 id 必须唯一');
+    c.fieldDefs.forEach((d) => {
+      assert.ok(d.name && d.userTag && d.type, '字段定义必须带 name / userTag / type');
+    });
   });
-  json.sources.forEach((s) => {
-    assert.equal(Number.isInteger(s.id) && s.id > 0, true, '登记表来源渠道必须有正整数 id');
-    assert.ok(s.name, '登记表来源渠道必须有 name');
-    assert.equal(SOURCE_ID_PRESET[s.name], s.id, '登记表来源渠道 ' + s.name + ' 的 id 应为预设值');
-    assert.equal('fields' in s, false, '登记表的来源渠道不应带 fields（fields 属于 item 内的比较结果）');
+  // 不同报告渠道的字段 id 互不相同（数据集内唯一，见 docs/DATA_SCHEMA.md §3.7）。
+  const allFieldIds = json.reportChannelDefs.flatMap((c) => c.fieldDefs.map((d) => d.id));
+  assert.equal(new Set(allFieldIds).size, allFieldIds.length, '字段 id 应数据集内唯一（不同渠道即便同名也不同 id）');
+  json.sourceChannelDefs.forEach((s) => {
+    assert.equal(Number.isInteger(s.id) && s.id > 0, true, '声明表来源渠道必须有正整数 id');
+    assert.ok(s.name, '声明表来源渠道必须有 name');
+    assert.ok(['xml', 'csv'].includes(s.format), '声明表来源渠道必须有 format（csv / xml）');
+    assert.equal(SOURCE_ID_PRESET[s.name], s.id, '声明表来源渠道 ' + s.name + ' 的 id 应为预设值');
+    assert.equal('fields' in s, false, '声明表的来源渠道不应带 fields（fields 属于 item 内的比较结果）');
   });
-  // item 里只应有 id 引用：name/desc/format 不得重复出现（否则就是两份定义）。
+  Object.entries(json.usedCtxKeyDefs).forEach(([key, d]) => {
+    assert.equal(Number.isInteger(d.id) && d.id > 0, true, key + ' 必须有正整数 id');
+    assert.ok(Array.isArray(d.rules) && d.rules.length > 0, key + ' 必须有 rules');
+    d.rules.forEach((r) => assert.ok(['fdm', 'cvt', 'vdt'].includes(r), key + ' 的 rules 只能是 fdm / cvt / vdt'));
+    assert.ok(['builtin', 'user'].includes(d.type), key + ' 的 type 只能是 builtin / user');
+    assert.equal('hits' in d, false, 'hits 与 item 绑定，不写在顶层');
+  });
+  // item 里只应有 id 引用：定义不得重复出现（否则就是两份定义）。
   json.items.forEach((it) => {
     it.channels.forEach((ch) => {
       assert.equal('name' in ch, false, it.tradeId + ' 的 item 渠道不应重复写 name');
       assert.equal('desc' in ch, false, it.tradeId + ' 的 item 渠道不应重复写 desc');
       assert.equal('format' in ch, false, it.tradeId + ' 的 item 渠道不应重复写 format');
+      assert.equal('fields' in ch, false, it.tradeId + ' 的 item 渠道不应写字段定义（在 reportChannelDefs.fieldDefs）');
       ch.sources.forEach((s) => {
         assert.equal('name' in s, false, it.tradeId + ' 的 item 来源渠道不应重复写 name');
         assert.ok(Array.isArray(s.fields), 'item 来源渠道必须保留 fields（比较结果）');
       });
-      assert.ok(Array.isArray(ch.fields), 'item 渠道必须保留 fields（字段注册表）');
     });
+    Object.entries(it.ctxDefs || {}).forEach(([key, d]) => {
+      assert.equal(typeof d.id, 'number', it.tradeId + ' ctxDefs.' + key + ' 应有 id 引用');
+      assert.ok(typeof d.hits === 'string' || d.hits === undefined, 'hits 与 item 绑定');
+      assert.equal('rules' in d || 'type' in d || 'def' in d, false, 'item 内不写 ctxKey 定义');
+    });
+    // 比较规则只写 valueSrcFmt（字符串），不再有 srcType 数字。
+    it.channels.forEach((ch) => ch.sources.forEach((s) => s.fields.forEach((f) => {
+      ['cmpLeft', 'cmpRight'].forEach((rk) => {
+        if (!f[rk]) return;
+        assert.equal('srcType' in f[rk], false, 'srcType 已改名为 valueSrcFmt');
+        assert.ok(['csv', 'xml'].includes(f[rk].valueSrcFmt), it.tradeId + ' ' + rk + ' 应有 valueSrcFmt');
+      });
+    })));
   });
 });
 
@@ -300,49 +331,51 @@ test('登记表形态：hydrate 后名称被补回（渲染 / 搜索 / 忽略配
   // 反向：把定义重新提到顶层应得到等价结构（可逆变换）。  assert.deepEqual(hoistRegistries(hydrated), json, 'hoist(hydrate(x)) 应等于 x');
 });
 
-/* ---------------- 5. 名称 + id 引用（消息双写，日志只写 id） ---------------- */
+/* ---------------- 5. 名称 / id 引用（消息只写名称，日志与 skippedItems 写 id） ---------------- */
 
-test('引用：messages / uncompared / skippedItems 名称 + id 双写，logs 只写 id（hydrate 后名称齐备）', () => {
+test('引用：messages / uncompared 只写名称且必须已声明，logs / skippedItems 用 id 解析', () => {
   const json = hydrateDataset(JSON.parse(read(path.join(PUBLIC_DIR, 'report-validation-data.json'))));
+  const chNames = new Set((json.reportChannelDefs || []).map((c) => c.name));
+  const srcNames = new Set((json.sourceChannelDefs || []).map((s) => s.name));
   let checked = 0;
   json.items.forEach((it) => {
     const byChId = {};
-    const chIdByName = {};
     it.channels.forEach((ch) => {
       byChId[ch.id] = ch;
-      chIdByName[ch.name] = ch.id;
       ch.sources.forEach((s) => {
-        assert.equal(chIdByName[ch.name], ch.id);
         assert.equal(byChId[ch.id].sources.filter((x) => x.id === s.id).length, 1, '同渠道内来源 id 必须唯一');
       });
     });
-    const checkRef = (m, label) => {
-      if (m.channel == null) {
-        // 日志行只写 id：无名称是正常形态（名称由 hydrate 按 id 补回）。
-        if (!label.includes('.logs[')) {
-          assert.equal(m.channelId == null || m.channelId === undefined, true, label + ' 无渠道名时不应有 channelId');
-        }
-        return;
-      }
-      assert.equal(m.channelId, chIdByName[m.channel], label + ' channelId 与名称不一致');
-      if (m.source != null && m.source !== '') {
-        const src = byChId[m.channelId].sources.find((x) => x.name === m.source);
-        assert.ok(src, label + ' source 名称必须存在于该渠道');
-        assert.equal(m.sourceId, src.id, label + ' sourceId 与名称不一致');
+    // 消息段：只写名称，且名称必须已声明。
+    ['warnings', 'errors', 'uncompared'].forEach((k) => {
+      (it[k] || []).forEach((m, i) => {
+        const label = it.tradeId + '.' + k + '[' + i + ']';
+        assert.equal('channelId' in m || 'sourceId' in m, false, label + ' 消息段不应带 id');
+        if (m.channel != null && m.channel !== '') assert.ok(chNames.has(m.channel), label + ' channel 未声明：' + m.channel);
+        if (m.source != null && m.source !== '') assert.ok(srcNames.has(m.source), label + ' source 未声明：' + m.source);
+        checked++;
+      });
+    });
+    // 日志行：只写 id，名称由 hydrate 按 id 补回。
+    (it.logs || []).forEach((l, i) => {
+      if (l.channelId == null) return;
+      const ch = byChId[l.channelId];
+      assert.ok(ch, it.tradeId + '.logs[' + i + '] channelId 未声明：' + l.channelId);
+      assert.equal(l.channel, ch.name, it.tradeId + '.logs[' + i + '] 名称应由 id 解析回来');
+      if (l.sourceId != null) {
+        const src = ch.sources.find((x) => x.id === l.sourceId);
+        assert.ok(src, it.tradeId + '.logs[' + i + '] sourceId 不在该渠道内');
+        assert.equal(l.source, src.name, it.tradeId + '.logs[' + i + '] 来源名称应由 id 解析回来');
       }
       checked++;
-    };
-    (it.warnings || []).forEach((m, i) => checkRef(m, it.tradeId + '.warnings[' + i + ']'));
-    (it.errors || []).forEach((m, i) => checkRef(m, it.tradeId + '.errors[' + i + ']'));
-    (it.uncompared || []).forEach((m, i) => checkRef(m, it.tradeId + '.uncompared[' + i + ']'));
-    (it.logs || []).forEach((m, i) => checkRef(m, it.tradeId + '.logs[' + i + ']'));
+    });
   });
   (json.skippedItems || []).forEach((s, i) => {
     if (s.channel == null) return;
     assert.equal(s.channelId, CHANNEL_ID_PRESET[s.channel], 'skippedItems[' + i + '] channelId 应取预设');
     checked++;
   });
-  assert.ok(checked > 100, '应校验到足够多的双写引用，实际：' + checked);
+  assert.ok(checked > 100, '应校验到足够多的引用，实际：' + checked);
 });
 
 test('字段级日志行：名称与 id 齐备，且 id 就是渠道 / 来源 / 字段的稳定标识', () => {

@@ -47,20 +47,23 @@ class MinimalDataGeneratorTest {
         ValidationDataset ds = MinimalDataGenerator.generate();
         ValidationItem item = ds.getItems().get(0);
 
-        // 定义在顶层登记表里（item 里只有 id 引用）——与查看器 hydrateDataset 的契约一致。
-        assertEquals(1, ds.getChannels().size(), "顶层 channels 登记表");
-        assertEquals(1, ds.getSources().size(), "顶层 sources 登记表");
-        assertEquals("HKTR", ds.getChannels().get(0).getName());
-        assertEquals("xml", ds.getChannels().get(0).getFormat());
-        assertEquals("来源渠道 A", ds.getSources().get(0).getName());
+        // 定义在顶层声明表里（item 里只有 id 引用）——与查看器 hydrateDataset 的契约一致。
+        assertEquals(1, ds.getReportChannelDefs().size(), "顶层 reportChannelDefs 声明表");
+        assertEquals(1, ds.getSourceChannelDefs().size(), "顶层 sourceChannelDefs 声明表");
+        assertEquals("HKTR", ds.getReportChannelDefs().get(0).getName());
+        assertEquals("xml", ds.getReportChannelDefs().get(0).getFormat());
+        assertEquals(1, ds.getReportChannelDefs().get(0).getFieldDefs().size(), "字段定义在声明表里");
+        assertEquals("来源渠道 A", ds.getSourceChannelDefs().get(0).getName());
+        assertEquals("csv", ds.getSourceChannelDefs().get(0).getFormat(), "来源渠道声明带 format");
 
         assertEquals(1, item.getChannels().size());
         var channel = item.getChannels().get(0);
-        assertEquals(ds.getChannels().get(0).getId(), channel.getId(), "item 渠道只留 id 引用");
+        assertEquals(ds.getReportChannelDefs().get(0).getId(), channel.getId(), "item 渠道只留 id 引用");
         assertEquals(null, channel.getName(), "item 里不重复写渠道名");
+        assertEquals(null, channel.getFieldDefs(), "item 里不写字段定义");
 
         assertEquals(1, channel.getSources().size());
-        assertEquals(ds.getSources().get(0).getId(), channel.getSources().get(0).getId(), "item 来源渠道只留 id 引用");
+        assertEquals(ds.getSourceChannelDefs().get(0).getId(), channel.getSources().get(0).getId(), "item 来源渠道只留 id 引用");
         assertEquals(1, channel.getSources().get(0).getFields().size());
 
         var field = channel.getSources().get(0).getFields().get(0);

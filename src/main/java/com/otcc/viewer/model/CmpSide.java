@@ -23,8 +23,8 @@ public class CmpSide {
     private List<Integer> ctxs;
     /** Raw Excel mapping configuration text. */
     private String elRaw;
-    /** Source element: CCP XPath (srcType=1) or CSV field name (srcType=2). */
+    /** Source element: CCP XPath (valueSrcFmt=xml) or CSV field name (valueSrcFmt=csv). */
     private String el;
-    /** 1 = xpath (xml channel), 2 = csv field. */
-    private Integer srcType;
+    /** Where the value comes from: {@code csv} or {@code xml}. */
+    private String valueSrcFmt;
 }

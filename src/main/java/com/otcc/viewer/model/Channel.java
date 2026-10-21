@@ -44,15 +44,19 @@ public class Channel {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private String format;
     /**
-     * Item-level members ({@code files} / {@code fields} / {@code sources}) are NON_NULL: the same
-     * class also represents the dataset-level channel definition in {@code dataset.channels}, where
-     * none of them exist.
+     * Item-level members ({@code files} / {@code sources}) are NON_NULL: the same class also
+     * represents the dataset-level channel declaration in {@code dataset.reportChannelDefs},
+     * where none of them exist.
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private ChannelFiles files;
-    /** Field definition registry for this report channel ({@code channel.fields}). */
+    /**
+     * Field definition registry for this report channel ({@code reportChannelDefs[].fieldDefs}).
+     * Declared once at dataset level; the item only references field ids inside
+     * {@code channels[].sources[].fields[].id}.
+     */
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    private List<FieldDef> fields;
+    private List<FieldDef> fieldDefs;
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<Source> sources;
 }

@@ -15,14 +15,10 @@ import lombok.NoArgsConstructor;
 public class UncomparedEntry {
     /** 1 = xpath (xml channel), 2 = csv field (csv channel). */
     private Integer type;
-    /** Report channel; may be {@code null} (global uncompared entry). */
+    /** Report channel name (must be declared in {@code reportChannelDefs}); may be {@code null} (global uncompared entry). */
     private String channel;
-    /** Stable channel id (dual written with {@link #channel}); {@code null} for global entries. */
-    private Integer channelId;
-    /** Source channel; may be {@code null}; when non-null, {@code channel} is non-null too. */
+    /** Source channel name; may be {@code null}; when non-null, {@code channel} is non-null too. */
     private String source;
-    /** Stable source id (dual written with {@link #source}); only set when {@link #channelId} is set. */
-    private Integer sourceId;
     /** The XPath or CSV field name. */
     private String value;
     private String note;

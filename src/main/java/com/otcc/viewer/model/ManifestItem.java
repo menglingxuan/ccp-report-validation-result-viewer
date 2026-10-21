@@ -23,8 +23,8 @@ public class ManifestItem {
     private String product;
     private String productCategory;
     private String counterpartyItemId;
-    private String platformTradeId;
-    private String platformDealId;
+    private String platformOriTradeId;
+    private String platformOriTradeDealId;
     /** Relative path to the full item file (from the web root). */
     private String file;
     private ItemSummary summary;

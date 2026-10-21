@@ -204,12 +204,12 @@ localStorage（偏好 / 上次批次 / 置顶 / 忽略与收藏镜像）与 Inde
 | --- | --- | --- | --- |
 | `channel` | 报告渠道 | 报告渠道 | `channel.name` |
 | `source` | 来源渠道 | 来源渠道 | `source.name` |
-| `field` | 报告字段 | 字段名 | `channel.fields[].name` |
-| `userTag` | 用户标签 | 字段断言类型标签 | `channel.fields[].userTag` |
-| `type` | 类型 | 值类型 | `channel.fields[].type` |
+| `field` | 报告字段 | 字段名 | `reportChannelDefs[].fieldDefs[].name`（渲染时已 hydrate 到 item 渠道的 `fields` 上） |
+| `userTag` | 用户标签 | 字段断言类型标签 | `reportChannelDefs[].fieldDefs[].userTag`（同上） |
+| `type` | 类型 | 值类型 | `reportChannelDefs[].fieldDefs[].type`（同上） |
 | `ctxs` | 命中Ctx | 命中上下文（各规则 `ctxs` 的 id 并集，解析为 key） | `cmpLeft`/`cmpRight`/`cvtLeft`/`cvtRight`/`vdt` 的 `ctxs` 并集 |
 | `eoEl` | 表达式 (CMP-L) | 左侧（EO/来源）定位表达式 | `cmpLeft.el` |
-| `aoEl` | 表达式 (CMP-R) | 右侧（AO/报送）定位表达式（XPath 或 CSV 列） | `cmpRight.el`（srcType=1 为 XPath，srcType=2 为 CSV） |
+| `aoEl` | 表达式 (CMP-R) | 右侧（AO/报送）定位表达式（XPath 或 CSV 列） | `cmpRight.el`（`valueSrcFmt=xml` 为 XPath，`csv` 为 CSV 列） |
 | `eoCvtEl` | 表达式 (CVT-L) | EO 值转换规则表达式 | `cvtLeft.el` |
 | `aoCvtEl` | 表达式 (CVT-R) | AO 值转换规则表达式 | `cvtRight.el` |
 | `vdtEl` | 表达式 (VDT) | AO 终值校验规则表达式 | `vdt.el` |
