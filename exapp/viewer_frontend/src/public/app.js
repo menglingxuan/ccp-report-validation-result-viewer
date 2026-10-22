@@ -27,6 +27,8 @@
       logFieldKey, logAnchorId, isFieldLogLine,
       // 启用口径（channels[].enabled）与 id 引用解析统一由 core.js 提供，app.js 内不再自行判定。
       enabledChannelsOf, itemStatsPure, refChannelId, refSourceId,
+      // 契约版本号：数据契约（formatVersion）与配置结构（configVersion）两套白名单一处定义。
+      SUPPORTED_FORMAT_VERSIONS, SUPPORTED_CONFIG_VERSIONS, formatVersionSupported, configVersionSupported,
       // 顶层登记表（channels / sources）：加载时把定义补回 item，渲染 / 搜索 / 忽略配置仍按名称工作。
       registriesOf, hydrateDataset, hydrateItem,
     } from './core.js';
@@ -104,7 +106,6 @@
     /* ---------- 最近批次（多批次扫描） ---------- */
     let BATCHES_INDEX_URL = 'batches-index.json';
     let SCAN_API_URL = '';
-    const SUPPORTED_FORMAT_VERSIONS = [2];
     const BATCH_STORAGE_KEY = 'reportValidationBatch.v1';   // 基名（实际键见 storageKey）
     const PIN_STORAGE_KEY = 'reportValidationPin.v1';       // 基名（实际键见 storageKey）
     // 被「置顶为默认加载」的批次 id（持久化，冷/热启动时优先加载）。
@@ -194,6 +195,12 @@
           clearLocalCache: flag('clearLocalCache'),
           homeButton: flag('homeButton'),
         };
+
+        // 配置结构版本：只做提示，不阻止加载（与批次能否加载无关，后者看 batch-meta.json 的 formatVersion）。
+        if (cfg.configVersion !== undefined && !configVersionSupported(cfg.configVersion)) {
+          warn('config.configVersion=' + cfg.configVersion + ' 未被本查看器支持（支持：'
+            + SUPPORTED_CONFIG_VERSIONS.join(', ') + '），将按当前结构解析');
+        }
 
         if (cfg.urls && typeof cfg.urls === 'object') {
           if (typeof cfg.urls.data === 'string' && cfg.urls.data) DATA_URL = cfg.urls.data;
@@ -772,8 +779,10 @@
       prunePinnedBatch();
       BATCH_STATE.loaded = true;
     }
+    // 批次能否加载：只看批次元数据里的 formatVersion 是否在支持列表内
+    // （config.json 的 configVersion 是另一套版本号，不参与这个判定）。
     function batchCompatible(b) {
-      return SUPPORTED_FORMAT_VERSIONS.indexOf(Number(b && b.formatVersion)) !== -1;
+      return formatVersionSupported(b && b.formatVersion);
     }
     function batchSortVal(b) { return String(b.executedAt || b.date || ''); }
     function isBatchPending(b) { return !!(b && BATCH_STATE.pendingDeletes[b.batchId]); }

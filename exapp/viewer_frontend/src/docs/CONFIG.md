@@ -26,7 +26,7 @@ REPORT_VIEWER_CONFIG=prod node server.js
 
 | 键 | 类型 | 说明 |
 |---|---|---|
-| `configVersion` | 整数 | 配置结构版本号（当前 `2`） |
+| `configVersion` | 整数 | 配置结构版本号（当前 `3`；支持 `2` / `3`）。**与批次的 `formatVersion` 是两套独立版本号**：`configVersion` 只表达配置文件结构的演进，不参与「批次能否加载」的判定（后者看 `batch-meta.json` 的 `formatVersion`，见 [`DATA_SCHEMA.md`](DATA_SCHEMA.md)）；高于支持范围时仅在浏览器控制台告警，不阻止加载 |
 | `server` | 对象 | HTTP 服务配置（仅服务端使用） |
 | `scan` | 对象 | 批次扫描配置（服务端使用） |
 | `runType` | 字符串 | 运行环境（`dev` / `test` / `prod`） |

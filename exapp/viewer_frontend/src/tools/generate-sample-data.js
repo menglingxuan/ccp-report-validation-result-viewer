@@ -10,6 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDataset, splitToFiles } from '../lib/sample-data.js';
 import { writeJSON as writeJSONFile } from '../lib/json-write.js';
+import { CURRENT_FORMAT_VERSION } from '../public/core.js';
 
 const TOOLS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SRC_ROOT = path.dirname(TOOLS_DIR);
@@ -72,7 +73,7 @@ function writeMultiBatch(dir, dataset) {
     batchName: 'split-20260816',
     date: '2026-08-16',
     executedAt: '2026-08-16T17:00:00+08:00',
-    formatVersion: 2,
+    formatVersion: CURRENT_FORMAT_VERSION,
     dataUrl: 'report-validation-data.json',
     ignoreUrl: 'ignore-config-by-platform.json',
     summary: { items: dataset.items.length, channels: 3 },
@@ -172,7 +173,7 @@ function writeSpecialBatch(def) {
     batchName: def.batchName,
     date: def.day,
     executedAt: def.executedAt,
-    formatVersion: 2,
+    formatVersion: CURRENT_FORMAT_VERSION,
     creationType: 'sample',
     dataUrl: 'report-validation-data.json',
     ignoreUrl: 'ignore-config-by-platform.json',

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.otcc.viewer.model.BatchMeta;
+import com.otcc.viewer.model.ContractVersion;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -53,7 +54,7 @@ public final class BasicBatchMetaGenerator {
                 .batchName("basic-" + date.replace("-", ""))
                 .date(date)
                 .executedAt(date + "T00:00:00+08:00")
-                .formatVersion(2)
+                .formatVersion(ContractVersion.FORMAT_VERSION)
                 .cwd(System.getProperty("user.dir"))
                 .commandLine(List.of("java", "-jar", "ccp-report.jar", "--job=basic",
                         "--date=" + date, "--channels=HKTR,JSFA,CFTC"))

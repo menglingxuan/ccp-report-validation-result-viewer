@@ -2,6 +2,7 @@ package com.otcc.viewer.generator;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.otcc.viewer.model.BatchMeta;
+import com.otcc.viewer.model.ContractVersion;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -61,7 +62,7 @@ class BasicBatchMetaGeneratorTest {
 
         JsonNode root = BasicBatchMetaGenerator.MAPPER.readTree(file.toFile());
         assertEquals("batch-basic-0001", root.path("batchId").asText());
-        assertEquals(2, root.path("formatVersion").asInt());
+        assertEquals(ContractVersion.FORMAT_VERSION, root.path("formatVersion").asInt());
         assertEquals(1, root.path("summary").path("items").asInt());
         assertEquals(3, root.path("summary").path("channels").asInt());
     }

@@ -42,6 +42,7 @@
   - 开关 `features.clearLocalCache`（`config.json` / dev / test 默认 `true`，**prod 默认 `false`**，关闭时按钮隐藏）；服务器端数据（批次、收藏夹、忽略配置）不受影响。其它已打开的标签页建议一并刷新，否则可能把旧状态写回。
 - **主页（顶栏）**：同一排新增按钮（简约房子内联 SVG 图标，与帮助 / 清除按钮同一套 30×30 圆形按钮与 15×15 图标尺寸，画布占比对齐；hover 提示「回到站点根」/ Back to Site Root），点击回到站点根（`origin + pathname`，不带查询参数与深链接）并重新加载页面（先 `history.replaceState` 去掉 query/hash，避免被查看器的 `syncHash` 写回，再 `location.reload`）；与启动失败提示条里的「回到主页」链接共用 `webRootUrl()`；开关 `features.homeButton`（prod 默认 `false`）。
 - **版本兼容性合并到版本号标签**：批次列表卡片、dock 悬停小卡片与批次详情的标签行统一由 `batchBadgesHTML` 渲染，不再单独展示「版本兼容 / 版本不兼容」标签，兼容性以版本号标签的配色 + title 提示表达；详情标签与卡片一致（仅不含 item 数量标签）。
+  - **两套版本号不要混用**：批次能否加载只看 `batch-meta.json` 的 `formatVersion`（查看器白名单 `SUPPORTED_FORMAT_VERSIONS = [2, 3]`，当前生成器写 `3`）；`config.json` 的 `configVersion` 只是**配置结构**版本（当前 `3`），**不参与**兼容判定（超出范围仅在控制台告警）。二者常量集中在 `public/core.js`，Java 侧对应 `model/ContractVersion`。
 - **Item 关联属性浮层（hover 展示）**：主列表「报告日期」左侧的 item id **鼠标悬停**即弹出（原为点击），移出后延迟收起；鼠标进入浮层内部保持展开，便于点击复制。浮层首行为带标签的 `Item ID` 行并附复制按钮（其余行为对手方 Item ID / 平台 Trade ID / 平台 Trade Deal ID，均带复制按钮）。
 - **激活筛选标签（chips）与「清除全部」**：
   - Item 列表（左栏）与批次列表都会在列表上方显示当前激活的筛选标签（Item：**报告日期** / 状态 / 平台 / 产品 / TradeId；批次：名称 / 命令行 / 描述 / 日期 / 环境 / 标签），主列表字段筛选同样沿用该样式。批次标签位于列表上方的**独立区域**（在拖动标记之上，不随列表高度拖拽变化，无标签时自动收起）。

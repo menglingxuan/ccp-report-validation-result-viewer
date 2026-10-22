@@ -23,6 +23,7 @@ import { buildDataset, splitToFiles } from '../lib/sample-data.js';
 import { stringifyJSON } from '../lib/json-write.js';
 import { validateDataset } from '../lib/validate.js';
 import { scan } from '../lib/scanner.js';
+import { CURRENT_FORMAT_VERSION } from '../public/core.js';
 
 const TOOLS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SRC_ROOT = path.dirname(TOOLS_DIR);
@@ -67,7 +68,7 @@ function batchMeta(id, items, dataset) {
     batchName: id,
     date: '2026-08-16',
     executedAt: '2026-08-16T10:00:00+08:00',
-    formatVersion: 2,
+    formatVersion: CURRENT_FORMAT_VERSION,
     creationType: 'sample',
     dataUrl: 'report-validation-data.json',
     ignoreUrl: 'ignore-config-by-platform.json',

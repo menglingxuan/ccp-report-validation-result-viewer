@@ -459,6 +459,7 @@ item 里只保留**命中引用 + 命中摘要**：
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
+| `formatVersion` | integer | **数据契约版本**，决定该批次能否被查看器加载：查看器支持 `[2, 3]`（`public/core.js` 的 `SUPPORTED_FORMAT_VERSIONS`，当前生成器写 `3`）。缺省时扫描器按当前版本（`3`）填充。**与 `config.json` 的 `configVersion` 无关**——后者是配置结构版本 |
 | `deleted` | boolean | 软删除标记。扫描器**不跳过**该批次，而是写入索引并带 `deleted: true`（默认范围不展示，需切到「全部批次(含已删除)」范围） |
 | `favorite` | boolean | 收藏标记（回写元数据，扫描后仍保留） |
 | `tags` | string[] | 自定义批次标签。清洗规则（`lib/scanner.js` 的 `sanitizeTags`）：去空白、去重、单个最长 24 字符、最多 12 个；空数组等同未定义 |

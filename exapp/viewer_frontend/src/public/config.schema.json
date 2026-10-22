@@ -26,8 +26,8 @@
     },
     "configVersion": {
       "type": "integer",
-      "description": "配置结构版本号，用于将来迁移/兼容。当前为 2。",
-      "default": 2
+      "description": "配置结构版本号（当前为 3）。注意：它与 batch-meta.json 的 formatVersion（数据契约版本）是两套独立的版本号，不参与批次能否加载的判定。",
+      "default": 3
     },
     "runType": {
       "type": "string",

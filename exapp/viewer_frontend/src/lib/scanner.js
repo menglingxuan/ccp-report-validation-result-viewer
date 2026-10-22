@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateDataset } from './validate.js';
+import { CURRENT_FORMAT_VERSION } from '../public/core.js';
 
 const LIB_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SRC_ROOT = path.dirname(LIB_DIR);
@@ -182,7 +183,7 @@ export async function scan(opts) {
       batchName: batchName,
       date: String(date),
       executedAt: String(executedAt),
-      formatVersion: typeof meta.formatVersion === 'number' ? meta.formatVersion : 2,
+      formatVersion: typeof meta.formatVersion === 'number' ? meta.formatVersion : CURRENT_FORMAT_VERSION,
       dataUrl: resolveMetaDataUrl(dir, meta.dataUrl) || relToIndex(dataPath),
       ignoreUrl: meta.ignoreUrl || null,
       path: toWeb(dir),

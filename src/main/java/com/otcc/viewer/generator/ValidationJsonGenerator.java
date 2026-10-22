@@ -10,6 +10,7 @@ import com.otcc.viewer.model.BatchMeta;
 import com.otcc.viewer.model.Channel;
 import com.otcc.viewer.model.ChannelFiles;
 import com.otcc.viewer.model.CmpSide;
+import com.otcc.viewer.model.ContractVersion;
 import com.otcc.viewer.model.ConversionRule;
 import com.otcc.viewer.model.CtxDef;
 import com.otcc.viewer.model.CtxKeyDef;
@@ -1419,7 +1420,7 @@ public final class ValidationJsonGenerator {
 
     public static ValidationConfig generateConfig() {
         return ValidationConfig.builder()
-                .configVersion(2)
+                .configVersion(ContractVersion.CONFIG_VERSION)
                 .runType("dev")
                 .urls(ValidationConfig.Urls.builder()
                         .data("report-validation-data.json")
@@ -1479,7 +1480,7 @@ public final class ValidationJsonGenerator {
                 .batchName("nightly-20260816")
                 .date("2026-08-16")
                 .executedAt("2026-08-16T04:00:00+08:00")
-                .formatVersion(2)
+                .formatVersion(ContractVersion.FORMAT_VERSION)
                 .cwd(System.getProperty("user.dir"))
                 .commandLine(List.of("java", "-jar", "ccp-report.jar", "--job=nightly",
                         "--date=2026-08-16", "--channels=HKTR,JSFA,CFTC"))

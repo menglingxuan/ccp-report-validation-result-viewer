@@ -250,6 +250,7 @@ Java 侧目标：
 8. **`pure-logic.test.js` 要用 hydrate 后的数据断言**：原始数据没有名称 / `fields`，直接断言会得到 UNDEFINED 噪声。
 9. **环境坑**：VS Code 终端会吞 `cd`（一律用绝对路径）；PowerShell 里 `node` 的标准输入是 GBK（脚本内不要放中文，或用 `\uXXXX`）；`create_file` 拒绝覆盖已存在路径。
 10. **Java 测试落盘目录**：`OUT_DIR = Path.of("generated")` 是相对 **maven 进程 cwd**（仓库根），不是 PowerShell 的 location。
+11. **两套版本号不要混用**：批次能否加载只看 `batch-meta.json` 的 `formatVersion`（白名单在 `public/core.js`，当前 `[2, 3]`）；`config.json` 的 `configVersion` 是配置结构版本，**不参与**兼容判定。历史上因为 `configVersion` 从未被读取，改它看起来「应该生效但实际无效」—— 现已集中到 `core.js` / Java `ContractVersion`，并用 `test/version-contract.test.js` 锁定一致性。
 
 ---
 

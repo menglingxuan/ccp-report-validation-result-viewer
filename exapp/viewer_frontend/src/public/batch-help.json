@@ -83,7 +83,8 @@
           "主配置文件 report-validation-config.json 控制数据源、功能开关、界面默认值与批次行为。"
         ],
         "items": [
-          "configVersion：配置结构版本号（当前 2）",
+          "configVersion：配置结构版本号（当前 3，支持 2/3）",
+          "formatVersion（batch-meta.json）：数据契约版本，决定批次能否加载（查看器支持 [2, 3]，当前 3）——与 configVersion 无关",
           "runType：运行环境 dev / test / prod —— 未显式声明的 features 在 dev/test 默认开、prod 默认关",
           "urls：数据 / 忽略规则 / 批次索引路径（data / ignore / batches）",
           "ui：界面默认项（lang / theme / sidebarMode / sidebarWidth / reportCatDefault / batchDockSide / progressBarStyle）",
@@ -213,7 +214,8 @@
           "主配置文件 report-validation-config.json 控制數據源、功能開關、介面預設值與批次行為。"
         ],
         "items": [
-          "configVersion：配置結構版本號（當前 2）",
+          "configVersion：配置結構版本號（當前 3，支援 2/3）",
+          "formatVersion（batch-meta.json）：數據契約版本，決定批次能否加載（查看器支援 [2, 3]，當前 3）——與 configVersion 無關",
           "runType：運行環境 dev / test / prod —— 未顯式聲明的 features 在 dev/test 預設開、prod 預設關",
           "urls：數據 / 忽略規則 / 批次索引路徑（data / ignore / batches）",
           "ui：介面預設項（lang / theme / sidebarMode / sidebarWidth / reportCatDefault / batchDockSide / progressBarStyle）",
@@ -343,7 +345,8 @@
           "The main config report-validation-config.json controls data sources, feature flags, UI defaults, and batch behavior."
         ],
         "items": [
-          "configVersion: config schema version (currently 2)",
+          "configVersion: config schema version (currently 3; 2 and 3 supported)",
+          "formatVersion (batch-meta.json): data-contract version that decides whether a batch can load ([2, 3] supported, currently 3) — unrelated to configVersion",
           "runType: environment dev / test / prod — undeclared features default on in dev/test, off in prod",
           "urls: data / ignore / batch index paths (data / ignore / batches)",
           "ui: UI defaults (lang / theme / sidebarMode / sidebarWidth / reportCatDefault / batchDockSide / progressBarStyle)",
