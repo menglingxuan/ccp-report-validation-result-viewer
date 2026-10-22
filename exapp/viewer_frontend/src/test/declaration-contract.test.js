@@ -69,39 +69,55 @@ test('契约：item 引用的渠道 / 来源渠道 / 字段 / ctxKey 必须已�
   assert.ok(undeclaredCtx.errors.some((e) => e.includes('引用了未在 usedCtxKeyDefs 声明的 ctx id：7')), JSON.stringify(undeclaredCtx.errors));
 });
 
-test('契约：旧形态（定义写在 item 里、顶层无声明）不再合法，hoistRegistries 可迁移', () => {
-  const legacy = {
+test('契约：hoistRegistries 把 item 内的定义提到声明表（生成器的内部形态）', () => {
+  const flat = {
     mode: 'single',
     items: [{
       tradeId: 'T-1',
       reportDate: '2026-08-16',
-      ctxDefs: { [CTX_KEY]: { id: 1, scopes: [1], type: 'builtin', def: 'HKTR 默认上下文', hits: 'h' } },
+      ctxDefs: { [CTX_KEY]: { id: 1, rules: ['fdm'], type: 'builtin', def: 'HKTR 默认上下文', hits: 'h' } },
       channels: [{
         id: 1, name: 'HKTR', desc: 'D', format: 'xml',
-        fields: [{ id: '1', name: 'tradeId', userTag: 'contextAssertion', type: 'id' }],
-        sources: [{ id: 1, name: SRC_A, fields: [{ id: '1', cmpLeft: { srcType: 2 }, cmpRight: { srcType: 1, ctxs: [1] } }] }],
+        fields: [FIELD],
+        sources: [{ id: 1, name: SRC_A, fields: [{ id: '1', cmpLeft: { valueSrcFmt: 'csv' }, cmpRight: { valueSrcFmt: 'xml', ctxs: [1] } }] }],
       }],
     }],
   };
-  const r = validateDataset(legacy);
-  assert.equal(r.ok, false);
-  assert.ok(r.errors.some((e) => e.includes('未在顶层 reportChannelDefs 声明表里声明')), JSON.stringify(r.errors));
-  assert.ok(r.errors.some((e) => e.includes('未在顶层 sourceChannelDefs 声明表里声明')), JSON.stringify(r.errors));
+  // hoist 之前：定义散在 item 里、顶层无声明表 → 不合契约。
+  assert.equal(validateDataset(flat).ok, false, '未 hoist 的形态不应通过校验');
 
-  // 迁移工具 / 生成器的归一化步骤（hoistRegistries）把它转成声明表形态，转换后即合规。
-  const migrated = hoistRegistries(JSON.parse(JSON.stringify(legacy)));
+  const migrated = hoistRegistries(JSON.parse(JSON.stringify(flat)));
   assert.deepEqual(migrated.reportChannelDefs, [{
     id: 1, name: 'HKTR', desc: 'D', format: 'xml',
-    fieldDefs: [{ id: '1', name: 'tradeId', userTag: 'contextAssertion', type: 'id' }],
+    fieldDefs: [FIELD],
   }]);
   assert.deepEqual(migrated.sourceChannelDefs, [{ id: 1, name: SRC_A, format: 'csv' }]);
   assert.deepEqual(migrated.usedCtxKeyDefs, { [CTX_KEY]: { id: 1, type: 'builtin', rules: ['fdm'], def: 'HKTR 默认上下文' } });
   assert.deepEqual(migrated.items[0].ctxDefs, { [CTX_KEY]: { id: 1, hits: 'h' } }, 'item 内只留 { id, hits }');
   assert.equal('fields' in migrated.items[0].channels[0], false, 'item 内不再写字段定义');
-  // 比较规则的 srcType（数字）归一为 valueSrcFmt（字符串）。
-  assert.equal(migrated.items[0].channels[0].sources[0].fields[0].cmpRight.valueSrcFmt, 'xml');
-  assert.equal('srcType' in migrated.items[0].channels[0].sources[0].fields[0].cmpLeft, false);
+  assert.equal(migrated.items[0].channels[0].sources[0].fields[0].cmpRight.valueSrcFmt, 'xml', 'valueSrcFmt 原样保留');
   assert.equal(validateDataset(migrated).ok, true, JSON.stringify(validateDataset(migrated).errors));
+});
+
+test('契约：旧字段名不再被归一化（srcType / scopes 一律视为非法）', () => {
+  // P1 起 core.js 不再做「旧值→新值」归一，旧字段名交由校验器报错。
+  const legacy = hoistRegistries({
+    mode: 'single',
+    items: [{
+      tradeId: 'T-1', reportDate: '2026-08-16',
+      ctxDefs: { [CTX_KEY]: { id: 1, scopes: [1], type: 'builtin', def: 'D', hits: 'h' } },
+      channels: [{
+        id: 1, name: 'HKTR', fields: [FIELD],
+        sources: [{ id: 1, name: SRC_A, fields: [{ id: '1', cmpLeft: { srcType: 2 }, cmpRight: { srcType: 1, ctxs: [1] } }] }],
+      }],
+    }],
+  });
+  assert.deepEqual(legacy.usedCtxKeyDefs[CTX_KEY].rules, [], 'scopes 不再被读成 rules');
+  assert.equal('srcType' in legacy.items[0].channels[0].sources[0].fields[0].cmpLeft, true, 'srcType 不再被改名');
+  const r = validateDataset(legacy);
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => e.includes('rules 必须是')), JSON.stringify(r.errors));
+  assert.ok(r.errors.some((e) => e.includes('srcType 已改名')), JSON.stringify(r.errors));
 });
 
 // 顶层键顺序固定（docs/DATA_SCHEMA.md §1）：声明表读在数据前，skippedItems 紧跟声明表之后。
@@ -123,8 +139,8 @@ test('契约：顶层键顺序为 …声明表 → usedCtxKeyDefs → skippedIte
   const noSkip = hoistRegistries({ mode: 'single', reportEnv: 'E', creationType: 'sample', items: [item()] });
   assert.deepEqual(Object.keys(noSkip), EXPECTED_ROOT_ORDER.filter((k) => k !== 'skippedItems'));
 
-  // 落盘数据同序（单文件主数据 / 默认模板数据 + 多文件清单）。
-  ['report-validation-data.json', 'report-validation-data-default.json'].forEach((name) => {
+  // 落盘数据同序（单文件主数据 + 多文件清单）。
+  ['report-validation-data.json'].forEach((name) => {
     const json = JSON.parse(fs.readFileSync(path.join(PUBLIC_DIR, name), 'utf8'));
     assert.deepEqual(Object.keys(json), EXPECTED_ROOT_ORDER, name + ' 顶层键顺序');
   });
@@ -173,11 +189,11 @@ test('生成器：hoistRegistries 会把 skippedItems 的引用补进声明表�
     mode: 'single',
     items: [{
       tradeId: 'T-1', reportDate: 'd',
-      ctxDefs: { [CTX_KEY]: { id: 1, scopes: [1], type: 'builtin', def: 'D', hits: 'h' } },
+      ctxDefs: { [CTX_KEY]: { id: 1, rules: ['fdm'], type: 'builtin', def: 'D', hits: 'h' } },
       channels: [{
         id: 1, name: 'HKTR', desc: 'D', format: 'xml',
         fields: [{ id: 1, name: 'tradeId', userTag: 'contextAssertion', type: 'id' }],
-        sources: [{ id: 1, name: SRC_A, fields: [{ id: '1', cmpLeft: { srcType: 2 }, cmpRight: { srcType: 1, ctxs: [1] } }] }],
+        sources: [{ id: 1, name: SRC_A, fields: [{ id: '1', cmpLeft: { valueSrcFmt: 'csv' }, cmpRight: { valueSrcFmt: 'xml', ctxs: [1] } }] }],
       }],
     }],
     // 被跳过的 item 用了 JSFA / 来源渠道 B，而所有 item 里都没有它们：
@@ -284,7 +300,7 @@ test('落盘样例数据：多文件批次清单的声明表覆盖 item 文件�
 });
 
 test('落盘样例数据：声明表覆盖所有引用（含 skippedItems），且声明项与预设一致', () => {
-  ['report-validation-data.json', 'report-validation-data-default.json'].forEach((name) => {
+  ['report-validation-data.json'].forEach((name) => {
     const json = JSON.parse(fs.readFileSync(path.join(PUBLIC_DIR, name), 'utf8'));
     const chById = new Map((json.reportChannelDefs || []).map((c) => [c.id, c]));
     const srcIds = new Set((json.sourceChannelDefs || []).map((s) => s.id));

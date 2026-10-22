@@ -496,7 +496,7 @@ export function validateFile(filePath) {
 
 export function main() {
   const argv = process.argv.slice(2);
-  const files = argv.length ? argv : ['public/report-validation-data.json', 'public/report-validation-data-default.json', 'public/report-validation-data-init.json'];
+  const files = argv.length ? argv : ['public/report-validation-data.json'];
   let fail = 0;
   files.forEach(function (f) {
     const r = validateFile(f);

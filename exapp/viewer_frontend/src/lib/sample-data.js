@@ -759,24 +759,12 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
       // 清单与单文件模式保留同一套顶层字段：三张声明表（reportChannelDefs / sourceChannelDefs /
       // usedCtxKeyDefs）必须一并写入，否则 item 文件里的 id 引用无从解析（见 docs/DATA_SCHEMA.md §2）。
       // 键顺序固定为 `…声明表 → usedCtxKeyDefs → skippedItems → items`。
-      // 健壮性：调用方可能只传 items（例如按切片写批次）。此时若 item 里还残留定义（老形态），
-      // 先补出声明表，避免写出的清单缺声明（id-only 的 item 无法反推定义，只能由调用方传入）。
-      const hasItemDefs = (dataset.items || []).some(function (it) {
-        return (it.channels || []).some(function (ch) { return ch.name != null || ch.desc != null || ch.format != null; });
-      });
-      let declaredChannels = dataset.reportChannelDefs;
-      let declaredSources = dataset.sourceChannelDefs;
-      let declaredCtx = dataset.usedCtxKeyDefs;
-      if ((declaredChannels == null || declaredSources == null || declaredCtx == null) && hasItemDefs) {
-        const probe = hoistRegistries({
-          skippedItems: dataset.skippedItems,
-          items: (dataset.items || []).map(function (it) {
-            return { tradeId: it.tradeId, channels: it.channels, ctxDefs: it.ctxDefs };
-          }),
-        });
-        if (declaredChannels == null) declaredChannels = probe.reportChannelDefs;
-        if (declaredSources == null) declaredSources = probe.sourceChannelDefs;
-        if (declaredCtx == null) declaredCtx = probe.usedCtxKeyDefs;
+      // 声明表必须由调用方提供：item 里只有 id 引用，无法反推定义，因此缺了就直接报错（不做兜底探测）。
+      const declaredChannels = dataset.reportChannelDefs;
+      const declaredSources = dataset.sourceChannelDefs;
+      const declaredCtx = dataset.usedCtxKeyDefs;
+      if (declaredChannels == null || declaredSources == null || declaredCtx == null) {
+        throw new Error('splitToFiles: 数据集缺少声明表（reportChannelDefs / sourceChannelDefs / usedCtxKeyDefs 必须由调用方提供）');
       }
       const manifest = {
         mode: 'multi', reportEnv: dataset.reportEnv, creationType: dataset.creationType || 'sample',

@@ -32,8 +32,6 @@ public class ValidationConfig {
     @AllArgsConstructor
     public static class Urls {
         private String data;
-        private String defaultData;
-        private String initData;
         private String defaultDataMode;
         private String help;
         private String ignore;

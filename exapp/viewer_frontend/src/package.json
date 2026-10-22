@@ -23,6 +23,7 @@
     "generate": "node tools/generate-sample-data.js",
     "merge-batch": "node tools/merge-batch.mjs",
     "verify:multi": "node tools/verify-multi-mode.mjs",
+    "clean": "node tools/clean.js",
     "test": "node --test"
   },
   "license": "MIT"

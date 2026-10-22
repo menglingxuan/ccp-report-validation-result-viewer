@@ -270,26 +270,6 @@ export function hydrateDataset(json) {
   return out;
 }
 
-// 比较规则对象上的「值来源格式」：旧形态是 srcType 数字（1=XPath/XML、2=CSV），
-// 新形态是 valueSrcFmt 字符串（xml / csv）。hoist 时把旧值归一成字符串。
-const SIDE_KEYS = ['cmpLeft', 'cmpRight', 'cvtLeft', 'cvtRight', 'vdt'];
-function normalizeSide(o) {
-  if (!o || typeof o !== 'object') return o;
-  if (o.srcType === undefined) return o;
-  const out = Object.assign({}, o);
-  out.valueSrcFmt = o.srcType === 1 ? 'xml' : (o.srcType === 2 ? 'csv' : '');
-  delete out.srcType;
-  return out;
-}
-function normalizeFieldResult(f) {
-  if (!f || typeof f !== 'object') return f;
-  const out = Object.assign({}, f);
-  SIDE_KEYS.forEach(function (k) {
-    if (out[k]) out[k] = normalizeSide(out[k]);
-  });
-  return out;
-}
-
 /** 收集 item 里的报告渠道 / 来源渠道 / 字段定义（hoist 的第一步；同时报出冲突）。 */
 export function collectDefinitions(items) {
   const channels = [];
@@ -300,8 +280,6 @@ export function collectDefinitions(items) {
   const conflicts = [];
   (items || []).forEach(function (it, ii) {
     const label = (it && it.tradeId) || ('items[' + ii + ']');
-    // 老形态：字段定义注册表曾经在 item 级（`item.fields`），视为该 item 所有渠道共用。
-    const legacyFields = Array.isArray(it && it.fields) ? it.fields : null;
     ((it && it.channels) || []).forEach(function (ch) {
       if (!ch || typeof ch.id !== 'number') return;
       const name = ch.name || '';
@@ -318,9 +296,9 @@ export function collectDefinitions(items) {
         chByName[name] = chDef;
         channels.push(chDef);
       }
-      // 报告渠道的字段定义注册表（item.channels[].fields，老形态回退 item.fields）：
+      // 报告渠道的字段定义注册表（item.channels[].fields）：
       // 定义是数据集级的，因此取所有 item 的并集（同一字段 id 的定义必须一致）。
-      const fieldDefs = Array.isArray(ch.fields) ? ch.fields : (legacyFields || []);
+      const fieldDefs = Array.isArray(ch.fields) ? ch.fields : [];
       fieldDefs.forEach(function (d) {
         if (!d || d.id == null) return;
         const key = String(d.id);
@@ -339,11 +317,11 @@ export function collectDefinitions(items) {
         if (srcById[s.id] != null && srcById[s.id].name !== sname) {
           conflicts.push(label + ' 来源渠道 id=' + s.id + ' 指向不同名称：「' + srcById[s.id].name + '」/「' + sname + '」');
         } else if (srcById[s.id] == null) {
-          // 来源渠道的数据格式 = 该来源比对值侧的格式（cmpLeft.valueSrcFmt；老形态 srcType；缺省 csv）。
+          // 来源渠道的数据格式 = 该来源比对值侧的格式（cmpLeft.valueSrcFmt；缺省 csv）。
           let fmt = '';
           (s.fields || []).forEach(function (f) {
             const side = (f && f.cmpLeft) || {};
-            const v = side.valueSrcFmt || (side.srcType === 1 ? 'xml' : (side.srcType === 2 ? 'csv' : ''));
+            const v = side.valueSrcFmt;
             if (!fmt && v) fmt = v;
           });
           srcById[s.id] = { id: s.id, name: sname, format: fmt || 'csv' };
@@ -363,15 +341,12 @@ export function collectDefinitions(items) {
 // ctxKey 规则的规范顺序（展示 / 输出都用它，保证数据稳定可控）。
 export const CTX_RULES = ['fdm', 'cvt', 'vdt'];
 
-// 旧数据的规则编号 -> 规则名（1 字段映射 / 2 值转换 / 3 终值校验）。只用于兼容读取与迁移。
-const RULES_BY_LEGACY_CODE = { 1: 'fdm', 2: 'cvt', 3: 'vdt' };
+// 规则只认名称（fdm / cvt / vdt）；未声明 / 非法值一律丢弃。
 function normalizeCtxRules(def) {
-  const raw = Array.isArray(def.rules) ? def.rules
-    : (Array.isArray(def.scopes) ? def.scopes : (def.scopes != null ? [def.scopes] : []));
+  const raw = Array.isArray(def.rules) ? def.rules : (def.rules == null ? [] : [def.rules]);
   const out = [];
   raw.forEach(function (r) {
-    const name = typeof r === 'number' ? RULES_BY_LEGACY_CODE[r] : r;
-    if (CTX_RULES.indexOf(name) >= 0 && out.indexOf(name) === -1) out.push(name);
+    if (CTX_RULES.indexOf(r) >= 0 && out.indexOf(r) === -1) out.push(r);
   });
   return CTX_RULES.filter(function (n) { return out.indexOf(n) !== -1; });
 }
@@ -414,8 +389,7 @@ export function collectCtxDefs(items) {
  *   - 渠道 / 来源渠道 / 字段定义 -> `$root.reportChannelDefs`（含 `fieldDefs`）；
  *   - ctxKey 定义（除 `hits`）-> `$root.usedCtxKeyDefs`，item 内只留 `{ id, hits }`；
  *   - `warnings` / `errors` / `uncompared` 去掉 `channelId` / `sourceId`（只保留名称，原始可读）；
- *   - `logs` / `skippedItems` 保持 id（logs 只写 id，skippedItems 名称 + id 双写）;
- *   - 比较规则对象的 `srcType`（数字）归一为 `valueSrcFmt`（xml / csv）。
+ *   - `logs` / `skippedItems` 保持 id（logs 只写 id，skippedItems 名称 + id 双写）。
  *
  * 定义冲突时直接抛错 —— 生成器数据不可能冲突，只有手写 / 迁移数据才会。
  * `skippedItems` 引用的渠道 / 来源渠道也会被补进声明表（被跳过的 item 不在 items 里，
@@ -481,7 +455,7 @@ export function hoistRegistries(dataset) {
       if (ch.files !== undefined) c.files = ch.files;
       c.sources = ((ch.sources) || []).map(function (s) {
         const o = { id: s.id };
-        if (s.fields !== undefined) o.fields = (s.fields || []).map(normalizeFieldResult);
+        if (s.fields !== undefined) o.fields = s.fields;
         return o;
       });
       return c;
@@ -492,7 +466,6 @@ export function hoistRegistries(dataset) {
   Object.keys(dataset).forEach(function (k) {
     // 已经重新写出的顶层成员（含被移动了位置的 skippedItems）与旧形态顶层键都不再复制。
     if (k === 'reportChannelDefs' || k === 'sourceChannelDefs' || k === 'usedCtxKeyDefs'
-      || k === 'ctxKeyDefs' || k === 'channels' || k === 'sources'
       || k === 'skippedItems' || k === 'items') return;
     out[k] = dataset[k];
   });

@@ -16,12 +16,10 @@
   "tenants": {},
   "urls": {
     "data": "report-validation-data.json",
-    "defaultData": "report-validation-data-default.json",
     "ignore": "ignore-config-by-platform.json",
     "batches": "batches-index.json",
     "scan": "/scan",
     "help": "batch-help.json",
-    "initData": "report-validation-data-init.json",
     "defaultDataMode": "default"
   },
   "ui": {

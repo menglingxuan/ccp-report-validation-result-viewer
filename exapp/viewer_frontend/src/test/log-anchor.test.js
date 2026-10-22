@@ -2,9 +2,8 @@
 //
 // 覆盖三层：
 //   1. 数据契约：item.logs 的 field 语义（仅 scope="field" 有值，且要求 channel/source 非空）——
-//      字段级日志行**只在 item.logs 里存一份**（`fields[]` 不新增任何字段）；
-//      js 样例数据 / 校验器 / 迁移工具都按此契约实现。
-//   2. 查看器接线：日志锚点 id、字段比较 / 关联字段双击跳转、字段详情页「相关打印信息」改读日志行 + 三角跳转。
+//      字段级日志行**只在 item.logs 里存一份**（`fields[]` 不新增任何字段）；样例数据 / 校验器都按此契约实现。
+//   2. 查看器接线：日志锚点 id、报告字段 / 关联字段单击跳转、字段详情页「相关打印信息」改读日志行 + 三角跳转。
 //   3. 样式与文案：高亮动画类与三语文案齐备。
 //
 // app.js 的跳转逻辑位于 DOM 闭包内（依赖浏览器环境），Node 无法直接执行，因此对 public/ 源码做结构断言。
@@ -14,7 +13,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateDataset } from '../lib/validate.js';
-import { migrateDataset } from '../tools/migrate-legacy-data.js';
 import {
   logFieldKey, logAnchorId, isFieldLogLine,
   refChannelId, refSourceId, CHANNEL_ID_PRESET, SOURCE_ID_PRESET,
@@ -123,7 +121,7 @@ test('数据契约：日志行必须是对象且 text 为字符串', () => {
 
 test('样例数据：字段级日志行只在 item.logs 里，fields[] 不新增任何字段', () => {
   // 落盘数据是「顶层登记表 + item 只留 id 引用」的形态：按查看器的方式 hydrate 后再断言。
-  const json = hydrateDataset(JSON.parse(fs.readFileSync(path.join(PUBLIC_DIR, 'report-validation-data-default.json'), 'utf8')));
+  const json = hydrateDataset(JSON.parse(fs.readFileSync(path.join(PUBLIC_DIR, 'report-validation-data.json'), 'utf8')));
   assert.ok(json.items.length > 0);
   json.items.forEach((item) => {
     const fieldLines = (item.logs || []).filter((l) => l.scope === 'field');
@@ -157,48 +155,6 @@ test('样例数据：字段级日志行只在 item.logs 里，fields[] 不新增
       const src = entry.ch.sources.find((s) => s.id === l.sourceId);
       assert.equal(l.source, src.name, item.tradeId + ' hydrate 后日志行应有来源渠道名称');
     });
-  });
-});
-
-test('迁移工具：旧 prints 生成字段级日志行并只追加进 item.logs', () => {
-  const migrated = migrateDataset({
-    items: [{
-      tradeId: 'T-1',
-      ctxDefs: {},
-      channels: [{
-        name: 'HKTR',
-        sources: [{
-          name: '来源渠道 A',
-          fields: [{ f: 'notional', t: 'productAssertion', k: 'num', result: 'PASSED', prints: ['[INFO] 第一行', '[INFO] 第二行'] }],
-        }],
-      }],
-      overviewLogs: ['开始比较'],
-    }],
-  });
-  const item = migrated.items[0];
-  const ch = item.channels[0];
-  const field = ch.sources[0].fields[0];
-  assert.equal(field.id, '1');
-  assert.deepEqual(field.prints, ['[INFO] 第一行', '[INFO] 第二行'], 'prints 保留');
-  assert.equal('logs' in field, false, '字段对象不应带 logs（与生成器一致）');
-  const migratedFieldLines = item.logs.filter((l) => l.scope === 'field');
-  assert.equal(migratedFieldLines.length, 2, '字段日志行只进 item.logs');
-  migratedFieldLines.forEach((l) => {
-    assert.equal(l.channelId, CHANNEL_ID_PRESET.HKTR);
-    assert.equal(l.sourceId, SOURCE_ID_PRESET['来源渠道 A']);
-    assert.equal(l.field, '1');
-    // 迁移输出与生成器一致：日志行只写 id，不写名称。
-    assert.equal('channel' in l, false, '日志行不应再写渠道名称');
-    assert.equal('source' in l, false, '日志行不应再写来源渠道名称');
-  });
-  assert.equal(validateDataset(migrated).ok, true, JSON.stringify(validateDataset(migrated).errors));
-  // 查看器加载时按 id 把名称补回（不解析 text）：
-  const hydrated = hydrateDataset(migrated);
-  const hydratedLines = hydrated.items[0].logs.filter((l) => l.scope === 'field');
-  assert.equal(hydratedLines.length, 2);
-  hydratedLines.forEach((l) => {
-    assert.equal(l.channel, 'HKTR', '名称应由 hydrate 按 channelId 补回');
-    assert.equal(l.source, '来源渠道 A', '名称应由 hydrate 按 sourceId 补回');
   });
 });
 

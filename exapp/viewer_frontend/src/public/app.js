@@ -64,8 +64,8 @@
     // 每个报告渠道的字段定义以数据文件为准（见 docs/DATA_SCHEMA.md 4/5 节）。
     /* ---------- 数据源与配置（外部 JSON 输入） ---------- */
     let DATA_URL = 'report-validation-data.json';
-    let DEFAULT_DATA_URL = 'report-validation-data-default.json';
-    let INIT_DATA_URL = 'report-validation-data-init.json';
+    // 默认模板数据文件：配置未指定时直接用主数据文件（不再要求额外的 -default 副本）。
+    let DEFAULT_DATA_URL = '';
     let DEFAULT_DATA_MODE = 'default';
     let IGNORE_CONFIG_URL = 'ignore-config-by-platform.json';
     // 回写目标：实际加载成功的配置文件 URL（批次级忽略配置与其批次文件同目录，保持读写同一文件）。
@@ -197,8 +197,7 @@
 
         if (cfg.urls && typeof cfg.urls === 'object') {
           if (typeof cfg.urls.data === 'string' && cfg.urls.data) DATA_URL = cfg.urls.data;
-          if (typeof cfg.urls.defaultData === 'string') DEFAULT_DATA_URL = cfg.urls.defaultData;
-          if (typeof cfg.urls.initData === 'string') INIT_DATA_URL = cfg.urls.initData;
+          if (typeof cfg.urls.defaultData === 'string' && cfg.urls.defaultData) DEFAULT_DATA_URL = cfg.urls.defaultData;
           if (typeof cfg.urls.defaultDataMode === 'string') DEFAULT_DATA_MODE = cfg.urls.defaultDataMode;
           if (typeof cfg.urls.ignore === 'string' && cfg.urls.ignore) { IGNORE_CONFIG_URL = cfg.urls.ignore; IGNORE_ACTIVE_URL = IGNORE_CONFIG_URL; }
           if (typeof cfg.urls.batches === 'string' && cfg.urls.batches) BATCHES_INDEX_URL = cfg.urls.batches;
@@ -354,19 +353,18 @@
       return JSON.parse(body);
     }
     // 默认数据源可配置（urls.defaultDataMode）：
-    //   "init"          -> 读取 urls.initData（空占位数据）
-    //   "default" 或其他 -> 读取 urls.defaultData（默认模板数据）
+    //   "init"          -> 不加载任何文件，直接用空数据集（想看到空状态的部署用它）
+    //   "default" 或其他 -> 读取 urls.defaultData（未配置时即 urls.data）
     //   某个批次名        -> 读取该批次的数据文件
     // 上述均不可用时回退到主数据文件 DATA_URL，再失败则回退为空数据集。
     async function loadData() {
       const mode = String(DEFAULT_DATA_MODE || '').trim();
 
       if (mode === 'init') {
-        try {
-          const json = await fetchJSON(INIT_DATA_URL);
-          if (validDataset(json)) { DATA_FILE_URL = resolveUrl(location.href, INIT_DATA_URL); return normalizeLoaded(json); }
-        } catch (e) { console.warn('[data] init 数据文件加载失败：', e); }
-      } else if (mode && mode !== 'default') {
+        DATA_FILE_URL = null;
+        return normalizeLoaded({ mode: 'single', reportEnv: 'INIT', items: [] });
+      }
+      if (mode && mode !== 'default') {
         const b = BATCHES_INDEX.batches.find(function (x) { return (x.batchId === mode || x.batchName === mode) && !x.deleted; });
         if (b && b.dataUrl) {
           const url = resolveUrl(indexBaseUrl(), b.dataUrl);
@@ -377,10 +375,11 @@
         }
       }
 
-      if (DEFAULT_DATA_URL) {
+      const defaultUrl = DEFAULT_DATA_URL || DATA_URL;
+      if (defaultUrl) {
         try {
-          const json = await fetchJSON(DEFAULT_DATA_URL);
-          if (validDataset(json)) { DATA_FILE_URL = resolveUrl(location.href, DEFAULT_DATA_URL); return normalizeLoaded(json); }
+          const json = await fetchJSON(defaultUrl);
+          if (validDataset(json)) { DATA_FILE_URL = resolveUrl(location.href, defaultUrl); return normalizeLoaded(json); }
         } catch (e) { console.warn('[data] 默认数据文件加载失败：', e); }
       }
       try {
@@ -4842,21 +4841,20 @@
 
     // ctxKey 参与哪些规则（数据契约，见 docs/DATA_SCHEMA.md §3）：
     //   fdm = 字段映射规则 / cvt = 值转换规则 / vdt = 终值校验规则。
-    // 同一个 ctxKey 可被多种规则共享，因此 `rules` 是名称数组；旧数据的 1/2/3 编号会归一化为规则名。
+    // 同一个 ctxKey 可被多种规则共享，因此 `rules` 是规则名数组。
     const RULE_META = {
       fdm: { label: 'ctxTypeMapping', cls: 't1' },
       cvt: { label: 'ctxTypeConversion', cls: 't2' },
       vdt: { label: 'ctxTypeValidation', cls: 't3' },
     };
     const RULE_ORDER = ['fdm', 'cvt', 'vdt'];
-    const RULE_LEGACY = { 1: 'fdm', 2: 'cvt', 3: 'vdt' };
     function ctxRulesOf(def) {
-      // rules 为规则名数组（fdm / cvt / vdt）；旧数据的 scopes（1/2/3 编号）也接受。
-      const source = def && def.rules != null ? def.rules : (def ? def.scopes : null);
+      // rules 为规则名数组（fdm / cvt / vdt），只认这三个名称。
+      const source = def ? def.rules : null;
       const arr = Array.isArray(source) ? source : (source == null ? [] : [source]);
       const picked = [];
       arr.forEach(function (x) {
-        const name = typeof x === 'number' ? RULE_LEGACY[x] : String(x);
+        const name = String(x);
         if (RULE_META[name] && picked.indexOf(name) === -1) picked.push(name);
       });
       return RULE_ORDER.filter(function (n) { return picked.indexOf(n) !== -1; });

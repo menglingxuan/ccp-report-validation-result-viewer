@@ -31,7 +31,6 @@ const DEFAULTS = {
   tenants: {},
   urls: {
     data: 'report-validation-data.json',
-    defaultData: 'report-validation-data-default.json',
     ignore: 'ignore-config-by-platform.json',
     batches: 'batches-index.json',
     scan: '/scan',

@@ -1,15 +1,15 @@
 # 数据说明（DATA SCHEMA）
 
-数据文件位于 web 根目录（`public/`），由 `config.json` 的 `urls.data` / `urls.defaultData` 引用。
+数据文件位于 web 根目录（`public/`），由 `config.json` 的 `urls.data` 引用（`urls.defaultData` 可选，不配置即用同一个文件）。
 
 - 单文件模式：一个文件包含全部 item。
 - 多文件模式：一个**清单文件**（manifest）+ 每个 item 一个独立文件。
 
 两种模式都由顶层 `"mode"` 字段标记：`"single"` 或 `"multi"`（缺省按 `"single"` 处理）。
 
-> 多文件模式下，主数据（`urls.data`）、默认模板数据（`urls.defaultData`）与批次数据文件都是清单：
-> 生成器（Java `validationJsonJob -m multi` 与 `node tools/generate-sample-data.js --split`）会把三者都写成清单，
-> 并各自引用同一套 `data/items/<tradeId>.json`（批次目录则为 `<批次目录>/data/items/<tradeId>.json`）。
+> 多文件模式下，主数据（`urls.data`）与批次数据文件都是清单：
+> 生成器（Java `validationJsonJob -m multi` 与 `node tools/generate-sample-data.js --split`）会写出清单，
+> 并引用同一套 `data/items/<tradeId>.json`（批次目录则为 `<批次目录>/data/items/<tradeId>.json`）。
 
 ---
 
@@ -42,7 +42,7 @@
 > 键顺序固定为 `mode` → `reportEnv` → `creationType` → `reportChannelDefs` → `sourceChannelDefs` → `usedCtxKeyDefs` → `skippedItems` → `items`
 > （声明表写在数据前、`skippedItems` 紧跟声明表之后，然后才是 `items`；JSON 对象键顺序不影响解析）。
 >
-> **改名说明（无向后兼容）**：以下旧键名会被 `lib/validate.js` 直接报错，老数据先跑 `node tools/migrate-legacy-data.js <文件>`：
+> **改名说明（无向后兼容）**：以下旧键名会被 `lib/validate.js` 直接报错（本项目不提供迁移工具，旧数据需自行改写）：
 >
 > | 旧键名 | 新键名 |
 > |---|---|
@@ -118,7 +118,7 @@
 
 - 缩进只服务于人阅读，却要占 40%+ 体积（实测样例：4,566,418 B 缩进版 → **2,688,717 B 紧凑版**，−41%）；查看器只解析内容，不看缩进。
 - 真实数据由 Java 生成器产出（`MAPPER.writeValueAsString`）本来就是紧凑的；JS 侧工具此前用 `JSON.stringify(obj, null, 2)`，导致「同一种数据两种体积」，现已统一。
-- 需要人工排查时加 `--pretty`：`node tools/generate-sample-data.js --pretty`、`node tools/migrate-legacy-data.js <旧> [新] --pretty`、`node tools/merge-batch.mjs --batch <id> --pretty`。
+- 需要人工排查时加 `--pretty`：`node tools/generate-sample-data.js --pretty`、`node tools/merge-batch.mjs --batch <id> --pretty`。
 - **例外（保持缩进）**：`batches-index.json`（索引，人也会看）、`favorites.json` / `batch-meta.json` / 租户配置等**用户态小文件**（便于手工编辑与 diff；服务端 `POST /api/batch` 写回时也是缩进版，JS 侧生成器与之一致）。
   > 注：Java 样例生成器（`BasicBatchMetaGenerator` / `ValidationJsonGenerator`）写 `batch-meta.json` 时用的是默认紧凑序列化，与本条不同（历史差异；被查看器写回一次后会规整为缩进版）。此差异不影响读取，故本轮未改 Java 侧。
 
@@ -226,8 +226,8 @@ node tools/merge-batch.mjs --batch <id> --tenant[=id] | --no-tenant # 租户 / �
 - `skippedItems` 引用的渠道 / 来源渠道**同样必须已声明**（被跳过的 item 不在 `items` 里，而引用要在声明表里解析）；
   `hoistRegistries()` 会把 `skippedItems` 的引用一起补进声明表，保证生成的数据天然满足该契约。
 - 三张声明表都可以省略，**只有在没有任何引用时**才不需要（空数据集 / 没有 channels 的夹具）。
-- 因此**旧形态（定义写在 item 里、顶层无声明；或旧的键名 `channels` / `sources`）不再合法**，
-  查看器仍然能读（`hydrateDataset()` 不依赖声明），但**数据契约要求先迁移**：`node tools/migrate-legacy-data.js <文件>`。
+- 因此**旧形态（定义写在 item 里、顶层无声明；或旧的键名 `channels` / `sources` / `ctxKeyDefs`）不再合法**，
+  查看器仍然能读（`hydrateDataset()` 不依赖声明），但**数据契约要求先改写**（本项目不提供迁移工具）。
 
 这条契约的意义：声明集是**完备且权威**的，所以「某个 id 指向哪个渠道 / 来源渠道 / ctxKey / 字段」只有一处答案，
 `lib/validate.js` 不必再用预设表或名称反查做回退，这同时也是「引用只留 id」方案的前提（见 `docs/README.md` 的声明表条目）。
@@ -393,15 +393,10 @@ item 里只保留**命中引用 + 命中摘要**：
 > **编写字段定义编号时不能按“每个 item 的字段子集”编号**（样例数据的字段集会逐 item 变化）：同一个字段名在不同 item 里会拿到不同 id，声明表无法归一。
 > 生成器（JS `buildChannelFieldRegistry(chName)` / Java `buildChannelFieldRegistry(chName, 全量字段表)`）都是按**渠道的全量字段名单**编号的。
 
-## 空占位数据（`report-validation-data-init.json`）
+## 空数据集（`defaultDataMode=init`）
 
-用于空占位（0 个 item）的最小数据集：
-
-```json
-{ "mode": "single", "reportEnv": "INIT", "items": [] }
-```
-
-将其临时改名为 `report-validation-data-default.json` 后，查看器会加载空数据集并展示友好的空状态（不崩溃）。
+想看到「友好空状态」时，把 `config.json` 的 `urls.defaultDataMode` 设为 `init` 即可：查看器**不加载任何数据文件**，
+直接用 `{ "mode": "single", "reportEnv": "INIT", "items": [] }` 这个空数据集渲染（不崩溃，不再需要单独的空占位文件）。
 
 ## 4. channel
 
@@ -445,7 +440,7 @@ item 里只保留**命中引用 + 命中摘要**：
 
 > 已移除字段：`eoConverted`（不再需要）、`field.ctxs`（命中上下文现由 `cmpLeft` / `cmpRight` / `cvtLeft` / `cvtRight` / `vdt` 的 `ctxs` 取并集）与 `srcType`（已改名 `valueSrcFmt`）。`f` / `t` / `k` 迁移到 `reportChannelDefs[].fieldDefs`；`x` / `aoCsv` / `ctx` / `eo` / `ao` / `eoUnconverted` / `conversionRule` / `validationRule` / `excelMapping` / `excelConversionRule` / `excelValidationRule` 迁移到上述对象；`ctx`（单数）由 ctx key 字符串/id 改为 **命中 ctxKey 的原始字符串表达式**，`ctxs` 改为 `item.ctxDefs` 的 id 引用数组。
 >
-> `logs` 为新增字段（与 `prints` 同源：同样是字段比较过程的三行文本，但改为带 `channelId`/`sourceId`/`field` 的日志行，从而能在「完整日志」里定位）——生成器（Java `ValidationJsonGenerator` / JS `lib/sample-data.js`）与旧数据迁移工具（`tools/migrate-legacy-data.js`）都会同步写 `prints` 与 `item.logs`；**`fields[]` 不新增任何字段**（字段级日志行只在 `item.logs` 里存一份）。
+> `logs` 为新增字段（与 `prints` 同源：同样是字段比较过程的三行文本，但改为带 `channelId`/`sourceId`/`field` 的日志行，从而能在「完整日志」里定位）——生成器（Java `ValidationJsonGenerator` / JS `lib/sample-data.js`）会同步写 `prints` 与 `item.logs`；**`fields[]` 不新增任何字段**（字段级日志行只在 `item.logs` 里存一份）。
 
 ## 6. 批次元数据（`batch-meta.json`）与索引（`batches-index.json`）
 
@@ -455,7 +450,7 @@ item 里只保留**命中引用 + 命中摘要**：
 - 否则回退到数据文件（单文件或多文件清单）的顶层 `reportEnv`，item 数量取 `items.length`。
 
 索引 `batches-index.json` 的 `batches[]`（由 `lib/scanner.js` 写入）字段：
-`batchId` / `batchName` / `date` / `executedAt` / `formatVersion` / `path` / `reportEnv` / `dataUrl` / `ignoreUrl` / `summary` / `creationType`（`sample` / `user`），以及可选字段：`deleted`（软删除）、`tags`、`favorite`、`argv`（原始命令）、`metaUrl`（批次目录内 `batch-meta.json` 的相对路径，供查看器按需读取扩展内容；仅在文件存在时写入）、`validationErrors`（扫描时数据校验失败项；**有意保留在索引里**，但当前界面尚未展示，只在扫描/启动日志告警）。旧格式数据可用 `node tools/migrate-legacy-data.js <文件>` 迁移。
+`batchId` / `batchName` / `date` / `executedAt` / `formatVersion` / `path` / `reportEnv` / `dataUrl` / `ignoreUrl` / `summary` / `creationType`（`sample` / `user`），以及可选字段：`deleted`（软删除）、`tags`、`favorite`、`argv`（原始命令）、`metaUrl`（批次目录内 `batch-meta.json` 的相对路径，供查看器按需读取扩展内容；仅在文件存在时写入）、`validationErrors`（扫描时数据校验失败项；**有意保留在索引里**，但当前界面尚未展示，只在扫描/启动日志告警）。
 
 > 索引**不写入** `dataMode` / `cwd`（前端从不使用，已移除）；二者如需仍可从对应 `batch-meta.json` 读取。
 > 索引也**不写入** `descriptionEx` 正文（避免索引随批次数膨胀）：查看器用 `metaUrl` 懒加载 `batch-meta.json` 后再取该字段，详见 §6.3。

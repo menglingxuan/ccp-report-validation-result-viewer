@@ -1335,7 +1335,7 @@ public final class ValidationJsonGenerator {
         }
         if (item.getLogs() != null) {
             for (ItemLog l : item.getLogs()) {
-                if (refInScope(l.getChannelId(), l.getChannel(), enabledIds)) {
+                if (refInScope(l.getChannelId(), null, enabledIds)) {
                     logs++;
                 }
             }
@@ -1370,8 +1370,8 @@ public final class ValidationJsonGenerator {
 
     /**
      * Same as {@link #splitToFiles(ValidationDataset, Path)} but writes the manifest under
-     * {@code manifestName}. Multi-file mode needs this because both the main data file and the
-     * default template data file are manifests (otherwise {@code urls.defaultData} is missing).
+     * {@code manifestName} (batches use the default name; the hook exists for callers that need
+     * a differently named manifest in the same directory).
      *
      * <p>The manifest keeps the dataset's top-level fields ({@code mode} / {@code reportEnv} /
      * {@code creationType} / the three declaration tables / {@code skippedItems}) so multi-file mode is a
@@ -1423,8 +1423,6 @@ public final class ValidationJsonGenerator {
                 .runType("dev")
                 .urls(ValidationConfig.Urls.builder()
                         .data("report-validation-data.json")
-                        .defaultData("report-validation-data-default.json")
-                        .initData("report-validation-data-init.json")
                         .defaultDataMode("default")
                         .help("batch-help.json")
                         .ignore("ignore-config-by-platform.json")
@@ -1586,13 +1584,11 @@ public final class ValidationJsonGenerator {
         Files.createDirectories(batchDir);
 
         if (mode == DataMode.multi) {
-            // 主数据与默认模板数据在多文件模式下都是清单，两者都必须写（否则 defaultDataMode=default 会缺文件）。
+            // 多文件模式：主数据与批次数据都是清单（默认模板数据即主数据，不再另写一份）。
             splitToFiles(dataset, outDir);
-            splitToFiles(dataset, outDir, "report-validation-data-default.json");
             splitToFiles(dataset, batchDir);
         } else {
             writeJson(outDir.resolve("report-validation-data.json"), dataset);
-            writeJson(outDir.resolve("report-validation-data-default.json"), dataset);
             writeJson(batchDir.resolve("report-validation-data.json"), dataset);
         }
 

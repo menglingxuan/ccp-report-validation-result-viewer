@@ -26,7 +26,7 @@ import java.util.concurrent.Callable;
 public class SampleDataCommand implements Callable<Integer> {
     private final JobLauncher jobLauncher;
     private final BatchJobResolver jobResolver;
-    @Option(names = {"-j", "--job"}, defaultValue = "sampleDataJob", description = "Job to run: sampleDataJob | styleDataJob | validationJsonJob | helloWorldJob (default: ${DEFAULT-VALUE}).")
+    @Option(names = {"-j", "--job"}, defaultValue = "sampleDataJob", description = "Job to run: sampleDataJob | styleDataJob | validationJsonJob (default: ${DEFAULT-VALUE}).")
     private String jobName;
     @Option(names = {"-l", "--level"}, defaultValue = "minimal", description = "Sample data level: ${COMPLETION-CANDIDATES} (default: ${DEFAULT-VALUE}).")
     private SampleLevel level;

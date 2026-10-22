@@ -23,7 +23,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class Source {
     /**
-     * Stable source id (preset: 来源渠道 A=1 / 来源渠道 B=2).
+     * Stable source id (preset: Source Channel A=1 / Source Channel B=2).
      * Unique within the channel only - different channels may reuse the same id.
      */
     private Integer id;

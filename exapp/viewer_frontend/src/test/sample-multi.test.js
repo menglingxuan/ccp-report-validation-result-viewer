@@ -65,24 +65,24 @@ test('多文件模式：清单 + 每 item 一个文件，清单可通过数据�
   });
 });
 
-test('多文件模式：默认模板数据也是清单（可指定清单文件名）', () => {
+test('多文件模式：可指定清单文件名', () => {
   const dataset = buildDataset();
   withTmpOut((out) => {
-    splitToFiles(dataset, out, 'report-validation-data-default.json');
+    splitToFiles(dataset, out, 'custom-manifest.json');
 
     const main = path.join(out, 'report-validation-data.json');
-    const def = path.join(out, 'report-validation-data-default.json');
+    const def = path.join(out, 'custom-manifest.json');
     assert.ok(!fs.existsSync(main), '指定清单名时不应额外写出 report-validation-data.json');
-    assert.ok(fs.existsSync(def), '默认模板清单应写出');
+    assert.ok(fs.existsSync(def), '指定名称的清单应写出');
 
     const j = JSON.parse(fs.readFileSync(def, 'utf8'));
     assert.equal(j.mode, 'multi');
     assert.equal(j.items.length, dataset.items.length);
-    assert.equal(j.creationType, dataset.creationType, '默认模板清单同样保留 creationType');
-    assert.deepEqual(j.skippedItems, dataset.skippedItems, '默认模板清单同样保留 skippedItems');
-    assert.deepEqual(j.channels, dataset.channels, '默认模板清单同样保留 channels 登记表');
-    assert.deepEqual(j.sources, dataset.sources, '默认模板清单同样保留 sources 登记表');
-    assert.ok(fs.existsSync(path.join(out, j.items[0].file)), '默认模板清单引用的 item 文件同样存在');
+    assert.equal(j.creationType, dataset.creationType, '清单同样保留 creationType');
+    assert.deepEqual(j.skippedItems, dataset.skippedItems, '清单同样保留 skippedItems');
+    assert.deepEqual(j.channels, dataset.channels, '清单同样保留 channels 登记表');
+    assert.deepEqual(j.sources, dataset.sources, '清单同样保留 sources 登记表');
+    assert.ok(fs.existsSync(path.join(out, j.items[0].file)), '清单引用的 item 文件同样存在');
     assert.equal(validateDataset(j).ok, true);
   });
 });

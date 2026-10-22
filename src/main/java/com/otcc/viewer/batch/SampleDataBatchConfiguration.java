@@ -12,7 +12,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * Spring Batch configuration: registers the sample-data generation job, the
- * style-based generation job and a hello-world demonstration job.
+ * style-based generation job and the full-dataset generation job.
  *
  * <p>Jobs do not run automatically on startup ({@code spring.batch.job.enabled=false});
  * they are launched explicitly by the picocli command-line runner.</p>
@@ -38,27 +38,6 @@ public class SampleDataBatchConfiguration {
                                SampleDataTasklet sampleDataTasklet) {
         return new StepBuilder("sampleDataStep", jobRepository)
                 .tasklet(sampleDataTasklet, transactionManager)
-                .build();
-    }
-
-    /* ------------------------------------------------------------------ */
-    /*  Hello-world demonstration job                                     */
-    /* ------------------------------------------------------------------ */
-
-    @Bean
-    public Job helloWorldJob(JobRepository jobRepository, Step helloWorldStep) {
-        return new JobBuilder("helloWorldJob", jobRepository)
-                .incrementer(new RunIdIncrementer())
-                .start(helloWorldStep)
-                .build();
-    }
-
-    @Bean
-    public Step helloWorldStep(JobRepository jobRepository,
-                               PlatformTransactionManager transactionManager,
-                               HelloWorldTasklet helloWorldTasklet) {
-        return new StepBuilder("helloWorldStep", jobRepository)
-                .tasklet(helloWorldTasklet, transactionManager)
                 .build();
     }
 

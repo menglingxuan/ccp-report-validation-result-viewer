@@ -696,8 +696,8 @@ const server = http.createServer(function (req, res) {
   json(res, 404, { ok: false, error: 'Not Found' });
 });
 
-// 启动时校验默认/主/空占位数据文件（坏数据提前告警，不阻塞启动）。
-['report-validation-data.json', 'report-validation-data-default.json', 'report-validation-data-init.json'].forEach(function (f) {
+// 启动时校验主数据文件（坏数据提前告警，不阻塞启动）。
+['report-validation-data.json'].forEach(function (f) {
   const abs = path.join(CFG.server.webRootAbs, f);
   if (fs.existsSync(abs)) {
     const r = validateFile(abs);

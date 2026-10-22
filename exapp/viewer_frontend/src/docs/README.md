@@ -26,9 +26,8 @@
   - 「命中Ctx」标签单击即弹出定义/命中详情（主列表与详情页均可，弹框跟随标签，长文本/多行可滚动），命中详情内展示该 CtxKey 的**全部 rules** 徽章。
 - **字段定义注册表在 report channel 级别**：`reportChannelDefs[].fieldDefs`（`id` / `name` / `userTag` / `type`）每个报告渠道各自维护（不同渠道的字段定义不同）；
   比较字段通过 `id` 关联**其父报告渠道**的 fieldDefs（同名不同渠道的字段 id 也不相同）；查看器 hydrate 时会把它注入 item 渠道，下游逻辑无感。
-- **默认数据源可配置**：`urls.defaultDataMode` 取值 `init`（加载 `report-validation-data-init.json`）、`default`（加载 `report-validation-data-default.json`）或某个已扫描批次名（加载该批次数据）；其他值等同 `default`。
-  - 加载 init 空占位数据时，「运行环境」显示为空。
-- **空占位数据**：`report-validation-data-init.json`（0 个 item）可临时改名为 default 文件，查看器展示友好空状态。
+- **默认数据源可配置**：`urls.defaultDataMode` 取值 `init`（不加载任何文件，直接用空数据集）、`default`（加载默认模板数据，即 `urls.defaultData`；未配置时就是主数据文件 `urls.data`）或某个已扫描批次名（加载该批次数据）；其他值等同 `default`。
+  - 空数据集下「运行环境」显示为空（`reportEnv` 为 `INIT`），查看器展示友好空状态 —— 不再需要单独的空占位数据文件。
 - **批次管理**：批次软删除（元数据 `deleted` 标记），可即时撤销/确认删除；删除后即时以删除样式区分，刷新/重启后默认不再展示；搜索/筛选/统计默认只作用于正常批次。
   - 批次面板右上角的范围按钮为**三态循环**：`≡` 全部批次 → `✓` 仅看兼容 → `🗑` 全部批次(含已删除) → `≡`。
   - 「全部批次(含已删除)」范围会展示带 `deleted` 标记的批次（批次名置灰 + 「已删除」徽章），可查看详情、参与排序/搜索/筛选，但**不支持加载 / 收藏 / 删除 / 钉住**等操作。
@@ -84,7 +83,7 @@
 - **声明表（定义与引用分离，三张表）**：报告渠道、来源渠道、ctxKey 与字段定义的**定义只在顶层写一次** ——
   `$root.reportChannelDefs = [{id,name,desc,format,fieldDefs}]`、`$root.sourceChannelDefs = [{id,name,format}]`、`$root.usedCtxKeyDefs = {<ctxKey>:{id,type,rules,def}}`（与 `items` / `skippedItems` 同级）；
   item 里只保留 id 引用（`item.channels[] = {id, enabled?, files, sources:[{id, fields}]}`、`item.ctxDefs[<ctxKey>] = {id, hits}`），不再重复写定义。
-  （旧的根键 `channels` / `sources` 已改名为 `reportChannelDefs` / `sourceChannelDefs`；旧的 item 级 `fields` 已迁到 `reportChannelDefs[].fieldDefs`。**无向后兼容**：校验器对旧键名直接报错，老数据先 `node tools/migrate-legacy-data.js <文件>`。）
+  （旧的根键 `channels` / `sources` 已改名为 `reportChannelDefs` / `sourceChannelDefs`；旧的 item 级 `fields` 已迁到 `reportChannelDefs[].fieldDefs`。**无向后兼容**：校验器对旧键名直接报错；本项目不提供数据迁移工具，旧数据需自行改写。）
   查看器加载时用 `core.js` 的 `hydrateDataset()`（多文件模式逐 item 用清单的声明表 `hydrateItem()`）把定义补回内存中的 item，因此**渲染 / 搜索 / 忽略配置 / 深链接仍全部按名称工作**；生成器（JS `hoistRegistries()` / Java `ValidationJsonGenerator.hoistRegistries()`）做反向变换，两者互为逆操作（`hoist(hydrate(x)) === x`，有测试断言）。`files` 与 `sources[].fields`（本 item 的比较结果）有意留在 item 内：文件名含 tradeId，字段集也逐 item 可变。
 - **数据契约：引用 ⊆ 声明**：`item.channels[].id` 与 `item.channels[].sources[].id` **必须**能在 `reportChannelDefs` / `sourceChannelDefs` 里解析；`item.ctxDefs` 的 key 必须在 `usedCtxKeyDefs` 里声明且 id 一致；`sources[].fields[].id` 必须在**父报告渠道的** `fieldDefs` 里声明；`skippedItems` 引用的渠道 / 来源渠道同样必须已声明（`hoistRegistries()` 会把它们一起补进声明表）。item 里不再接受新定义（写 `name` / `desc` / `format` / `fieldDefs` / ctxKey 的 `type`·`def`·`rules` 都会被报错）；三张声明表**只有在该数据集没有任何引用时**才可以省略。声明表内部冲突（同 id 不同名称 / 同名不同 id / `fieldDefs[].id` 重复）在生成与迁移时**直接报错**，不静默取第一个。这条契约让「id 指向哪个渠道 / ctxKey / 字段」各只有一处答案，是「引用只留 id」的前提。
 - **渠道 / 来源渠道 / ctxKey / 字段稳定标识（id）**：`reportChannelDefs[].id`（预设 `HKTR=1` / `JSFA=2` / `CFTC=3`）、`sourceChannelDefs[].id`（预设 `来源渠道 A=1` / `来源渠道 B=2`）、`usedCtxKeyDefs[].id` 与 `fieldDefs[].id`（数字字符串，**数据集内唯一**：HKTR 从 1 起 / JSFA 从 21 起 / CFTC 从 41 起）都是必填；声明表是**数据集级**的，因此来源渠道的 id 与名称同样数据集内唯一（不再只按渠道内唯一）。
@@ -170,6 +169,7 @@ report-viewer                  # 任意目录启动（内置默认数据）
 | `npm run generate` | 重新生成样例数据文件（单文件模式） |
 | `npm run merge-batch` | 把指定多文件模式批次合并为单文件模式（`node tools/merge-batch.mjs --batch <id>`） |
 | `npm run verify:multi` | 多文件模式端到端冒烟验证（`tools/verify-multi-mode.mjs`） |
+| `npm run clean` | 清理仓库根的本地构建/运行产物（`bin/` `build/` `.gradle/` `generated/` `logs/` `.apt_generated*`；`--all` 连 `target/`） |
 | `npm test` | 运行全部测试（`node --test`） |
 
 ## HTTP 接口
@@ -215,9 +215,7 @@ src/
 │   ├── worker.js              # 计算 Worker（健康总览 / 全局搜索）
 │   ├── themes.css / i18n.json / batch-help.json
 │   ├── config.schema.json     # config.json 的 JSON Schema（校验用）
-│   ├── report-validation-data.json            # 主数据文件（单文件或多文件清单）
-│   ├── report-validation-data-default.json    # 默认模板数据
-│   ├── report-validation-data-init.json       # 空占位数据
+│   ├── report-validation-data.json            # 主数据文件（单文件或多文件清单，同时充当默认模板数据）
 │   ├── ignore-config-by-platform.json         # 忽略配置（默认 {}，运行期回写）
 │   ├── favorites.json                         # 收藏夹（运行期写入，租户模式下按租户隔离）
 │   ├── batches-index.json                     # 批次索引（扫描输出）
@@ -226,12 +224,12 @@ src/
 │   ├── generate-sample-data.js
 │   ├── merge-batch.mjs          # 批次模式转换：多文件模式 -> 单文件模式（租户/非租户均支持）
 │   ├── verify-multi-mode.mjs    # 多文件模式端到端冒烟验证（临时 web 根 + 起服务 + HTTP 断言）
-│   └── migrate-legacy-data.js   # 旧数据格式 -> 新数据格式迁移
+│   └── clean.js                 # 清理仓库根的本地构建/运行产物（npm run clean）
 ├── test/
 │   ├── pure-logic.test.js     # 纯函数回归测试（含忽略 key/导入解析）
 │   ├── scanner.test.js        # 扫描器测试（含 deleted/tags）
 │   ├── validate.test.js       # 数据校验器测试
-│   ├── sample-multi.test.js   # 多文件模式样例生成（清单 + 默认模板清单 + item 相对路径）
+│   ├── sample-multi.test.js   # 多文件模式样例生成（清单 + item 相对路径）
 │   ├── merge-batch.test.js    # 批次模式转换：多文件 -> 单文件（合并/备份/dry-run/错误分支）
 │   ├── desc-ex.test.js        # 任务说明扩展内容（descriptionEx）：表格解析/搜索/排序/分页
 │   ├── ignore-manage.test.js  # 忽略配置管理：key 解析、列出/排序、筛选规则、命中计数、三态排序、批量删除
@@ -277,11 +275,10 @@ src/
 
 ```bash
 node tools/generate-sample-data.js            # 单文件模式
-node tools/generate-sample-data.js --split    # 多文件模式（主清单 + 默认模板清单 + data/items/*.json）
+node tools/generate-sample-data.js --split    # 多文件模式（主清单 + data/items/*.json）
 node tools/generate-sample-data.js --batch    # 更新全部样例批次（通用切片 + 多文件批次 + 特殊用途批次）
 node tools/generate-sample-data.js --special  # 仅更新特殊用途批次（单来源渠道 / 批次分页 / 批次软删除）
 node tools/generate-sample-data.js --pretty   # 输出缩进版 JSON（仅供人工排查；默认紧凑，体积约为一半）
-node tools/migrate-legacy-data.js <旧文件>     # 旧数据格式迁移为新格式（原地或指定输出；加 --pretty 输出缩进版）
 node tools/merge-batch.mjs --list              # 列出批次及其当前模式（单文件 / 多文件）
 node tools/merge-batch.mjs --batch <batchId>   # 把该多文件批次合并为单文件（原地覆盖清单 + 自动备份 + 刷新索引）
 node tools/merge-batch.mjs --batch <目录> --dry-run        # 只检查与统计，不写任何文件

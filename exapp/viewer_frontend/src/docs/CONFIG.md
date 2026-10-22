@@ -118,10 +118,9 @@ REPORT_VIEWER_CONFIG=prod node server.js
 
 | 键 | 默认值 | 说明 |
 |---|---|---|
-| `data` | `report-validation-data.json` | 主数据文件（单文件或多文件清单），相对 web 根目录 |
-| `defaultData` | `report-validation-data-default.json` | 默认模板数据文件；`defaultDataMode=default` 时优先加载 |
-| `initData` | `report-validation-data-init.json` | 空占位数据文件；`defaultDataMode=init` 时加载 |
-| `defaultDataMode` | `default` | 默认数据源：`init` / `default` / 某个已扫描批次名（其他值等同 `default`） |
+| `data` | `report-validation-data.json` | 主数据文件（单文件或多文件清单），相对 web 根目录；同时充当默认模板数据 |
+| `defaultData` | （空） | 默认模板数据文件；**可选**，留空即用 `data` 指向的文件 |
+| `defaultDataMode` | `default` | 默认数据源：`init`（不加载文件，直接用空数据集）/ `default`（默认模板数据）/ 某个已扫描批次名（其他值等同 `default`） |
 | `ignore` | `ignore-config-by-platform.json` | 忽略配置，相对 web 根目录；同时作为 `POST /api/ignore` 的**默认回写目标**（租户模式下读取地址重写为 `/tenant/<该路径>`，写入租户数据根内的同路径）。查看器的忽略新增 / 取消忽略 / 批量 / 导入 / 「管理忽略配置」里删除都回写到该文件（批次级配置由 `batch-meta.json` 的 `ignoreUrl` 覆盖） |
 | `batches` | `batches-index.json` | 批次索引，相对 web 根目录（租户模式下读取地址重写为 `/tenant/<该路径>`，写入租户数据根内的索引） |
 | `help` | `batch-help.json` | docker 帮助文档内容文件，相对 web 根目录 |

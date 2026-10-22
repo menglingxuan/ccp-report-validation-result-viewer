@@ -50,7 +50,6 @@ test('json-write：writeJSON 自动建目录，并回传 UTF-8 字节数与字�
 
 test('仓库样例数据：单文件、多文件清单与 item 文件、批次文件都是紧凑 JSON', () => {
   const files = [
-    'report-validation-data-default.json',
     'report-validation-data.json',
     'batches/2026-08-17/batch-20260817-1200/report-validation-data.json',
     'batches/2026-08-16/batch-20260816-1700/report-validation-data.json',        // 多文件批次的清单
@@ -62,7 +61,7 @@ test('仓库样例数据：单文件、多文件清单与 item 文件、批次�
     assertCompact(file);
   });
   // 单文件数据：紧凑后应比缩进版小 35% 以上（实测 41%），以此锁定"确实省下来了"。
-  const main = path.join(PUBLIC_DIR, 'report-validation-data-default.json');
+  const main = path.join(PUBLIC_DIR, 'report-validation-data.json');
   const compactLen = fs.statSync(main).size;
   const prettyLen = Buffer.byteLength(JSON.stringify(JSON.parse(fs.readFileSync(main, 'utf8')), null, 2), 'utf8');
   assert.ok(compactLen < prettyLen * 0.65, '紧凑体积应小于缩进版的 65%（实测 ' + compactLen + ' vs ' + prettyLen + '）');
@@ -71,7 +70,6 @@ test('仓库样例数据：单文件、多文件清单与 item 文件、批次�
 test('防回归：数据写入方都用 lib/json-write.js，且不再出现 `null, 2`', () => {
   const writers = {
     'tools/generate-sample-data.js': '样例数据生成器',
-    'tools/migrate-legacy-data.js': '旧数据迁移工具',
     'lib/sample-data.js': 'splitToFiles（多文件拆分）',
     'lib/merge-batch.js': '多文件 -> 单文件合并',
     'tools/verify-multi-mode.mjs': '多文件模式验证脚本',
@@ -90,9 +88,7 @@ test('防回归：数据写入方都用 lib/json-write.js，且不再出现 `nul
     'batch-meta.json 是人工也会编辑的用户态文件，应保持缩进');
   assert.match(gen, /const OUT_OPTS = \{ pretty: argv\.includes\('--pretty'\) \};/, '应提供 --pretty 逃生口');
   assert.match(gen, /--pretty\s+# 输出缩进版/, '用法注释应说明 --pretty');
-  // 迁移工具与合并命令同样提供 --pretty。
-  assert.match(fs.readFileSync(path.join(SRC, 'tools', 'migrate-legacy-data.js'), 'utf8'),
-    /writeJSON\(dst, migrated, \{ pretty: argv\.includes\('--pretty'\) \}\)/, '迁移工具应默认紧凑、--pretty 可切换');
+  // 合并命令同样提供 --pretty。
   assert.match(fs.readFileSync(path.join(SRC, 'tools', 'merge-batch.mjs'), 'utf8'),
     /pretty: has\('--pretty'\)/, '合并命令应把 --pretty 传给 writeMergedDataset');
 });

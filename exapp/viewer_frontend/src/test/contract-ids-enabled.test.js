@@ -27,7 +27,6 @@ import { validateDataset } from '../lib/validate.js';
 const SRC_DIR = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PUBLIC_DIR = path.join(SRC_DIR, 'public');
 const LIB_DIR = path.join(SRC_DIR, 'lib');
-const TOOLS_DIR = path.join(SRC_DIR, 'tools');
 const JAVA_SRC_DIR = path.join(SRC_DIR, '..', '..', '..', 'src', 'main', 'java');
 
 const read = (p) => fs.readFileSync(p, 'utf8');
@@ -206,16 +205,11 @@ test('老数据（无 id / 无 enabled）等价于「渠道全启用 + 预设 id
 
 /* ---------------- 4. enabledChannels 彻底移除 ---------------- */
 
-test('enabledChannels 已彻底移除：查看器 / 生成器 / 迁移工具都不再引用', () => {
+test('enabledChannels 已彻底移除：查看器 / 生成器都不再引用', () => {
   assert.equal(REMOVED_FIELD.test(stripComments(APP)), false, 'app.js 不得再引用 enabledChannels');
   assert.equal(REMOVED_FIELD.test(stripComments(SAMPLE_DATA)), false, 'lib/sample-data.js 不得再写 enabledChannels');
   const validator = read(path.join(LIB_DIR, 'validate.js'));
   assert.match(validator, /enabledChannels 已移除/, '校验器必须对残留的 enabledChannels 报错');
-  // 迁移工具允许出现该词（它负责把老数据里的 enabledChannels 迁移掉），但必须删除该键。
-  const migrate = read(path.join(TOOLS_DIR, 'migrate-legacy-data.js'));
-  assert.ok(REMOVED_FIELD.test(migrate), '迁移工具需要读取旧数据里的字段名');
-  assert.match(migrate, /delete out\.enabledChannels/, '迁移工具必须删除 enabledChannels');
-  assert.match(migrate, /ch\.enabled = false/, '迁移工具必须把名单转换为 channels[].enabled');
 });
 
 test('enabledChannels 已彻底移除：Java 模型 / 生成器里不再有该字段', () => {
@@ -232,7 +226,7 @@ test('enabledChannels 已彻底移除：Java 模型 / 生成器里不再有该�
 });
 
 test('enabledChannels 已彻底移除：落盘样例数据里也没有，且全部通过新契约校验', () => {
-  ['report-validation-data.json', 'report-validation-data-default.json'].forEach((name) => {
+  ['report-validation-data.json'].forEach((name) => {
     const raw = read(path.join(PUBLIC_DIR, name));
     assert.equal(REMOVED_FIELD.test(raw), false, name + ' 不得再出现 enabledChannels');
     const json = JSON.parse(raw);

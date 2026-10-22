@@ -36,8 +36,6 @@ const port = argv.includes('--port') ? String(argv[argv.indexOf('--port') + 1]) 
 // 生成的数据文件（不复制 public/ 的样例数据，避免误覆盖真实样例）。
 const GENERATED_DATA = new Set([
   'report-validation-data.json',
-  'report-validation-data-default.json',
-  'report-validation-data-init.json',
   'ignore-config-by-platform.json',
   'batches-index.json',
   'favorites.json',
@@ -145,9 +143,6 @@ async function main() {
   copyStaticAssets(root);
   const dataset = buildDataset();
   splitToFiles(dataset, root);
-  splitToFiles(dataset, root, 'report-validation-data-default.json');
-  writeJSON(path.join(root, 'report-validation-data-init.json'),
-    { mode: 'single', reportEnv: dataset.reportEnv, creationType: 'sample', items: [] });
   fs.writeFileSync(path.join(root, 'ignore-config-by-platform.json'), '{}\n', 'utf8');
 
   const slice = Object.assign({}, dataset, { items: dataset.items.slice(0, 2) });
@@ -242,17 +237,15 @@ async function main() {
     check('全部 ' + mItems.length + ' 个 item 文件可懒加载（含 channels/ctxDefs）', badItems.length === 0, badItems.join(','));
     check('item 文件只有 id 引用（定义在清单的声明表里）', withDefinitions.length === 0, withDefinitions.slice(0, 5).join(','));
 
-    // 默认模板清单：multi 模式下同样必须是清单（回归点）
-    const def = await getJSON(base + '/report-validation-data-default.json');
-    check('默认模板数据存在且 mode == multi', def.status === 200 && def.json && def.json.mode === 'multi', 'status=' + def.status);
-    check('默认模板清单保留 creationType / skippedItems',
-      !!def.json && def.json.creationType === dataset.creationType
-      && Array.isArray(def.json.skippedItems)
-      && def.json.skippedItems.length === (dataset.skippedItems || []).length,
-      JSON.stringify(def.json && { c: def.json.creationType, s: def.json.skippedItems && def.json.skippedItems.length }));
+    // 默认数据源：不再有独立的 -default / -init 数据文件，默认模板即主数据文件。
+    check('config.json 不再暴露 urls.defaultData / urls.initData',
+      !!(cfg.json && cfg.json.urls) && !('defaultData' in cfg.json.urls) && !('initData' in cfg.json.urls),
+      JSON.stringify(cfg.json && cfg.json.urls));
+    const def = await getJSON(base + '/report-validation-data.json');
+    check('默认模板数据即主清单（mode == multi）', def.status === 200 && def.json && def.json.mode === 'multi', 'status=' + def.status);
     const defFirst = def.json && def.json.items && def.json.items[0];
     if (defFirst) {
-      const r = await getJSON(new URL(defFirst.file, base + '/report-validation-data-default.json').href);
+      const r = await getJSON(new URL(defFirst.file, base + '/report-validation-data.json').href);
       check('默认模板清单引用的 item 文件可解析', r.status === 200 && r.json && r.json.tradeId === defFirst.tradeId);
     } else {
       check('默认模板清单引用的 item 文件可解析', false, 'items 为空');

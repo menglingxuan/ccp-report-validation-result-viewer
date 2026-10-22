@@ -84,7 +84,6 @@ class ValidationJsonEngineTest {
         ValidationJsonGenerator.writeAll(OUT_DIR);
         GENERATED_FILES.addAll(List.of(
                 "report-validation-data.json",
-                "report-validation-data-default.json",
                 "config.json",
                 "ignore-config-by-platform.json",
                 "batches-index.json",
@@ -363,8 +362,9 @@ class ValidationJsonEngineTest {
                     // 日志行**只写 id**（渠道 / 来源名称由查看器加载时按 id 从顶层登记表解析）。
                     c.check(fieldScoped == nonBlank(l.getField()),
                             it + ".logs.field only for scope=field: scope=" + l.getScope() + " field=" + l.getField());
-                    c.check(l.getChannel() == null && l.getSource() == null,
-                            it + ".logs 不写渠道 / 来源名称（只写 id）：channel=" + l.getChannel() + " source=" + l.getSource());
+                    // 日志行只写 id（渠道 / 来源名称由查看器加载时按 id 从声明表补回）。
+                    c.check(l.getChannelId() != null || "item".equals(l.getScope()),
+                            it + ".logs 非 item 级日志必须有 channelId：" + l.getScope());
                     // id 必须能解析到本 item 里真实存在的渠道 / 来源，否则查看器会丢锚点。
                     boolean channelScoped = l.getChannelId() != null;
                     c.check(("item".equals(l.getScope())) == !channelScoped,
@@ -604,9 +604,9 @@ class ValidationJsonEngineTest {
         Path multiOut = tmpDir.resolve("multi-out");
         ValidationJsonGenerator.writeAll(multiOut, DataMode.multi);
 
-        for (String name : List.of("report-validation-data.json", "report-validation-data-default.json")) {
+        for (String name : List.of("report-validation-data.json")) {
             Path f = multiOut.resolve(name);
-            c.check(Files.isRegularFile(f), "multi 根目录应写入 " + name + "（默认模板数据在多文件模式下也是清单）");
+            c.check(Files.isRegularFile(f), "multi 根目录应写入 " + name);
             if (Files.isRegularFile(f)) {
                 JsonNode j = ValidationJsonGenerator.MAPPER.readTree(f.toFile());
                 c.check("multi".equals(j.path("mode").asText()), name + ".mode == multi");

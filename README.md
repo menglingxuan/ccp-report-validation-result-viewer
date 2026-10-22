@@ -44,7 +44,7 @@ gradle bootRun --args="--level basic"
 
 | 选项 | 说明 | 默认值 |
 |------|------|--------|
-| `-j, --job <name>` | 要运行的 Job：`sampleDataJob` / `helloWorldJob` / `styleDataJob` / `validationJsonJob` | `sampleDataJob` |
+| `-j, --job <name>` | 要运行的 Job：`sampleDataJob` / `styleDataJob` / `validationJsonJob` | `sampleDataJob` |
 | `-l, --level <level>` | 样例数据级别：`minimal` / `basic`（`sampleDataJob` 使用） | `minimal` |
 | `-o, --output-dir <dir>` | 输出目录 | `generated` |
 | `-m, --mode <single\|multi>` | 数据输出模式（`validationJsonJob` 使用：单文件 / 清单 + 每 item 一个文件；`multi` 的清单保留 `mode` / `reportEnv` / `creationType` / `skippedItems` 顶层字段，仅把 `items` 换成带 `file` + `summary` 的轻量条目） | `single` |
@@ -61,7 +61,6 @@ gradle bootRun --args="--level basic"
 示例：
 
 ```bash
-gradle bootRun --args="--job=helloWorldJob"
 gradle bootRun --args="--level basic"
 gradle bootRun --args="--level basic --output-dir out"
 gradle bootRun --args="--no-run"
@@ -124,7 +123,6 @@ gradle bootRun --args="generate --report-date 2026-08-20 --date-from 2026-08-18 
 | Job | 说明 | 关键参数 |
 |-----|------|----------|
 | `sampleDataJob` | 默认 Job，按级别生成样例数据（原有功能） | `level`、`outputDir` |
-| `helloWorldJob` | Hello World 示例 Job | - |
 | `styleDataJob` | 按风格生成数据，支持报告日期（供 `generate` 子命令调用） | `style`、`reportDate`、`outputDir` |
 | `validationJsonJob` | 生成查看器所需的**全部** JSON（数据集 / 配置 / 忽略配置 / 批次索引 + 一个批次目录） | `mode`（`single` / `multi`）、`outputDir` |
 
@@ -133,9 +131,9 @@ gradle bootRun --args="generate --report-date 2026-08-20 --date-from 2026-08-18 
 - `minimal`：`report-validation-data-minimal.json`
 - `basic`：`report-validation-data-basic.json`、`batch-meta-basic.json`
 
-`validationJsonJob` 在输出目录生成（`-m multi` 时数据集拆为清单 + 每 item 一个文件；主数据、默认模板数据与批次数据文件均为清单）：
+`validationJsonJob` 在输出目录生成（`-m multi` 时数据集拆为清单 + 每 item 一个文件；主数据与批次数据文件均为清单）：
 
-- `report-validation-data.json`、`report-validation-data-default.json`、`config.json`、`ignore-config-by-platform.json`、`batches-index.json`
+- `report-validation-data.json`、`config.json`、`ignore-config-by-platform.json`、`batches-index.json`
 - `batches/2026-08-16/batch-20260816-0400/report-validation-data.json` 与 `.../batch-meta.json`
 
 相关代码：
@@ -143,7 +141,6 @@ gradle bootRun --args="generate --report-date 2026-08-20 --date-from 2026-08-18 
 - `src/main/java/com/otcc/viewer/batch/SampleDataBatchConfiguration.java` — Job / Step 定义
 - `src/main/java/com/otcc/viewer/batch/SampleDataTasklet.java` — `sampleDataJob` 数据生成逻辑
 - `src/main/java/com/otcc/viewer/batch/StyleDataTasklet.java` — `styleDataJob` 数据生成逻辑
-- `src/main/java/com/otcc/viewer/batch/HelloWorldTasklet.java` — Hello World 任务
 - `src/main/java/com/otcc/viewer/batch/BatchJobResolver.java` — 按名称解析 Job
 - `src/main/java/com/otcc/viewer/generator/SampleDataGenerator.java` — 风格生成策略接口
 - `src/main/java/com/otcc/viewer/generator/SampleDataGeneratorRegistry.java` — 风格生成器注册表

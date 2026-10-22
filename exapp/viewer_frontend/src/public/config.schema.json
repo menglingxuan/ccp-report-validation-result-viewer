@@ -57,9 +57,8 @@
       "description": "数据/忽略规则文件的相对路径（与 HTML 同目录）。",
       "properties": {
         "data": { "type": "string", "description": "主数据文件（单文件或多文件清单）的相对路径。", "default": "report-validation-data.json" },
-        "defaultData": { "type": "string", "description": "默认模板数据文件（存在时优先加载）。", "default": "report-validation-data-default.json" },
-        "initData": { "type": "string", "description": "空占位数据文件（defaultDataMode=init 时加载）。", "default": "report-validation-data-init.json" },
-        "defaultDataMode": { "type": "string", "description": "默认数据源：init / default / 某个批次名。", "default": "default" },
+        "defaultData": { "type": "string", "description": "默认模板数据文件的相对路径（可选；不配置时即用 data）。", "default": "" },
+        "defaultDataMode": { "type": "string", "description": "默认数据源：init（空数据集）/ default（默认模板数据）/ 某个批次名。", "default": "default" },
         "help": { "type": "string", "description": "docker 帮助文档内容文件。", "default": "batch-help.json" },
         "ignore": { "type": "string", "description": "忽略配置 JSON 的相对路径。", "default": "ignore-config-by-platform.json" },
         "batches": { "type": "string", "description": "批次索引 JSON（最近批次面板数据源）的相对路径。", "default": "batches-index.json" },

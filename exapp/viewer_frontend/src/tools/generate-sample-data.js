@@ -2,7 +2,6 @@
 //
 //   node tools/generate-sample-data.js                 # 生成单文件模式
 //   node tools/generate-sample-data.js --split         # 生成多文件模式（清单 + 每 item 一个文件）
-//   node tools/generate-sample-data.js --only default  # 仅生成默认模板数据文件
 //   node tools/generate-sample-data.js --special       # 仅生成三个特殊用途样例批次（单来源 / 分页 / 软删除）
 //   node tools/generate-sample-data.js --batch         # 一并更新批次样例数据（通用切片批次 + 多文件批次 + 特殊用途批次）
 //   node tools/generate-sample-data.js --pretty        # 输出缩进版（仅供人工排查；默认紧凑，体积约为一半）
@@ -20,7 +19,6 @@ const argv = process.argv.slice(2);
 const doSplit = argv.includes('--split');
 const doBatch = argv.includes('--batch');
 const doSpecial = argv.includes('--special');
-const only = argv.includes('--only') ? argv[argv.indexOf('--only') + 1] : null;
 const OUT_OPTS = { pretty: argv.includes('--pretty') };
 
 // 批次目录根（每个批次目录拥有自己独立的 report-validation-data.json）。
@@ -205,21 +203,12 @@ function main() {
 
   if (doSplit) {
     const manifest = splitToFiles(dataset, PUBLIC_DIR, undefined, OUT_OPTS);
-    // 多文件模式下默认模板数据也是清单（否则 urls.defaultData / defaultDataMode=default 会缺文件）。
-    splitToFiles(dataset, PUBLIC_DIR, 'report-validation-data-default.json', OUT_OPTS);
     console.log('多文件模式：清单 items=' + manifest.items.length);
     console.log('  清单 -> ' + path.join(PUBLIC_DIR, 'report-validation-data.json'));
-    console.log('  默认模板清单 -> ' + path.join(PUBLIC_DIR, 'report-validation-data-default.json'));
     console.log('  item 文件 -> ' + path.join(PUBLIC_DIR, 'data', 'items', '<tradeId>.json'));
   } else {
-    if (!only || only === 'default') {
-      writeDataset(path.join(PUBLIC_DIR, 'report-validation-data-default.json'), dataset);
-      console.log('默认模板数据 -> report-validation-data-default.json');
-    }
-    if (!only) {
-      writeDataset(path.join(PUBLIC_DIR, 'report-validation-data.json'), dataset);
-      console.log('主数据文件 -> report-validation-data.json');
-    }
+    writeDataset(path.join(PUBLIC_DIR, 'report-validation-data.json'), dataset);
+    console.log('主数据文件 -> report-validation-data.json');
   }
 
   if (doBatch) {
