@@ -548,6 +548,7 @@ function handleStatus(res) {
       out: CFG.scan.out,
       ignore: CFG.scan.ignore,
       env: CFG.scan.env || null,
+      compatibleApiVersions: CFG.compatibleApiVersions,
     },
     tenant: {
       enabled: CFG.tenant.enabled,

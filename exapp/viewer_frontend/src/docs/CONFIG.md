@@ -26,7 +26,7 @@ REPORT_VIEWER_CONFIG=prod node server.js
 
 | 键 | 类型 | 说明 |
 |---|---|---|
-| `configVersion` | 整数 | 配置结构版本号（当前 `3`；支持 `2` / `3`）。**与批次的 `formatVersion` 是两套独立版本号**：`configVersion` 只表达配置文件结构的演进，不参与「批次能否加载」的判定（后者看 `batch-meta.json` 的 `formatVersion`，见 [`DATA_SCHEMA.md`](DATA_SCHEMA.md)）；高于支持范围时仅在浏览器控制台告警，不阻止加载 |
+| `compatibleApiVersions` | 整数数组 | **API（数据契约）版本白名单**（当前 `[2, 3]`），决定批次能否加载，见下文 `compatibleApiVersions` 段 |
 | `server` | 对象 | HTTP 服务配置（仅服务端使用） |
 | `scan` | 对象 | 批次扫描配置（服务端使用） |
 | `runType` | 字符串 | 运行环境（`dev` / `test` / `prod`） |
@@ -38,6 +38,27 @@ REPORT_VIEWER_CONFIG=prod node server.js
 | `limits` | 对象 | 分页与数量上限 |
 | `batches` | 对象 | 最近批次面板的行为配置 |
 | `columns` | 对象 | 默认列可见性 |
+
+---
+
+## `compatibleApiVersions`（API / 数据契约版本白名单）
+
+决定**哪些批次的 `formatVersion` 能被加载**。
+
+| 键 | 默认值 | 说明 |
+|---|---|---|
+| `compatibleApiVersions` | `[2, 3]` | 可加载的历史 API 版本白名单（整数数组）。会**去重升序**，并**自动补上**当前版本（`public/core.js` 的 `DEFAULT_API_VERSION = 3`），否则本查看器自己生成的批次会被自己判为不兼容 |
+
+```json
+"compatibleApiVersions": [2, 3]
+```
+
+规则：
+
+- 批次元数据 `batch-meta.json` 的 `formatVersion` 不在列表内 → 列表中显示**红色版本徽章**（「版本不兼容」），加载前需二次确认（强制加载）；未声明 `formatVersion` 的批次按当前版本（`3`）处理。
+- 缺省 / 非法（非数组、全是非法项）→ 回退 `DEFAULT_COMPATIBLE_API_VERSIONS = [2, 3]`。
+- **写入方不读这个配置**：扫描器缺省值、JS / Java 生成器写入的 `formatVersion` 都取代码常量（`DEFAULT_API_VERSION` / Java `ValidationJsonGenerator.API_VERSION`）；配置只决定「查看器允许加载哪些版本」。
+- 服务端 `/status` 返回的 `config.compatibleApiVersions` 与这里一致。
 
 ---
 

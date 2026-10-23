@@ -23,12 +23,15 @@ import { buildDataset, splitToFiles } from '../lib/sample-data.js';
 import { stringifyJSON } from '../lib/json-write.js';
 import { validateDataset } from '../lib/validate.js';
 import { scan } from '../lib/scanner.js';
-import { CURRENT_FORMAT_VERSION } from '../public/core.js';
+import { DEFAULT_API_VERSION } from '../public/core.js';
 
 const TOOLS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SRC_ROOT = path.dirname(TOOLS_DIR);
 const PUBLIC_DIR = path.join(SRC_ROOT, 'public');
 const SERVER_JS = path.join(SRC_ROOT, 'server.js');
+
+// 造夹具时写入的 formatVersion 用代码常量（不从 config.json 读）。
+const API_VERSION = DEFAULT_API_VERSION;
 
 const argv = process.argv.slice(2);
 const keep = argv.includes('--keep');
@@ -68,7 +71,7 @@ function batchMeta(id, items, dataset) {
     batchName: id,
     date: '2026-08-16',
     executedAt: '2026-08-16T10:00:00+08:00',
-    formatVersion: CURRENT_FORMAT_VERSION,
+    formatVersion: API_VERSION,
     creationType: 'sample',
     dataUrl: 'report-validation-data.json',
     ignoreUrl: 'ignore-config-by-platform.json',

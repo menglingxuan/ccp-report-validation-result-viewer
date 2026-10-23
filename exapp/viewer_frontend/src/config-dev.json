@@ -1,5 +1,5 @@
 {
-  "configVersion": 1,
+  "compatibleApiVersions": [2, 3],
   "server": {
     "host": "127.0.0.1",
     "port": 8123,

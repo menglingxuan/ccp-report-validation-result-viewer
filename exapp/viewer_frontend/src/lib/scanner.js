@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateDataset } from './validate.js';
-import { CURRENT_FORMAT_VERSION } from '../public/core.js';
+import { DEFAULT_API_VERSION } from '../public/core.js';
 
 const LIB_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SRC_ROOT = path.dirname(LIB_DIR);
@@ -81,11 +81,14 @@ function readDataInfo(dataPath) {
 /**
  * 扫描批次目录（异步，支持 onProgress 回调）。
  * @param {{basedir: string, out: string, ignore?: string[], env?: string|null, onProgress?: function}} opts
+ *   批次元数据未声明 {@code formatVersion} 时，索引里写入 {@code DEFAULT_API_VERSION}（代码常量，
+ *   不从 config.json 读——配置只决定查看器「允许加载哪些版本」）。
  * @returns {Promise<{ok: boolean, error?: string, count: number, batches: object[], out: string, skipped: number}>}
  */
 export async function scan(opts) {
   const basedir = opts.basedir;
   const out = opts.out;
+  const apiVersion = DEFAULT_API_VERSION;
   const onProgress = typeof opts.onProgress === 'function' ? opts.onProgress : null;
   const ignoreRes = (opts.ignore || []).map(function (s) {
     try {
@@ -183,7 +186,7 @@ export async function scan(opts) {
       batchName: batchName,
       date: String(date),
       executedAt: String(executedAt),
-      formatVersion: typeof meta.formatVersion === 'number' ? meta.formatVersion : CURRENT_FORMAT_VERSION,
+      formatVersion: typeof meta.formatVersion === 'number' ? meta.formatVersion : apiVersion,
       dataUrl: resolveMetaDataUrl(dir, meta.dataUrl) || relToIndex(dataPath),
       ignoreUrl: meta.ignoreUrl || null,
       path: toWeb(dir),

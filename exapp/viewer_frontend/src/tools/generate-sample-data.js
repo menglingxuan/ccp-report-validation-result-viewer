@@ -10,11 +10,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDataset, splitToFiles } from '../lib/sample-data.js';
 import { writeJSON as writeJSONFile } from '../lib/json-write.js';
-import { CURRENT_FORMAT_VERSION } from '../public/core.js';
+import { DEFAULT_API_VERSION } from '../public/core.js';
 
 const TOOLS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SRC_ROOT = path.dirname(TOOLS_DIR);
 const PUBLIC_DIR = path.join(SRC_ROOT, 'public');
+
+// 写进 batch-meta.json 的 formatVersion 用代码常量（不从 config.json 读）。
+const API_VERSION = DEFAULT_API_VERSION;
 
 const argv = process.argv.slice(2);
 const doSplit = argv.includes('--split');
@@ -73,7 +76,7 @@ function writeMultiBatch(dir, dataset) {
     batchName: 'split-20260816',
     date: '2026-08-16',
     executedAt: '2026-08-16T17:00:00+08:00',
-    formatVersion: CURRENT_FORMAT_VERSION,
+    formatVersion: API_VERSION,
     dataUrl: 'report-validation-data.json',
     ignoreUrl: 'ignore-config-by-platform.json',
     summary: { items: dataset.items.length, channels: 3 },
@@ -173,7 +176,7 @@ function writeSpecialBatch(def) {
     batchName: def.batchName,
     date: def.day,
     executedAt: def.executedAt,
-    formatVersion: CURRENT_FORMAT_VERSION,
+    formatVersion: API_VERSION,
     creationType: 'sample',
     dataUrl: 'report-validation-data.json',
     ignoreUrl: 'ignore-config-by-platform.json',

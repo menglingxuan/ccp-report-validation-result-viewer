@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.otcc.viewer.model.BatchMeta;
-import com.otcc.viewer.model.ContractVersion;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -28,6 +27,13 @@ public final class BasicBatchMetaGenerator {
     }
 
     public static final String FILE_NAME = "batch-meta-basic.json";
+
+    /**
+     * 写入 {@code batch-meta.json#formatVersion} 的 API（数据契约）版本（须与 {@code public/core.js} 的
+     * {@code DEFAULT_API_VERSION} 一致）。「查看器允许加载哪些版本」由 {@code config.json} 的
+     * {@code compatibleApiVersions} 决定，生成器不参与。
+     */
+    public static final int API_VERSION = 3;
 
     /** The single fixed report date carried by the generated meta data. */
     public static final String REPORT_DATE = "2026-08-17";
@@ -54,7 +60,7 @@ public final class BasicBatchMetaGenerator {
                 .batchName("basic-" + date.replace("-", ""))
                 .date(date)
                 .executedAt(date + "T00:00:00+08:00")
-                .formatVersion(ContractVersion.FORMAT_VERSION)
+                .formatVersion(API_VERSION)
                 .cwd(System.getProperty("user.dir"))
                 .commandLine(List.of("java", "-jar", "ccp-report.jar", "--job=basic",
                         "--date=" + date, "--channels=HKTR,JSFA,CFTC"))

@@ -3,32 +3,39 @@
  * 所有函数均为纯计算：相同输入 -> 相同输出，不读写全局状态。
  * ============================================================ */
 
-/* ---------- 契约版本号（唯一权威定义） ----------
- * 这里有两个**互不相干**的版本号，不要再混用：
- *   - `CURRENT_FORMAT_VERSION` / `SUPPORTED_FORMAT_VERSIONS`：**数据契约版本**，
- *     来源是 `batch-meta.json` 的 `formatVersion`（不是 config.json！）。
- *     查看器只能加载白名单内的版本；生成器（JS / Java）与扫描器默认值都用 `CURRENT_FORMAT_VERSION`。
- *   - `CURRENT_CONFIG_VERSION` / `SUPPORTED_CONFIG_VERSIONS`：**config.json 的结构版本**
- *     （`configVersion`），只表达「配置文件结构」的演进；与批次能否加载**无关**。
- * 历史：v2 = 声明表 + id 引用的契约；v3 = 删除兼容层（不再接受 srcType / item.fields / scopes 等旧形态），
- * 因此 v2 数据仍可读（契约本身未变），但新生成的数据一律写 v3。
+/* ---------- API（数据契约）版本 ----------
+ * 唯一的配置项是顶层 `compatibleApiVersions`（查看器允许加载的 formatVersion 白名单）：
+ *   "compatibleApiVersions": [2, 3]
+ * 这里只放**默认值**（配置缺失 / 非法时的兜底）。
+ *
+ * 写入方（扫描器缺省值、JS / Java 生成器）用代码里的 `DEFAULT_API_VERSION`
+ * （Java 侧为 `ValidationJsonGenerator.API_VERSION` / `BasicBatchMetaGenerator.API_VERSION`），
+ * 不读配置：配置只负责「查看器允许加载哪些版本」。
  * ------------------------------------------------------------------ */
-export const CURRENT_FORMAT_VERSION = 3;
-export const SUPPORTED_FORMAT_VERSIONS = [3];
-export const CURRENT_CONFIG_VERSION = 1;
-export const SUPPORTED_CONFIG_VERSIONS = [1];
+export const DEFAULT_API_VERSION = 3;
+export const DEFAULT_COMPATIBLE_API_VERSIONS = [2, 3];
 
-// 批次 / 数据文件的 formatVersion 是否在查看器支持范围内（缺省按当前版本处理）。
-export function formatVersionSupported(v, supported) {
-  const list = Array.isArray(supported) && supported.length ? supported : SUPPORTED_FORMAT_VERSIONS;
-  const n = v === undefined || v === null || v === '' ? CURRENT_FORMAT_VERSION : Number(v);
-  return list.indexOf(n) !== -1;
+/**
+ * 归一配置项 `compatibleApiVersions`：返回去重升序的正整数数组。
+ * 非法 / 缺失 -> 回退 {@link DEFAULT_COMPATIBLE_API_VERSIONS}；
+ * 若 `DEFAULT_API_VERSION`（生成器写出的当前版本）不在列表内则自动补上，
+ * 否则本查看器自己生成的批次会被自己判为「版本不兼容」。
+ */
+export function normalizeCompatibleApiVersions(raw) {
+  let list = Array.isArray(raw)
+    ? raw.map(Number).filter(function (n) { return Number.isInteger(n) && n > 0; })
+    : [];
+  if (!list.length) list = DEFAULT_COMPATIBLE_API_VERSIONS.slice();
+  if (list.indexOf(DEFAULT_API_VERSION) === -1) list.push(DEFAULT_API_VERSION);
+  return Array.from(new Set(list)).sort(function (a, b) { return a - b; });
 }
 
-// config.json 的 configVersion 是否被本查看器支持（未知 / 更新版本给告警用）。
-export function configVersionSupported(v, supported) {
-  const list = Array.isArray(supported) && supported.length ? supported : SUPPORTED_CONFIG_VERSIONS;
-  const n = v === undefined || v === null || v === '' ? CURRENT_CONFIG_VERSION : Number(v);
+// 批次 / 数据文件的 formatVersion 是否在支持范围内（缺省按 DEFAULT_API_VERSION 处理）。
+export function apiVersionSupported(v, compatibleApiVersions) {
+  const list = Array.isArray(compatibleApiVersions) && compatibleApiVersions.length
+    ? compatibleApiVersions
+    : DEFAULT_COMPATIBLE_API_VERSIONS;
+  const n = v === undefined || v === null || v === '' ? DEFAULT_API_VERSION : Number(v);
   return list.indexOf(n) !== -1;
 }
 

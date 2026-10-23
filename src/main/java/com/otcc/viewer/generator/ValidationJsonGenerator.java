@@ -10,7 +10,6 @@ import com.otcc.viewer.model.BatchMeta;
 import com.otcc.viewer.model.Channel;
 import com.otcc.viewer.model.ChannelFiles;
 import com.otcc.viewer.model.CmpSide;
-import com.otcc.viewer.model.ContractVersion;
 import com.otcc.viewer.model.ConversionRule;
 import com.otcc.viewer.model.CtxDef;
 import com.otcc.viewer.model.CtxKeyDef;
@@ -82,6 +81,13 @@ public final class ValidationJsonGenerator {
      */
     public static final Map<String, Integer> CHANNEL_IDS = Map.of("HKTR", 1, "JSFA", 2, "CFTC", 3);
     public static final Map<String, Integer> SOURCE_IDS = Map.of("来源渠道 A", 1, "来源渠道 B", 2);
+
+    /**
+     * 写入 {@code batch-meta.json#formatVersion} 的 API（数据契约）版本（须与 {@code public/core.js} 的
+     * {@code DEFAULT_API_VERSION} 一致）。「查看器允许加载哪些版本」由 {@code config.json} 的
+     * {@code compatibleApiVersions} 决定，生成器不参与。
+     */
+    public static final int API_VERSION = 3;
 
     /**
      * Field id bases per report channel: field ids are unique dataset-wide (HKTR 1.. / JSFA 21.. /
@@ -1420,7 +1426,6 @@ public final class ValidationJsonGenerator {
 
     public static ValidationConfig generateConfig() {
         return ValidationConfig.builder()
-                .configVersion(ContractVersion.CONFIG_VERSION)
                 .runType("dev")
                 .urls(ValidationConfig.Urls.builder()
                         .data("report-validation-data.json")
@@ -1480,7 +1485,7 @@ public final class ValidationJsonGenerator {
                 .batchName("nightly-20260816")
                 .date("2026-08-16")
                 .executedAt("2026-08-16T04:00:00+08:00")
-                .formatVersion(ContractVersion.FORMAT_VERSION)
+                .formatVersion(API_VERSION)
                 .cwd(System.getProperty("user.dir"))
                 .commandLine(List.of("java", "-jar", "ccp-report.jar", "--job=nightly",
                         "--date=2026-08-16", "--channels=HKTR,JSFA,CFTC"))

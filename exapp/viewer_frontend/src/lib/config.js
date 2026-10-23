@@ -22,6 +22,8 @@ export function resolveConfigFile() {
 
 const DEFAULTS = {
   server: { host: '127.0.0.1', port: 8123, webRoot: 'public' },
+  // 可加载的 API（数据契约）版本白名单：配置项优先，缺省值见 public/core.js。
+  compatibleApiVersions: [2, 3],
   // scan.basedir / scan.out 相对「租户数据根」解析（见 loadConfig），不再是相对 src/。
   scan: { basedir: 'batches', out: 'batches-index.json', ignore: [], env: null },
   runType: 'dev',

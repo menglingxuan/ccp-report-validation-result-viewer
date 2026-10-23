@@ -16,7 +16,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ValidationConfig {
-    private Integer configVersion;
     private String runType;
     private Urls urls;
     private Ui ui;
