@@ -648,8 +648,14 @@
       el.textContent = t('env') + (env === DEFAULT_ENV ? t('batchEnvUnknown') : env);
     }
     function applyStaticText() {
-      document.getElementById('appTitle').textContent = t('appTitle');
-      document.getElementById('appSub').textContent = t('appSub');
+      // 顶栏标题 / 副标题可能因宽度不足被省略号截断（见 index.html 的 .topbar-title / .topbar-sub），
+      // 同时写入 title 属性，悬停即可看到完整文案。
+      const titleEl = document.getElementById('appTitle');
+      const subEl = document.getElementById('appSub');
+      titleEl.textContent = t('appTitle');
+      titleEl.title = t('appTitle');
+      subEl.textContent = t('appSub');
+      subEl.title = t('appSub');
       updateEnvBadge();
       document.getElementById('search').placeholder = t('toolbarSearch');
       document.getElementById('itemSearch').placeholder = t('sidebarSearch');

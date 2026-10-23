@@ -23,14 +23,25 @@
       color: #fff;
       padding: 18px 24px;
       box-shadow: 0 2px 10px rgba(15, 23, 42, .18);
+      /* 右侧控件组的整体水平微调：正数=更靠右（会略微超出内容列右边缘），0 = 与内容列右边缘对齐 */
+      --topbar-right-nudge: 10px;
     }
     .topbar-inner {
       max-width: 1400px; margin: 0 auto;
       display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
     }
+    /* 左侧标题区：flex-basis 取一个较小的值（320px），宽度够时右侧控件组与标题同行、靠右；
+       只有窄屏（<约 1160px）才换行，此时右侧控件组仍靠右（不会贴左边缘）。 */
+    .topbar-left { min-width: 0; flex: 1 1 320px; }
     .topbar-title { font-size: 21px; font-weight: 700; letter-spacing: .3px; }
     .topbar-sub { font-size: 13px; color: rgba(255,255,255,.72); margin-top: 4px; }
-    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    /* 标题 / 副标题超长时用省略号收尾，保持单行 */
+    .topbar-title, .topbar-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* 右侧控件组：不压缩；始终靠右（换行时也不会贴左边缘），并按 --topbar-right-nudge 整体略微右移 */
+    .topbar-right {
+      display: flex; align-items: center; gap: 10px; flex: 0 0 auto; margin-left: auto;
+      margin-right: calc(-1 * var(--topbar-right-nudge, 0px));
+    }
     .env-badge {
       background: rgba(255,255,255,.12);
       border: 1px solid rgba(255,255,255,.25);
