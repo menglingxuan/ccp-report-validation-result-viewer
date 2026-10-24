@@ -147,6 +147,16 @@ export function loadConfig(cli) {
 
   cfg.srcRoot = SRC_ROOT;
   cfg.server.webRootAbs = path.resolve(SRC_ROOT, cfg.server.webRoot);
+  // 数据根是否独立于 web 根（--data-root / REPORT_VIEWER_DATA_ROOT / 租户模式）。
+  // 独立时浏览器必须经由数据根路由（/data/ 或 /tenant/）读取批次索引与批次数据，
+  // 否则会静默读到 web 根（public/batches）下的共享样例。
+  // Windows 下路径大小写不敏感：仅大小写不同视为同一个根（避免无意义的隔离）。
+  const samePath = function (a, b) {
+    const pa = path.resolve(a);
+    const pb = path.resolve(b);
+    return process.platform === 'win32' ? pa.toLowerCase() === pb.toLowerCase() : pa === pb;
+  };
+  cfg.dataRootIsolated = !samePath(dataRoot, cfg.server.webRootAbs);
   cfg.scan.basedirAbs = path.isAbsolute(cfg.scan.basedir) ? cfg.scan.basedir : path.resolve(dataRoot, cfg.scan.basedir);
   cfg.scan.outAbs = path.isAbsolute(cfg.scan.out) ? cfg.scan.out : path.resolve(dataRoot, cfg.scan.out);
 

@@ -334,11 +334,12 @@ function resolveWritableConfigPath(rel, host) {
   }
   clean = clean.split('?')[0].split('#')[0].replace(/\\/g, '/').replace(/^\/+/, '');
   if (clean === 'tenant' || clean.startsWith('tenant/')) clean = clean.slice('tenant'.length).replace(/^\/+/, '');
+  else if (clean === 'data-root' || clean.startsWith('data-root/')) clean = clean.slice('data-root'.length).replace(/^\/+/, '');
   if (!clean || !/\.json$/i.test(clean)) return null;
-  const root = path.resolve(CFG.tenant.enabled ? CFG.tenant.dataRoot : CFG.server.webRootAbs);
+  const root = path.resolve(CFG.tenant.enabled || CFG.dataRootIsolated ? CFG.tenant.dataRoot : CFG.server.webRootAbs);
   const abs = path.resolve(root, clean);
   if (abs === root || !abs.startsWith(root + path.sep)) return null;
-  const configured = path.resolve(root, String(defaultIgnoreUrl()).replace(/^\/+/, '').replace(/^tenant\//, ''));
+  const configured = path.resolve(root, String(defaultIgnoreUrl()).replace(/^\/+/, '').replace(/^(tenant|data-root)\//, ''));
   if (abs === configured) return abs;
   const batches = path.resolve(CFG.scan.basedirAbs);
   return abs.startsWith(batches + path.sep) ? abs : null;
@@ -570,10 +571,14 @@ function requireVersion() {
   }
 }
 
-// 租户数据服务：/tenant 或 /tenant/ -> 租户 batches-index.json；/tenant/<rel> -> 租户数据根下的文件。
-// 文件不在租户数据根时回退到共享 web 根（例如忽略配置）。
-function serveTenantData(req, res, url) {
-  let rel = decodeURIComponent(url.replace(/^\/tenant\/?/, '')).replace(/^\/+/, '');
+// 数据根数据服务（/tenant/... 或 /data-root/...）：
+//   /tenant、/data-root            -> 数据根的 batches-index.json
+//   /tenant/<rel>、/data-root/<rel> -> 数据根下的文件
+// 注意：不能用 /data/ —— 多文件模式的 item 文件就在 web 根的 data/items/ 下，会与静态目录冲突。
+// 只有「全局忽略配置」允许回退到共享 web 根（数据根下没有时沿用共享默认配置）；
+// 批次索引与批次数据**绝不回退** —— 否则 --data-root 的实例会静默读到 web 根（public/batches）的批次数据。
+function serveDataRootData(req, res, url) {
+  let rel = decodeURIComponent(url.replace(/^\/(tenant|data-root)\/?/, '')).replace(/^\/+/, '');
   if (!rel) {
     serveFile(req, res, CFG.scan.outAbs);
     return;
@@ -585,11 +590,14 @@ function serveTenantData(req, res, url) {
       if (fs.statSync(candidate).isFile()) { serveFile(req, res, candidate); return; }
     } catch (e) {}
   }
-  const shared = path.resolve(CFG.server.webRootAbs, rel);
-  if (shared === CFG.server.webRootAbs || shared.startsWith(CFG.server.webRootAbs + path.sep)) {
-    try {
-      if (fs.statSync(shared).isFile()) { serveFile(req, res, shared); return; }
-    } catch (e) {}
+  const ignoreRel = String(defaultIgnoreUrl()).replace(/^\/+/, '').replace(/^(tenant|data-root)\//, '');
+  if (rel === ignoreRel) {
+    const shared = path.resolve(CFG.server.webRootAbs, rel);
+    if (shared === CFG.server.webRootAbs || shared.startsWith(CFG.server.webRootAbs + path.sep)) {
+      try {
+        if (fs.statSync(shared).isFile()) { serveFile(req, res, shared); return; }
+      } catch (e) {}
+    }
   }
   json(res, 404, { ok: false, error: 'Not Found' });
 }
@@ -663,18 +671,19 @@ const server = http.createServer(function (req, res) {
   }
 
   if (url === '/config.json') {
-    // 租户模式：将 urls.batches 重写为租户索引地址（批次索引与批次数据均按租户隔离）。
-    // 非租户模式：保持配置中的 urls.batches（相对 web 根，指向共享批次索引）。
+    // 数据根独立时（--data-root / 租户模式）：把批次索引与忽略配置指向数据根路由，
+    // 否则浏览器会去 web 根读 batches-index.json（共享样例），从而显示「别的实例」的批次。
     let servedCfg = {};
     try { servedCfg = JSON.parse(fs.readFileSync(ACTIVE_CONFIG_FILE, 'utf8')) || {}; } catch (e) { servedCfg = {}; }
     servedCfg.urls = servedCfg.urls || {};
     // 把服务端解析后的「打开目录」开关下发给浏览器（未显式配置时也会带上有效值）。
     servedCfg.features = servedCfg.features || {};
     if (typeof servedCfg.features.revealPath !== 'boolean') servedCfg.features.revealPath = REVEAL_ENABLED;
-    if (CFG.tenant.enabled) {
-      servedCfg.urls.batches = '/tenant/';
-      // 忽略配置同样按租户隔离：/tenant/<urls.ignore>（无租户文件时回退到共享默认文件）。
-      servedCfg.urls.ignore = '/tenant/' + String(defaultIgnoreUrl()).replace(/^\/+/, '');
+    if (CFG.tenant.enabled || CFG.dataRootIsolated) {
+      const dataBase = CFG.tenant.enabled ? '/tenant/' : '/data-root/';
+      servedCfg.urls.batches = dataBase;
+      // 忽略配置同样按数据根隔离（数据根无该文件时回退到共享默认文件）。
+      servedCfg.urls.ignore = dataBase + String(defaultIgnoreUrl()).replace(/^\/+/, '');
     }
     // 本地缓存作用域：下发租户标识（仅 enabled / id，**不含** dataRoot 等服务器路径）。
     // 前端据此把 localStorage 与 IndexedDB 缓存按租户分区，各租户互不影响（清除缓存也只清当前租户）。
@@ -683,8 +692,8 @@ const server = http.createServer(function (req, res) {
     return;
   }
 
-  if (url === '/tenant' || url.startsWith('/tenant/')) {
-    serveTenantData(req, res, url);
+  if (url === '/tenant' || url.startsWith('/tenant/') || url === '/data-root' || url.startsWith('/data-root/')) {
+    serveDataRootData(req, res, url);
     return;
   }
 
@@ -709,10 +718,10 @@ const server = http.createServer(function (req, res) {
   }
 });
 
-// 首次启动初始化：为租户创建「兼容的空数据/配置」（空批次目录、空索引、空忽略配置），
-// 不复制共享样例数据（仅在租户模式且未显式覆盖扫描目录时执行）。
-function initTenantData() {
-  if (!CFG.tenant.enabled) return; // 非租户模式：直接使用 web 根下的共享批次数据。
+// 首次启动初始化：数据根独立时（租户模式 / --data-root）创建「空的批次目录 + 空索引 + 空忽略配置」，
+// 不复制共享样例数据（仅在未显式覆盖扫描目录时执行）。
+function initDataRoot() {
+  if (!CFG.tenant.enabled && !CFG.dataRootIsolated) return; // 共享 web 根：直接使用其下的批次数据。
   if (process.env.REPORT_VIEWER_BASEDIR || process.env.REPORT_VIEWER_OUT) return;
   try {
     fs.mkdirSync(CFG.scan.basedirAbs, { recursive: true });
@@ -730,9 +739,9 @@ function initTenantData() {
     if (!fs.existsSync(ignorePath)) {
       writeFileAtomic(ignorePath, JSON.stringify({}, null, 2));
     }
-    console.log('[report-viewer] Initialized empty tenant data: ' + CFG.tenant.dataRoot);
+    console.log('[report-viewer] Initialized empty data root: ' + CFG.tenant.dataRoot);
   } catch (e) {
-    console.warn('[report-viewer] Init tenant data failed: ' + (e && e.message ? e.message : e));
+    console.warn('[report-viewer] Init data root failed: ' + (e && e.message ? e.message : e));
   }
 }
 
@@ -837,7 +846,7 @@ function startServer() {
     setInterval(function () { refreshActiveTenant(server.address().port); }, 10000).unref();
     console.log('[report-viewer] Started: http://' + CFG.server.host + ':' + actualPort);
     console.log('[report-viewer] Tenant: ' + (CFG.tenant.enabled ? CFG.tenant.id : '(none)'));
-    console.log('[report-viewer] Data root: ' + CFG.tenant.dataRoot);
+    console.log('[report-viewer] Data root: ' + CFG.tenant.dataRoot + (CFG.dataRootIsolated ? ' (isolated -> /' + (CFG.tenant.enabled ? 'tenant' : 'data-root') + '/)' : ' (shared with web root)'));
     console.log('[report-viewer] Config: ' + ACTIVE_CONFIG_FILE);
     console.log('[report-viewer] Web root: ' + CFG.server.webRootAbs);
     console.log('[report-viewer] Batches dir: ' + CFG.scan.basedirAbs);
@@ -848,7 +857,7 @@ function startServer() {
 
 const HOST = CFG.server.host;
 const PORT = CFG.server.port;
-initTenantData();
+initDataRoot();
 if (PORT === 0) {
   // 随机端口：无法预知端口，直接启动（端口冲突概率极低，由 EADDRINUSE 兜底）。
   startServer();

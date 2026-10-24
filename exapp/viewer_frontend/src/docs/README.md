@@ -126,6 +126,11 @@ node server.js --tenant
 node server.js --no-tenant
 node server.js --tenant alice --data-root C:/data/alice
 
+# 不开租户、只用 --data-root 指定数据根（可与其它实例共用同一 web 根，各自数据互不串）：
+# 数据根 != web 根时，浏览器会经 /data-root/ 读取该实例自己的批次索引与批次数据。
+node server.js --data-root C:/data/team-a --port 9001
+node server.js --data-root C:/data/team-b --port 9002
+
 # 租户 active 追踪 / 审查日志：默认关闭；--audit 开启、--no-audit 关闭（或 config 里 audit: true）
 node server.js --audit
 node server.js --no-audit
@@ -178,14 +183,15 @@ report-viewer                  # 任意目录启动（内置默认数据）
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/` | 查看器首页 |
-| `GET` | `/config.json` | 统一配置（租户模式下 `urls.batches` 重写为 `/tenant/`、`urls.ignore` 重写为 `/tenant/<urls.ignore>`，并注入解析后的 `features.revealPath`） |
+| `GET` | `/config.json` | 统一配置（**数据根独立时**——租户模式或 `--data-root`/`REPORT_VIEWER_DATA_ROOT` 指向 web 根以外的目录——`urls.batches` 重写为 `/tenant/`（租户）/`/data-root/`（自定义数据根）、`urls.ignore` 重写为对应前缀，并注入解析后的 `features.revealPath`） |
 | `POST` / `GET` | `/scan` | 触发一次完整批次扫描（同步返回结果）；已有扫描在跑返回 **409**，失败返回 **500** `{ ok:false, error }` |
 | `GET` | `/scan/progress` | 扫描进度 SSE（`text/event-stream`） |
-| `GET` | `/tenant/...` | 租户数据根内的文件（批次索引 / 批次数据 / 租户级 `favorites.json`、`ignore-config-by-platform.json` 等）；无租户文件时回退到共享 web 根，均无则 404 |
+| `GET` | `/tenant/...` | 租户数据根内的文件（批次索引 / 批次数据 / 租户级 `favorites.json`、`ignore-config-by-platform.json` 等）；**仅**全局忽略配置在数据根缺失时回退到共享 web 根，批次索引与批次数据缺失直接 404（否则会静默读到其它实例的批次） |
+| `GET` | `/data-root/...` | 同 `/tenant/...`，但用于「未开租户、仅用 `--data-root` 指定数据根」的实例（多个实例共用同一 web 根、各自不同数据根时互不串数据）。不能叫 `/data/`：多文件模式的 item 文件就在 web 根的 `data/items/` 下，会冲突 |
 | `GET` / `POST` | `/api/batch` | 批次元数据读取 / 写回。`GET /api/batch?id=<batchId>`（也接受 `batchId=`）返回 `{ ok, batchId, meta, etag }`（`etag` 为当前 `batch-meta.json` 的强 ETag；文件不存在时为 `null`，缺 id 返回 **400**、批次不存在返回 **404**）。`POST` 的 body 为任意组合：`{ "batchId": "...", "deleted": true }` / `{ "favorite": true }` / `{ "batchName": "...", "description": "..." }` / `{ "tags": ["a","b"] }`；`tags: []` 或空 `description` 表示清除对应字段，空 `batchName` 返回 **400**。**写回后服务端会自动重建 `batches-index.json`**，保证刷新页面立即读到新值（收藏标记 / 标签 / 名称 / 软删除状态）；成功响应带新 `etag` |
 | `POST` | `/api/reveal` | 在系统文件管理器中打开批次目录（body：`{ "path": "<批次目录绝对路径>" }`）；需 `features.revealPath` 开启，路径限定在 `scan.basedir` 内。返回 `{ ok, path, launcher }`；启动文件管理器失败（如系统未找到可执行文件）返回 **500** 并给出原因，前端提示「打开目录失败」。 |
 | `GET` / `POST` | `/api/favorites` | 收藏夹读取 / 整树保存（body：`{ "favorites": {...}, "ifMatch": "<GET 返回的 etag>" }`） |
-| `GET` / `POST` | `/api/ignore` | 忽略配置回写（body：`{ "url": "<当前生效的配置地址，缺省用 config.urls.ignore>", "config": {…分组结构…} }`）；仅允许写入 `config.urls.ignore` 指向的配置文件**或** `scan.basedir` 内的 `.json`（批次级忽略配置），路径需落在允许的根目录内（非租户：web 根；租户：租户数据根，`/tenant/` 前缀自动剥离），原子写入 |
+| `GET` / `POST` | `/api/ignore` | 忽略配置回写（body：`{ "url": "<当前生效的配置地址，缺省用 config.urls.ignore>", "config": {…分组结构…} }`）；仅允许写入 `config.urls.ignore` 指向的配置文件**或** `scan.basedir` 内的 `.json`（批次级忽略配置），路径需落在允许的根目录内（共享模式：web 根；租户 / 自定义数据根：数据根，`/tenant/`、`/data-root/` 前缀自动剥离），原子写入 |
 | `GET` | `/status` / `/health` | 服务状态与当前配置（含 `version` 与 `tenant` 块） |
 
 > **写操作通用约束**（`POST /scan` 与全部 `POST /api/*`）：仅允许**同源**调用（带 `Origin` 时其 host 必须与请求 Host 一致，跨源返回 **403**；不带 `Origin` 的 curl/脚本不受限）；请求体上限 **256 KiB**（超出返回 **413**）。
