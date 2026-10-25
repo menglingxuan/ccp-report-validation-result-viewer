@@ -294,8 +294,8 @@ test('跳转：切到 logs 选项卡、清空文本搜索、必要时放宽作�
   const flash = bodyOf('function flashLogLine(', 400);
   assert.match(flash, /scrollIntoView\(\{ block: 'center', behavior: 'smooth' \}\)/, '应滚动到目标行');
   assert.match(flash, /classList\.add\('flash-log'\)/, '应加高亮类');
-  assert.match(flash, /setTimeout\(function \(\) \{ el\.classList\.remove\('flash-log'\); \}, 1800\);/,
-    '1.8s 后移除高亮类');
+  assert.equal(/remove\('flash-log'\)/.test(flash), false, '不再定时移除高亮类（应淡到 50% 后保留）');
+  assert.match(flash, /clearLogFlash\(\)/, '加高亮前先清掉上一行的残留高亮（同一时刻只保留一行）');
 });
 
 test('跳转：可传字段 id 或字段名，且无可定位日志行时返回 false（不跳转、不改状态）', () => {
@@ -402,7 +402,7 @@ test('单击高亮：单击字段日志行 → 同字段全部行淡色高亮，
 test('样式：日志行高亮与三角跳转按钮', () => {
   assert.match(HTML, /@keyframes logLineFlash \{ 0% \{ background-color: var\(--mark-bg\); \}/,
     '高亮动画应与字段行同配色（--mark-bg）');
-  assert.match(HTML, /\.log-line\.flash-log \{ animation: logLineFlash 1\.8s ease-in-out;/, '日志行高亮类');
+  assert.match(HTML, /\.log-line\.flash-log \{ animation: logLineFlash 1\.8s ease-in-out forwards;/, '日志行高亮类（保留末帧）');
   assert.match(HTML, /\.log-empty \{ color: var\(--muted\); \}/, '空占位应为弱化文字');
   assert.match(HTML, /\.print-box \.pb-head \{ display: flex;/, '相关打印信息标题需为弹性布局以容纳三角图标');
   assert.match(HTML, /\.print-box \.pb-head \.log-jump \{/, '三角跳转按钮样式缺失');

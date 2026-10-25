@@ -1034,7 +1034,18 @@
       rec.forEach(function (b) {
         const active = BATCH_STATE.active && BATCH_STATE.active.batchId === b.batchId;
         const day = String(b.date || '').slice(-2);
-        chips += '<button class="bd-chip' + (active ? ' active' : '') + (batchCompatible(b) ? '' : ' incompat') + (isBatchFavorited(b) ? ' fav' : '') + (isPinned(b) ? ' pinned' : '') + '" data-batch="' + esc(b.batchId) + '" aria-label="' + esc(b.batchName + ' · ' + formatBatchTime(b.executedAt)) + '">' + esc(day || '?') + (isNewBatch(b) ? '<span class="bd-new-dot" title="' + t('batchNew') + '"></span>' : '') + '</button>';
+        // 角标不能放在 <button> 内部：Chromium 会把 button 自身的背景绘制在其内部内容
+        // （含定位子元素）之上，星标 / 圆点的内嵌部分会被方块底色盖掉。
+        // 因此外面套一层 .bd-slot（position: relative），把方块和角标作为兄弟节点，
+        // 角标（在 DOM 中靠后）自然绘制在方块上层；角标设 pointer-events: none，
+        // 点击 / 悬停仍然穿透到方块上。
+        chips += '<span class="bd-slot">' +
+          '<button class="bd-chip' + (active ? ' active' : '') + (batchCompatible(b) ? '' : ' incompat') + (isBatchFavorited(b) ? ' fav' : '') + (isPinned(b) ? ' pinned' : '') + '" data-batch="' + esc(b.batchId) + '" aria-label="' + esc(b.batchName + ' · ' + formatBatchTime(b.executedAt)) + '">' + esc(day || '?') + '</button>' +
+          (isBatchFavorited(b) ? '<span class="bd-fav-star" title="' + t('favoritesTitle') + '">★</span>' : '') +
+          (isPinned(b) ? '<span class="bd-pin-dot" title="' + t('pinTitle') + '"></span>' : '') +
+          (batchCompatible(b) ? '' : '<span class="bd-incompat-dot" title="' + t('batchIncompat') + '"></span>') +
+          (isNewBatch(b) ? '<span class="bd-new-dot" title="' + t('batchNew') + '"></span>' : '') +
+          '</span>';
       });
       if (!chips && usableBatches().length) chips = '<span class="bd-empty" title="' + t('batchNoCompat') + '">' + t('batchNoCompat') + '</span>';
       dock.innerHTML =
@@ -4732,10 +4743,17 @@
       return true;
     }
 
+    // 跳转高亮：亮起后淡到 50% 并**保留**（不再完全消失），同一时刻只保留一行。
+    // 清除时机：跳到另一行（本函数开头）、或用户单击任意日志行（highlightLogField）、或重新渲染。
+    function clearLogFlash() {
+      const nodes = document.querySelectorAll('#content .log-line.flash-log');
+      for (let i = 0; i < nodes.length; i++) nodes[i].classList.remove('flash-log');
+    }
+
     function flashLogLine(el) {
       el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      clearLogFlash();
       el.classList.add('flash-log');
-      setTimeout(function () { el.classList.remove('flash-log'); }, 1800);
     }
 
     /* 「完整日志」字段关联行高亮：单击某条 scope="field" 的日志行 → 属于同一字段
@@ -4749,6 +4767,7 @@
     }
     function highlightLogField(key) {
       clearLogFieldHighlight();
+      clearLogFlash(); // 用户改选别的日志行：撤掉上一行的「跳转残留高亮」，避免两种高亮叠加
       if (!key) return;
       const nodes = document.querySelectorAll('#content .log-line[data-log-key]');
       let hit = false;

@@ -140,6 +140,9 @@
     .bd-btn:hover { color: var(--accent); border-color: var(--accent); }
     .bd-btn.on { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
     .bd-recent { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; align-items: center; }
+    /* 方块槽位：方块 + 角标作为兄弟节点，角标才能画在方块上层
+       （<button> 内部的内容会被 button 自身背景盖住）。 */
+    .bd-slot { position: relative; display: inline-flex; }
     .bd-chip {
       width: 30px; height: 30px; border-radius: 8px; cursor: pointer;
       border: 1px solid var(--border); background: var(--surface-2);
@@ -149,19 +152,23 @@
     }
     .bd-chip:hover { border-color: var(--accent); color: var(--accent); }
     .bd-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .bd-chip.incompat::after {
-      content: ''; position: absolute; top: -3px; right: -3px; width: 8px; height: 8px;
-      border-radius: 50%; background: var(--warn); border: 2px solid var(--card);
+    /* 四个角标都是槽位里的兄弟节点：pointer-events: none 让点击 / 悬停穿透到方块。 */
+    .bd-fav-star, .bd-pin-dot, .bd-incompat-dot, .bd-new-dot { position: absolute; pointer-events: none; }
+    .bd-fav-star {
+      top: -6px; left: -3px;
+      font-size: 10px; color: #eab308; line-height: 1;
+      /* 同色系描边：压在方块上（尤其 active 的实心色）也能看出完整星形轮廓。 */
+      text-shadow: 0 0 2px var(--card), 0 0 2px var(--card);
     }
-    .bd-chip.fav::before {
-      content: '★'; position: absolute; top: -5px; left: -2px;
-      font-size: 9px; color: #eab308; line-height: 1;
-    }
-    .bd-chip.pinned::before {
-      content: ''; position: absolute; bottom: -3px; left: -3px; width: 8px; height: 8px;
+    .bd-pin-dot {
+      bottom: -3px; left: -3px; width: 8px; height: 8px;
       border-radius: 50%; background: var(--accent); border: 2px solid var(--card);
     }
-    .bd-new-dot { position: absolute; bottom: -3px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--fail); border: 2px solid var(--card); }
+    .bd-incompat-dot {
+      top: -3px; right: -3px; width: 8px; height: 8px;
+      border-radius: 50%; background: var(--warn); border: 2px solid var(--card);
+    }
+    .bd-new-dot { bottom: -3px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--fail); border: 2px solid var(--card); }
     .bd-sep { width: 22px; height: 1px; background: var(--border); }
     .bd-empty { writing-mode: vertical-rl; font-size: 10px; color: var(--muted); letter-spacing: 1px; text-align: center; }
     .batch-panel {
@@ -653,9 +660,11 @@
     }
     .log-line { white-space: pre-wrap; word-break: break-all; }
     /* 日志定位高亮（从字段比较 / 关联字段 / 字段详情跳转到「完整日志」的关联日志行）：
-       与字段行的 .flash-row 同一配色（--mark-bg → 透明）。 */
-    @keyframes logLineFlash { 0% { background-color: var(--mark-bg); } 40% { background-color: var(--mark-bg); } 100% { background-color: transparent; } }
-    .log-line.flash-log { animation: logLineFlash 1.8s ease-in-out; }
+       与字段行的 .flash-row 同一配色，但**不淡到透明**：1.8s 后停在 50% 强度上，
+       让人仍能看出「刚跳到的是这一行」（再跳其它行 / 单击任意日志行时清除）。 */
+    @keyframes logLineFlash { 0% { background-color: var(--mark-bg); } 40% { background-color: var(--mark-bg); } 100% { background-color: transparent; background-color: color-mix(in srgb, var(--mark-bg) 50%, transparent); } }
+    /* forwards：动画结束后保持末帧（50% 高亮），而不是回到元素自己的背景色。 */
+    .log-line.flash-log { animation: logLineFlash 1.8s ease-in-out forwards; }
     /* 「完整日志」字段关联行高亮：单击某条 scope=field 的日志行 → 属于同一字段
        （channel + source + field 合成键相同）的所有日志行一起淡色高亮；失去焦点即取消。
        实现见 app.js 的 highlightLogField / clearLogFieldHighlight（行带 tabindex=-1，点击聚焦，focusout 清高亮）。 */
