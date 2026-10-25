@@ -57,7 +57,7 @@ class BasicDataGeneratorTest {
         assertFalse(item.getWarnings().isEmpty(), "warnings filled");
         assertFalse(item.getErrors().isEmpty(), "errors filled");
         assertFalse(item.getUncompared().isEmpty(), "uncompared filled");
-        assertFalse(item.getCtxDefs().isEmpty(), "ctxDefs filled");
+        assertFalse(item.getCtxDtls().isEmpty(), "ctxDtls filled");
 
         for (Channel ch : item.getChannels()) {
             String label = "channel " + ch.getId();
@@ -84,7 +84,7 @@ class BasicDataGeneratorTest {
                 assertFalse(src.getFields().isEmpty(), label + " fields filled");
                 for (Field f : src.getFields()) {
                     String fl = label + " field " + f.getId();
-                    assertFalse(f.getCmpLeft().getCtxs().isEmpty(), fl + " cmpLeft.ctxs filled");
+                    assertFalse(f.getCmpLeft().getMetaCtxs().isEmpty(), fl + " cmpLeft.metaCtxs filled");
                     assertFalse(f.getPrints().isEmpty(), fl + " prints filled");
                     assertNotNull(f.getCmpLeft(), fl + " cmpLeft present");
                     assertNotNull(f.getCmpRight(), fl + " cmpRight present");

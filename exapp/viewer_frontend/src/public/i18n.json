@@ -2,7 +2,7 @@
   "zh-CN": {
     "appTitle": "金融监管报告比较结果",
     "appSub": "多渠道来源数据（CSV）与监管报送数据（XML） · 逐渠道 / 逐行 / 逐字段比对",
-    "env": "运行环境：",
+    "env": "报告环境：",
     "fieldsTotal": "字段总数",
     "passed": "通过",
     "failed": "失败",
@@ -438,7 +438,7 @@
   "zh-HK": {
     "appTitle": "金融監管報告比較結果",
     "appSub": "多渠道來源數據（CSV）與監管報送數據（XML） · 逐渠道 / 逐行 / 逐字段比對",
-    "env": "運行環境：",
+    "env": "報告環境：",
     "fieldsTotal": "字段總數",
     "passed": "通過",
     "failed": "失敗",

@@ -293,8 +293,8 @@ test('声明表形态：定义只在顶层写一次（含 fieldDefs / format / u
         assert.ok(Array.isArray(s.fields), 'item 来源渠道必须保留 fields（比较结果）');
       });
     });
-    Object.entries(it.ctxDefs || {}).forEach(([key, d]) => {
-      assert.equal(typeof d.id, 'number', it.tradeId + ' ctxDefs.' + key + ' 应有 id 引用');
+    Object.entries(it.ctxDtls || {}).forEach(([key, d]) => {
+      assert.equal('id' in d, false, it.tradeId + ' ctxDtls.' + key + ' 不应再写 id（ctxKey 即引用）');
       assert.ok(typeof d.hits === 'string' || d.hits === undefined, 'hits 与 item 绑定');
       assert.equal('rules' in d || 'type' in d || 'def' in d, false, 'item 内不写 ctxKey 定义');
     });

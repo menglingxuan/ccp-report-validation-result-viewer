@@ -5,8 +5,9 @@
      *   -> 来源渠道 (A/B, 各有一套字段映射)
      *     -> 字段比较结果 { id, ctxs, cmpLeft, cmpRight, cvtLeft, cvtRight, vdt, result, remarks, resultText, resultDetails, prints, logs }
      *        （prints 保留待用；logs 为该字段关联的日志行，与 item.logs 中 scope="field" 的行同构）
-     * item 级别: ctxDefs / warnings[] / errors[] / uncompared[] / logs[]
-     *        （ctxDefs 为 { <ctxKey>: { id, hits } }，定义在顶层 $root.usedCtxKeyDefs，加载时 hydrate 补回）；
+     * item 级别: ctxDtls / warnings[] / errors[] / uncompared[] / logs[]
+     *        （ctxDtls 为 { <ctxKey>: { hits } }，id 与定义在顶层 $root.usedCtxKeyDefs，加载时 hydrate 补回；
+     *         规则对象用 ctxRaw（命中 ctxKey 原始表达式）+ metaCtxs（ctxKey id 引用））；
      *        （logs 行 { scope, channelId, sourceId, field, text }：渠道 / 来源渠道只存 id，
      *         名称由加载时的 hydrateItem() 按 id 从顶层声明表补回（展示与筛选仍按名称）；
      *         field 仅 scope="field" 时有值，且此时 channelId / sourceId 均非空 —— 字段定位锚点据此建立；
@@ -4879,13 +4880,13 @@
       });
       return RULE_ORDER.filter(function (n) { return picked.indexOf(n) !== -1; });
     }
-    function ctxDefsOf() {
+    function ctxDtlsOf() {
       const it = currentItem();
-      return (it && it.ctxDefs) || {};
+      return (it && it.ctxDtls) || {};
     }
     function ctxDefById(id) {
-      const defs = ctxDefsOf();
-      // data-ctx 属性为字符串，而 ctxDefs.id 为数字，统一按数值匹配。
+      const defs = ctxDtlsOf();
+      // hydrate 已把 id 从顶层声明表补回；data-ctx 属性为字符串，统一按数值匹配。
       const num = Number(id);
       for (const k in defs) {
         if (Number(defs[k].id) === num) return { key: k, def: defs[k] };
@@ -5051,16 +5052,16 @@
         const noneHtml = ruleNoneHTML();
         const mapRuleHtml = APP_FEATURES.excelMapping
           ? rulePairHTML(
-              ruleSectionHTML('mappingEO', t('modalMappingRuleEO'), ruleValueHTML(left.el || '—'), ruleCtxHTML(left.ctx, left.ctxs)),
-              ruleSectionHTML('mappingAO', t('modalMappingRuleAO'), ruleValueHTML(right.el || '—'), ruleCtxHTML(right.ctx, right.ctxs)))
+              ruleSectionHTML('mappingEO', t('modalMappingRuleEO'), ruleValueHTML(left.el || '—'), ruleCtxHTML(left.ctxRaw, left.metaCtxs)),
+              ruleSectionHTML('mappingAO', t('modalMappingRuleAO'), ruleValueHTML(right.el || '—'), ruleCtxHTML(right.ctxRaw, right.metaCtxs)))
           : '';
         const convRuleHtml = APP_FEATURES.conversionRule
           ? rulePairHTML(
-              ruleSectionHTML('convEO', t('modalConversionRuleEO'), cvtLeft ? ruleValueHTML(cvtLeft.el || '—') : noneHtml, ruleCtxHTML(cvtLeft ? cvtLeft.ctx : null, cvtLeft ? cvtLeft.ctxs : null)),
-              ruleSectionHTML('convAO', t('modalConversionRuleAO'), cvtRight ? ruleValueHTML(cvtRight.el || '—') : noneHtml, ruleCtxHTML(cvtRight ? cvtRight.ctx : null, cvtRight ? cvtRight.ctxs : null)))
+              ruleSectionHTML('convEO', t('modalConversionRuleEO'), cvtLeft ? ruleValueHTML(cvtLeft.el || '—') : noneHtml, ruleCtxHTML(cvtLeft ? cvtLeft.ctxRaw : null, cvtLeft ? cvtLeft.metaCtxs : null)),
+              ruleSectionHTML('convAO', t('modalConversionRuleAO'), cvtRight ? ruleValueHTML(cvtRight.el || '—') : noneHtml, ruleCtxHTML(cvtRight ? cvtRight.ctxRaw : null, cvtRight ? cvtRight.metaCtxs : null)))
           : '';
         const valRuleHtml = APP_FEATURES.validationRule
-          ? ruleSectionHTML('validation', t('modalValidationRule'), vdt ? ruleValueHTML(vdt.el || '—') : noneHtml, ruleCtxHTML(vdt ? vdt.ctx : null, vdt ? vdt.ctxs : null))
+          ? ruleSectionHTML('validation', t('modalValidationRule'), vdt ? ruleValueHTML(vdt.el || '—') : noneHtml, ruleCtxHTML(vdt ? vdt.ctxRaw : null, vdt ? vdt.metaCtxs : null))
           : '';
 
         const eoElLabel = t('sourceChannelRule');

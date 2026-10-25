@@ -87,7 +87,7 @@ public final class ValidationJsonGenerator {
      * {@code DEFAULT_API_VERSION} 一致）。「查看器允许加载哪些版本」由 {@code config.json} 的
      * {@code compatibleApiVersions} 决定，生成器不参与。
      */
-    public static final int API_VERSION = 3;
+    public static final int API_VERSION = 4;
 
     /**
      * Field id bases per report channel: field ids are unique dataset-wide (HKTR 1.. / JSFA 21.. /
@@ -218,7 +218,9 @@ public final class ValidationJsonGenerator {
      * dataset.reportChannelDefs = [ { id, name, desc, format, fieldDefs: [ {id,name,userTag,type} ] } ]
      * dataset.sourceChannelDefs = [ { id, name, format } ]                 // format: csv / xml
      * dataset.usedCtxKeyDefs    = { &lt;ctxKey&gt;: { id, type, rules, def } }   // rules: fdm / cvt / vdt
-     * item.ctxDefs              = { &lt;ctxKey&gt;: { id, hits } }
+     * item.ctxDtls              = { &lt;ctxKey&gt;: { hits } }
+     * rule.ctxRaw               = "&lt;ctxKey&gt; and &lt;ctxKey&gt;" | null     // 命中 ctxKey 的原始表达式
+     * rule.metaCtxs             = [ id, … ]                          // 命中 ctxKey 的 id 引用
      * item.channels             = [ { id, enabled?, files, sources: [ { id, fields } ] } ]
      * </pre>
      *
@@ -332,17 +334,17 @@ public final class ValidationJsonGenerator {
                 }
             }
         }
-        // ctxKey 定义：item 内只留 { id, hits }（定义由生成器写在 dataset.usedCtxKeyDefs）。
+        // ctxKey 命中摘要：item 内只留 { hits }（id / type / rules / def 定义由生成器写在
+        // dataset.usedCtxKeyDefs；ctxKey 本身就是键，不再重复写 id）。
         for (ValidationItem item : dataset.getItems()) {
-            if (item.getCtxDefs() != null) {
+            if (item.getCtxDtls() != null) {
                 Map<String, CtxDef> slim = new LinkedHashMap<>();
-                for (Map.Entry<String, CtxDef> e : item.getCtxDefs().entrySet()) {
+                for (Map.Entry<String, CtxDef> e : item.getCtxDtls().entrySet()) {
                     slim.put(e.getKey(), CtxDef.builder()
-                            .id(e.getValue() == null ? null : e.getValue().getId())
                             .hits(e.getValue() == null ? null : e.getValue().getHits())
                             .build());
                 }
-                item.setCtxDefs(slim);
+                item.setCtxDtls(slim);
             }
             // 消息段只保留名称（模型里已无 id 字段；这里无需再清理）。
             List<Channel> stripped = new ArrayList<>();
@@ -414,8 +416,8 @@ public final class ValidationJsonGenerator {
         List<Message> errors = new ArrayList<>();
         List<UncomparedEntry> uncompared = new ArrayList<>();
         List<ChannelBuild> channelBuilds = new ArrayList<>();
-        Map<String, CtxDef> ctxDefs = buildCtxDefs(i);
-        Map<String, Integer> ctxIdByKey = ctxIdByKey(ctxDefs);
+        Map<String, CtxDef> ctxDtls = buildCtxDefs(i);
+        Map<String, Integer> ctxIdByKey = ctxIdByKey(buildUsedCtxKeyDefs());
         // Enable flag: written as channels[].enabled (the single source of truth).
         List<String> enabledNames = switch (i % 3) {
             case 0 -> List.of("HKTR", "JSFA", "CFTC");
@@ -444,7 +446,7 @@ public final class ValidationJsonGenerator {
                 .counterpartyItemId(counterpartyItemId)
                 .platformOriTradeId("PT-" + tradeId.substring(2))
                 .platformOriTradeDealId("PD-" + tradeId.substring(2))
-                .ctxDefs(ctxDefs)
+                .ctxDtls(ctxDtls)
                 .channels(channels)
                 .warnings(warnings)
                 .errors(errors)
@@ -701,20 +703,20 @@ public final class ValidationJsonGenerator {
         List<Integer> valCtxIds = toIds(valCtxs, ctxIdByKey);
 
         CmpSide cmpLeft = CmpSide.builder()
-                .value(eo).ctx(ctxExpr(mapCtxs)).ctxs(mapCtxIds)
+                .value(eo).ctxRaw(ctxExpr(mapCtxs)).metaCtxs(mapCtxIds)
                 .elRaw(eoMapping).el(eoCol).valueSrcFmt("csv").build();
         CmpSide cmpRight = CmpSide.builder()
-                .value(ao).ctx(ctxExpr(mapCtxs)).ctxs(mapCtxIds)
+                .value(ao).ctxRaw(ctxExpr(mapCtxs)).metaCtxs(mapCtxIds)
                 .elRaw(excelMapping).el(rawTarget).valueSrcFmt(csv ? "csv" : "xml").build();
 
         ConversionRule cvtLeft = convCtxs == null ? null : ConversionRule.builder()
-                .ctx(ctxExpr(convCtxs)).ctxs(convCtxIds)
+                .ctxRaw(ctxExpr(convCtxs)).metaCtxs(convCtxIds)
                 .el(convValue).elRaw(excelConversionRule).raw(eoUnconverted).build();
         ConversionRule cvtRight = aoConvCtxs == null ? null : ConversionRule.builder()
-                .ctx(ctxExpr(aoConvCtxs)).ctxs(aoConvCtxIds)
+                .ctxRaw(ctxExpr(aoConvCtxs)).metaCtxs(aoConvCtxIds)
                 .el(aoConvValue).elRaw(genExcelRuleText(aoConvValue, ctx, isSample)).raw(aoUnconverted).build();
         ValidationRule vdt = valCtxs == null ? null : ValidationRule.builder()
-                .ctx(ctxExpr(valCtxs)).ctxs(valCtxIds)
+                .ctxRaw(ctxExpr(valCtxs)).metaCtxs(valCtxIds)
                 .el(valValue).elRaw(excelValidationRule).build();
 
         List<String> prints = buildPrints(f, rawTarget, ctx, chName, "来源渠道 " + (sn == 1 ? "A" : "B"),
@@ -963,31 +965,30 @@ public final class ValidationJsonGenerator {
     }
 
     /**
-     * Item-level ctxDefs: {@code <ctxKey> -> { id, hits }}.
-     * The definitions themselves (type / rules / def) are dataset level and are built once by
+     * Item-level ctx hit summaries: {@code <ctxKey> -> { hits }}.
+     * The definitions themselves (id / type / rules / def) are dataset level and are built once by
      * {@link #buildUsedCtxKeyDefs()} - they are not repeated per item.
      */
     private static Map<String, CtxDef> buildCtxDefs(int itemIndex) {
         int seed = itemIndex;
         Map<String, CtxDef> defs = new LinkedHashMap<>();
-        int id = 1;
         for (String chName : CHANNEL_NAMES) {
             String p = chName.toLowerCase();
-            defs.put(p + ".ctx.default", CtxDef.builder().id(id++)
+            defs.put(p + ".ctx.default", CtxDef.builder()
                     .hits("命中 " + (3 + seed % 3) + " 个映射条目（EO 2 / AO 1）").build());
-            defs.put(p + ".ctx.v2", CtxDef.builder().id(id++)
+            defs.put(p + ".ctx.v2", CtxDef.builder()
                     .hits("命中 " + (2 + seed % 2) + " 个映射条目（EO 1 / AO 1）").build());
-            defs.put(p + ".ctx.v3", CtxDef.builder().id(id++)
+            defs.put(p + ".ctx.v3", CtxDef.builder()
                     .hits("命中 " + (1 + seed % 2) + " 个映射条目（EO 1 / AO 0）").build());
-            defs.put(p + ".ctx.extended.production.region.east.v2024.latest", CtxDef.builder().id(id++)
+            defs.put(p + ".ctx.extended.production.region.east.v2024.latest", CtxDef.builder()
                     .hits("命中 " + (4 + seed % 2) + " 个映射条目（EO 2 / AO 2）").build());
-            defs.put(p + ".ctx.conv.default", CtxDef.builder().id(id++)
+            defs.put(p + ".ctx.conv.default", CtxDef.builder()
                     .hits("命中 " + (2 + seed % 2) + " 个转换规则（@trim / @toUpper 等）").build());
-            defs.put(p + ".ctx.conv.v2", CtxDef.builder().id(id++)
+            defs.put(p + ".ctx.conv.v2", CtxDef.builder()
                     .hits("命中 " + (1 + seed % 2) + " 个转换规则").build());
-            defs.put(p + ".ctx.val.default", CtxDef.builder().id(id++)
+            defs.put(p + ".ctx.val.default", CtxDef.builder()
                     .hits("命中 " + (3 + seed % 3) + " 个校验规则（枚举/正则/非空）").build());
-            defs.put(p + ".ctx.val.v2", CtxDef.builder().id(id++)
+            defs.put(p + ".ctx.val.v2", CtxDef.builder()
                     .hits("命中 " + (2 + seed % 2) + " 个校验规则").build());
         }
         return defs;
@@ -1051,7 +1052,7 @@ public final class ValidationJsonGenerator {
         }
     }
 
-    private static Map<String, Integer> ctxIdByKey(Map<String, CtxDef> defs) {
+    private static Map<String, Integer> ctxIdByKey(Map<String, CtxKeyDef> defs) {
         Map<String, Integer> m = new LinkedHashMap<>();
         defs.forEach((k, v) -> m.put(k, v.getId()));
         return m;

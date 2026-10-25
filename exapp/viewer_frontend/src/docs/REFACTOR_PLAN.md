@@ -245,12 +245,12 @@ Java 侧目标：
 3. **Java `ObjectMapper` 是 `Include.ALWAYS`**：可选字段必须显式 `@JsonInclude(NON_NULL)`，否则会吐出 `"channel":null,"source":null` 把省下的字节又还回去（本轮已在 `ItemLog` 上踩过）。P3 拆分模型类时这是首要检查项。
 4. **同一模型承担「声明」与「引用」两种形态 = bug 温床**：目标架构里必须拆开（§3），不要再靠 `NON_NULL` 兜。（P1 已删掉 `ItemLog.channel/.source` 这一处）
 5. **契约「引用 ⊆ 声明」是硬保证**：删兼容层时要保证生成器仍写三张声明表（切片批次是从数据集**重新拼顶层对象**的，`batchDataset()` 漏带声明表会立刻让全部 24 个样例批次变成非法数据 —— 这是上一轮的真实缺陷）。
-6. **`validateDataset` 要区分清单与 item 文件**：多文件清单里 item 只有元数据，校验时不能按 item 文件规则要求 `channels` / `ctxDefs`。
+6. **`validateDataset` 要区分清单与 item 文件**：多文件清单里 item 只有元数据，校验时不能按 item 文件规则要求 `channels` / `ctxDtls`。
 7. **测试夹具必须带三张声明表**：否则会报「未声明」并把注意力引到错误的地方（本轮修过 `validate.test.js` / `pure-logic.test.js`）。
 8. **`pure-logic.test.js` 要用 hydrate 后的数据断言**：原始数据没有名称 / `fields`，直接断言会得到 UNDEFINED 噪声。
 9. **环境坑**：VS Code 终端会吞 `cd`（一律用绝对路径）；PowerShell 里 `node` 的标准输入是 GBK（脚本内不要放中文，或用 `\uXXXX`）；`create_file` 拒绝覆盖已存在路径。
 10. **Java 测试落盘目录**：`OUT_DIR = Path.of("generated")` 是相对 **maven 进程 cwd**（仓库根），不是 PowerShell 的 location。
-11. **版本号只有一处**：批次能否加载只看 `batch-meta.json` 的 `formatVersion` 是否在 `config.json` 的 `compatibleApiVersions` 内（默认 `[2, 3]`）；写入方用代码常量（JS `DEFAULT_API_VERSION` / Java `API_VERSION`），不读配置。历史上 `formatVersion` 的白名单写死在代码里、而 `config.json` 另有一个从未被读取的 `configVersion`，导致「两边都改成 3 仍然报不兼容」—— 现已收敛为单一配置项 + 单一常量，并用 `test/version-contract.test.js` 锁定。
+11. **版本号只有一处**：批次能否加载只看 `batch-meta.json` 的 `formatVersion` 是否在 `config.json` 的 `compatibleApiVersions` 内（默认 `[4]`）；写入方用代码常量（JS `DEFAULT_API_VERSION` / Java `API_VERSION`），不读配置。历史上 `formatVersion` 的白名单写死在代码里、而 `config.json` 另有一个从未被读取的 `configVersion`，导致「两边都改成 3 仍然报不兼容」—— 现已收敛为单一配置项 + 单一常量，并用 `test/version-contract.test.js` 锁定。
 
 ---
 

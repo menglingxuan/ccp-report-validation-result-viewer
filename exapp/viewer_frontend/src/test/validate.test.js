@@ -130,13 +130,13 @@ test('声明表：字段定义（fieldDefs）结构与渠道内 id 唯一', () =
   assert.equal(twoChannels.ok, true, JSON.stringify(twoChannels.errors));
 });
 
-test('声明表：usedCtxKeyDefs 结构与 item.ctxDefs 的 id 引用', () => {
+test('声明表：usedCtxKeyDefs 结构与 item.ctxDtls 的 ctxKey 引用', () => {
   const base = {
     usedCtxKeyDefs: { 'hktr.ctx.default': { id: 1, type: 'builtin', rules: ['fdm'], def: 'HKTR 默认上下文' } },
   };
   const okItem = oneItem({
-    ctxDefs: { 'hktr.ctx.default': { id: 1, hits: '命中 3 个映射条目' } },
-    channels: [{ id: 1, sources: [{ id: 1, fields: [{ id: '1', cmpRight: { ctxs: [1] } }] }] }],
+    ctxDtls: { 'hktr.ctx.default': { hits: '命中 3 个映射条目' } },
+    channels: [{ id: 1, sources: [{ id: 1, fields: [{ id: '1', cmpRight: { metaCtxs: [1] } }] }] }],
   });
   assert.equal(validateDataset(oneDataset([okItem], base)).ok, true, '合法的 ctxKey 引用');
 
@@ -154,30 +154,50 @@ test('声明表：usedCtxKeyDefs 结构与 item.ctxDefs 的 id 引用', () => {
   assert.match(msgs, /usedCtxKeyDefs\.b 的 id 与 usedCtxKeyDefs\.a 重复/);
   assert.match(msgs, /usedCtxKeyDefs\.b 的 type 只能是 "builtin" 或 "user"/);
 
-  // item.ctxDefs：id 必须已声明，且不允许再带定义（type / rules / def）。
-  const badItem = validateDataset(oneDataset([oneItem({ ctxDefs: { 'hktr.ctx.default': { id: 9, type: 'builtin', rules: ['fdm'], def: 'x' } } })], base));
+  // item.ctxDtls：ctxKey 必须已声明，且不允许再带定义（id / type / rules / def）。
+  const badItem = validateDataset(oneDataset([oneItem({ ctxDtls: { 'hktr.ctx.default': { id: 9, type: 'builtin', rules: ['fdm'], def: 'x' } } })], base));
   assert.equal(badItem.ok, false);
   const imsgs = badItem.errors.join('；');
-  assert.match(imsgs, /id=9 未在顶层 usedCtxKeyDefs 声明表里声明/);
+  assert.match(imsgs, /不应带 id/);
   assert.match(imsgs, /不应带 type/);
   assert.match(imsgs, /不应带 rules/);
   assert.match(imsgs, /不应带 def/);
+
+  // 旧键名 ctxDefs 出现即报错（不做向后兼容）。
+  const legacyName = validateDataset(oneDataset([oneItem({ ctxDefs: { 'hktr.ctx.default': { id: 1, hits: 'h' } } })], base));
+  assert.equal(legacyName.ok, false);
+  assert.ok(legacyName.errors.some((e) => e.includes('ctxDefs 已改名（-> ctxDtls')), JSON.stringify(legacyName.errors));
+
+  // 未声明的 ctxKey 必须报错（id 已不在 item 里，键名是唯一防线）。
+  const undeclaredKey = validateDataset(oneDataset([oneItem({ ctxDtls: { 'jsfa.ctx.unknown': { hits: 'h' } } })], base));
+  assert.equal(undeclaredKey.ok, false);
+  assert.ok(undeclaredKey.errors.some((e) => e.includes('未在顶层 usedCtxKeyDefs 声明表里声明')), JSON.stringify(undeclaredKey.errors));
 });
 
-test('声明表：规则里的 ctx 引用必须已声明且写在本 item 的 ctxDefs 里', () => {
+test('声明表：规则里的 metaCtxs 引用必须已声明且写在本 item 的 ctxDtls 里', () => {
   const base = { usedCtxKeyDefs: { 'hktr.ctx.default': { id: 1, type: 'builtin', rules: ['fdm'] } } };
   const undeclared = validateDataset(oneDataset([oneItem({
-    ctxDefs: { 'hktr.ctx.default': { id: 1 } },
-    channels: [{ id: 1, sources: [{ id: 1, fields: [{ id: '1', cmpRight: { ctxs: [7] } }] }] }],
+    ctxDtls: { 'hktr.ctx.default': { hits: 'h' } },
+    channels: [{ id: 1, sources: [{ id: 1, fields: [{ id: '1', cmpRight: { metaCtxs: [7] } }] }] }],
   })], base));
   assert.equal(undeclared.ok, false);
-  assert.ok(undeclared.errors.some((e) => e.includes('引用了未在 usedCtxKeyDefs 声明的 ctx id：7')), JSON.stringify(undeclared.errors));
+  assert.ok(undeclared.errors.some((e) => e.includes('metaCtxs 引用了未在 usedCtxKeyDefs 声明的 ctx id：7')), JSON.stringify(undeclared.errors));
 
   const notInItem = validateDataset(oneDataset([oneItem({
-    channels: [{ id: 1, sources: [{ id: 1, fields: [{ id: '1', cmpRight: { ctxs: [1] } }] }] }],
+    channels: [{ id: 1, sources: [{ id: 1, fields: [{ id: '1', cmpRight: { metaCtxs: [1] } }] }] }],
   })], base));
   assert.equal(notInItem.ok, false);
-  assert.ok(notInItem.errors.some((e) => e.includes('未写在本 item 的 ctxDefs 里')), JSON.stringify(notInItem.errors));
+  assert.ok(notInItem.errors.some((e) => e.includes('未写在本 item 的 ctxDtls 里')), JSON.stringify(notInItem.errors));
+
+  // 旧键名 ctx / ctxs 出现即报错。
+  const legacyRule = validateDataset(oneDataset([oneItem({
+    ctxDtls: { 'hktr.ctx.default': { hits: 'h' } },
+    channels: [{ id: 1, sources: [{ id: 1, fields: [{ id: '1', cmpRight: { ctx: 'hktr.ctx.default', ctxs: [1] } }] }] }],
+  })], base));
+  assert.equal(legacyRule.ok, false);
+  const rmsgs = legacyRule.errors.join('；');
+  assert.match(rmsgs, /cmpRight\.ctx 已改名（-> ctxRaw）/);
+  assert.match(rmsgs, /cmpRight\.ctxs 已改名（-> metaCtxs）/);
 });
 
 test('声明表：比较规则的 valueSrcFmt 只能是 csv / xml（srcType 已改名）', () => {

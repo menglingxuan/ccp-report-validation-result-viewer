@@ -17,9 +17,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ValidationRule {
     /** Raw expression of the matched validation-context keys (e.g. {@code "hktr.ctx.val.default"}), or {@code null}. */
-    private String ctx;
-    /** All validation-context ids. */
-    private List<Integer> ctxs;
+    private String ctxRaw;
+    /** All validation-context ids ({@code metaCtxs}). */
+    private List<Integer> metaCtxs;
     /** Rule value (e.g. {@code enum: [...]}, {@code regex:...}). */
     private String el;
     /** Raw Excel validation-rule configuration text. */

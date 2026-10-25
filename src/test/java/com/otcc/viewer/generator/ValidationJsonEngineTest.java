@@ -124,11 +124,11 @@ class ValidationJsonEngineTest {
         }
         Map<String, CtxKeyDef> ctxReg = ds.getUsedCtxKeyDefs() == null ? Map.of() : ds.getUsedCtxKeyDefs();
         for (ValidationItem item : ds.getItems()) {
-            if (item.getCtxDefs() != null) {
-                for (Map.Entry<String, CtxDef> e : item.getCtxDefs().entrySet()) {
+            if (item.getCtxDtls() != null) {
+                for (Map.Entry<String, CtxDef> e : item.getCtxDtls().entrySet()) {
                     CtxKeyDef kdef = ctxReg.get(e.getKey());
-                    if (kdef != null) {
-                        e.getValue().setId(kdef.getId());
+                    if (kdef == null) {
+                        throw new IllegalStateException("item ctxDtls 的 ctxKey 未在 usedCtxKeyDefs 声明：" + e.getKey());
                     }
                 }
             }
@@ -246,10 +246,10 @@ class ValidationJsonEngineTest {
         // item 里不得重复写定义，且引用必须落在登记表里。
         for (JsonNode item : root.path("items")) {
             String it = item.path("tradeId").asText();
-            for (JsonNode ctx : item.path("ctxDefs")) {
-                c.check(ctx.has("id") && ctx.has("hits"), it + " 的 ctxDef 只保留 id / hits：" + ctx);
-                c.check(!ctx.has("type") && !ctx.has("def") && !ctx.has("scopes") && !ctx.has("rules"),
-                        it + " 的 ctxDef 不应重复写 type/def/rules：" + ctx);
+            for (JsonNode ctx : item.path("ctxDtls")) {
+                c.check(ctx.has("hits"), it + " 的 ctxDtls 只保留 hits：" + ctx);
+                c.check(!ctx.has("id") && !ctx.has("type") && !ctx.has("def") && !ctx.has("scopes") && !ctx.has("rules"),
+                        it + " 的 ctxDtls 不应写 id/type/def/rules：" + ctx);
             }
             for (JsonNode ch : item.path("channels")) {
                 c.check(!ch.has("name") && !ch.has("desc") && !ch.has("format"),
@@ -310,7 +310,7 @@ class ValidationJsonEngineTest {
             c.check(item.getPlatformOriTradeId() != null, it + ".platformOriTradeId present");
             c.check(item.getPlatformOriTradeDealId() != null, it + ".platformOriTradeDealId present");
 
-            // per-item ctxDefs（{ id, hits }，定义在顶层 usedCtxKeyDefs）
+            // per-item ctxDtls（{ hits }，id / 定义在顶层 usedCtxKeyDefs）
             validateCtxDefs(c, item, it, hydrated);
 
             // channels（字段定义在 reportChannelDefs[].fieldDefs，由 hydrateRegistries 注入回来）
@@ -583,9 +583,9 @@ class ValidationJsonEngineTest {
             JsonNode itemJson = ValidationJsonGenerator.MAPPER.readTree(itemFile.toFile());
             c.check(it.getTradeId().equals(itemJson.path("tradeId").asText()), "item file tradeId matches");
             // item 文件里只有 id 引用：字段定义在清单的 reportChannelDefs[].fieldDefs 里。
-            c.check(itemJson.has("ctxDefs") && itemJson.has("channels")
+            c.check(itemJson.has("ctxDtls") && itemJson.has("channels")
                             && itemJson.path("channels").size() > 0,
-                    "item file has ctxDefs/channels");
+                    "item file has ctxDtls/channels");
             JsonNode firstCh = itemJson.path("channels").get(0);
             c.check(!firstCh.has("fieldDefs") && !firstCh.has("fields") && !firstCh.has("name"),
                     "item 文件里的渠道只有 id 引用：" + firstCh);
@@ -669,29 +669,20 @@ class ValidationJsonEngineTest {
     }
 
     /**
-     * {@code item.ctxDefs[<ctxKey>] = { id, hits }}：定义在 {@code usedCtxKeyDefs} 里，
-     * item 只保留 id 引用与命中摘要。
+     * {@code item.ctxDtls[<ctxKey>] = { hits }}：id 与定义全在 {@code usedCtxKeyDefs} 里，
+     * item 只保留命中摘要（ctxKey 本身就是引用）。
      */
     private static void validateCtxDefs(Check c, ValidationItem item, String it, ValidationDataset ds) {
-        c.check(item.getCtxDefs() != null && !item.getCtxDefs().isEmpty(), it + ".ctxDefs non-empty");
-        if (item.getCtxDefs() == null) {
+        c.check(item.getCtxDtls() != null && !item.getCtxDtls().isEmpty(), it + ".ctxDtls non-empty");
+        if (item.getCtxDtls() == null) {
             return;
         }
         Map<String, CtxKeyDef> defs = ds.getUsedCtxKeyDefs() == null ? Map.of() : ds.getUsedCtxKeyDefs();
-        Set<Integer> ids = new HashSet<>();
-        for (Map.Entry<String, CtxDef> e : item.getCtxDefs().entrySet()) {
+        for (Map.Entry<String, CtxDef> e : item.getCtxDtls().entrySet()) {
             CtxDef def = e.getValue();
-            String label = it + ".ctxDef[" + e.getKey() + "]";
-            c.check(nonBlank(e.getKey()), it + ".ctxDef key non-blank");
-            CtxKeyDef decl = defs.get(e.getKey());
-            c.check(decl != null, label + " 的 ctxKey 必须在 usedCtxKeyDefs 里声明");
-            c.check(def.getId() != null && def.getId() > 0, label + ".id positive");
-            if (decl != null) {
-                c.check(decl.getId().equals(def.getId()), label + ".id 与 usedCtxKeyDefs 声明一致：" + def.getId());
-            }
-            if (def.getId() != null) {
-                c.check(ids.add(def.getId()), label + ".id unique: " + def.getId());
-            }
+            String label = it + ".ctxDtls[" + e.getKey() + "]";
+            c.check(nonBlank(e.getKey()), it + ".ctxDtls key non-blank");
+            c.check(defs.get(e.getKey()) != null, label + " 的 ctxKey 必须在 usedCtxKeyDefs 里声明");
             c.check(nonBlank(def.getHits()), label + ".hits non-blank");
         }
     }
@@ -731,8 +722,8 @@ class ValidationJsonEngineTest {
     private static void validateField(Check c, Field f, String label, boolean csv, Set<String> fieldIds) {
         c.check(nonBlank(f.getId()), label + ".field.id non-blank");
         c.check(fieldIds.contains(f.getId()), label + ".field.id references the channel fieldDefs: " + f.getId());
-        c.check(f.getCmpLeft() != null && f.getCmpLeft().getCtxs() != null && !f.getCmpLeft().getCtxs().isEmpty(),
-                label + ".field.cmpLeft.ctxs non-empty");
+        c.check(f.getCmpLeft() != null && f.getCmpLeft().getMetaCtxs() != null && !f.getCmpLeft().getMetaCtxs().isEmpty(),
+                label + ".field.cmpLeft.metaCtxs non-empty");
         c.check("PASSED".equals(f.getResult()) || "FAILED".equals(f.getResult()), label + ".field.result in {PASSED,FAILED}");
 
         CmpSide left = f.getCmpLeft();
@@ -741,13 +732,13 @@ class ValidationJsonEngineTest {
         c.check(right != null, label + ".field.cmpRight present");
         if (left != null) {
             c.check(left.getValue() != null, label + ".field.cmpLeft.value present (may be empty for text fields)");
-            c.check(nonBlank(left.getCtx()), label + ".field.cmpLeft.ctx non-blank (raw ctx expression)");
+            c.check(nonBlank(left.getCtxRaw()), label + ".field.cmpLeft.ctxRaw non-blank (raw ctx expression)");
             // 期望值（EO）来自映射表，永远是 csv；实际值（AO）来自被比较的报文，格式随渠道。
             c.check("csv".equals(left.getValueSrcFmt()), label + ".field.cmpLeft.valueSrcFmt == csv: " + left.getValueSrcFmt());
         }
         if (right != null) {
             c.check(right.getValue() != null, label + ".field.cmpRight.value present (may be empty for text fields)");
-            c.check(nonBlank(right.getCtx()), label + ".field.cmpRight.ctx non-blank (raw ctx expression)");
+            c.check(nonBlank(right.getCtxRaw()), label + ".field.cmpRight.ctxRaw non-blank (raw ctx expression)");
             c.check((csv ? "csv" : "xml").equals(right.getValueSrcFmt()),
                     label + ".field.cmpRight.valueSrcFmt 与渠道 format 一致：" + right.getValueSrcFmt());
         }

@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CtxKeyDef {
-    /** Stable id, referenced by {@code item.ctxDefs[<ctxKey>].id}. */
+    /** Stable id, referenced by {@code rule.metaCtxs} (id array) and resolved from the item's {@code ctxDtls} key. */
     private Integer id;
     /** Ctx origin: {@code builtin} or {@code user}. */
     private String type;

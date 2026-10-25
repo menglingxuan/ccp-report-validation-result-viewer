@@ -320,34 +320,35 @@ test('diffSegments 基于 LCS 输出删除与新增段', () => {
   assert.equal(has.add, true, JSON.stringify(d.b));
 });
 
-test('每个 item 都有独立的 ctxDefs（需求 9）', () => {
+test('每个 item 都有独立的 ctxDtls（需求 9）', () => {
   const raw = buildDataset();       // 落盘形态（定义在顶层 usedCtxKeyDefs）
   const hydrated = T.setData(raw);  // 查看器加载形态（hydrate 补回定义）
-  assert.ok(hydrated.items[0].ctxDefs, 'item 应内联 ctxDefs');
-  assert.equal(hydrated.ctxDefs, undefined, '顶层不应再有 ctxDefs（定义在顶层 usedCtxKeyDefs）');
-  // 落盘形态：item 内只留 { id, hits }（定义在顶层 usedCtxKeyDefs，加载时补回）。
-  assert.deepEqual(Object.keys(raw.items[0].ctxDefs['hktr.ctx.default']).sort(), ['hits', 'id']);
+  assert.ok(hydrated.items[0].ctxDtls, 'item 应内联 ctxDtls');
+  assert.equal(hydrated.ctxDtls, undefined, '顶层不应有 ctxDtls（定义在顶层 usedCtxKeyDefs）');
+  // 落盘形态：item 内只留 { hits }（id / 定义在顶层 usedCtxKeyDefs，加载时补回）。
+  assert.deepEqual(Object.keys(raw.items[0].ctxDtls['hktr.ctx.default']), ['hits']);
   assert.notEqual(
-    hydrated.items[0].ctxDefs['hktr.ctx.default'].hits,
-    hydrated.items[1].ctxDefs['hktr.ctx.default'].hits,
+    hydrated.items[0].ctxDtls['hktr.ctx.default'].hits,
+    hydrated.items[1].ctxDtls['hktr.ctx.default'].hits,
     '不同 item 的 ctx hits 定义应不同',
   );
   // hydrate 后：id(int) / rules(规则名数组) / type(builtin|user) 齐备。
-  const d0 = hydrated.items[0].ctxDefs['hktr.ctx.default'];
-  assert.ok(Number.isInteger(d0.id) && d0.id > 0, 'ctxDef 应有正整数 id');
-  assert.ok(Array.isArray(d0.rules) && d0.rules.length > 0, 'hydrate 后 ctxDef 应有 rules 数组');
+  const d0 = hydrated.items[0].ctxDtls['hktr.ctx.default'];
+  assert.ok(Number.isInteger(d0.id) && d0.id > 0, 'ctxDtls 应有正整数 id（从顶层补回）');
+  assert.ok(Array.isArray(d0.rules) && d0.rules.length > 0, 'hydrate 后 ctxDtls 应有 rules 数组');
   assert.ok(d0.rules.every((r) => ['fdm', 'cvt', 'vdt'].includes(r)), 'rules 只能是 fdm / cvt / vdt');
-  assert.ok(d0.type === 'builtin' || d0.type === 'user', 'ctxDef.type 应为 builtin 或 user');
+  assert.ok(d0.type === 'builtin' || d0.type === 'user', 'ctxDtls.type 应为 builtin 或 user');
 });
 
-test('字段 ctx 引用为 id 且均定义于 ctxDefs；field 不再有 ctxs', () => {
-  const ids = new Set(Object.values(item.ctxDefs).map((d) => d.id));
+test('字段规则用 metaCtxs（id 引用）且均定义于 ctxDtls；field 不再有 ctxs', () => {
+  const ids = new Set(Object.values(item.ctxDtls).map((d) => d.id));
   item.channels.forEach((ch) => ch.sources.forEach((s) => s.fields.forEach((f) => {
-    assert.equal(f.ctxs, undefined, 'field 不应再有 ctxs');
+    assert.equal(f.ctxs, undefined, 'field 不应有 ctxs');
     ['cmpLeft', 'cmpRight', 'cvtLeft', 'cvtRight', 'vdt'].forEach((rk) => {
       const r = f[rk];
       if (!r) return;
-      (r.ctxs || []).forEach((cid) => assert.ok(ids.has(cid), rk + '.ctxs 引用未定义 id: ' + cid));
+      assert.equal(r.ctxs, undefined, rk + ' 不应再有 ctxs（-> metaCtxs）');
+      (r.metaCtxs || []).forEach((cid) => assert.ok(ids.has(cid), rk + '.metaCtxs 引用未定义 id: ' + cid));
     });
   })));
 });
@@ -363,11 +364,11 @@ test('字段注册表为 report channel 级别（不再挂在 item）', () => {
   assert.ok(rows.every((r) => typeof r.field === 'string' && r.field), '每行都应有 field 名');
 });
 
-test('ctx 引用：id 引用 + 各规则 ctxs 并集 + key 解析', () => {
+test('ctx 引用：id 引用 + 各规则 metaCtxs 并集 + key 解析', () => {
   const multi = {
     tradeId: 'M-1',
     reportDate: '2026-09-05',
-    ctxDefs: {
+    ctxDtls: {
       'a.ctx.map': { id: 1, scopes: [1], type: 'builtin', def: '映射', hits: 'h' },
       'a.ctx.conv': { id: 2, scopes: [2], type: 'user', def: '转换', hits: 'h' },
       'a.ctx.val': { id: 3, scopes: [3], type: 'builtin', def: '校验', hits: 'h' },
@@ -377,11 +378,11 @@ test('ctx 引用：id 引用 + 各规则 ctxs 并集 + key 解析', () => {
       fields: [{ id: '1', name: 'f1', userTag: 'contextAssertion', type: 'text' }],
       sources: [{ name: 'S', fields: [{
         id: '1',
-        cmpLeft: { value: 'eo', ctx: 1, ctxs: [1], elRaw: '', el: 'src_f1', srcType: 2 },
-        cmpRight: { value: 'ao', ctx: 1, ctxs: [1], elRaw: '', el: '/x', srcType: 1 },
-        cvtLeft: { ctx: 2, ctxs: [2], el: '@trim', elRaw: '', raw: 'EO-RAW' },
+        cmpLeft: { value: 'eo', ctxRaw: 1, metaCtxs: [1], elRaw: '', el: 'src_f1', srcType: 2 },
+        cmpRight: { value: 'ao', ctxRaw: 1, metaCtxs: [1], elRaw: '', el: '/x', srcType: 1 },
+        cvtLeft: { ctxRaw: 2, metaCtxs: [2], el: '@trim', elRaw: '', raw: 'EO-RAW' },
         cvtRight: null,
-        vdt: { ctx: 3, ctxs: [3], el: 'regex:^x$', elRaw: '' },
+        vdt: { ctxRaw: 3, metaCtxs: [3], el: 'regex:^x$', elRaw: '' },
         result: 'PASSED', remarks: '', resultText: '', resultDetails: [], prints: [],
       }] }],
     }],
@@ -391,7 +392,7 @@ test('ctx 引用：id 引用 + 各规则 ctxs 并集 + key 解析', () => {
 
   const rows = app.filteredFields(multi);
   assert.equal(rows.length, 1);
-  assert.deepEqual(rows[0].ctxs, [1, 2, 3], 'ctxs 为各规则 ctxs 的 id 并集');
+  assert.deepEqual(rows[0].ctxs, [1, 2, 3], 'ctxs 为各规则 metaCtxs 的 id 并集');
   assert.deepEqual(rows[0].ctxKeys, ['a.ctx.map', 'a.ctx.conv', 'a.ctx.val'], 'ctxKeys 解析为可读 key');
 });
 

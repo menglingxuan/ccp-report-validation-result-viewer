@@ -18,9 +18,9 @@ public class CmpSide {
     /** Expected (EO) or actual (AO) value. */
     private String value;
     /** Raw expression of the matched mapping-context keys (e.g. {@code "hktr.ctx.default and hktr.ctx.v2"}), or {@code null}. */
-    private String ctx;
-    /** All matching mapping-context ids. */
-    private List<Integer> ctxs;
+    private String ctxRaw;
+    /** All matching mapping-context ids ({@code metaCtxs}). */
+    private List<Integer> metaCtxs;
     /** Raw Excel mapping configuration text. */
     private String elRaw;
     /** Source element: CCP XPath (valueSrcFmt=xml) or CSV field name (valueSrcFmt=csv). */

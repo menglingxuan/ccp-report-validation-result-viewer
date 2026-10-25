@@ -44,7 +44,7 @@ test('多文件模式：清单 + 每 item 一个文件，清单可通过数据�
     const r = validateDataset(manifest);
     assert.equal(r.ok, true, JSON.stringify(r.errors));
 
-    // item 文件内容是完整 item（含 channels/ctxDefs），供查看器按需加载。
+    // item 文件内容是完整 item（含 channels/ctxDtls），供查看器按需加载。
     const item = JSON.parse(fs.readFileSync(path.join(out, first.file), 'utf8'));
     assert.equal(item.tradeId, first.tradeId);
     assert.ok(Array.isArray(item.channels) && item.channels.length > 0, 'item 文件含完整 channels');

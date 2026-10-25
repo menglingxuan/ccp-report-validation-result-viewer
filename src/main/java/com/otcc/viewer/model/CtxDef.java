@@ -6,19 +6,18 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * {@code item.ctxDefs} value: {@code { id, hits }}.
+ * {@code item.ctxDtls} value: {@code { hits }}.
  *
- * <p>The definition itself (origin type, rule names, raw definition text) lives once in the
- * dataset-level {@code usedCtxKeyDefs} declaration table ({@link CtxKeyDef}); the item only keeps the
- * id reference plus the hit summary, which is item specific.</p>
+ * <p>Everything else lives in the dataset-level {@code usedCtxKeyDefs} declaration table
+ * ({@link CtxKeyDef}): {@code id}, origin type, rule names and the raw definition text. The item only
+ * keeps the hit summary, which is item specific; the {@code ctxKey} itself is the map key, so the id is
+ * not repeated per item (see {@code docs/DATA_SCHEMA.md} §3.1).</p>
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class CtxDef {
-    /** Reference into {@code dataset.usedCtxKeyDefs} ({@code usedCtxKeyDefs[<ctxKey>].id}). */
-    private Integer id;
     /** Item specific hit summary. */
     private String hits;
 }

@@ -139,7 +139,7 @@ export function validateDataset(json) {
   }
   // 顶层声明表（`$root.reportChannelDefs` / `$root.sourceChannelDefs` / `$root.usedCtxKeyDefs`）：
   // 渠道 / 来源渠道 / 字段 / ctxKey 的**定义**只写一次。
-  // 契约：item.channels / item.ctxDefs / 规则里的 ctx 引用**必须是已声明的**（引用 ⊆ 声明）；
+  // 契约：item.channels / item.ctxDtls / 规则里的 ctxRaw / metaCtxs 引用**必须是已声明的**（引用 ⊆ 声明）；
   // item 里可以重复写名称（便于人读），但必须与声明一致。
   // 三张表都允许省略：只有都不被引用时才不需要（空数据集 / 无 channels 的夹具）。
   // 键顺序固定为 `mode` → `reportEnv` → `creationType` → `reportChannelDefs` → `sourceChannelDefs`
@@ -281,7 +281,7 @@ export function validateDataset(json) {
         || CTX_RULES.indexOf(rules) >= 0;
       if (!okRules) errors.push(label + ' 的 rules 必须是 ' + CTX_RULES.join(' / ') + ' 之一或由它们组成的数组');
       if (d.def !== undefined && d.def !== null && typeof d.def !== 'string') errors.push(label + ' 的 def 必须是字符串或 null');
-      if (d.hits !== undefined) errors.push(label + ' 不应带 hits（命中数与 item 绑定，写在 item.ctxDefs 里）');
+      if (d.hits !== undefined) errors.push(label + ' 不应带 hits（命中数与 item 绑定，写在 item.ctxDtls 里）');
     });
   }
   // 消息段的名称解析：引用 ⊆ 声明（只按名称校验，消息段不带 id）。
@@ -329,26 +329,32 @@ export function validateDataset(json) {
       errors.push(label + ' 缺少 channels 数组');
       return;
     }
-    // item.ctxDefs：只写 { id, hits }（定义在顶层 usedCtxKeyDefs）。
-    const ctxIds = {};
-    if (item.ctxDefs !== undefined && (typeof item.ctxDefs !== 'object' || item.ctxDefs === null || Array.isArray(item.ctxDefs))) {
-      errors.push(label + ' ctxDefs 必须是对象（ctxKey -> { id, hits }）');
-    } else if (item.ctxDefs) {
-      Object.keys(item.ctxDefs).forEach(function (key) {
-        const def = item.ctxDefs[key];
-        const dlabel = label + ' ctxDefs.' + key;
+    // item.ctxDtls：只写 { hits }（ctxKey 即 id 引用，id 与 type/rules/def 定义在顶层 usedCtxKeyDefs）。
+    const itemCtxKeys = {};
+    if (item.ctxDefs !== undefined) {
+      errors.push(label + ' ctxDefs 已改名（-> ctxDtls，值为 { hits }）');
+    }
+    if (item.ctxDtls !== undefined && (typeof item.ctxDtls !== 'object' || item.ctxDtls === null || Array.isArray(item.ctxDtls))) {
+      errors.push(label + ' ctxDtls 必须是对象（ctxKey -> { hits }）');
+    } else if (item.ctxDtls) {
+      Object.keys(item.ctxDtls).forEach(function (key) {
+        const def = item.ctxDtls[key];
+        const dlabel = label + ' ctxDtls.' + key;
         if (!def || typeof def !== 'object' || Array.isArray(def)) { errors.push(dlabel + ' 必须是对象'); return; }
-        if (typeof def.id !== 'number' || !Number.isInteger(def.id) || def.id <= 0) {
-          errors.push(dlabel + ' 缺少正整数 id');
-        } else if (ctxDeclared[def.id] == null) {
-          errors.push(dlabel + ' id=' + def.id + ' 未在顶层 usedCtxKeyDefs 声明表里声明');
-        } else if (ctxDeclared[def.id] !== key) {
-          errors.push(dlabel + ' id=' + def.id + ' 在 usedCtxKeyDefs 里对应「' + ctxDeclared[def.id] + '」，与键名不一致');
+        if (!Object.prototype.hasOwnProperty.call(ctxDeclaredByKey, key)) {
+          errors.push(dlabel + ' 的 ctxKey 未在顶层 usedCtxKeyDefs 声明表里声明');
         } else {
-          ctxIds[def.id] = true;
+          itemCtxKeys[key] = true;
         }
-        ['type', 'rules', 'def'].forEach(function (k) {
-          if (def[k] !== undefined) errors.push(dlabel + ' 不应带 ' + k + '（定义已移到顶层 usedCtxKeyDefs.' + key + '）');
+        if (def.hits !== undefined && def.hits !== null && typeof def.hits !== 'string') {
+          errors.push(dlabel + ' 的 hits 必须是字符串或 null');
+        }
+        ['id', 'type', 'rules', 'def'].forEach(function (k) {
+          if (def[k] !== undefined) {
+            errors.push(dlabel + ' 不应带 ' + k + '（' + (k === 'id'
+              ? 'ctxKey 本身就是引用，id 只在 usedCtxKeyDefs 里写'
+              : '定义已移到顶层 usedCtxKeyDefs.' + key) + '）');
+          }
         });
       });
     }
@@ -362,7 +368,7 @@ export function validateDataset(json) {
       if (item[k] !== undefined && !Array.isArray(item[k])) errors.push(label + ' ' + k + ' 必须是数组');
     });
     // item 级引用的作用域：渠道 / 来源渠道 id 必须在顶层声明表里已声明（引用 ⊆ 声明）；
-    // 规则里的 ctx 引用必须同时出现在顶层 usedCtxKeyDefs 与本 item 的 ctxDefs 里。
+    // 规则里的 metaCtxs 引用必须同时出现在顶层 usedCtxKeyDefs 与本 item 的 ctxDtls 里。
     const itemRefOpts = {
       expectKnown: true,
       hasChannel: refOpts.hasChannel,
@@ -441,8 +447,17 @@ export function validateDataset(json) {
             ['cmpLeft', 'cmpRight', 'cvtLeft', 'cvtRight', 'vdt'].forEach(function (rk) {
               const r = f[rk];
               if (!r || typeof r !== 'object') return;
-              if (r.ctx !== undefined && r.ctx !== null && typeof r.ctx !== 'string') {
-                errors.push(flabel + ' ' + rk + '.ctx 必须是字符串（命中 ctxKey 的原始表达式）或 null');
+              if (r.ctx !== undefined) {
+                errors.push(flabel + ' ' + rk + '.ctx 已改名（-> ctxRaw）');
+              }
+              if (r.ctxs !== undefined) {
+                errors.push(flabel + ' ' + rk + '.ctxs 已改名（-> metaCtxs）');
+              }
+              if (r.ctxRaw !== undefined && r.ctxRaw !== null && typeof r.ctxRaw !== 'string') {
+                errors.push(flabel + ' ' + rk + '.ctxRaw 必须是字符串（命中 ctxKey 的原始表达式）或 null');
+              }
+              if (r.metaCtxs !== undefined && r.metaCtxs !== null && !Array.isArray(r.metaCtxs)) {
+                errors.push(flabel + ' ' + rk + '.metaCtxs 必须是数组（ctxKey id 引用）');
               }
               if (r.srcType !== undefined) {
                 errors.push(flabel + ' ' + rk + '.srcType 已改名（-> valueSrcFmt，值为 "csv" / "xml"）');
@@ -450,11 +465,11 @@ export function validateDataset(json) {
               if (r.valueSrcFmt !== undefined && r.valueSrcFmt !== null && r.valueSrcFmt !== 'csv' && r.valueSrcFmt !== 'xml') {
                 errors.push(flabel + ' ' + rk + '.valueSrcFmt 只能是 "csv" / "xml"，当前为：' + r.valueSrcFmt);
               }
-              (Array.isArray(r.ctxs) ? r.ctxs : []).forEach(function (cid) {
+              (Array.isArray(r.metaCtxs) ? r.metaCtxs : []).forEach(function (cid) {
                 if (typeof cid !== 'number' || ctxDeclared[cid] == null) {
-                  errors.push(flabel + ' ' + rk + '.ctxs 引用了未在 usedCtxKeyDefs 声明的 ctx id：' + cid);
-                } else if (!ctxIds[cid]) {
-                  errors.push(flabel + ' ' + rk + '.ctxs 引用的 ctxKey「' + ctxDeclared[cid] + '」未写在本 item 的 ctxDefs 里');
+                  errors.push(flabel + ' ' + rk + '.metaCtxs 引用了未在 usedCtxKeyDefs 声明的 ctx id：' + cid);
+                } else if (!itemCtxKeys[ctxDeclared[cid]]) {
+                  errors.push(flabel + ' ' + rk + '.metaCtxs 引用的 ctxKey「' + ctxDeclared[cid] + '」未写在本 item 的 ctxDtls 里');
                 }
               });
             });

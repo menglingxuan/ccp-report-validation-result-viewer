@@ -20,22 +20,22 @@ const CONFIG_FILES = ['config.json', 'config-dev.json', 'config-test.json', 'con
 const read = (rel) => fs.readFileSync(path.join(SRC_DIR, rel), 'utf8');
 const readJava = (...parts) => fs.readFileSync(path.join(REPO_ROOT, 'src', 'main', 'java', 'com', 'otcc', 'viewer', ...parts), 'utf8');
 
-test('默认 API 版本：当前版本在默认白名单内，且默认支持 v2 / v3', () => {
+test('默认 API 版本：当前版本在默认白名单内，且只支持 v4（不做向后兼容）', () => {
   assert.equal(DEFAULT_COMPATIBLE_API_VERSIONS.includes(DEFAULT_API_VERSION), true,
     'DEFAULT_API_VERSION 必须在 DEFAULT_COMPATIBLE_API_VERSIONS 里');
-  assert.deepEqual(DEFAULT_COMPATIBLE_API_VERSIONS, [2, 3], '默认支持 v2 / v3');
-  assert.equal(apiVersionSupported(2), true, 'v2 批次可加载');
-  assert.equal(apiVersionSupported(3), true, 'v3 批次可加载');
+  assert.deepEqual(DEFAULT_COMPATIBLE_API_VERSIONS, [4], '默认只支持 v4');
+  assert.equal(apiVersionSupported(4), true, 'v4 批次可加载');
+  assert.equal(apiVersionSupported(2), false, 'v2 已不再支持（v4 契约不兼容）');
+  assert.equal(apiVersionSupported(3), false, 'v3 已不再支持（v4 契约不兼容）');
   assert.equal(apiVersionSupported(1), false, 'v1 不支持（演示夹具）');
-  assert.equal(apiVersionSupported(4), false, 'v4（未来版本）不支持，需加进白名单');
   assert.equal(apiVersionSupported(undefined), true, '缺省按 DEFAULT_API_VERSION 处理');
   assert.equal(apiVersionSupported(null), true, 'null 按缺省处理');
 });
 
 test('normalizeCompatibleApiVersions：配置优先，去重升序，非法 / 缺失回退默认值，并自动补上当前版本', () => {
-  assert.deepEqual(normalizeCompatibleApiVersions([3, 5, 5]), [3, 5], '去重 + 升序');
-  assert.deepEqual(normalizeCompatibleApiVersions([2, 3]), [2, 3], '已是归一形态时保持原样');
-  // 当前版本（生成器写出的 3）不在列表里 -> 自动补上，否则自己生成的数据会被自己判为不兼容
+  assert.deepEqual(normalizeCompatibleApiVersions([3, 5, 5]), [3, 4, 5], '去重 + 升序 + 补上当前版本');
+  assert.deepEqual(normalizeCompatibleApiVersions([2, 3]), [2, 3, DEFAULT_API_VERSION], '补上当前版本');
+  // 当前版本（生成器写出的 4）不在列表里 -> 自动补上，否则自己生成的数据会被自己判为不兼容
   assert.deepEqual(normalizeCompatibleApiVersions([1]), [1, DEFAULT_API_VERSION]);
   assert.deepEqual(normalizeCompatibleApiVersions(['x', -1, 2]), [2, DEFAULT_API_VERSION], '非法项被过滤');
   // 缺失 / 非法 -> 默认值

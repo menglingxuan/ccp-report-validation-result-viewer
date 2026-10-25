@@ -49,7 +49,7 @@ public class ValidationDataset {
     /**
      * ctxKey declarations of the ctxKeys actually used by the items:
      * ctxKey -> {@code { id, type, rules, def }} (rules: fdm / cvt / vdt).
-     * Items only keep {@code ctxDefs[<ctxKey>] = { id, hits }}.
+     * Items only keep {@code ctxDtls[<ctxKey>] = { hits }}.
      */
     private Map<String, CtxKeyDef> usedCtxKeyDefs;
     /**

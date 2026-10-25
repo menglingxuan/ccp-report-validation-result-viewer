@@ -5,15 +5,18 @@
 
 /* ---------- API（数据契约）版本 ----------
  * 唯一的配置项是顶层 `compatibleApiVersions`（查看器允许加载的 formatVersion 白名单）：
- *   "compatibleApiVersions": [2, 3]
+ *   "compatibleApiVersions": [4]
  * 这里只放**默认值**（配置缺失 / 非法时的兜底）。
  *
  * 写入方（扫描器缺省值、JS / Java 生成器）用代码里的 `DEFAULT_API_VERSION`
  * （Java 侧为 `ValidationJsonGenerator.API_VERSION` / `BasicBatchMetaGenerator.API_VERSION`），
  * 不读配置：配置只负责「查看器允许加载哪些版本」。
+ *
+ * v4：`item.ctxDefs` -> `item.ctxDtls`（去掉冗余的 id，值是 `{ hits }`）；
+ *     规则对象 `ctx` -> `ctxRaw`、`ctxs` -> `metaCtxs`。不做向后兼容。
  * ------------------------------------------------------------------ */
-export const DEFAULT_API_VERSION = 3;
-export const DEFAULT_COMPATIBLE_API_VERSIONS = [2, 3];
+export const DEFAULT_API_VERSION = 4;
+export const DEFAULT_COMPATIBLE_API_VERSIONS = [4];
 
 /**
  * 归一配置项 `compatibleApiVersions`：返回去重升序的正整数数组。
@@ -144,14 +147,15 @@ export function refSourceId(item, m) {
  *   $root.reportChannelDefs = [ { id, name, desc, format, fieldDefs: [ {id,name,userTag,type} ] } ]
  *   $root.sourceChannelDefs = [ { id, name, format } ]                       // format: csv / xml
  *   $root.usedCtxKeyDefs    = { <ctxKey>: { id, type, rules, def } }         // rules: fdm / cvt / vdt
- *   item.ctxDefs            = { <ctxKey>: { id, hits } }                     // 只留 id 引用 + 命中数
+ *   item.ctxDtls            = { <ctxKey>: { hits } }                        // 只留命中摘要（`id` / 定义全在顶层）
+ *   rule.ctxRaw / metaCtxs  = "<ctxKey> and <ctxKey>" / [ id, … ]           // 规则命中的 ctxKey 表达式与 id 引用
  *   item.channels           = [ { id, enabled?, files, sources: [ { id, fields: [ …比较结果… ] } ] } ]
  *
  * 三个纯函数构成一组可逆变换（都返回新对象，不改动入参）：
  *   - `registriesOf()`：读出 id -> 定义 的映射（没声明表时返回空表）；
  *   - `hydrateDataset()` / `hydrateItem()`：把定义**整套**补回 item，使查看器其余代码继续按
  *     「item 里什么都有」的旧口径工作：渠道 name/desc/format、渠道 fieldDefs -> ch.fields、
- *     usedCtxKeyDefs 的 type/rules/def -> item.ctxDefs、消息与日志行缺失的名称按 id 补回。
+ *     usedCtxKeyDefs 的 id/type/rules/def -> item.ctxDtls、消息与日志行缺失的名称按 id 补回。
  *     **绝不解析日志文本**（text 只是展示内容）；只有名称的老形态数据原样通过。
  *   - `hoistRegistries()`：反向，把定义提到顶层、item 只留 id（生成器 / 迁移工具用）。
  * 定义冲突（同一 id 指向不同名称、同一名称使用不同 id、同一字段 id 定义不一致、同一 ctxKey 定义不一致）
@@ -268,12 +272,13 @@ export function hydrateItem(item, registries) {
     });
     return merged;
   });
-  // item.ctxDefs：文件里只有 { id, hits }，type / rules / def 从顶层 usedCtxKeyDefs 补回。
-  if (item.ctxDefs && typeof item.ctxDefs === 'object' && !Array.isArray(item.ctxDefs)) {
+  // item.ctxDtls：文件里只有 { hits }，id / type / rules / def 从顶层 usedCtxKeyDefs 补回
+  //（ctxKey 本身就是键，`id` 只在声明表里写一次）。
+  if (item.ctxDtls && typeof item.ctxDtls === 'object' && !Array.isArray(item.ctxDtls)) {
     const mergedDefs = {};
-    Object.keys(item.ctxDefs).forEach(function (key) {
-      const local = item.ctxDefs[key] || {};
-      const decl = (typeof local.id === 'number' ? ctxReg.byId[local.id] : null) || ctxReg.byKey[key] || {};
+    Object.keys(item.ctxDtls).forEach(function (key) {
+      const local = item.ctxDtls[key] || {};
+      const decl = ctxReg.byKey[key] || {};
       const m = Object.assign({}, local);
       if (m.id == null && decl.id != null) m.id = decl.id;
       if (m.type == null) m.type = decl.type || 'builtin';
@@ -281,7 +286,7 @@ export function hydrateItem(item, registries) {
       if (m.def == null || m.def === '') m.def = decl.def || '';
       mergedDefs[key] = m;
     });
-    out.ctxDefs = mergedDefs;
+    out.ctxDtls = mergedDefs;
   }
   // 消息 / 日志行的渠道与来源渠道名称：同样按 id 从声明表解析（只在名称缺失时补）。
   REF_SECTIONS.forEach(function (k) {
@@ -387,30 +392,53 @@ function normalizeCtxRules(def) {
   return CTX_RULES.filter(function (n) { return out.indexOf(n) !== -1; });
 }
 
-/** 收集 item 里的 ctxKey 定义（hoist 用）：<ctxKey> -> { id, type, rules, def }；定义冲突时报错。 */
-export function collectCtxDefs(items) {
+function ctxEntryOf(d) {
+  const src = d || {};
+  return {
+    id: typeof src.id === 'number' ? src.id : null,
+    type: src.type === 'user' ? 'user' : 'builtin',
+    rules: normalizeCtxRules(src),
+    def: src.def == null ? '' : src.def,
+  };
+}
+
+/**
+ * 收集 ctxKey 定义（hoist 用）：<ctxKey> -> { id, type, rules, def }；定义冲突时报错。
+ * item 内已去掉定义（只剩 `{ hits }`）时，`declared`（顶层 usedCtxKeyDefs）是 id / type / rules / def 的基线与唯一来源。
+ */
+export function collectCtxDefs(items, declared) {
   const byKey = {};
   const conflicts = [];
+  Object.keys(declared || {}).forEach(function (k) { byKey[k] = ctxEntryOf(declared[k]); });
   (items || []).forEach(function (it, ii) {
     const label = (it && it.tradeId) || ('items[' + ii + ']');
-    const defs = (it && it.ctxDefs) || {};
+    const defs = (it && it.ctxDtls) || {};
     Object.keys(defs).forEach(function (key) {
       const local = defs[key] || {};
-      const id = typeof local.id === 'number' ? local.id : null;
-      const type = local.type === 'user' ? 'user' : 'builtin';
-      const rules = normalizeCtxRules(local);
-      const def = local.def == null ? '' : local.def;
       const prev = byKey[key];
+      const id = typeof local.id === 'number' ? local.id : null;
       if (prev == null) {
-        byKey[key] = { id: id, type: type, rules: rules, def: def };
+        byKey[key] = ctxEntryOf(local);
         return;
       }
-      if (prev.id !== id) {
-        conflicts.push(label + ' ctxKey「' + key + '」在不同 item 里使用不同 id：' + prev.id + ' / ' + id);
-      } else if (prev.def !== def || prev.type !== type) {
-        conflicts.push(label + ' ctxKey「' + key + '」的定义在不同 item 里不一致');
+      if (id != null) {
+        if (prev.id == null) prev.id = id;
+        else if (prev.id !== id) {
+          conflicts.push(label + ' ctxKey「' + key + '」在不同 item 里使用不同 id：' + prev.id + ' / ' + id);
+        }
       }
-      rules.forEach(function (r) { if (prev.rules.indexOf(r) === -1) prev.rules.push(r); });
+      // 只有 item 里仍带定义（hoist 之前）时才做定义一致性校验。
+      if (local.type !== undefined || local.def !== undefined) {
+        const type = local.type === 'user' ? 'user' : 'builtin';
+        const def = local.def == null ? '' : local.def;
+        if (prev.def === '' && prev.type === 'builtin') {
+          prev.type = type;
+          prev.def = def;
+        } else if (prev.def !== def || prev.type !== type) {
+          conflicts.push(label + ' ctxKey「' + key + '」的定义在不同 item 里不一致');
+        }
+      }
+      normalizeCtxRules(local).forEach(function (r) { if (prev.rules.indexOf(r) === -1) prev.rules.push(r); });
     });
   });
   Object.keys(byKey).forEach(function (k) {
@@ -434,7 +462,7 @@ export function collectCtxDefs(items) {
 export function hoistRegistries(dataset) {
   if (!dataset || typeof dataset !== 'object' || !Array.isArray(dataset.items)) return dataset;
   const defs = collectDefinitions(dataset.items);
-  const ctxDefs = collectCtxDefs(dataset.items);
+  const ctxDefs = collectCtxDefs(dataset.items, dataset.usedCtxKeyDefs);
   const defineById = function (list, id, def) {
     if (id == null) return;
     if (list.some(function (x) { return x.id === id; })) return;
@@ -470,20 +498,18 @@ export function hoistRegistries(dataset) {
         return copy;
       });
     });
-    // ctxDefs：定义提到顶层，item 只留 { id, hits }。
-    if (it.ctxDefs && typeof it.ctxDefs === 'object' && !Array.isArray(it.ctxDefs)) {
+    // ctxDtls：定义提到顶层，item 只留 { hits }（ctxKey 是键，`id` 不在 item 里重复）。
+    if (it.ctxDtls && typeof it.ctxDtls === 'object' && !Array.isArray(it.ctxDtls)) {
       const slim = {};
-      Object.keys(it.ctxDefs).forEach(function (key) {
-        const local = it.ctxDefs[key] || {};
-        const decl = ctxDefs.byKey[key];
+      Object.keys(it.ctxDtls).forEach(function (key) {
+        const local = it.ctxDtls[key] || {};
         const entry = {};
-        const id = decl && typeof decl.id === 'number' ? decl.id : local.id;
-        if (typeof id === 'number') entry.id = id;
         if (local.hits !== undefined) entry.hits = local.hits;
         slim[key] = entry;
       });
-      out.ctxDefs = slim;
+      out.ctxDtls = slim;
     }
+    delete out.ctxDefs; // 旧键名：已改名（-> ctxDtls），不做兼容
     delete out.fields; // 老形态的 item 级字段注册表：已提到顶层 fieldDefs
     out.channels = ((it && it.channels) || []).map(function (ch) {
       const c = { id: ch.id };
@@ -615,10 +641,11 @@ export function sortValue(r, key) {
 
 export function flatFields(item, tagLabels) {
   const rows = [];
-  // ctxDefs id → key 反向映射（用于搜索 / 显示 / 排序时把 id 解析为可读 key）。
+  // ctxDtls id → key 反向映射（用于搜索 / 显示 / 排序时把 id 解析为可读 key）。
+  // hydrate 已把 id 从顶层声明表补回；未 hydrate 的数据这里拿不到 id（→ 显示原始 id）。
   const keyById = {};
-  const ctxDefs = item.ctxDefs || {};
-  Object.keys(ctxDefs).forEach(function (k) { keyById[ctxDefs[k].id] = k; });
+  const ctxDtls = item.ctxDtls || {};
+  Object.keys(ctxDtls).forEach(function (k) { keyById[ctxDtls[k].id] = k; });
   // 「启用渠道」唯一口径：只展开参与本次比较的渠道（channels[].enabled，缺省启用）。
   // 未启用渠道的字段行不属于本次比较结果，任何地方都不应展示 / 统计（历史上统计卡与字段表就因此各算一套）。
   enabledChannelsOf(item).forEach(function (entry) {
@@ -641,11 +668,11 @@ export function flatFields(item, tagLabels) {
         const cvtL = f.cvtLeft || {};
         const cvtR = f.cvtRight || {};
         const vdt = f.vdt || {};
-        // 命中 ctx 合集：field.ctxs 已删除，由各规则 ctxs 取并集（id 引用）。
+        // 命中 ctx 合集：field 级 ctxs 已删除，由各规则 metaCtxs 取并集（id 引用）。
         const ctxUnion = [];
         const ctxKeys = [];
         [left, right, cvtL, cvtR, vdt].forEach(function (o) {
-          (o.ctxs || []).forEach(function (id) {
+          (o.metaCtxs || []).forEach(function (id) {
             if (ctxUnion.indexOf(id) === -1) {
               ctxUnion.push(id);
               ctxKeys.push(keyById[id] != null ? keyById[id] : String(id));

@@ -225,20 +225,20 @@ async function main() {
       const r = await getJSON(new URL(it.file, manifestUrl).href);
       if (r.status !== 200 || !r.json || r.json.tradeId !== it.tradeId
           || !Array.isArray(r.json.channels) || r.json.channels.length === 0
-          || !r.json.ctxDefs) badItems.push(it.tradeId);
+          || !r.json.ctxDtls) badItems.push(it.tradeId);
       // item 文件里不得重复写渠道 / 来源渠道 / 字段 / ctxKey 定义（只允许 id 引用 + 本 item 的数据）。
       if (r.json && Array.isArray(r.json.channels)) {
         r.json.channels.forEach((ch) => {
           if ('name' in ch || 'desc' in ch || 'format' in ch || 'fields' in ch) withDefinitions.push(it.tradeId + '/' + ch.id);
           (ch.sources || []).forEach((s) => { if ('name' in s) withDefinitions.push(it.tradeId + '/' + ch.id + '/' + s.id); });
         });
-        Object.keys(r.json.ctxDefs || {}).forEach((k) => {
-          const d = r.json.ctxDefs[k] || {};
-          if ('type' in d || 'rules' in d || 'def' in d) withDefinitions.push(it.tradeId + '/ctxDefs.' + k);
+        Object.keys(r.json.ctxDtls || {}).forEach((k) => {
+          const d = r.json.ctxDtls[k] || {};
+          if ('id' in d || 'type' in d || 'rules' in d || 'def' in d) withDefinitions.push(it.tradeId + '/ctxDtls.' + k);
         });
       }
     }
-    check('全部 ' + mItems.length + ' 个 item 文件可懒加载（含 channels/ctxDefs）', badItems.length === 0, badItems.join(','));
+    check('全部 ' + mItems.length + ' 个 item 文件可懒加载（含 channels/ctxDtls）', badItems.length === 0, badItems.join(','));
     check('item 文件只有 id 引用（定义在清单的声明表里）', withDefinitions.length === 0, withDefinitions.slice(0, 5).join(','));
 
     // 默认数据源：不再有独立的 -default / -init 数据文件，默认模板即主数据文件。

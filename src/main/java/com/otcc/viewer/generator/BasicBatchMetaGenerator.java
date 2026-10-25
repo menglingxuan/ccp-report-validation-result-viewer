@@ -33,7 +33,7 @@ public final class BasicBatchMetaGenerator {
      * {@code DEFAULT_API_VERSION} 一致）。「查看器允许加载哪些版本」由 {@code config.json} 的
      * {@code compatibleApiVersions} 决定，生成器不参与。
      */
-    public static final int API_VERSION = 3;
+    public static final int API_VERSION = 4;
 
     /** The single fixed report date carried by the generated meta data. */
     public static final String REPORT_DATE = "2026-08-17";

@@ -3,7 +3,7 @@
   "batchName": "daily-20260813",
   "date": "2026-08-13",
   "executedAt": "2026-08-13T11:00:00+08:00",
-  "formatVersion": 2,
+  "formatVersion": 4,
   "creationType": "sample",
   "dataUrl": "report-validation-data.json",
   "ignoreUrl": "ignore-config-by-platform.json",

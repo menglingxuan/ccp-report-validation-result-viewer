@@ -5,7 +5,7 @@
   "batchName": "split-20260816",
   "date": "2026-08-16",
   "executedAt": "2026-08-16T17:00:00+08:00",
-  "formatVersion": 3,
+  "formatVersion": 4,
   "dataUrl": "report-validation-data.json",
   "ignoreUrl": "ignore-config-by-platform.json",
   "summary": {

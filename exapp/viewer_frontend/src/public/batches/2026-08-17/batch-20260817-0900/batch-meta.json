@@ -3,7 +3,7 @@
   "batchName": "single-source-20260817-单一来源渠道测试",
   "date": "2026-08-17",
   "executedAt": "2026-08-17T09:00:00+08:00",
-  "formatVersion": 3,
+  "formatVersion": 4,
   "creationType": "sample",
   "dataUrl": "report-validation-data.json",
   "ignoreUrl": "ignore-config-by-platform.json",

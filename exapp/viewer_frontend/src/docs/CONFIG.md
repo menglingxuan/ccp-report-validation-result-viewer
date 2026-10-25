@@ -26,7 +26,7 @@ REPORT_VIEWER_CONFIG=prod node server.js
 
 | 键 | 类型 | 说明 |
 |---|---|---|
-| `compatibleApiVersions` | 整数数组 | **API（数据契约）版本白名单**（当前 `[2, 3]`），决定批次能否加载，见下文 `compatibleApiVersions` 段 |
+| `compatibleApiVersions` | 整数数组 | **API（数据契约）版本白名单**（当前 `[4]`），决定批次能否加载，见下文 `compatibleApiVersions` 段 |
 | `server` | 对象 | HTTP 服务配置（仅服务端使用） |
 | `scan` | 对象 | 批次扫描配置（服务端使用） |
 | `runType` | 字符串 | 运行环境（`dev` / `test` / `prod`） |
@@ -47,16 +47,17 @@ REPORT_VIEWER_CONFIG=prod node server.js
 
 | 键 | 默认值 | 说明 |
 |---|---|---|
-| `compatibleApiVersions` | `[2, 3]` | 可加载的历史 API 版本白名单（整数数组）。会**去重升序**，并**自动补上**当前版本（`public/core.js` 的 `DEFAULT_API_VERSION = 3`），否则本查看器自己生成的批次会被自己判为不兼容 |
+| `compatibleApiVersions` | `[4]` | 可加载的 API 版本白名单（整数数组）。会**去重升序**，并**自动补上**当前版本（`public/core.js` 的 `DEFAULT_API_VERSION = 4`），否则本查看器自己生成的批次会被自己判为不兼容 |
 
 ```json
-"compatibleApiVersions": [2, 3]
+"compatibleApiVersions": [4]
 ```
 
 规则：
 
-- 批次元数据 `batch-meta.json` 的 `formatVersion` 不在列表内 → 列表中显示**红色版本徽章**（「版本不兼容」），加载前需二次确认（强制加载）；未声明 `formatVersion` 的批次按当前版本（`3`）处理。
-- 缺省 / 非法（非数组、全是非法项）→ 回退 `DEFAULT_COMPATIBLE_API_VERSIONS = [2, 3]`。
+- 批次元数据 `batch-meta.json` 的 `formatVersion` 不在列表内 → 列表中显示**红色版本徽章**（「版本不兼容」），加载前需二次确认（强制加载）；未声明 `formatVersion` 的批次按当前版本（`4`）处理。
+- 缺省 / 非法（非数组、全是非法项）→ 回退 `DEFAULT_COMPATIBLE_API_VERSIONS = [4]`。
+- **v4 不兼容 v2 / v3**：`item.ctxDefs` 已改为 `item.ctxDtls`（去掉冗余 `id`），规则对象 `ctx` / `ctxs` 已改名 `ctxRaw` / `metaCtxs`；需要同时读两种形态时请把它们并列写进白名单（如 `[3, 4]`），但 v3 数据里的旧键名会被 `lib/validate.js` 报错。
 - **写入方不读这个配置**：扫描器缺省值、JS / Java 生成器写入的 `formatVersion` 都取代码常量（`DEFAULT_API_VERSION` / Java `ValidationJsonGenerator.API_VERSION`）；配置只决定「查看器允许加载哪些版本」。
 - 服务端 `/status` 返回的 `config.compatibleApiVersions` 与这里一致。
 
@@ -227,7 +228,7 @@ localStorage（偏好 / 上次批次 / 置顶 / 忽略与收藏镜像）与 Inde
 | `field` | 报告字段 | 字段名 | `reportChannelDefs[].fieldDefs[].name`（渲染时已 hydrate 到 item 渠道的 `fields` 上） |
 | `userTag` | 用户标签 | 字段断言类型标签 | `reportChannelDefs[].fieldDefs[].userTag`（同上） |
 | `type` | 类型 | 值类型 | `reportChannelDefs[].fieldDefs[].type`（同上） |
-| `ctxs` | 命中Ctx | 命中上下文（各规则 `ctxs` 的 id 并集，解析为 key） | `cmpLeft`/`cmpRight`/`cvtLeft`/`cvtRight`/`vdt` 的 `ctxs` 并集 |
+| `ctxs` | 命中Ctx | 命中上下文（各规则 `metaCtxs` 的 id 并集，解析为 key） | `cmpLeft`/`cmpRight`/`cvtLeft`/`cvtRight`/`vdt` 的 `metaCtxs` 并集 |
 | `eoEl` | 表达式 (CMP-L) | 左侧（EO/来源）定位表达式 | `cmpLeft.el` |
 | `aoEl` | 表达式 (CMP-R) | 右侧（AO/报送）定位表达式（XPath 或 CSV 列） | `cmpRight.el`（`valueSrcFmt=xml` 为 XPath，`csv` 为 CSV 列） |
 | `eoCvtEl` | 表达式 (CVT-L) | EO 值转换规则表达式 | `cvtLeft.el` |

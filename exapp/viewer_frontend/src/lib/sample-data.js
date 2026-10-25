@@ -439,7 +439,7 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
       const convPool = [base + '.ctx.conv.default', base + '.ctx.conv.v2'];
       const valPool = [base + '.ctx.val.default', base + '.ctx.val.v2'];
       const isCsv = ch.format === 'csv';
-      // ctx key → ctxDefs.id 引用
+      // ctx key → usedCtxKeyDefs.id 引用（item 侧只写 hits，id 不落盘）
       const toIds = function (arr) {
         return (arr || []).map(function (k) { return idByKey[k]; }).filter(function (id) { return id != null; });
       };
@@ -501,7 +501,7 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
           const aoConvCtxs = aoConversionRule ? aoConversionRule.ctx : [];
           const valCtxs = validationRule ? validationRule.ctx : [];
 
-          // ctx 引用改为 id：各规则 ctxs 均为 ctxDefs 的 id；field 级 ctxs 已删除（由规则 ctxs 取合集）。
+          // ctx 引用改为 id：各规则的 metaCtxs 均为 usedCtxKeyDefs 的 id；field 级 ctxs 已删除（由规则 metaCtxs 取合集）。
           const mapCtxIds = toIds(mapCtxs);
           const convCtxIds = toIds(convCtxs);
           const aoConvCtxIds = toIds(aoConvCtxs);
@@ -513,11 +513,11 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
             buildFieldLogs(f, fieldId, ch.id, SOURCE_ID_PRESET[srcName], el, ctx, ch.name, srcName, eo, ao, result, note, isCsv ? 'CSV字段' : 'XPath', sn, idx));
           return {
             id: fieldId,
-            cmpLeft: { value: eo, ctx: ctxExpr(mapCtxs), ctxs: mapCtxIds, elRaw: eoMapping, el: eoCol, valueSrcFmt: 'csv' },
-            cmpRight: { value: ao, ctx: ctxExpr(mapCtxs), ctxs: mapCtxIds, elRaw: excelMapping, el: el, valueSrcFmt: valueSrcFmt },
-            cvtLeft: conversionRule ? { ctx: ctxExpr(convCtxs), ctxs: convCtxIds, el: conversionRule.value, elRaw: excelConversionRule, raw: eoUnconverted } : null,
-            cvtRight: aoConversionRule ? { ctx: ctxExpr(aoConvCtxs), ctxs: aoConvCtxIds, el: aoConversionRule.value, elRaw: genExcelRuleText(aoConversionRule.value, ctx, isExcelSample), raw: aoUnconverted } : null,
-            vdt: validationRule ? { ctx: ctxExpr(valCtxs), ctxs: valCtxIds, el: validationRule.value, elRaw: excelValidationRule } : null,
+        cmpLeft: { value: eo, ctxRaw: ctxExpr(mapCtxs), metaCtxs: mapCtxIds, elRaw: eoMapping, el: eoCol, valueSrcFmt: 'csv' },
+        cmpRight: { value: ao, ctxRaw: ctxExpr(mapCtxs), metaCtxs: mapCtxIds, elRaw: excelMapping, el: el, valueSrcFmt: valueSrcFmt },
+        cvtLeft: conversionRule ? { ctxRaw: ctxExpr(convCtxs), metaCtxs: convCtxIds, el: conversionRule.value, elRaw: excelConversionRule, raw: eoUnconverted } : null,
+        cvtRight: aoConversionRule ? { ctxRaw: ctxExpr(aoConvCtxs), metaCtxs: aoConvCtxIds, el: aoConversionRule.value, elRaw: genExcelRuleText(aoConversionRule.value, ctx, isExcelSample), raw: aoUnconverted } : null,
+        vdt: validationRule ? { ctxRaw: ctxExpr(valCtxs), metaCtxs: valCtxIds, el: validationRule.value, elRaw: excelValidationRule } : null,
             result: result,
             remarks: note,
             resultText: resultNote,
@@ -616,8 +616,8 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
       return lines;
     }
 
-    // 每个 item 的 ctxKey 定义：**定义只写一次**（hoistRegistries 会把 type / rules / def 提到
-    // 顶层 `usedCtxKeyDefs`，item 内只留 `{ id, hits }`），hits（命中数）与 item 绑定。
+    // 每个 item 的 ctxKey 命中摘要：**定义只写一次**（hoistRegistries 会把 id / type / rules / def 提到
+    // 顶层 `usedCtxKeyDefs`，item 内只留 `{ hits }`），hits（命中数）与 item 绑定。
     // rules 为规则名数组：fdm 字段映射规则 / cvt 值转换规则 / vdt 终值校验规则。
     function buildCtxDefs(itemIndex) {
       const seed = itemIndex || 0;
@@ -702,7 +702,7 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
           counterpartyItemId: counterpartyItemId,
           platformOriTradeId: 'PT-' + tradeId.slice(2),
           platformOriTradeDealId: 'PD-' + tradeId.slice(2),
-          ctxDefs: ctxDefsRes.defs,
+          ctxDtls: ctxDefsRes.defs,
           channels: channels,
           warnings: warnings,
           errors: errors,

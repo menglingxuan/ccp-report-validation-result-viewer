@@ -97,9 +97,9 @@ public final class BasicDataGenerator {
         String product = "IRS";
         String tradeId = "BASIC-0001";
 
-        Map<String, CtxDef> ctxDefs = buildCtxDefs();
+        Map<String, CtxDef> ctxDtls = buildCtxDefs();
         Map<String, Integer> ctxIdByKey = new LinkedHashMap<>();
-        ctxDefs.forEach((k, v) -> ctxIdByKey.put(k, v.getId()));
+        ValidationJsonGenerator.buildUsedCtxKeyDefs().forEach((k, v) -> ctxIdByKey.put(k, v.getId()));
 
         List<Channel> channels = new ArrayList<>();
         for (String name : List.of("HKTR", "JSFA", "CFTC")) {
@@ -116,7 +116,7 @@ public final class BasicDataGenerator {
                 .counterpartyItemId("T-20240814-1001")
                 .platformOriTradeId("PT-BASIC-0001")
                 .platformOriTradeDealId("PD-BASIC-0001")
-                .ctxDefs(ctxDefs)
+                .ctxDtls(ctxDtls)
                 .channels(channels)
                 .warnings(List.of(Message.builder()
                         .scope("channel").source("").channel("HKTR")
@@ -204,18 +204,18 @@ public final class BasicDataGenerator {
         List<Integer> ctxIds = toIds(ctx, ctxIdByKey);
 
         CmpSide cmpLeft = CmpSide.builder()
-                .value(eo).ctx(ctxExpr(ctx)).ctxs(ctxIds)
+                .value(eo).ctxRaw(ctxExpr(ctx)).metaCtxs(ctxIds)
                 .elRaw(genMapping(eoCol, ctx)).el(eoCol).valueSrcFmt("csv").build();
         CmpSide cmpRight = CmpSide.builder()
-                .value(ao).ctx(ctxExpr(ctx)).ctxs(ctxIds)
+                .value(ao).ctxRaw(ctxExpr(ctx)).metaCtxs(ctxIds)
                 .elRaw(genMapping(target, ctx)).el(target).valueSrcFmt(csv ? "csv" : "xml").build();
 
         ConversionRule cvtLeft = ConversionRule.builder()
-                .ctx(ctxExpr(ctx)).ctxs(ctxIds).el(convRule).elRaw(genRule(convRule, ctx)).raw(eoUnconverted).build();
+                .ctxRaw(ctxExpr(ctx)).metaCtxs(ctxIds).el(convRule).elRaw(genRule(convRule, ctx)).raw(eoUnconverted).build();
         ConversionRule cvtRight = ConversionRule.builder()
-                .ctx(ctxExpr(ctx)).ctxs(ctxIds).el(convRule).elRaw(genRule(convRule, ctx)).raw(aoUnconverted).build();
+                .ctxRaw(ctxExpr(ctx)).metaCtxs(ctxIds).el(convRule).elRaw(genRule(convRule, ctx)).raw(aoUnconverted).build();
         ValidationRule vdt = ValidationRule.builder()
-                .ctx(ctxExpr(ctx)).ctxs(ctxIds).el(valRule).elRaw(genRule(valRule, ctx)).build();
+                .ctxRaw(ctxExpr(ctx)).metaCtxs(ctxIds).el(valRule).elRaw(genRule(valRule, ctx)).build();
 
         List<ExtraResult> resultDetails = List.of(
                 ExtraResult.builder().label("期望值 (EO, Unconverted)").value(eoUnconverted).build());
@@ -250,12 +250,11 @@ public final class BasicDataGenerator {
 
     private static Map<String, CtxDef> buildCtxDefs() {
         Map<String, CtxDef> defs = new LinkedHashMap<>();
-        int id = 1;
         for (String name : List.of("HKTR", "JSFA", "CFTC")) {
             String p = name.toLowerCase();
-            defs.put(p + ".ctx.default", CtxDef.builder().id(id++)
+            defs.put(p + ".ctx.default", CtxDef.builder()
                     .hits("命中 3 个映射条目（EO 2 / AO 1）").build());
-            defs.put(p + ".ctx.v2", CtxDef.builder().id(id++)
+            defs.put(p + ".ctx.v2", CtxDef.builder()
                     .hits("命中 2 个映射条目（EO 1 / AO 1）").build());
         }
         return defs;

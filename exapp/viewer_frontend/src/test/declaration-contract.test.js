@@ -4,8 +4,8 @@
 // 契约（见 docs/DATA_SCHEMA.md §3.1/§3.2）：
 //   - `reportChannelDefs = [{id,name,desc,format,fieldDefs:[{id,name,userTag,type}]}]`；
 //   - `sourceChannelDefs = [{id,name,format}]`（format: csv / xml）；
-//   - `usedCtxKeyDefs = { <ctxKey>: {id,type,rules,def} }`（rules: fdm / cvt / vdt），item.ctxDefs 只留 {id,hits}；
-//   - item.channels[].id / .sources[].id / .sources[].fields[].id / 规则 ctxs 必须在对应声明表里解析；
+//   - `usedCtxKeyDefs = { <ctxKey>: {id,type,rules,def} }`（rules: fdm / cvt / vdt），item.ctxDtls 只留 {hits}；
+//   - item.channels[].id / .sources[].id / .sources[].fields[].id / 规则 metaCtxs 必须在对应声明表里解析；
 //   - item 里可以重复写名称，但必须与声明一致；声明表被引用时不可省；
 //   - warnings / errors / uncompared 只写名称（不带 id），logs 与 skippedItems 写 id。
 //
@@ -28,10 +28,10 @@ const CTX_KEY = 'hktr.ctx.default';
 const item = (over) => Object.assign({
   tradeId: 'T-1',
   reportDate: '2026-08-16',
-  ctxDefs: { [CTX_KEY]: { id: 1, hits: '命中 1 个映射条目' } },
+  ctxDtls: { [CTX_KEY]: { hits: '命中 1 个映射条目' } },
   channels: [{
     id: 1,
-    sources: [{ id: 1, fields: [{ id: '1', result: 'PASSED', cmpLeft: { valueSrcFmt: 'csv' }, cmpRight: { valueSrcFmt: 'xml', ctxs: [1] } }] }],
+    sources: [{ id: 1, fields: [{ id: '1', result: 'PASSED', cmpLeft: { valueSrcFmt: 'csv' }, cmpRight: { valueSrcFmt: 'xml', metaCtxs: [1] } }] }],
   }],
   warnings: [{ channel: 'HKTR', source: SRC_A, type: 't', level: 'WARN', text: 'w' }],
   logs: [{ scope: 'field', channelId: 1, sourceId: 1, field: '1', text: 'x' }],
@@ -62,11 +62,11 @@ test('契约：item 引用的渠道 / 来源渠道 / 字段 / ctxKey 必须已�
   assert.ok(undeclaredField.errors.some((e) => e.includes('fieldDefs 里声明')), JSON.stringify(undeclaredField.errors));
 
   const undeclaredCtx = validateDataset(dataset({ items: [item({
-    ctxDefs: { [CTX_KEY]: { id: 1 } },
-    channels: [{ id: 1, sources: [{ id: 1, fields: [{ id: '1', cmpRight: { ctxs: [7] } }] }] }],
+    ctxDtls: { [CTX_KEY]: { hits: 'h' } },
+    channels: [{ id: 1, sources: [{ id: 1, fields: [{ id: '1', cmpRight: { metaCtxs: [7] } }] }] }],
   })] }));
   assert.equal(undeclaredCtx.ok, false);
-  assert.ok(undeclaredCtx.errors.some((e) => e.includes('引用了未在 usedCtxKeyDefs 声明的 ctx id：7')), JSON.stringify(undeclaredCtx.errors));
+  assert.ok(undeclaredCtx.errors.some((e) => e.includes('metaCtxs 引用了未在 usedCtxKeyDefs 声明的 ctx id：7')), JSON.stringify(undeclaredCtx.errors));
 });
 
 test('契约：hoistRegistries 把 item 内的定义提到声明表（生成器的内部形态）', () => {
@@ -75,11 +75,11 @@ test('契约：hoistRegistries 把 item 内的定义提到声明表（生成器�
     items: [{
       tradeId: 'T-1',
       reportDate: '2026-08-16',
-      ctxDefs: { [CTX_KEY]: { id: 1, rules: ['fdm'], type: 'builtin', def: 'HKTR 默认上下文', hits: 'h' } },
+      ctxDtls: { [CTX_KEY]: { id: 1, rules: ['fdm'], type: 'builtin', def: 'HKTR 默认上下文', hits: 'h' } },
       channels: [{
         id: 1, name: 'HKTR', desc: 'D', format: 'xml',
         fields: [FIELD],
-        sources: [{ id: 1, name: SRC_A, fields: [{ id: '1', cmpLeft: { valueSrcFmt: 'csv' }, cmpRight: { valueSrcFmt: 'xml', ctxs: [1] } }] }],
+        sources: [{ id: 1, name: SRC_A, fields: [{ id: '1', cmpLeft: { valueSrcFmt: 'csv' }, cmpRight: { valueSrcFmt: 'xml', metaCtxs: [1] } }] }],
       }],
     }],
   };
@@ -93,7 +93,7 @@ test('契约：hoistRegistries 把 item 内的定义提到声明表（生成器�
   }]);
   assert.deepEqual(migrated.sourceChannelDefs, [{ id: 1, name: SRC_A, format: 'csv' }]);
   assert.deepEqual(migrated.usedCtxKeyDefs, { [CTX_KEY]: { id: 1, type: 'builtin', rules: ['fdm'], def: 'HKTR 默认上下文' } });
-  assert.deepEqual(migrated.items[0].ctxDefs, { [CTX_KEY]: { id: 1, hits: 'h' } }, 'item 内只留 { id, hits }');
+  assert.deepEqual(migrated.items[0].ctxDtls, { [CTX_KEY]: { hits: 'h' } }, 'item 内只留 { hits }');
   assert.equal('fields' in migrated.items[0].channels[0], false, 'item 内不再写字段定义');
   assert.equal(migrated.items[0].channels[0].sources[0].fields[0].cmpRight.valueSrcFmt, 'xml', 'valueSrcFmt 原样保留');
   assert.equal(validateDataset(migrated).ok, true, JSON.stringify(validateDataset(migrated).errors));
@@ -105,10 +105,10 @@ test('契约：旧字段名不再被归一化（srcType / scopes 一律视为非
     mode: 'single',
     items: [{
       tradeId: 'T-1', reportDate: '2026-08-16',
-      ctxDefs: { [CTX_KEY]: { id: 1, scopes: [1], type: 'builtin', def: 'D', hits: 'h' } },
+      ctxDtls: { [CTX_KEY]: { id: 1, scopes: [1], type: 'builtin', def: 'D', hits: 'h' } },
       channels: [{
         id: 1, name: 'HKTR', fields: [FIELD],
-        sources: [{ id: 1, name: SRC_A, fields: [{ id: '1', cmpLeft: { srcType: 2 }, cmpRight: { srcType: 1, ctxs: [1] } }] }],
+        sources: [{ id: 1, name: SRC_A, fields: [{ id: '1', cmpLeft: { srcType: 2 }, cmpRight: { srcType: 1, metaCtxs: [1] } }] }],
       }],
     }],
   });
@@ -189,11 +189,11 @@ test('生成器：hoistRegistries 会把 skippedItems 的引用补进声明表�
     mode: 'single',
     items: [{
       tradeId: 'T-1', reportDate: 'd',
-      ctxDefs: { [CTX_KEY]: { id: 1, rules: ['fdm'], type: 'builtin', def: 'D', hits: 'h' } },
+      ctxDtls: { [CTX_KEY]: { id: 1, rules: ['fdm'], type: 'builtin', def: 'D', hits: 'h' } },
       channels: [{
         id: 1, name: 'HKTR', desc: 'D', format: 'xml',
         fields: [{ id: 1, name: 'tradeId', userTag: 'contextAssertion', type: 'id' }],
-        sources: [{ id: 1, name: SRC_A, fields: [{ id: '1', cmpLeft: { valueSrcFmt: 'csv' }, cmpRight: { valueSrcFmt: 'xml', ctxs: [1] } }] }],
+        sources: [{ id: 1, name: SRC_A, fields: [{ id: '1', cmpLeft: { valueSrcFmt: 'csv' }, cmpRight: { valueSrcFmt: 'xml', metaCtxs: [1] } }] }],
       }],
     }],
     // 被跳过的 item 用了 JSFA / 来源渠道 B，而所有 item 里都没有它们：
@@ -218,8 +218,8 @@ test('生成器：hoistRegistries 会把 skippedItems 的引用补进声明表�
   // ctxKey 定义不一致也报错。
   assert.throws(() => hoistRegistries({
     items: [
-      { tradeId: 'A', channels: [], ctxDefs: { [CTX_KEY]: { id: 1, rules: ['fdm'], def: 'X' } } },
-      { tradeId: 'B', channels: [], ctxDefs: { [CTX_KEY]: { id: 1, rules: ['fdm'], def: 'Y' } } },
+      { tradeId: 'A', channels: [], ctxDtls: { [CTX_KEY]: { id: 1, rules: ['fdm'], def: 'X' } } },
+      { tradeId: 'B', channels: [], ctxDtls: { [CTX_KEY]: { id: 1, rules: ['fdm'], def: 'Y' } } },
     ],
   }), /定义不一致/);
 });
@@ -288,11 +288,11 @@ test('落盘样例数据：多文件批次清单的声明表覆盖 item 文件�
           });
         });
       });
-      Object.keys(itemJson.ctxDefs || {}).forEach((key) => {
-        const local = itemJson.ctxDefs[key] || {};
+      Object.keys(itemJson.ctxDtls || {}).forEach((key) => {
+        const local = itemJson.ctxDtls[key] || {};
         refs++;
-        assert.ok(ctxById.has(local.id), where + ' 的 ctxKey ' + key + '（id=' + local.id + '）未在清单 usedCtxKeyDefs 里声明');
-        assert.equal('type' in local || 'rules' in local || 'def' in local, false, 'item 文件里不应重复写 ctxKey 定义');
+        assert.ok(Object.prototype.hasOwnProperty.call(manifest.usedCtxKeyDefs || {}, key), where + ' 的 ctxKey ' + key + ' 未在清单 usedCtxKeyDefs 里声明');
+        assert.equal('id' in local || 'type' in local || 'rules' in local || 'def' in local, false, 'item 文件里不应重复写 ctxKey 定义');
       });
     });
     assert.ok(refs > 0, '应至少检查到一个引用');
@@ -316,7 +316,7 @@ test('落盘样例数据：声明表覆盖所有引用（含 skippedItems），�
       });
       (ch.sources || []).forEach((s) => (s.fields || []).forEach((f) => {
         ['cmpLeft', 'cmpRight', 'cvtLeft', 'cvtRight', 'vdt'].forEach((rk) => {
-          (f[rk] && f[rk].ctxs ? f[rk].ctxs : []).forEach((cid) => refs.push(['ctx', cid, it.tradeId]));
+          (f[rk] && f[rk].metaCtxs ? f[rk].metaCtxs : []).forEach((cid) => refs.push(['ctx', cid, it.tradeId]));
         });
       }));
     }));
@@ -341,7 +341,7 @@ test('落盘样例数据：声明表覆盖所有引用（含 skippedItems），�
     // hydrate 后名称 / 字段定义 / ctxKey 定义都齐备（查看器其余代码照旧工作）。
     const hydrated = hydrateDataset(json);
     assert.equal(hydrated.items[0].channels.every((c) => c.name && Array.isArray(c.fields) && c.fields.length > 0 && c.sources.every((s) => s.name)), true, 'hydrate 后渠道 / 来源 / 字段定义齐备');
-    const anyCtx = Object.keys(hydrated.items[0].ctxDefs || {})[0];
-    if (anyCtx) assert.ok(hydrated.items[0].ctxDefs[anyCtx].rules.length > 0, 'hydrate 后 ctxKey 的 rules 齐备');
+    const anyCtx = Object.keys(hydrated.items[0].ctxDtls || {})[0];
+    if (anyCtx) assert.ok(hydrated.items[0].ctxDtls[anyCtx].rules.length > 0, 'hydrate 后 ctxKey 的 rules 齐备');
   });
 });
