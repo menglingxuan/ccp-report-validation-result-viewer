@@ -33,6 +33,7 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, resolveConfigFile } from './lib/config.js';
 import { scan, sanitizeTags, MAX_BATCH_NAME_LEN, MAX_BATCH_DESC_LEN } from './lib/scanner.js';
+import { stringifyJSON } from './lib/json-write.js';
 import { validateFile } from './lib/validate.js';
 // 「在系统文件管理器中打开目录」：Launcher 用绝对路径解析（不依赖 PATH），失败会如实上抛。
 import { openInFileManager } from './lib/reveal.js';
@@ -82,6 +83,12 @@ const REVEAL_ENABLED = (function () {
 })();
 
 // 原子写入：先写临时文件再 rename，避免多实例/并发写同一文件时读到半截内容。
+// 内容统一由 lib/json-write.js 的 stringifyJSON() 产出（缩进 + 结尾换行）：
+// 手写 JSON.stringify(x, null, 2) 会漏掉尾换行，让受版本管理的用户态文件每次写入都
+// 多出 git 的 "\ No newline at end of file" 噪声。
+function writeJsonAtomic(filePath, obj) {
+  writeFileAtomic(filePath, stringifyJSON(obj, { pretty: true }));
+}
 function writeFileAtomic(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   const tmp = path.join(path.dirname(filePath), '.tmp-' + process.pid + '-' + Date.now() + '-' + Math.random().toString(16).slice(2, 8));
@@ -299,7 +306,7 @@ function readFavorites() {
   }
 }
 function writeFavorites(tree) {
-  writeFileAtomic(FAVORITES_FILE, JSON.stringify(tree, null, 2));
+  writeJsonAtomic(FAVORITES_FILE, tree);
 }
 function handleFavoritesGet(res) {
   // 带上当前 ETag，供客户端写入时做 If-Match 乐观并发。
@@ -367,7 +374,7 @@ function handleIgnorePost(req, res) {
         const cur = etagOfFile(abs);
         if (!cur || want !== cur) { json(res, 409, { ok: false, error: '配置已被其他会话修改', etag: cur }); return; }
       }
-      writeFileAtomic(abs, JSON.stringify(cfg, null, 2));
+      writeJsonAtomic(abs, cfg);
       json(res, 200, { ok: true, url: abs, etag: etagOfFile(abs) });
     } catch (e) {
       json(res, 500, { ok: false, error: '保存失败：' + (e && e.message ? e.message : e) });
@@ -485,7 +492,7 @@ function handleBatchAction(req, res) {
         if (tags.length) meta.tags = tags;
         else delete meta.tags;
       }
-      writeFileAtomic(metaPath, JSON.stringify(meta, null, 2));
+      writeJsonAtomic(metaPath, meta);
       // 写回与索引刷新必须成对，否则刷新页面会读到写回前的旧索引。
       await rescanIndex();
       json(res, 200, {
@@ -733,11 +740,11 @@ function initDataRoot() {
         count: 0,
         batches: [],
       };
-      writeFileAtomic(CFG.scan.outAbs, JSON.stringify(emptyIndex, null, 2));
+      writeJsonAtomic(CFG.scan.outAbs, emptyIndex);
     }
     const ignorePath = path.join(CFG.tenant.dataRoot, 'ignore-config-by-platform.json');
     if (!fs.existsSync(ignorePath)) {
-      writeFileAtomic(ignorePath, JSON.stringify({}, null, 2));
+      writeJsonAtomic(ignorePath, {});
     }
     console.log('[report-viewer] Initialized empty data root: ' + CFG.tenant.dataRoot);
   } catch (e) {
@@ -752,14 +759,14 @@ function writeActiveTenant(actualPort) {
   if (!TRACKING_ENABLED) return;
   try {
     fs.mkdirSync(path.dirname(CFG.tenant.activeFile), { recursive: true });
-    writeFileAtomic(CFG.tenant.activeFile, JSON.stringify({
+    writeJsonAtomic(CFG.tenant.activeFile, {
       tenantId: CFG.tenant.id,
       pid: process.pid,
       host: CFG.server.host,
       port: actualPort,
       startedAt: new Date().toISOString(),
       lastSeenAt: new Date().toISOString(),
-    }, null, 2));
+    });
   } catch (e) {}
 }
 function refreshActiveTenant(actualPort) {
@@ -768,7 +775,7 @@ function refreshActiveTenant(actualPort) {
     const cur = JSON.parse(fs.readFileSync(CFG.tenant.activeFile, 'utf8') || '{}');
     cur.lastSeenAt = new Date().toISOString();
     cur.port = actualPort;
-    writeFileAtomic(CFG.tenant.activeFile, JSON.stringify(cur, null, 2));
+    writeJsonAtomic(CFG.tenant.activeFile, cur);
   } catch (e) {}
 }
 function clearActiveTenant() {

@@ -148,8 +148,9 @@
       border: 1px solid var(--border); background: var(--surface-2);
       color: var(--muted); font-family: var(--mono); font-size: 10px;
       display: inline-flex; align-items: center; justify-content: center;
-      position: relative;
     }
+    /* 注：.bd-chip 上的 active / fav / pinned / incompat 只作状态钩子（fav 等不再有自己的样式，
+       角标已在槽位里），定位基准一律是 .bd-slot，不要在方块里再放绝对定位的子元素。 */
     .bd-chip:hover { border-color: var(--accent); color: var(--accent); }
     .bd-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
     /* 四个角标都是槽位里的兄弟节点：pointer-events: none 让点击 / 悬停穿透到方块。 */

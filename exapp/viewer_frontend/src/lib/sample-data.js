@@ -443,8 +443,8 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
       const toIds = function (arr) {
         return (arr || []).map(function (k) { return idByKey[k]; }).filter(function (id) { return id != null; });
       };
-      // ctx（单数）为命中 ctxKey 的原始字符串表达式，如 "hktr.ctx.val.v2 and hktr.ctx.default"；
-      // 其中每个元 ctxKey 的 id 引用在同级别的 ctxs 数组中。
+      // ctxExpr → 规则对象的 ctxRaw（命中 ctxKey 的原始表达式，如 "hktr.ctx.val.v2 and hktr.ctx.default"），
+      // 同一批 ctxKey 的 id 引用写在同级的 metaCtxs（number[]）里。
       const ctxExpr = function (arr) {
         return (arr && arr.length) ? arr.join(' and ') : null;
       };
@@ -501,7 +501,7 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
           const aoConvCtxs = aoConversionRule ? aoConversionRule.ctx : [];
           const valCtxs = validationRule ? validationRule.ctx : [];
 
-          // ctx 引用改为 id：各规则的 metaCtxs 均为 usedCtxKeyDefs 的 id；field 级 ctxs 已删除（由规则 metaCtxs 取合集）。
+          // ctx 引用写入各规则的 metaCtxs（usedCtxKeyDefs 的 id 数组）；field 级 ctxs 已删除（由规则 metaCtxs 取合集）。
           const mapCtxIds = toIds(mapCtxs);
           const convCtxIds = toIds(convCtxs);
           const aoConvCtxIds = toIds(aoConvCtxs);

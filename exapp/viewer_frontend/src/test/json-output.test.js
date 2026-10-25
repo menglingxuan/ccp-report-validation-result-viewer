@@ -97,9 +97,16 @@ test('例外：索引与用户态小文件仍是缩进版（便于人工编辑 /
   // batches-index.json 由 viewer 自身维护（几十 KB），保持缩进。
   const idx = fs.readFileSync(path.join(SRC, 'lib', 'scanner.js'), 'utf8');
   assert.match(idx, /JSON\.stringify\(index, null, 2\)/, '索引仍写缩进版');
-  // 服务端写回的 favorites / batch-meta / 租户配置同样保持缩进（与生成器的 batch-meta 写法一致）。
+  // 服务端写回的 favorites / batch-meta / 租户配置同样保持缩进：统一走 writeJsonAtomic()，
+  // 它内部用 lib/json-write.js 的 stringifyJSON()（缩进 + 结尾换行）——手写 JSON.stringify
+  // 会漏掉尾换行，让受版本管理的用户态文件每次写入都多出 git "no newline at end of file" 噪声。
   const srv = fs.readFileSync(path.join(SRC, 'server.js'), 'utf8');
   ['FAVORITES_FILE', 'metaPath', 'CFG.tenant.activeFile'].forEach((k) => {
-    assert.ok(srv.indexOf('writeFileAtomic(' + k + ', JSON.stringify(') !== -1, k + ' 应仍写缩进版 JSON');
+    assert.ok(srv.indexOf('writeJsonAtomic(' + k + ', ') !== -1, k + ' 应仍写缩进版 JSON');
   });
+  assert.match(srv, /function writeJsonAtomic\(filePath, obj\) \{\s+writeFileAtomic\(filePath, stringifyJSON\(obj, \{ pretty: true \}\)\);/,
+    'writeJsonAtomic 应复用 stringifyJSON（缩进 + 结尾换行）');
+  assert.match(srv, /import \{ stringifyJSON \} from '\.\/lib\/json-write\.js';/, '应引用 lib/json-write.js');
+  assert.equal(/writeFileAtomic\([^,]+, JSON\.stringify\(/.test(srv), false,
+    'server.js 不应再手写 JSON.stringify(x, null, 2)（会漏尾换行）');
 });

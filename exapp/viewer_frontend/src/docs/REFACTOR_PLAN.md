@@ -224,7 +224,7 @@ Java 侧目标：
 |---|---|---|---|
 | 1 | `srcType` 兼容归一 | `core.js` / `validate.js` | 契约已改 `valueSrcFmt`，且无老数据外流 |
 | 2 | `item.fields` 老形态回退 | `core.js` / `validate.js` | 已迁到 `reportChannelDefs[].fieldDefs` |
-| 3 | `ctxDefs.scopes`（数字）兼容 | `core.js` / `app.js` | 已改 `rules` 规则名 |
+| 3 | `usedCtxKeyDefs` 旧 `scopes`（数字）兼容 | `core.js` / `app.js` | 已改 `rules`（fdm / cvt / vdt 规则名）→ ✅ 已删 |
 | 4 | `enabledChannels` 检测分支 | `validate.js` / `core.js` 注释 | 契约早已单点化 |
 | 5 | 根级 `channels` / `sources` 识别 | `validate.js` / `core.js` / `sample-data.js` | 已改名 |
 | 6 | `tools/migrate-legacy-data.js` 及其文档章节 / 测试用例 | `tools/` / `docs/` / `test/` | 迁移窗口结束后无用 → ✅ 已删 |

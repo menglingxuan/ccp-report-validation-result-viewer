@@ -25,16 +25,33 @@ function bodyOf(sig, len = 2000) {
 }
 
 test('dock 方块：角标挂在 .bd-slot 槽位里，且不是 <button> 的子元素', () => {
-  const dock = bodyOf('function renderBatchDock(', 3000);
+  const dock = bodyOf('function renderBatchDock(', 3600);
   assert.match(dock, /'<span class="bd-slot">'/, '每个方块应包在 .bd-slot 槽位中');
   // 方块按钮必须自闭合（内部只放日号），角标一律拼在按钮之外。
-  assert.match(dock, /<\/button>' \+\s*\n\s*\(isBatchFavorited\(b\) \? '<span class="bd-fav-star"/,
+  assert.match(dock, /<\/button>' \+\s*\n\s*\(fav \? '<span class="bd-fav-star"/,
     '收藏 ★ 角标必须是按钮之后的兄弟节点（放进 button 内会被 button 背景盖住）');
   assert.equal(/<span class="bd-new-dot"[^>]*><\/span>' : ''\) \+ '<\/button>'/.test(dock), false,
     '新批次圆点不应再放在 <button> 内部');
   ['bd-fav-star', 'bd-pin-dot', 'bd-incompat-dot', 'bd-new-dot'].forEach(function (cls) {
     assert.match(dock, new RegExp("class=\"" + cls + "\""), '缺少角标：' + cls);
   });
+});
+
+test('dock 方块：角标是装饰（aria-hidden，无 title），状态进方块 aria-label', () => {
+  const dock = bodyOf('function renderBatchDock(', 3600);
+  ['bd-fav-star', 'bd-pin-dot', 'bd-incompat-dot', 'bd-new-dot'].forEach(function (cls) {
+    assert.match(dock, new RegExp('class="' + cls + '" aria-hidden="true"'),
+      cls + ' 应加 aria-hidden（否则读屏会单独念出 ★）');
+  });
+  // pointer-events: none 时 title 永远不会弹，属于死属性（.bd-empty 之类非角标元素不受影响）。
+  assert.equal(/class="bd-(fav-star|pin-dot|incompat-dot|new-dot)" title=/.test(dock), false,
+    '角标不应再带 title（pointer-events: none 时不会显示）');
+  // 状态（收藏 / 置顶 / 版本不兼容 / 新批次）改由 aria-label 承载。
+  assert.match(dock, /states\.push\(t\('bdFavAria'\)\)/, '收藏状态应进 aria-label');
+  assert.match(dock, /states\.push\(t\('pinTitle'\)\)/, '置顶状态应进 aria-label');
+  assert.match(dock, /states\.push\(t\('batchIncompat'\)\)/, '版本不兼容状态应进 aria-label');
+  assert.match(dock, /states\.push\(t\('batchNew'\)\)/, '新批次状态应进 aria-label');
+  assert.match(dock, /aria-label="' \+ esc\(label\) \+ '"/, 'aria-label 应使用拼好的 label（名称 · 时间 · 状态…）');
 });
 
 test('dock 方块角标：定位基准是槽位，且 pointer-events 穿透到方块', () => {
@@ -46,6 +63,10 @@ test('dock 方块角标：定位基准是槽位，且 pointer-events 穿透到�
   assert.equal(/\.bd-chip\.fav::before/.test(HTML), false, '不应再用 .bd-chip.fav::before（会被 button 背景遮挡）');
   assert.equal(/\.bd-chip\.pinned::before/.test(HTML), false, '不应再用 .bd-chip.pinned::before（同上）');
   assert.equal(/\.bd-chip\.incompat::after/.test(HTML), false, '不应再用 .bd-chip.incompat::after（同上）');
+  // 方块自身不再需要定位上下文（角标不在它里面），留 position: relative 会误导后来者。
+  const chipRule = HTML.match(/\.bd-chip\s*\{([^}]*)\}/);
+  assert.ok(chipRule, '应存在 .bd-chip 样式');
+  assert.equal(/position:\s*relative/.test(chipRule[1]), false, '.bd-chip 不应再有 position: relative（定位基准是 .bd-slot）');
 });
 
 test('dock 方块收藏星标：完整可见（10px + 同色描边，不靠裁剪）', () => {

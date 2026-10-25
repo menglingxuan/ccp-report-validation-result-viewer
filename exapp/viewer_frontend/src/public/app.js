@@ -1034,17 +1034,29 @@
       rec.forEach(function (b) {
         const active = BATCH_STATE.active && BATCH_STATE.active.batchId === b.batchId;
         const day = String(b.date || '').slice(-2);
+        const compat = batchCompatible(b);
+        const fav = isBatchFavorited(b);
+        const pinned = isPinned(b);
+        const fresh = isNewBatch(b);
         // 角标不能放在 <button> 内部：Chromium 会把 button 自身的背景绘制在其内部内容
         // （含定位子元素）之上，星标 / 圆点的内嵌部分会被方块底色盖掉。
         // 因此外面套一层 .bd-slot（position: relative），把方块和角标作为兄弟节点，
         // 角标（在 DOM 中靠后）自然绘制在方块上层；角标设 pointer-events: none，
         // 点击 / 悬停仍然穿透到方块上。
+        // 角标纯粹是视觉装饰（pointer-events: none 时 title 也不会弹），状态改由方块的
+        // aria-label 表达，角标本身加 aria-hidden，避免读屏单独念出「★」。
+        const states = [];
+        if (fav) states.push(t('bdFavAria'));
+        if (pinned) states.push(t('pinTitle'));
+        if (!compat) states.push(t('batchIncompat'));
+        if (fresh) states.push(t('batchNew'));
+        const label = b.batchName + ' · ' + formatBatchTime(b.executedAt) + (states.length ? ' · ' + states.join(' · ') : '');
         chips += '<span class="bd-slot">' +
-          '<button class="bd-chip' + (active ? ' active' : '') + (batchCompatible(b) ? '' : ' incompat') + (isBatchFavorited(b) ? ' fav' : '') + (isPinned(b) ? ' pinned' : '') + '" data-batch="' + esc(b.batchId) + '" aria-label="' + esc(b.batchName + ' · ' + formatBatchTime(b.executedAt)) + '">' + esc(day || '?') + '</button>' +
-          (isBatchFavorited(b) ? '<span class="bd-fav-star" title="' + t('favoritesTitle') + '">★</span>' : '') +
-          (isPinned(b) ? '<span class="bd-pin-dot" title="' + t('pinTitle') + '"></span>' : '') +
-          (batchCompatible(b) ? '' : '<span class="bd-incompat-dot" title="' + t('batchIncompat') + '"></span>') +
-          (isNewBatch(b) ? '<span class="bd-new-dot" title="' + t('batchNew') + '"></span>' : '') +
+          '<button class="bd-chip' + (active ? ' active' : '') + (compat ? '' : ' incompat') + (fav ? ' fav' : '') + (pinned ? ' pinned' : '') + '" data-batch="' + esc(b.batchId) + '" aria-label="' + esc(label) + '">' + esc(day || '?') + '</button>' +
+          (fav ? '<span class="bd-fav-star" aria-hidden="true">★</span>' : '') +
+          (pinned ? '<span class="bd-pin-dot" aria-hidden="true"></span>' : '') +
+          (compat ? '' : '<span class="bd-incompat-dot" aria-hidden="true"></span>') +
+          (fresh ? '<span class="bd-new-dot" aria-hidden="true"></span>' : '') +
           '</span>';
       });
       if (!chips && usableBatches().length) chips = '<span class="bd-empty" title="' + t('batchNoCompat') + '">' + t('batchNoCompat') + '</span>';
@@ -4753,6 +4765,10 @@
     function flashLogLine(el) {
       el.scrollIntoView({ block: 'center', behavior: 'smooth' });
       clearLogFlash();
+      // 强制回流：同一帧内「先移除类、再加类」不会让 CSS 动画重播（样式失效被合并），
+      // 与 flashBatchRing 同一手法。当前入口每次都先 render() 拿新节点，加这行是为将来
+      // 可能出现的「重跳到同一行」入口（如日志内上一处 / 下一处定位）兜底。
+      void el.offsetWidth;
       el.classList.add('flash-log');
     }
 
@@ -4903,13 +4919,24 @@
       const it = currentItem();
       return (it && it.ctxDtls) || {};
     }
+    // ctx id -> ctxKey 反查表：字段详情页 / 「命中Ctx」列一轮渲染会调用 ctxDefById 上百次，
+    // 每次都线性扫 item.ctxDtls（每个 item 24 条）是纯浪费。按 item 实例记忆（切 item 即失效）。
+    let CTX_KEY_BY_ID = { item: null, map: null };
+    function ctxKeyMapOf(item) {
+      if (!item) return {};
+      if (CTX_KEY_BY_ID.item === item && CTX_KEY_BY_ID.map) return CTX_KEY_BY_ID.map;
+      const map = {};
+      const defs = item.ctxDtls || {};
+      for (const k in defs) map[Number(defs[k].id)] = k;
+      CTX_KEY_BY_ID = { item: item, map: map };
+      return map;
+    }
     function ctxDefById(id) {
-      const defs = ctxDtlsOf();
+      const it = currentItem();
+      const defs = (it && it.ctxDtls) || {};
       // hydrate 已把 id 从顶层声明表补回；data-ctx 属性为字符串，统一按数值匹配。
-      const num = Number(id);
-      for (const k in defs) {
-        if (Number(defs[k].id) === num) return { key: k, def: defs[k] };
-      }
+      const key = ctxKeyMapOf(it)[Number(id)];
+      if (key !== undefined) return { key: key, def: defs[key] };
       return { key: String(id), def: {} };
     }
     function ctxRules(id) {
