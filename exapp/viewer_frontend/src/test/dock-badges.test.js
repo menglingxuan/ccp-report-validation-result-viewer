@@ -6,12 +6,18 @@
 // 子元素 / 伪元素，而是 DOM 中位于按钮之后的兄弟节点 —— 同级定位元素按文档顺序绘制，角标因此
 // 完整显示在方块上层。
 //
-// app.js 的渲染逻辑位于 DOM 闭包内，Node 无法执行，故对 public/ 源码做结构断言。
+// 角位约定：四个角标类型统一挂在方块左上角，且同一时刻最多只显示一个 ——
+// 优先级 新增 > 置顶 > 收藏 ★ > 版本不兼容（判定见 core.js 的 dockBadgeOf()）。
+// 优先级低的状态不改角位、直接不显示（方块四周挂满标记会显得杂乱）。
+//
+// app.js 的渲染逻辑位于 DOM 闭包内，Node 无法执行，故对 public/ 源码做结构断言；
+// 优先级判定本身是纯函数，直接单测真实行为。
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { dockBadgeOf } from '../public/core.js';
 
 const SRC_DIR = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PUBLIC_DIR = path.join(SRC_DIR, 'public');
@@ -24,27 +30,33 @@ function bodyOf(sig, len = 2000) {
   return APP.slice(i, i + len);
 }
 
-test('dock 方块：角标挂在 .bd-slot 槽位里，且不是 <button> 的子元素', () => {
+test('dock 方块：只渲染一个角标，挂在 .bd-slot 槽位里且不是 <button> 的子元素', () => {
   const dock = bodyOf('function renderBatchDock(', 3600);
   assert.match(dock, /'<span class="bd-slot">'/, '每个方块应包在 .bd-slot 槽位中');
   // 方块按钮必须自闭合（内部只放日号），角标一律拼在按钮之外。
-  assert.match(dock, /<\/button>' \+\s*\n\s*\(fav \? '<span class="bd-fav-star"/,
-    '收藏 ★ 角标必须是按钮之后的兄弟节点（放进 button 内会被 button 背景盖住）');
-  assert.equal(/<span class="bd-new-dot"[^>]*><\/span>' : ''\) \+ '<\/button>'/.test(dock), false,
-    '新批次圆点不应再放在 <button> 内部');
-  ['bd-fav-star', 'bd-pin-dot', 'bd-incompat-dot', 'bd-new-dot'].forEach(function (cls) {
-    assert.match(dock, new RegExp("class=\"" + cls + "\""), '缺少角标：' + cls);
+  assert.match(dock, /<\/button>' \+\s*\n\s*dockBadgeHTML\(badge\) \+/,
+    '角标必须是按钮之后的兄弟节点（放进 button 内会被 button 背景盖住）');
+  assert.equal(/bd-new-(dot|tag)[^>]*><\/span>' : ''\) \+ '<\/button>'/.test(dock), false,
+    '新批次角标不应再放在 <button> 内部');
+  // 四个角标 HTML 集中在 dockBadgeHTML() 里，由 dockBadgeOf() 选出一个（旧写法是四个并列三元表达式）。
+  const badgeFn = bodyOf('function dockBadgeHTML(', 900);
+  ['bd-fav-star', 'bd-pin-dot', 'bd-incompat-dot', 'bd-new-tag'].forEach(function (cls) {
+    assert.match(badgeFn, new RegExp('class="' + cls + '"'), '缺少角标：' + cls);
   });
+  assert.equal(/has-fav/.test(APP), false, '不应再有 has-fav 角标避让逻辑（低优先级角标直接不显示）');
 });
 
 test('dock 方块：角标是装饰（aria-hidden，无 title），状态进方块 aria-label', () => {
   const dock = bodyOf('function renderBatchDock(', 3600);
-  ['bd-fav-star', 'bd-pin-dot', 'bd-incompat-dot', 'bd-new-dot'].forEach(function (cls) {
-    assert.match(dock, new RegExp('class="' + cls + '" aria-hidden="true"'),
-      cls + ' 应加 aria-hidden（否则读屏会单独念出 ★）');
+  const badgeFn = bodyOf('function dockBadgeHTML(', 900);
+  ['bd-fav-star', 'bd-pin-dot', 'bd-incompat-dot', 'bd-new-tag'].forEach(function (cls) {
+    assert.match(badgeFn, new RegExp('class="' + cls + '" aria-hidden="true"'),
+      cls + ' 应加 aria-hidden（否则读屏会单独念出角标文案）');
   });
+  // 新增角标的文案走 i18n（zh 「新」、en 「New」），不硬编码，也不复用面板的「新增」。
+  assert.match(badgeFn, /esc\(t\('bdNewTag'\)\)/, '新增角标文案应取自 i18n 的 bdNewTag（短文案）');
   // pointer-events: none 时 title 永远不会弹，属于死属性（.bd-empty 之类非角标元素不受影响）。
-  assert.equal(/class="bd-(fav-star|pin-dot|incompat-dot|new-dot)" title=/.test(dock), false,
+  assert.equal(/class="bd-(fav-star|pin-dot|incompat-dot|new-tag)" title=/.test(APP), false,
     '角标不应再带 title（pointer-events: none 时不会显示）');
   // 状态（收藏 / 置顶 / 版本不兼容 / 新批次）改由 aria-label 承载。
   assert.match(dock, /states\.push\(t\('bdFavAria'\)\)/, '收藏状态应进 aria-label');
@@ -57,8 +69,21 @@ test('dock 方块：角标是装饰（aria-hidden，无 title），状态进方�
 test('dock 方块角标：定位基准是槽位，且 pointer-events 穿透到方块', () => {
   assert.match(HTML, /\.bd-slot\s*\{[^}]*position:\s*relative[^}]*\}/,
     '.bd-slot 需要 position: relative 作为角标定位基准');
-  assert.match(HTML, /\.bd-fav-star,\s*\.bd-pin-dot,\s*\.bd-incompat-dot,\s*\.bd-new-dot\s*\{\s*position:\s*absolute;\s*pointer-events:\s*none;\s*\}/,
-    '四个角标都应是绝对定位（相对 .bd-slot）且 pointer-events: none（点击 / 悬停仍落到方块上）');
+  const baseRe = /\.bd-fav-star,\s*\.bd-pin-dot,\s*\.bd-incompat-dot,\s*\.bd-new-tag\s*\{([^}]*)\}/;
+  assert.match(HTML, baseRe, '四个角标应共用一条基础定位样式');
+  const base = HTML.match(baseRe)[1];
+  assert.match(base, /position:\s*absolute;/, '角标应相对 .bd-slot 绝对定位');
+  assert.match(base, /pointer-events:\s*none;/, '点击 / 悬停应穿透到方块');
+  assert.match(base, /top:\s*-4px;/, '所有角标统一贴左上角（top: -4px）');
+  assert.match(base, /left:\s*-4px;/, '所有角标统一贴左上角（left: -4px）');
+  // 单角位：任何角标规则都不应再用 right / bottom（多角位会让方块四周挂满标记）。
+  ['fav-star', 'pin-dot', 'incompat-dot', 'new-tag'].forEach(function (name) {
+    const re = new RegExp('\\.bd-' + name + '\\s*\\{([^}]*)\\}', 'g');
+    let hit;
+    while ((hit = re.exec(HTML)) !== null) {
+      assert.equal(/\b(right|bottom)\s*:/.test(hit[1]), false, '.bd-' + name + ' 不应再使用 right / bottom（角标统一在左上角）');
+    }
+  });
   // 旧的伪元素写法会把角标画到 button 背景下面，必须移除。
   assert.equal(/\.bd-chip\.fav::before/.test(HTML), false, '不应再用 .bd-chip.fav::before（会被 button 背景遮挡）');
   assert.equal(/\.bd-chip\.pinned::before/.test(HTML), false, '不应再用 .bd-chip.pinned::before（同上）');
@@ -75,4 +100,45 @@ test('dock 方块收藏星标：完整可见（10px + 同色描边，不靠裁�
   assert.match(m[1], /font-size:\s*10px/, '星标字号 10px（9px 太小，压在实心方块上看不清）');
   assert.match(m[1], /text-shadow:[^;]*var\(--card\)/, '应加卡片同色描边，保证压在实心方块上轮廓清晰');
   assert.match(m[1], /color:\s*#eab308/, '星标保持金黄色');
+});
+
+test('dock 方块角标：靠形状区分「新增 / 置顶 / 不兼容」，不只靠颜色', () => {
+  const rule = function (cls) {
+    // 选择器必须以行首开始：否则会匹配到 `.bd-fav-star, .bd-pin-dot, … .bd-new-tag {` 这条基础规则。
+    const m = HTML.match(new RegExp('\\n\\s*\\.' + cls + '\\s*\\{([^}]*)\\}'));
+    assert.ok(m, '应存在 .' + cls + ' 样式');
+    return m[1];
+  };
+  // 三个角标都在同一个角位，若只靠 --fail / --warn / --accent 配色，部分主题（light/warm/sunset）
+  // 的色相几乎一样，用户分不出是「新增」还是「不兼容」。因此固定形状：文字胶囊 / 实心菱形 / 实心圆点。
+  const fresh = rule('bd-new-tag');
+  assert.match(fresh, /font-size:\s*9px/, '新增 = 文字胶囊（有字号，不是几何图形）');
+  assert.match(fresh, /height:\s*12px/, '胶囊保持很小（12px），不遮盖方块上的日号');
+  assert.match(fresh, /background:\s*var\(--fail\)/, '新增胶囊保持 fail 色底');
+  assert.match(fresh, /border-radius:/, '新增胶囊应是圆角矩形');
+  assert.equal(/font-size/.test(rule('bd-incompat-dot')), false, '不兼容角标不含文字');
+  const pin = rule('bd-pin-dot');
+  assert.match(pin, /transform:\s*rotate\(45deg\)/, '置顶 = 实心菱形（旋转 45° 的方块，形状与圆形不同）');
+  assert.match(pin, /background:\s*var\(--accent\)/, '置顶保持主色实心');
+  const incompat = rule('bd-incompat-dot');
+  assert.match(incompat, /background:\s*var\(--warn\)/, '不兼容 = 橙色实心圆点（填充 warn 色）');
+  assert.match(incompat, /border-radius:\s*50%/, '不兼容应是圆形');
+  // 三条规则必须互不相同（否则又会退化成「只看颜色」）。
+  assert.notEqual(fresh, pin);
+  assert.notEqual(fresh, incompat);
+  assert.notEqual(pin, incompat);
+});
+
+test('dock 方块角标优先级：新增 > 置顶 > 收藏 ★ > 版本不兼容，只显示最高优先项', () => {
+  assert.equal(dockBadgeOf({ fresh: true, pinned: true, fav: true, compatible: false }), 'new', '新增优先于其它一切状态');
+  assert.equal(dockBadgeOf({ fresh: false, pinned: true, fav: true, compatible: false }), 'pin', '置顶优先于收藏 / 不兼容');
+  assert.equal(dockBadgeOf({ fresh: false, pinned: false, fav: true, compatible: false }), 'fav', '收藏优先于版本不兼容');
+  assert.equal(dockBadgeOf({ fresh: false, pinned: false, fav: false, compatible: false }), 'incompat', '仅不兼容时显示不兼容角标');
+  assert.equal(dockBadgeOf({ fresh: false, pinned: false, fav: false, compatible: true }), '', '无状态时无角标');
+  // `compatible` 缺省（undefined）不应被当成不兼容。
+  assert.equal(dockBadgeOf({}), '');
+  assert.equal(dockBadgeOf(null), '');
+  // 低优先级状态不回退到其它角位，只是不显示（这里只返回一个值）。
+  assert.equal(typeof dockBadgeOf({ pinned: true }), 'string');
+  assert.equal(dockBadgeOf({ pinned: true }).indexOf(','), -1, '不应返回多个角标');
 });

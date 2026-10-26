@@ -42,6 +42,36 @@ export function apiVersionSupported(v, compatibleApiVersions) {
   return list.indexOf(n) !== -1;
 }
 
+/**
+ * 收藏项对应批次的状态（决定收藏夹里的徽章）：
+ *   - `missing`  ：批次不存在 / 已软删除 → 「缺失」
+ *   - `incompat` ：批次存在但 `formatVersion` 不在 `compatibleApiVersions` 内 → 「不兼容」
+ *                 （升级数据文件版本号后，旧批次就变成这一类）
+ *   - `ok`       ：可正常加载
+ * 「缺失」优先于「不兼容」：批次先要存在（且未删除）才谈得上版本兼容性。
+ */
+export function favoriteStateOf(batch, compatible) {
+  if (!batch || batch.deleted === true) return 'missing';
+  return compatible ? 'ok' : 'incompat';
+}
+
+/**
+ * dock 方块（小卡片）的角标：同一时刻最多只显示一个，优先级从高到低为
+ *   `new`（新增批次）> `pin`（置顶）> `fav`（收藏）> `incompat`（版本不兼容）
+ * 优先级低的状态不再换角位显示，而是直接不显示 —— N 个角位各自挂标记会让方块四周
+ * 看起来很杂乱。完整状态仍会拼进方块的 aria-label，读屏信息不受影响。
+ * 入参：{ fresh, pinned, fav, compatible }（缺省一律按 false / 兼容处理）
+ * 返回：`'new' | 'pin' | 'fav' | 'incompat'`，无角标时返回空字符串。
+ */
+export function dockBadgeOf(state) {
+  const s = state || {};
+  if (s.fresh) return 'new';
+  if (s.pinned) return 'pin';
+  if (s.fav) return 'fav';
+  if (s.compatible === false) return 'incompat';
+  return '';
+}
+
 // 限定名（大小写不敏感）：tag:/userTag: 都会匹配「用户标签」列（含原始值与显示标签）。
 const SEARCH_KEYS = { field: 'field', xpath: 'aoEl', csv: 'aoEl', tag: 'userTagHay', usertag: 'userTagHay', eo: 'eo', ao: 'ao', ctx: 'ctxs', desc: 'remarks' };
 

@@ -154,13 +154,14 @@ export async function scan(opts) {
     let validationErrors = null;
     if (hasData) {
         dataInfo = readDataInfo(dataPath);
-      const v = validateDataset(readJSON(dataPath));
+      // 版本闸门：不兼容版本只报一条错误，不再逐字段校验（版本取自本批次的 batch-meta.json）。
+      const v = validateDataset(readJSON(dataPath), { formatVersion: meta.formatVersion });
       if (!v.ok) validationErrors = v.errors;
     } else if (typeof meta.dataUrl === 'string' && meta.dataUrl && !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(meta.dataUrl)) {
       const refPath = path.isAbsolute(meta.dataUrl) ? meta.dataUrl : path.resolve(dir, meta.dataUrl);
       if (fs.existsSync(refPath)) {
         dataInfo = readDataInfo(refPath);
-        const v = validateDataset(readJSON(refPath));
+        const v = validateDataset(readJSON(refPath), { formatVersion: meta.formatVersion });
         if (!v.ok) validationErrors = v.errors;
       }
     }

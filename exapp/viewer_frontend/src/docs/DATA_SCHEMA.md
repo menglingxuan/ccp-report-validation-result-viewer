@@ -150,7 +150,9 @@ node tools/merge-batch.mjs --batch <id> --tenant[=id] | --no-tenant # 租户 / �
 
 - 清单定位：`--manifest <name>` > `batch-meta.json` 的 `dataUrl`（相对批次目录）> `report-validation-data.json`；批次目录可由 `batches-index.json`（batchId）或目录名解析。
 - 合并规则：输出 `mode: "single"`，item 内容取各 item 文件原文、顺序与清单一致；清单里除 `mode` / `items` 之外的顶层字段（`reportEnv` / `creationType` / `skippedItems` / 自定义字段）原样保留，item 上的 `file` / `summary` 不会写入。
+  **v4 契约同样原样搬运**：三张声明表（`reportChannelDefs` / `sourceChannelDefs` / `usedCtxKeyDefs`）、item 的 `ctxDtls`（只留 `{ hits }`）、规则对象的 `ctxRaw` / `metaCtxs` 均逐字节保留（回归测试：`test/merge-batch.test.js` 的「v4 契约：多文件 -> 单文件往返」）。
 - 安全措施：写入前按 `lib/validate.js` 校验（失败则拒绝写入，可用 `--force` 覆盖）；默认把原清单备份为 `<清单名>.multi.bak`（`--no-backup` 关闭）；**不删除** `data/items/*.json`，因此随时可用 `splitToFiles()` 再拆回多文件。
+  > 转换工具只做**结构校验**（不套用版本闸门）：不兼容版本的数据也能合并 / 拆分，便于迁移；版本闸门只作用于「扫描 / 加载查看」（见 §2 的校验说明）。
 - 合并后默认刷新 `batches-index.json`（`--no-scan` 跳过），使查看器立即看到单文件模式与 `summary.items`。
 - 租户模式与 `server.js` 同一套解析：`--tenant[=id]` / `--no-tenant` / `REPORT_VIEWER_TENANT`、`--config dev|test|prod`、`--data-root <dir>`、`REPORT_VIEWER_DATA_ROOT`；批次根与索引分别取 `scan.basedir` / `scan.out`（相对各自数据根解析）。
 
@@ -267,6 +269,12 @@ node tools/merge-batch.mjs --batch <id> --tenant[=id] | --no-tenant # 租户 / �
 > 与（老数据的）`channel` / `source` 字段，与文本内容无关。
 
 `lib/validate.js` 会对以下情形报错：
+
+> **⓪ 版本闸门先跑**：校验的**第一步**是判版本号是否兼容（版本取自 `batch-meta.json` 的 `formatVersion`；
+> 扫描器与 `validateFile()` 会自动读取，数据文件顶层的 `formatVersion` 也认，都没有则视为当前版本）。
+> **不兼容时只报一条**「数据文件版本不兼容：formatVersion=N，兼容版本为 vX」，**直接跳过下面全部字段级校验** —— 
+> 不兼容变更通常是结构性大改，继续逐字段检查只会产出一堆误导性的「缺字段」噪音。返回结果带
+> `versionIncompatible: true`，调用方可据此区分「版本问题」与「结构问题」。
 
 1. 顶层出现旧键名 `channels` / `sources` / `ctxKeyDefs`（分别改名为 `reportChannelDefs` / `sourceChannelDefs` / `usedCtxKeyDefs`），
    或 item 出现旧键名 `platformTradeId` / `platformDealId`（改名为 `platformOriTradeId` / `platformOriTradeDealId`）；

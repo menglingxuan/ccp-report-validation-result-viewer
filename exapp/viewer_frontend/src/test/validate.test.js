@@ -1,7 +1,10 @@
 // 数据校验器测试：覆盖单文件/多文件/坏数据场景。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateDataset } from '../lib/validate.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { validateDataset, validateFile } from '../lib/validate.js';
 
 test('validateDataset 拒绝非对象顶层', () => {
   assert.equal(validateDataset(null).ok, false);
@@ -24,6 +27,62 @@ test('validateDataset 通过合法的单文件数据', () => {
     items: [{ tradeId: 'T-1', reportDate: '2026-08-16', channels: [{ id: 1, sources: [{ id: 1, fields: [{ id: '1', result: 'PASSED' }] }] }] }],
   });
   assert.equal(r.ok, true, JSON.stringify(r.errors));
+});
+
+/* ---------------- 版本闸门：不兼容版本只报一条，跳过字段级校验 ---------------- */
+
+test('版本闸门：不兼容版本只报一条错误，不再逐字段校验', () => {
+  // 故意造一份「既有旧键名、item 结构也不对」的数据：兼容版本下会报多条，不兼容时只报版本错误。
+  const messy = oneDataset([oneItem({ channels: 'not-an-array' })], { channels: {}, ctxKeyDefs: {} });
+
+  const gated = validateDataset(messy, { formatVersion: 3 });
+  assert.equal(gated.ok, false);
+  assert.equal(gated.versionIncompatible, true, '应标记为版本不兼容');
+  assert.equal(gated.errors.length, 1, '只应有一条错误：' + JSON.stringify(gated.errors));
+  assert.match(gated.errors[0], /数据文件版本不兼容：formatVersion=3/);
+  assert.match(gated.errors[0], /v4/, '错误里应带上兼容版本');
+
+  // 兼容版本 → 回到原有逐字段校验（能报出旧键 / 结构问题）
+  const compatible = validateDataset(messy, { formatVersion: 4 });
+  assert.equal(compatible.versionIncompatible, undefined);
+  assert.ok(compatible.errors.length > 1, '兼容版本下应继续逐字段报错：' + JSON.stringify(compatible.errors));
+
+  // 未声明版本 → 与改动前完全一致
+  assert.equal(validateDataset(oneDataset()).ok, true);
+
+  // 数据文件自带 formatVersion 时同样生效（为将来预留）
+  const selfDeclared = validateDataset(Object.assign(oneDataset(), { formatVersion: 1 }));
+  assert.equal(selfDeclared.errors.length, 1);
+  assert.match(selfDeclared.errors[0], /formatVersion=1/);
+
+  // 调用方可以给自定义白名单（如同时读 v3 / v4）
+  assert.equal(validateDataset(oneDataset(), { formatVersion: 3, compatibleApiVersions: [3, 4] }).ok, true);
+});
+
+test('版本闸门：validateFile 自动读取同事目录的 batch-meta.json 版本', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'valversion-'));
+  const dataFile = path.join(dir, 'report-validation-data.json');
+  const metaFile = path.join(dir, 'batch-meta.json');
+  fs.writeFileSync(dataFile, JSON.stringify(oneDataset()), 'utf8');
+
+  // 没有 batch-meta.json：不闸门（数据根下的主数据集就是这种情况）
+  assert.equal(validateFile(dataFile).ok, true, '无 batch-meta 时应按原逻辑校验');
+
+  // batch-meta 写 v3 → 只报一条版本不兼容
+  fs.writeFileSync(metaFile, JSON.stringify({ batchId: 'b', formatVersion: 3 }), 'utf8');
+  const gated = validateFile(dataFile);
+  assert.equal(gated.ok, false);
+  assert.equal(gated.errors.length, 1, JSON.stringify(gated.errors));
+  assert.match(gated.errors[0], /版本不兼容/);
+
+  // 显式传入的 formatVersion 优先于 batch-meta
+  assert.equal(validateFile(dataFile, { formatVersion: 4 }).ok, true, 'opts.formatVersion 优先级最高');
+
+  // batch-meta 写兼容版本 → 正常校验
+  fs.writeFileSync(metaFile, JSON.stringify({ batchId: 'b', formatVersion: 4 }), 'utf8');
+  assert.equal(validateFile(dataFile).ok, true);
+
+  fs.rmSync(dir, { recursive: true, force: true });
 });
 
 /* ---------------- 声明表与引用（reportChannelDefs / sourceChannelDefs / usedCtxKeyDefs） ---------------- */

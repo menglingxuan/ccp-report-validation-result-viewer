@@ -30,7 +30,7 @@ function makeMultiBatch(dir, opts) {
     batchName: o.batchId || 'batch-merge-test',
     date: '2026-08-16',
     executedAt: '2026-08-16T17:00:00+08:00',
-    formatVersion: 2,
+    formatVersion: 4,
     dataUrl: o.dataUrl || manifestName,
     summary: { items: dataset.items.length },
   }, null, 2) + '\n');
@@ -210,6 +210,50 @@ test('resolveManifestPath / findBatchDir / listBatchDirs：按 batch-meta 的 da
     assert.ok(hit, '应能列出该批次');
     assert.equal(hit.mode, 'multi');
     assert.equal(hit.dir, batchDir);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// v4 契约回归：v4 引入的 ctx 相关结构（usedCtxKeyDefs / item.ctxDtls 只留 { hits } / 规则的
+// ctxRaw + metaCtxs）必须逐字节穿过「多文件 -> 单文件」，不得被转换工具改写或丢掉
+// —— 版本升级后最容易静默坏掉的就是这类"工具原样搬运"的字段。
+test('v4 契约：多文件 -> 单文件往返后 ctx 相关结构逐字节不变', () => {
+  const dir = tmpDir('v4-roundtrip');
+  try {
+    const made = makeMultiBatch(dir, { itemCount: 3 });
+    const res = mergeBatchDirToSingle(dir, { backup: false });
+    assert.equal(res.ok, true, res.error);
+    const merged = JSON.parse(fs.readFileSync(path.join(dir, DEFAULT_MANIFEST_NAME), 'utf8'));
+
+    assert.equal(merged.mode, 'single');
+    assert.deepEqual(merged.items, made.dataset.items, 'items 应与拆分前逐字节一致（含 ctxDtls / metaCtxs / ctxRaw）');
+    assert.deepEqual(merged.usedCtxKeyDefs, made.dataset.usedCtxKeyDefs, 'ctxKey 声明表原样保留');
+    assert.deepEqual(merged.reportChannelDefs, made.dataset.reportChannelDefs, '报告渠道声明表原样保留');
+    assert.deepEqual(merged.sourceChannelDefs, made.dataset.sourceChannelDefs, '来源渠道声明表原样保留');
+
+    // item 内 ctxDtls 只留 { hits }
+    merged.items.forEach((it) => {
+      Object.keys(it.ctxDtls || {}).forEach((k) => {
+        assert.deepEqual(Object.keys(it.ctxDtls[k]), ['hits'], 'ctxDtls.' + k + ' 只应保留 hits');
+      });
+    });
+
+    // 规则对象里只有 ctxRaw / metaCtxs，没有 v3 时代的 ctx / ctxs
+    const keys = new Set();
+    merged.items.forEach((it) => (it.channels || []).forEach((ch) => (ch.sources || []).forEach((s) => (s.fields || []).forEach((f) => {
+      ['cmpLeft', 'cmpRight', 'cvtLeft', 'cvtRight', 'vdt'].forEach((k) => {
+        if (f[k]) Object.keys(f[k]).forEach((x) => keys.add(x));
+      });
+    }))));
+    assert.equal(keys.has('ctxRaw'), true, '规则应保留 ctxRaw');
+    assert.equal(keys.has('metaCtxs'), true, '规则应保留 metaCtxs');
+    assert.equal(keys.has('ctx'), false, '不应出现旧键 ctx');
+    assert.equal(keys.has('ctxs'), false, '不应出现旧键 ctxs');
+
+    // 合并结果通过当前校验器
+    const v = validateDataset(merged);
+    assert.equal(v.ok, true, JSON.stringify(v.errors));
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

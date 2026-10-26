@@ -34,6 +34,7 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig, resolveConfigFile } from './lib/config.js';
 import { scan, sanitizeTags, MAX_BATCH_NAME_LEN, MAX_BATCH_DESC_LEN } from './lib/scanner.js';
 import { stringifyJSON } from './lib/json-write.js';
+import { reconcileFavoriteTree, FAV_ARCHIVE_PKG } from './lib/favorites.js';
 import { validateFile } from './lib/validate.js';
 // 「在系统文件管理器中打开目录」：Launcher 用绝对路径解析（不依赖 PATH），失败会如实上抛。
 import { openInFileManager } from './lib/reveal.js';
@@ -286,6 +287,8 @@ async function handleScan(res) {
   STATE.progress = { phase: 'done', dirCount: STATE.progress.dirCount, batchCount: result.count, skipped: result.skipped };
   broadcastProgress();
   STATE.last = { at: new Date().toISOString(), ok: result.ok, error: result.error || null, durationMs: durationMs };
+  // 扫描会重写索引（→ 星标可能"凭空出现"）：随即对账一次收藏夹，把只有 meta 标记的批次补进 archived。
+  if (result.ok) reconcileFavoritesFile('scan');
   json(res, result.ok ? 200 : 500, {
     ok: result.ok,
     count: result.ok ? readIndexCount() : 0,
@@ -307,6 +310,28 @@ function readFavorites() {
 }
 function writeFavorites(tree) {
   writeJsonAtomic(FAVORITES_FILE, tree);
+}
+
+// 收藏自愈（"类 2 方案"）：`batch-meta.favorite === true` 但不在 favorites.json 里时，
+// 自动补进保留包 `archived`。
+// 触发时机就是两份数据可能分叉的三处：启动、完整扫描后、元数据写回后的索引重建完成时。
+// 只写 favorites.json（不回写 batch-meta），因此不会与 rescanIndex 形成循环。
+function reconcileFavoritesFile(reason) {
+  try {
+    const tree = readFavorites();
+    let idx = { batches: [] };
+    try { idx = JSON.parse(fs.readFileSync(CFG.scan.outAbs, 'utf8')) || idx; } catch (e) {}
+    const res = reconcileFavoriteTree(tree, idx.batches || [], { pkg: FAV_ARCHIVE_PKG });
+    if (!res.added.length) return res;
+    writeJsonAtomic(FAVORITES_FILE, res.tree);
+    const head = res.added.slice(0, 5).join(', ') + (res.added.length > 5 ? ' …' : '');
+    console.log('[report-viewer] 收藏自愈（' + reason + '）：' + res.added.length +
+      ' 个批次只有 meta 收藏标记、收藏夹里没有，已补进收藏包 "' + FAV_ARCHIVE_PKG + '"：' + head);
+    return res;
+  } catch (e) {
+    console.warn('[report-viewer] 收藏自愈失败：' + (e && e.message ? e.message : e));
+    return { tree: null, added: [] };
+  }
 }
 function handleFavoritesGet(res) {
   // 带上当前 ETag，供客户端写入时做 If-Match 乐观并发。
@@ -417,8 +442,12 @@ async function rescanIndex() {
       ignore: CFG.scan.ignore,
       env: CFG.scan.env,
     });
+    // 元数据写回后索引是最新的：立刻对账收藏夹（favorite=true 但树里没有 → 补进 archived）。
+    reconcileFavoritesFile('meta write-back');
+    return true;
   } catch (e) {
     console.warn('[report-viewer] 元数据写回后索引重建失败：' + (e && e.message ? e.message : e));
+    return false;
   }
 }
 
@@ -494,11 +523,13 @@ function handleBatchAction(req, res) {
       }
       writeJsonAtomic(metaPath, meta);
       // 写回与索引刷新必须成对，否则刷新页面会读到写回前的旧索引。
-      await rescanIndex();
+      // 重建失败时仍返回 200（meta 已落盘），但把 indexRebuilt=false 告诉客户端（星标等索引字段会滞后）。
+      const indexRebuilt = await rescanIndex();
       json(res, 200, {
         ok: true,
         batchId: batchId,
         etag: etagOfFile(metaPath),
+        indexRebuilt: indexRebuilt,
         deleted: hasDeleted ? data.deleted : undefined,
         favorite: hasFavorite ? data.favorite : undefined,
         batchName: hasName ? meta.batchName : undefined,
@@ -865,6 +896,8 @@ function startServer() {
 const HOST = CFG.server.host;
 const PORT = CFG.server.port;
 initDataRoot();
+// 启动即对账：修掉上次会话/迁移/换数据根留下的「星标在、收藏夹里没有」脏数据。
+reconcileFavoritesFile('startup');
 if (PORT === 0) {
   // 随机端口：无法预知端口，直接启动（端口冲突概率极低，由 EADDRINUSE 兜底）。
   startServer();

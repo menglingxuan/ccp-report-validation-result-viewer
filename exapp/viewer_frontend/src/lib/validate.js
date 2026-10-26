@@ -4,8 +4,9 @@
 //   import { validateDataset } from './lib/validate.js';
 //   const { ok, errors } = validateDataset(json);
 import fs from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CTX_RULES } from '../public/core.js';
+import { CTX_RULES, DEFAULT_COMPATIBLE_API_VERSIONS, apiVersionSupported } from '../public/core.js';
 
 // 消息段（warnings / errors / uncompared）的渠道 / 来源渠道引用：**只写名称**。
 // 原始可读性是这些段的首要目标（条目少、人工排查时直接看名字），因此不带 id；
@@ -114,11 +115,37 @@ function validateLogEntries(list, label, errors, opts) {
   });
 }
 
-export function validateDataset(json) {
+// 版本闸门：**先判版本，不兼容就直接判失败，不再逐字段校验**。
+// 理由：不兼容变更通常是结构性大改（改名 / 改形状），继续按当前契约逐字段检查
+// 只会产出大量误导性错误（几十条“缺字段”掩盖了真正原因），也没法逐条修。
+//
+// 版本来源优先级：
+//   1. `opts.formatVersion`（调用方显式给：扫描器从 batch-meta.json 读，validateFile 自动探测同事目录）
+//   2. `json.formatVersion`（数据文件自带；当前生成器不写，为将来预留）
+//   3. 都没有 → 视为当前版本（兼容），行为与改动前一致
+function versionGateError(json, opts) {
+  const o = opts || {};
+  const declared = o.formatVersion !== undefined && o.formatVersion !== null
+    ? o.formatVersion
+    : json.formatVersion;
+  if (declared === undefined || declared === null || declared === '') return null;
+  const list = o.compatibleApiVersions !== undefined ? o.compatibleApiVersions : DEFAULT_COMPATIBLE_API_VERSIONS;
+  if (apiVersionSupported(declared, list)) return null;
+  const allowed = (Array.isArray(list) && list.length ? list : DEFAULT_COMPATIBLE_API_VERSIONS)
+    .map(function (v) { return 'v' + v; }).join(' / ');
+  return '数据文件版本不兼容：formatVersion=' + declared + '，兼容版本为 ' + allowed +
+    ' → 已跳过字段级校验';
+}
+
+export function validateDataset(json, opts) {
   const errors = [];
   if (!json || typeof json !== 'object' || Array.isArray(json)) {
     return { ok: false, errors: ['数据文件顶层必须是对象'] };
   }
+  // ① 版本闸门：不兼容时只报这一条，后面的字段 / 引用 / 声明表校验全部跳过。
+  const versionError = versionGateError(json, opts);
+  if (versionError) return { ok: false, errors: [versionError], versionIncompatible: true };
+  // ② 以下为版本兼容时的常规结构校验。
   if (!Array.isArray(json.items)) {
     errors.push('缺少 items 数组');
     return { ok: false, errors };
@@ -485,10 +512,19 @@ export function validateDataset(json) {
   return { ok: errors.length === 0, errors };
 }
 
-export function validateFile(filePath) {
+export function validateFile(filePath, opts) {
   try {
     const json = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    return { file: filePath, ...validateDataset(json) };
+    const o = Object.assign({}, opts || {});
+    // 批次数据文件旁边一般有 batch-meta.json：自动取它的 formatVersion 做版本闸门（
+    // 数据根下的主数据集、合并后的临时清单没有这个文件 → 不做版本判定）。
+    if (o.formatVersion === undefined) {
+      try {
+        const meta = JSON.parse(fs.readFileSync(path.join(path.dirname(filePath), 'batch-meta.json'), 'utf8'));
+        if (meta && meta.formatVersion !== undefined && meta.formatVersion !== null) o.formatVersion = meta.formatVersion;
+      } catch (e) { /* 没有 batch-meta.json：不闸门 */ }
+    }
+    return { file: filePath, ...validateDataset(json, o) };
   } catch (e) {
     return { file: filePath, ok: false, errors: ['解析失败：' + e.message] };
   }

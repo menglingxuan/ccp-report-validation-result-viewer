@@ -30,7 +30,9 @@
       enabledChannelsOf, itemStatsPure, refChannelId, refSourceId,
       // API（数据契约）版本：默认值集中在 core.js，可加载白名单来自 config.json 的 compatibleApiVersions。
       DEFAULT_API_VERSION, DEFAULT_COMPATIBLE_API_VERSIONS,
-      normalizeCompatibleApiVersions, apiVersionSupported,
+      normalizeCompatibleApiVersions, apiVersionSupported, favoriteStateOf,
+      // dock 方块的单一角标判定（新增 > 置顶 > 收藏 > 版本不兼容）。
+      dockBadgeOf,
       // 顶层登记表（channels / sources）：加载时把定义补回 item，渲染 / 搜索 / 忽略配置仍按名称工作。
       registriesOf, hydrateDataset, hydrateItem,
     } from './core.js';
@@ -40,6 +42,18 @@
       productAssertion:  { label: '产品断言', cls: 'tp-product' },
       contextAssertion:  { label: '上下文断言', cls: 'tp-context' },
     };
+
+    // dock 方块角标的 HTML（分支键与 core.js 的 dockBadgeOf() 返回值一致）。
+    // 角标是纯装饰：aria-hidden + pointer-events: none，状态由方块 aria-label 承载。
+    // 四种形状互不相同（部分主题里 --fail / --warn / --accent 色相接近，不能只靠颜色）：
+    //   新增 = 文字胶囊（新 / New，文案见 i18n 的 bdNewTag）；置顶 = 实心菱形；收藏 = 金色 ★；不兼容 = 橙色实心圆点。
+    function dockBadgeHTML(badge) {
+      if (badge === 'new') return '<span class="bd-new-tag" aria-hidden="true">' + esc(t('bdNewTag')) + '</span>';
+      if (badge === 'pin') return '<span class="bd-pin-dot" aria-hidden="true"></span>';
+      if (badge === 'fav') return '<span class="bd-fav-star" aria-hidden="true">★</span>';
+      if (badge === 'incompat') return '<span class="bd-incompat-dot" aria-hidden="true"></span>';
+      return '';
+    }
 
     const ERROR_TYPE_META = {
       xpathError:      { label: 'errXpath',      cls: 'er-xpath' },
@@ -1051,12 +1065,12 @@
         if (!compat) states.push(t('batchIncompat'));
         if (fresh) states.push(t('batchNew'));
         const label = b.batchName + ' · ' + formatBatchTime(b.executedAt) + (states.length ? ' · ' + states.join(' · ') : '');
+        // 角标统一挂左上角，且同一时刻最多只显示一个：优先级 新增 > 置顶 > 收藏 ★ > 版本不兼容，
+        // 优先级低的状态不再换角位显示（判定见 core.js 的 dockBadgeOf()）。
+        const badge = dockBadgeOf({ fresh: fresh, pinned: pinned, fav: fav, compatible: compat });
         chips += '<span class="bd-slot">' +
           '<button class="bd-chip' + (active ? ' active' : '') + (compat ? '' : ' incompat') + (fav ? ' fav' : '') + (pinned ? ' pinned' : '') + '" data-batch="' + esc(b.batchId) + '" aria-label="' + esc(label) + '">' + esc(day || '?') + '</button>' +
-          (fav ? '<span class="bd-fav-star" aria-hidden="true">★</span>' : '') +
-          (pinned ? '<span class="bd-pin-dot" aria-hidden="true"></span>' : '') +
-          (compat ? '' : '<span class="bd-incompat-dot" aria-hidden="true"></span>') +
-          (fresh ? '<span class="bd-new-dot" aria-hidden="true"></span>' : '') +
+          dockBadgeHTML(badge) +
           '</span>';
       });
       if (!chips && usableBatches().length) chips = '<span class="bd-empty" title="' + t('batchNoCompat') + '">' + t('batchNoCompat') + '</span>';
@@ -1255,31 +1269,55 @@
       try { FAVORITES = JSON.parse(localStorage.getItem(storageKey(FAV_STORAGE_KEY)) || '{}'); } catch (e) { FAVORITES = {}; }
       if (!FAVORITES || typeof FAVORITES !== 'object' || Array.isArray(FAVORITES)) FAVORITES = {};
     }
+    // 保存收藏树：返回 Promise<boolean>（true = 服务端已落库）。
+    // 调用方必须等 true 之后再回写 batch-meta 的 favorite 标记，避免「收藏夹没存上、星标却写了」的半成功状态。
     function saveFavorites() {
       try { localStorage.setItem(storageKey(FAV_STORAGE_KEY), JSON.stringify(FAVORITES)); } catch (e) {}
       const body = { favorites: FAVORITES };
       if (FAV_ETAG) body.ifMatch = FAV_ETAG;
-      fetch('/api/favorites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      return fetch('/api/favorites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
         .then(function (r) {
           if (r.status === 409) {
             console.warn('[favorites] 保存冲突（409）：已重新加载服务端收藏夹');
             setBatchNotice(t('saveConflict'));
-            loadFavorites().then(function () { refreshFavoriteViews(); });
-            return null;
+            return loadFavorites().then(function () { refreshFavoriteViews(); return false; });
           }
           if (!r.ok) throw new Error('HTTP ' + r.status);
-          return r.json().catch(function () { return null; });
+          return r.json().catch(function () { return null; }).then(function (j) {
+            if (j && j.etag) FAV_ETAG = j.etag;
+            return true;
+          });
         })
-        .then(function (j) { if (j && j.etag) FAV_ETAG = j.etag; })
-        .catch(function (e) { console.warn('[favorites] 保存失败：', e); });
+        .catch(function (e) {
+          console.warn('[favorites] 保存失败：', e);
+          setBatchNotice(t('favSaveFailed'));
+          return false;
+        });
     }
     function favPkgList() { return Object.keys(FAVORITES).sort(); }
     function isValidPkg(pkg) { return /^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/.test(String(pkg || '').trim()); }
-    // 收藏标记回写批次元数据（服务端持久化，扫描后仍在索引中体现）。
+    // 收藏标记回写批次元数据（服务端持久化，扫描后仍在索引中体现）。返回 Promise<boolean>。
+    // 失败时回滚内存里的 favorite，避免「界面显示已收藏、索引里其实没有」。
     function setBatchFavoriteFlag(batchId, flag) {
       const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === batchId; });
+      const prev = b ? !!b.favorite : false;
       if (b) b.favorite = flag;
-      postBatchMeta({ batchId: batchId, favorite: flag }).catch(function () {});
+      return postBatchMeta({ batchId: batchId, favorite: flag })
+        .then(function (out) {
+          if (!out || !out.res || !out.res.ok) throw new Error('HTTP ' + (out && out.res ? out.res.status : '?'));
+          // 元数据已落盘但索引重建失败：星标会滞后到下次扫描（服务端已打 warn）。
+          if (out.json && out.json.indexRebuilt === false) {
+            console.warn('[favorites] 收藏标记已写入，但批次索引重建失败：星标可能滞后到下次扫描');
+          }
+          return true;
+        })
+        .catch(function (e) {
+          console.warn('[favorites] 批次元数据写回失败：', e);
+          if (b) b.favorite = prev;
+          setBatchNotice(t('favFlagFailed'));
+          refreshFavoriteViews();
+          return false;
+        });
     }
     // 收藏状态：元数据 favorite 为冗余缓存（索引可能滞后），收藏夹树为权威来源，任一命中即为已收藏。
     function isBatchFavorited(b) { return !!(b && (b.favorite || favoriteCountFor(b.batchId) > 0)); }
@@ -1309,7 +1347,9 @@
       renderBatchBadge();
     }
     // 从所有收藏包中移除该批次（收藏按钮取消收藏 / 收藏项 ✕ 共用）。
+    // 先落库收藏树，成功后才清 meta 标记；保存失败则回滚内存（避免「星标没了、收藏还在」或反之）。
     function removeBatchFromFavorites(batchId) {
+      const snapshot = JSON.parse(JSON.stringify(FAVORITES));
       let changed = false;
       Object.keys(FAVORITES).forEach(function (pkg) {
         const before = FAVORITES[pkg] || [];
@@ -1320,9 +1360,15 @@
           else delete FAVORITES[pkg];
         }
       });
-      if (changed) saveFavorites();
-      setBatchFavoriteFlag(batchId, false);
       hideBatchQuickDetail();
+      if (changed) {
+        saveFavorites().then(function (ok) {
+          if (!ok) { FAVORITES = snapshot; refreshFavoriteViews(); return; }
+          if (favoriteCountFor(batchId) === 0) setBatchFavoriteFlag(batchId, false);
+        });
+      } else {
+        setBatchFavoriteFlag(batchId, false);
+      }
       refreshFavoriteViews();
       return changed;
     }
@@ -1365,33 +1411,53 @@
       if (!b) return { ok: false, error: t('favBatchMissing') };
       if (b.deleted) return { ok: false, error: t('batchDeletedBlocked') };
       if (isBatchPending(b)) return { ok: false, error: t('favPendingBlocked') };
+      const snapshot = JSON.parse(JSON.stringify(FAVORITES));
       if (!FAVORITES[pkg]) FAVORITES[pkg] = [];
       if (!FAVORITES[pkg].some(function (f) { return f.batchId === batchId; })) {
         FAVORITES[pkg].push({ batchId: batchId, batchName: b.batchName || b.batchId, date: b.date || '', executedAt: b.executedAt || '', savedAt: new Date().toISOString() });
-        saveFavorites();
+        // 先落库收藏树，成功后才回写 meta 标记；失败则回滚内存并提示（避免半成功）。
+        saveFavorites().then(function (ok) {
+          if (!ok) { FAVORITES = snapshot; refreshFavoriteViews(); return; }
+          setBatchFavoriteFlag(batchId, true);
+        });
+      } else {
+        setBatchFavoriteFlag(batchId, true);
       }
-      setBatchFavoriteFlag(batchId, true);
       refreshFavoriteViews();
       return { ok: true };
     }
     function removeFavorite(pkg, batchId) {
       if (!FAVORITES[pkg]) return;
+      const snapshot = JSON.parse(JSON.stringify(FAVORITES));
       FAVORITES[pkg] = FAVORITES[pkg].filter(function (f) { return f.batchId !== batchId; });
       if (!FAVORITES[pkg].length) delete FAVORITES[pkg];
-      saveFavorites();
-      if (favoriteCountFor(batchId) === 0) setBatchFavoriteFlag(batchId, false);
+      saveFavorites().then(function (ok) {
+        if (!ok) { FAVORITES = snapshot; refreshFavoriteViews(); return; }
+        if (favoriteCountFor(batchId) === 0) setBatchFavoriteFlag(batchId, false);
+      });
       refreshFavoriteViews();
     }
     function favoriteBatchExists(batchId) {
       return BATCHES_INDEX.batches.some(function (b) { return b.batchId === batchId && !b.deleted; });
     }
+    // 收藏项的批次状态（决定徽章）：missing（不存在/已软删除）优先于 incompat（版本不兼容）。
+    // 具体判定见 core.js 的 favoriteStateOf()（纯函数，带单测）。
+    function favBatchState(batchId) {
+      const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === batchId; });
+      return favoriteStateOf(b, !!b && batchCompatible(b));
+    }
+    function favStateBadgeHTML(state) {
+      if (state === 'missing') return '<span class="fav-missing-badge" title="' + t('favMissing') + '">' + t('favMissing') + '</span>';
+      if (state === 'incompat') return '<span class="fav-incompat-badge" title="' + t('batchIncompat') + '">' + t('favIncompat') + '</span>';
+      return '';
+    }
     function favItemsHTML(items, pkg) {
       return (items || []).map(function (f) {
-        const missing = !favoriteBatchExists(f.batchId);
+        const state = favBatchState(f.batchId);
         const savedHint = t('favSavedAt') + ' ' + formatBatchTime(f.savedAt);
-        return '<div class="fav-item' + (missing ? ' missing' : '') + '">' +
+        return '<div class="fav-item' + (state === 'missing' ? ' missing' : state === 'incompat' ? ' incompat' : '') + '">' +
           '<button class="fav-load" data-fav-load="' + esc(f.batchId) + '" title="' + esc(savedHint + ' · ' + t('favClickHint')) + '">' + esc(f.batchName) + '</button>' +
-          (missing ? '<span class="fav-missing-badge" title="' + t('favMissing') + '">' + t('favMissing') + '</span>' : '') +
+          favStateBadgeHTML(state) +
           '<button class="fav-remove" data-fav-remove="' + esc(f.batchId) + '" data-fav-pkg="' + esc(pkg) + '" title="' + t('favRemove') + '">✕</button>' +
           '</div>';
       }).join('');
@@ -1435,11 +1501,11 @@
         (FAVORITES[pkg] || []).forEach(function (f) {
           const nameMatch = String(f.batchName || '').toLowerCase().indexOf(lower) !== -1;
           if (pkgMatch || nameMatch) {
-            const missing = !favoriteBatchExists(f.batchId);
-            out.push('<div class="fav-item' + (missing ? ' missing' : '') + '">' +
+            const state = favBatchState(f.batchId);
+            out.push('<div class="fav-item' + (state === 'missing' ? ' missing' : state === 'incompat' ? ' incompat' : '') + '">' +
               '<span class="fav-pkg-tag" title="' + esc(pkg) + '">' + esc(pkg) + '</span>' +
               '<button class="fav-load" data-fav-load="' + esc(f.batchId) + '" title="' + esc(t('favSavedAt') + ' ' + formatBatchTime(f.savedAt) + ' · ' + t('favClickHint')) + '">' + esc(f.batchName) + '</button>' +
-              (missing ? '<span class="fav-missing-badge" title="' + t('favMissing') + '">' + t('favMissing') + '</span>' : '') +
+              favStateBadgeHTML(state) +
               '<button class="fav-remove" data-fav-remove="' + esc(f.batchId) + '" data-fav-pkg="' + esc(pkg) + '" title="' + t('favRemove') + '">✕</button>' +
               '</div>');
           }
@@ -1703,18 +1769,25 @@
       savePinnedId();
       renderBatchPanel(); renderBatchDock(); renderBatchBadge();
     }
-    // 冷/热启动时优先加载被置顶的批次（存在且未被删除时才生效）。
+    // 冷/热启动时优先加载被置顶的批次（存在、未删除且版本兼容时才生效）。
     function restorePinnedBatch() {
       if (!PINNED_BATCH_ID) return null;
       const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === PINNED_BATCH_ID && !isBatchPending(x) && !x.deleted; });
-      if (b && b.dataUrl) return { batch: b, forced: false };
+      if (b && b.dataUrl && batchCompatible(b)) return { batch: b, forced: false };
       return null;
     }
-    // 批次被物理删除（重新扫描后索引中不再存在）或被软删除时，及时清除置顶状态。
+    // 批次被物理删除（重新扫描后索引中不再存在）、被软删除，或**升级数据文件版本后变为不兼容**时，
+    // 及时清除置顶状态（不兼容批次不能被默认加载，留着置顶只会让启动回退到一个加载不了的批次）。
+    // 存储键走 storageKey()，因此租户模式 / 非租户模式各自作用域都生效。
     function prunePinnedBatch() {
       if (!PINNED_BATCH_ID) return;
-      const exists = BATCHES_INDEX.batches.some(function (b) { return b.batchId === PINNED_BATCH_ID && !b.deleted; });
-      if (!exists) { PINNED_BATCH_ID = null; savePinnedId(); }
+      const b = BATCHES_INDEX.batches.find(function (x) { return x.batchId === PINNED_BATCH_ID && !x.deleted; });
+      if (!b) { PINNED_BATCH_ID = null; savePinnedId(); return; }
+      if (!batchCompatible(b)) {
+        PINNED_BATCH_ID = null;
+        savePinnedId();
+        setBatchNotice(t('pinClearedIncompat'));
+      }
     }
     function toggleBatchPanel(force) {
       BATCH_STATE.expanded = force === undefined ? !BATCH_STATE.expanded : !!force;
