@@ -251,12 +251,12 @@ test('声明表形态：定义只在顶层写一次（含 fieldDefs / format / u
   assert.ok(Array.isArray(json.reportChannelDefs) && json.reportChannelDefs.length >= 3, '顶层 reportChannelDefs 声明表应存在');
   assert.ok(Array.isArray(json.sourceChannelDefs) && json.sourceChannelDefs.length >= 2, '顶层 sourceChannelDefs 声明表应存在');
   assert.ok(json.usedCtxKeyDefs && Object.keys(json.usedCtxKeyDefs).length > 0, '顶层 usedCtxKeyDefs 声明表应存在');
-  // 声明表字段齐全，且与预设一致。
+  // 声明表字段齐全；id 由本文件自己声明（样例生成器沿用 HKTR=1 / JSFA=2 / CFTC=3 这类约定，
+  // 但校验器不做任何预设约束）。
   json.reportChannelDefs.forEach((c) => {
     assert.equal(Number.isInteger(c.id) && c.id > 0, true, '声明表渠道必须有正整数 id');
     assert.ok(c.name, '声明表渠道必须有 name');
     assert.ok(['xml', 'csv'].includes(c.format), '声明表渠道必须有 format');
-    assert.equal(CHANNEL_ID_PRESET[c.name], c.id, '声明表渠道 ' + c.name + ' 的 id 应为预设值');
     assert.ok(Array.isArray(c.fieldDefs) && c.fieldDefs.length > 0, '声明表渠道必须带 fieldDefs');
     const ids = c.fieldDefs.map((d) => d.id);
     assert.equal(new Set(ids).size, ids.length, '同一渠道内字段 id 必须唯一');
@@ -271,7 +271,6 @@ test('声明表形态：定义只在顶层写一次（含 fieldDefs / format / u
     assert.equal(Number.isInteger(s.id) && s.id > 0, true, '声明表来源渠道必须有正整数 id');
     assert.ok(s.name, '声明表来源渠道必须有 name');
     assert.ok(['xml', 'csv'].includes(s.format), '声明表来源渠道必须有 format（csv / xml）');
-    assert.equal(SOURCE_ID_PRESET[s.name], s.id, '声明表来源渠道 ' + s.name + ' 的 id 应为预设值');
     assert.equal('fields' in s, false, '声明表的来源渠道不应带 fields（fields 属于 item 内的比较结果）');
   });
   Object.entries(json.usedCtxKeyDefs).forEach(([key, d]) => {

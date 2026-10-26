@@ -5,14 +5,7 @@
 //   const { ok, errors } = validateDataset(json);
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, CTX_RULES } from '../public/core.js';
-
-// { name: id } -> { id: name }
-function invert(map) {
-  const out = {};
-  Object.keys(map).forEach(function (k) { out[map[k]] = k; });
-  return out;
-}
+import { CTX_RULES } from '../public/core.js';
 
 // 消息段（warnings / errors / uncompared）的渠道 / 来源渠道引用：**只写名称**。
 // 原始可读性是这些段的首要目标（条目少、人工排查时直接看名字），因此不带 id；
@@ -169,26 +162,15 @@ export function validateDataset(json) {
   if (json.ctxKeyDefs !== undefined) {
     errors.push('ctxKeyDefs 已改名（-> usedCtxKeyDefs）');
   }
-  const chPresetById = invert(CHANNEL_ID_PRESET);
-  const srcPresetById = invert(SOURCE_ID_PRESET);
   // 声明表（**只由顶层 reportChannelDefs 填充**）：id -> { id, name, def, fieldById }。
   const chDeclared = {};
   const chDeclaredByName = {};
   // 声明表（来源渠道）：id -> name / name -> id。
   const srcDeclared = {};
   const srcDeclaredByName = {};
-  const presetPairError = function (kind, id, name, label, preset, presetById) {
-    if (presetById[id] != null && presetById[id] !== name) {
-      errors.push(label + ' ' + kind + ' id=' + id + ' 已被预设「' + presetById[id] + '」占用，不能用于「' + name + '」');
-      return true;
-    }
-    if (preset[name] != null && preset[name] !== id) {
-      errors.push(label + ' ' + kind + '「' + name + '」的预设 id 为 ' + preset[name] + '，当前为 ' + id);
-      return true;
-    }
-    return false;
-  };
-  // 报告渠道声明：id 数据集内全局唯一（同一 id → 同一 name，反之亦然），且不得与预设冲突。
+  // 报告渠道声明：id 数据集内全局唯一（同一 id → 同一 name，反之亦然）。
+  // id / 名称的合法集合完全由本文件的 reportChannelDefs 决定（任意正整数 id 均可），
+  // 不套用代码内的预设表 —— 数据文件的声明表才是唯一来源。
   const declareChannel = function (id, name, label) {
     if (chDeclared[id] != null && chDeclared[id].name !== name) {
       errors.push(label + ' 渠道 id=' + id + ' 在 reportChannelDefs 声明表内已指向「' + chDeclared[id].name + '」，与「' + name + '」冲突（声明必须唯一）');
@@ -198,7 +180,6 @@ export function validateDataset(json) {
       errors.push(label + ' 渠道「' + name + '」在 reportChannelDefs 声明表内已使用 id=' + chDeclaredByName[name] + '，与 id=' + id + ' 冲突（声明必须唯一）');
       return;
     }
-    if (presetPairError('渠道', id, name, label, CHANNEL_ID_PRESET, chPresetById)) return;
     chDeclared[id] = { id: id, name: name, fieldById: {}, fieldIdByName: {} };
     chDeclaredByName[name] = id;
   };
@@ -212,7 +193,6 @@ export function validateDataset(json) {
       errors.push(label + ' 来源渠道「' + name + '」在 sourceChannelDefs 声明表内已使用 id=' + srcDeclaredByName[name] + '，与 id=' + id + ' 冲突（声明必须唯一）');
       return;
     }
-    if (presetPairError('来源渠道', id, name, label, SOURCE_ID_PRESET, srcPresetById)) return;
     srcDeclared[id] = name;
     srcDeclaredByName[name] = id;
   };

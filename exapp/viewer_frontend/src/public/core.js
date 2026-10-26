@@ -64,7 +64,8 @@ export function normalizeItemSummary(raw) {
  *   - 定义侧：渠道 / 来源渠道 / 字段 / ctxKey 的**定义只在顶层声明表里写一次**
  *     （`$root.reportChannelDefs[] = {id,name,desc,format,fieldDefs}`、
  *      `$root.sourceChannelDefs[] = {id,name,format}`、`$root.usedCtxKeyDefs{} = {id,type,rules,def}`），
- *     item 里只保留 `id` 引用；预设 HKTR=1 / JSFA=2 / CFTC=3，来源渠道 A=1 / 来源渠道 B=2；
+ *     item 里只保留 `id` 引用；id 的取值由数据文件的声明表决定（样例生成器默认 HKTR=1 / JSFA=2 /
+ *     CFTC=3、来源渠道 A=1 / 来源渠道 B=2；预设表只用于「老数据无 id」时的解析回退）；
  *   - 启用侧：是否参与本次比较由 `item.channels[].enabled` 决定（缺省视为 true）——**唯一口径**，
  *     flatFields / 计数 / 图表 / 对比 / 全局搜索 / 统计 全部走它（历史上的 item.enabledChannels 名单已彻底移除）；
  *   - 引用侧：logs 与 skippedItems 写 id（logs 只写 id；skippedItems 名称 + id 双写）；

@@ -195,10 +195,10 @@ node tools/merge-batch.mjs --batch <id> --tenant[=id] | --no-tenant # 租户 / �
 
 | 键 | 类型 | 说明 |
 |---|---|---|
-| `reportChannelDefs[].id` | 正整数 | 渠道稳定标识，**数据集内全局唯一且一致**（同一 id ↔ 同一名称）；预设 `HKTR=1` / `JSFA=2` / `CFTC=3` |
+| `reportChannelDefs[].id` | 正整数 | 渠道稳定标识，**数据集内全局唯一且一致**（同一 id ↔ 同一名称）；**取值由本文件的声明表自己定**，任意正整数均可，校验不依赖任何代码内预设（样例生成器习惯用 `HKTR=1` / `JSFA=2` / `CFTC=3`，仅是样例约定） |
 | `reportChannelDefs[].name` / `.desc` / `.format` | 字符串 | 渠道定义（`format` ∈ `xml` / `csv`） |
 | `reportChannelDefs[].fieldDefs` | 数组 | **该报告渠道的字段定义**：`{ id, name, userTag, type }`（结构见「`fieldDefs` 字段定义声明表」） |
-| `sourceChannelDefs[].id` / `.name` | 正整数 / 字符串 | 来源渠道定义，**id 与名称都数据集内唯一**；预设 `来源渠道 A=1` / `来源渠道 B=2` |
+| `sourceChannelDefs[].id` / `.name` | 正整数 / 字符串 | 来源渠道定义，**id 与名称都数据集内唯一**；id 同样由本文件自己声明（样例生成器习惯用 `来源渠道 A=1` / `来源渠道 B=2`） |
 | `sourceChannelDefs[].format` | 字符串 | 来源渠道数据格式：`csv`（默认）或 `xml` —— 由生成器从该来源比对值侧的 `cmpLeft.valueSrcFmt` 推导 |
 | `usedCtxKeyDefs[<ctxKey>].id` | 正整数 | ctxKey 稳定标识，引用方为字段各规则的 `metaCtxs`（id 数组）；item 侧直接用 ctxKey 作键引用，不再重复写 `id` |
 | `usedCtxKeyDefs[<ctxKey>].type` / `.def` | 字符串 | 上下文来源类型（`builtin` / `user`）与定义文本 |
@@ -414,7 +414,7 @@ item 里只保留**命中摘要**（ctxKey 就是引用，`id` / `type` / `rules
 
 | 键 | 出现在 | 类型 | 说明 |
 |---|---|---|---|
-| `id` | 两处 | 正整数 | 渠道**稳定标识**（数据集内全局唯一；预设 HKTR=1 / JSFA=2 / CFTC=3） |
+| `id` | 两处 | 正整数 | 渠道**稳定标识**（数据集内全局唯一，取值由本文件声明表自定） |
 | `name` | 声明 | 字符串 | 渠道名（HKTR/JSFA/CFTC） |
 | `desc` | 声明 | 字符串 | 渠道描述 |
 | `format` | 声明 | 字符串 | `xml` 或 `csv` |

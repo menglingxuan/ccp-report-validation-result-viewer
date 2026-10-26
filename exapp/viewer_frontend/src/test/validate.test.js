@@ -242,7 +242,7 @@ test('item 元数据：旧键 platformTradeId / platformDealId 已改名（出�
   assert.ok(legacyDeal.errors.some((e) => e.includes('platformDealId 已改名（-> platformOriTradeDealId）')), JSON.stringify(legacyDeal.errors));
 });
 
-test('声明表：渠道 / 来源渠道 id 必填、必须为正整数，且不得与预设冲突', () => {
+test('声明表：渠道 / 来源渠道 id 必填、必须为正整数，id 取值由本文件声明（不套用预设）', () => {
   const noIds = validateDataset(oneDataset([oneItem({ channels: [{ sources: [{ fields: [] }] }] })]));
   assert.equal(noIds.ok, false);
   assert.ok(noIds.errors.some((e) => e.includes('缺少正整数 id（report channel id）')), JSON.stringify(noIds.errors));
@@ -251,9 +251,36 @@ test('声明表：渠道 / 来源渠道 id 必填、必须为正整数，且不�
   const badId = validateDataset(oneDataset([oneItem({ channels: [{ id: 0, sources: [{ id: -1, fields: [] }] }] })]));
   assert.equal(badId.ok, false, '0 / 负数不是合法 id');
 
-  const preset = validateDataset(oneDataset(undefined, { reportChannelDefs: [reportChannelDef({ id: 2, name: 'HKTR' })] }));
-  assert.equal(preset.ok, false);
-  assert.ok(preset.errors.some((e) => e.includes('预设')), JSON.stringify(preset.errors));
+  // 合法 id 集合 = 本文件 reportChannelDefs / sourceChannelDefs 里声明的 id：
+  // 任意正整数都行，只要「声明 ↔ 引用」一致（不要求等于代码里的预设值）。
+  const customIds = validateDataset(oneDataset([oneItem({
+    channels: [{ id: 11, sources: [{ id: 21, fields: [{ id: '1', result: 'PASSED' }] }] }],
+  })], {
+    reportChannelDefs: [reportChannelDef({ id: 11, name: 'CUSTOM_CH' })],
+    sourceChannelDefs: [{ id: 21, name: 'CUSTOM_SRC', format: 'csv' }],
+  }));
+  assert.equal(customIds.ok, true, '自定义 id（与预设无关）应合法：' + JSON.stringify(customIds.errors));
+
+  // 关键回归点：即便名称与代码内预设重名，id 仍以本文件声明为准（旧实现会报「预设 id 为 N」）。
+  [{ id: 2, name: 'HKTR' }, { id: 1, name: 'JSFA' }, { id: 9, name: 'CFTC' }].forEach((decl) => {
+    const r = validateDataset(oneDataset([oneItem({ channels: [{ id: decl.id, sources: [{ id: 1, fields: [{ id: '1', result: 'PASSED' }] }] }] })], {
+      reportChannelDefs: [reportChannelDef({ id: decl.id, name: decl.name })],
+    }));
+    assert.equal(r.ok, true, decl.name + ' 使用声明 id=' + decl.id + ' 应合法：' + JSON.stringify(r.errors));
+  });
+
+  // 声明表内部仍必须唯一：同 id 不同名 / 同名不同 id 都要报错。
+  const dupId = validateDataset(oneDataset(undefined, {
+    reportChannelDefs: [reportChannelDef(), reportChannelDef({ name: 'JSFA' })],
+  }));
+  assert.equal(dupId.ok, false, '同一 id 指向不同渠道应报错');
+  assert.ok(dupId.errors.some((e) => e.includes('已指向「HKTR」')), JSON.stringify(dupId.errors));
+
+  const dupName = validateDataset(oneDataset(undefined, {
+    reportChannelDefs: [reportChannelDef(), reportChannelDef({ id: 2 })],
+  }));
+  assert.equal(dupName.ok, false, '同一名称使用不同 id 应报错');
+  assert.ok(dupName.errors.some((e) => e.includes('已使用 id=1')), JSON.stringify(dupName.errors));
 
   // 两个渠道引用同一个已声明的来源渠道：合法（声明是数据集级的）。
   const reuse = validateDataset(oneDataset([oneItem({ channels: [

@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateDataset } from '../lib/validate.js';
-import { hoistRegistries, hydrateDataset, CHANNEL_ID_PRESET, SOURCE_ID_PRESET } from '../public/core.js';
+import { hoistRegistries, hydrateDataset } from '../public/core.js';
 
 const SRC_DIR = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PUBLIC_DIR = path.join(SRC_DIR, 'public');
@@ -331,13 +331,8 @@ test('落盘样例数据：声明表覆盖所有引用（含 skippedItems），�
             : (chById.get(Number(String(id).split('/')[0])) || { fieldDefs: [] }).fieldDefs.some((d) => d.id === String(id).split('/')[1]);
       assert.equal(declared, true, name + '：' + where + ' 引用的 ' + kind + ' id=' + id + ' 未声明');
     });
-    // 预设一致性（HKTR=1 / JSFA=2 / CFTC=3、来源渠道 A=1 / B=2）。
-    (json.reportChannelDefs || []).forEach((c) => {
-      if (CHANNEL_ID_PRESET[c.name] != null) assert.equal(c.id, CHANNEL_ID_PRESET[c.name], '渠道 ' + c.name + ' 的 id 应为预设值');
-    });
-    (json.sourceChannelDefs || []).forEach((s) => {
-      if (SOURCE_ID_PRESET[s.name] != null) assert.equal(s.id, SOURCE_ID_PRESET[s.name], '来源渠道 ' + s.name + ' 的 id 应为预设值');
-    });
+    // 预设值（HKTR=1 / JSFA=2 / CFTC=3、来源渠道 A=1 / B=2）只是**样例数据的生成约定**，
+    // 不是校验规则：id 的合法集合完全由数据文件自己的声明表决定（见 lib/validate.js）。
     // hydrate 后名称 / 字段定义 / ctxKey 定义都齐备（查看器其余代码照旧工作）。
     const hydrated = hydrateDataset(json);
     assert.equal(hydrated.items[0].channels.every((c) => c.name && Array.isArray(c.fields) && c.fields.length > 0 && c.sources.every((s) => s.name)), true, 'hydrate 后渠道 / 来源 / 字段定义齐备');
