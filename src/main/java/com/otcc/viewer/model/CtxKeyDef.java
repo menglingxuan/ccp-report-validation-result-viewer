@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
  * Dataset-level ctxKey declaration ({@code $root.usedCtxKeyDefs[<ctxKey>]}):
  * {@code { id, type, rules, def }}.
  *
- * <p>{@code rules} holds rule names, not numbers: {@code fdm} (field mapping),
+ * <p>{@code rules} holds rule names, not numbers: {@code fmd} (field mapping),
  * {@code cvt} (value conversion), {@code vdt} (final value validation). A single ctxKey can take
  * part in several rules. The per-item hit summary lives in {@link CtxDef} instead.</p>
  */
@@ -24,7 +24,7 @@ public class CtxKeyDef {
     private Integer id;
     /** Ctx origin: {@code builtin} or {@code user}. */
     private String type;
-    /** Rule names: subset of {@code fdm} / {@code cvt} / {@code vdt}. */
+    /** Rule names: subset of {@code fmd} / {@code cvt} / {@code vdt}. */
     private List<String> rules;
     private String def;
 }

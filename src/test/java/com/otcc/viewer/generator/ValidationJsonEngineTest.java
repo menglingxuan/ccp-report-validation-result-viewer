@@ -236,8 +236,8 @@ class ValidationJsonEngineTest {
             JsonNode rules = d.path("rules");
             c.check(rules.isArray() && !rules.isEmpty(), "usedCtxKeyDefs[].rules 非空（规则名数组）：" + d);
             for (JsonNode r : rules) {
-                c.check(Set.of("fdm", "cvt", "vdt").contains(r.asText()),
-                        "usedCtxKeyDefs[].rules ∈ {fdm,cvt,vdt}：" + r + "（旧的 1/2/3 数字已废弃）");
+                c.check(Set.of("fmd", "cvt", "vdt").contains(r.asText()),
+                        "usedCtxKeyDefs[].rules ∈ {fmd,cvt,vdt}：" + r + "（旧的 1/2/3 数字已废弃）");
             }
             c.check(!d.has("scopes"), "usedCtxKeyDefs[] 里不应出现旧的 scopes：" + d);
             c.check(!d.has("hits"), "hits 是 item 级信息，不应写在 usedCtxKeyDefs 里：" + d);

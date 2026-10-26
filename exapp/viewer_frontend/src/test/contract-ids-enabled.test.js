@@ -277,7 +277,7 @@ test('声明表形态：定义只在顶层写一次（含 fieldDefs / format / u
   Object.entries(json.usedCtxKeyDefs).forEach(([key, d]) => {
     assert.equal(Number.isInteger(d.id) && d.id > 0, true, key + ' 必须有正整数 id');
     assert.ok(Array.isArray(d.rules) && d.rules.length > 0, key + ' 必须有 rules');
-    d.rules.forEach((r) => assert.ok(['fdm', 'cvt', 'vdt'].includes(r), key + ' 的 rules 只能是 fdm / cvt / vdt'));
+    d.rules.forEach((r) => assert.ok(['fmd', 'cvt', 'vdt'].includes(r), key + ' 的 rules 只能是 fmd / cvt / vdt'));
     assert.ok(['builtin', 'user'].includes(d.type), key + ' 的 type 只能是 builtin / user');
     assert.equal('hits' in d, false, 'hits 与 item 绑定，不写在顶层');
   });

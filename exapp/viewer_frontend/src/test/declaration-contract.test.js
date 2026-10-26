@@ -4,7 +4,7 @@
 // 契约（见 docs/DATA_SCHEMA.md §3.1/§3.2）：
 //   - `reportChannelDefs = [{id,name,desc,format,fieldDefs:[{id,name,userTag,type}]}]`；
 //   - `sourceChannelDefs = [{id,name,format}]`（format: csv / xml）；
-//   - `usedCtxKeyDefs = { <ctxKey>: {id,type,rules,def} }`（rules: fdm / cvt / vdt），item.ctxDtls 只留 {hits}；
+//   - `usedCtxKeyDefs = { <ctxKey>: {id,type,rules,def} }`（rules: fmd / cvt / vdt），item.ctxDtls 只留 {hits}；
 //   - item.channels[].id / .sources[].id / .sources[].fields[].id / 规则 metaCtxs 必须在对应声明表里解析；
 //   - item 里可以重复写名称，但必须与声明一致；声明表被引用时不可省；
 //   - warnings / errors / uncompared 只写名称（不带 id），logs 与 skippedItems 写 id。
@@ -42,7 +42,7 @@ const dataset = (over) => Object.assign({
   reportEnv: 'OTCXXX',
   reportChannelDefs: [{ id: 1, name: 'HKTR', desc: '香港交易资料储存库', format: 'xml', fieldDefs: [FIELD] }],
   sourceChannelDefs: [{ id: 1, name: SRC_A, format: 'csv' }],
-  usedCtxKeyDefs: { [CTX_KEY]: { id: 1, type: 'builtin', rules: ['fdm'], def: 'HKTR 默认上下文' } },
+  usedCtxKeyDefs: { [CTX_KEY]: { id: 1, type: 'builtin', rules: ['fmd'], def: 'HKTR 默认上下文' } },
   items: [item()],
 }, over || {});
 
@@ -75,7 +75,7 @@ test('契约：hoistRegistries 把 item 内的定义提到声明表（生成器�
     items: [{
       tradeId: 'T-1',
       reportDate: '2026-08-16',
-      ctxDtls: { [CTX_KEY]: { id: 1, rules: ['fdm'], type: 'builtin', def: 'HKTR 默认上下文', hits: 'h' } },
+      ctxDtls: { [CTX_KEY]: { id: 1, rules: ['fmd'], type: 'builtin', def: 'HKTR 默认上下文', hits: 'h' } },
       channels: [{
         id: 1, name: 'HKTR', desc: 'D', format: 'xml',
         fields: [FIELD],
@@ -92,7 +92,7 @@ test('契约：hoistRegistries 把 item 内的定义提到声明表（生成器�
     fieldDefs: [FIELD],
   }]);
   assert.deepEqual(migrated.sourceChannelDefs, [{ id: 1, name: SRC_A, format: 'csv' }]);
-  assert.deepEqual(migrated.usedCtxKeyDefs, { [CTX_KEY]: { id: 1, type: 'builtin', rules: ['fdm'], def: 'HKTR 默认上下文' } });
+  assert.deepEqual(migrated.usedCtxKeyDefs, { [CTX_KEY]: { id: 1, type: 'builtin', rules: ['fmd'], def: 'HKTR 默认上下文' } });
   assert.deepEqual(migrated.items[0].ctxDtls, { [CTX_KEY]: { hits: 'h' } }, 'item 内只留 { hits }');
   assert.equal('fields' in migrated.items[0].channels[0], false, 'item 内不再写字段定义');
   assert.equal(migrated.items[0].channels[0].sources[0].fields[0].cmpRight.valueSrcFmt, 'xml', 'valueSrcFmt 原样保留');
@@ -189,7 +189,7 @@ test('生成器：hoistRegistries 会把 skippedItems 的引用补进声明表�
     mode: 'single',
     items: [{
       tradeId: 'T-1', reportDate: 'd',
-      ctxDtls: { [CTX_KEY]: { id: 1, rules: ['fdm'], type: 'builtin', def: 'D', hits: 'h' } },
+      ctxDtls: { [CTX_KEY]: { id: 1, rules: ['fmd'], type: 'builtin', def: 'D', hits: 'h' } },
       channels: [{
         id: 1, name: 'HKTR', desc: 'D', format: 'xml',
         fields: [{ id: 1, name: 'tradeId', userTag: 'contextAssertion', type: 'id' }],
@@ -218,8 +218,8 @@ test('生成器：hoistRegistries 会把 skippedItems 的引用补进声明表�
   // ctxKey 定义不一致也报错。
   assert.throws(() => hoistRegistries({
     items: [
-      { tradeId: 'A', channels: [], ctxDtls: { [CTX_KEY]: { id: 1, rules: ['fdm'], def: 'X' } } },
-      { tradeId: 'B', channels: [], ctxDtls: { [CTX_KEY]: { id: 1, rules: ['fdm'], def: 'Y' } } },
+      { tradeId: 'A', channels: [], ctxDtls: { [CTX_KEY]: { id: 1, rules: ['fmd'], def: 'X' } } },
+      { tradeId: 'B', channels: [], ctxDtls: { [CTX_KEY]: { id: 1, rules: ['fmd'], def: 'Y' } } },
     ],
   }), /定义不一致/);
 });

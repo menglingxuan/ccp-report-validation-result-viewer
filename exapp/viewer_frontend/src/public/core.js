@@ -146,7 +146,7 @@ export function refSourceId(item, m) {
  *
  *   $root.reportChannelDefs = [ { id, name, desc, format, fieldDefs: [ {id,name,userTag,type} ] } ]
  *   $root.sourceChannelDefs = [ { id, name, format } ]                       // format: csv / xml
- *   $root.usedCtxKeyDefs    = { <ctxKey>: { id, type, rules, def } }         // rules: fdm / cvt / vdt
+ *   $root.usedCtxKeyDefs    = { <ctxKey>: { id, type, rules, def } }         // rules: fmd / cvt / vdt
  *   item.ctxDtls            = { <ctxKey>: { hits } }                        // 只留命中摘要（`id` / 定义全在顶层）
  *   rule.ctxRaw / metaCtxs  = "<ctxKey> and <ctxKey>" / [ id, … ]           // 规则命中的 ctxKey 表达式与 id 引用
  *   item.channels           = [ { id, enabled?, files, sources: [ { id, fields: [ …比较结果… ] } ] } ]
@@ -380,9 +380,9 @@ export function collectDefinitions(items) {
 }
 
 // ctxKey 规则的规范顺序（展示 / 输出都用它，保证数据稳定可控）。
-export const CTX_RULES = ['fdm', 'cvt', 'vdt'];
+export const CTX_RULES = ['fmd', 'cvt', 'vdt'];
 
-// 规则只认名称（fdm / cvt / vdt）；未声明 / 非法值一律丢弃。
+// 规则只认名称（fmd / cvt / vdt）；未声明 / 非法值一律丢弃。
 function normalizeCtxRules(def) {
   const raw = Array.isArray(def.rules) ? def.rules : (def.rules == null ? [] : [def.rules]);
   const out = [];

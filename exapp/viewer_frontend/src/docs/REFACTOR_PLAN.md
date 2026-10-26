@@ -15,7 +15,7 @@
 | 数据契约 | 已统一：根级 `reportChannelDefs` / `sourceChannelDefs` / `usedCtxKeyDefs` → `skippedItems` → `items`（键顺序固定）；item 只留 id 引用；消息只写名称；日志 / `skippedItems` 保留 id；item 元数据为 `platformOriTradeId` / `platformOriTradeDealId` |
 | 三层校验 | JS `lib/validate.js`、Java `ValidationJsonGenerator.hoistRegistries()`、查看器 `hydrateDataset()` 三者对同一契约一致 |
 | 测试基线 | JS **197/197**、Java **21/21**、`tools/verify-multi-mode.mjs` **27/27**（含键顺序断言）、Java 与 JS 产出的全部数据文件过 JS 校验器 0 错 |
-| 浏览器基线 | 单文件与多文件批次（`batch-20260816-1700`）均正常：渠道选项卡 HKTR/JSFA/CFTC，完整日志 307 行 / 234 个日志锚点（`log-1-1-f1.1` + `data-log-key=1|1|1`），ctx 弹框规则徽章 `fdm`/`cvt`/`vdt` 与定义、命中均正确 |
+| 浏览器基线 | 单文件与多文件批次（`batch-20260816-1700`）均正常：渠道选项卡 HKTR/JSFA/CFTC，完整日志 307 行 / 234 个日志锚点（`log-1-1-f1.1` + `data-log-key=1|1|1`），ctx 弹框规则徽章 `fmd`/`cvt`/`vdt` 与定义、命中均正确 |
 | 已提前完成的重构项 | ① 双击判定窗口（`scheduleFieldClick` / `FIELD_CLICK_DELAY_MS` / `cancelFieldClick`）已删除（关联字段改单击即时响应，跳日志统一走详情页 ▸）；② 旧键名（`ctxKeyDefs` / `platformTradeId` / `platformDealId`）与更早的 `channels` / `sources` / `srcType` 已全部纳入校验器报错清单 |
 
 **这些数字是每一步重构后的回归门（见 §7）。**
@@ -224,7 +224,7 @@ Java 侧目标：
 |---|---|---|---|
 | 1 | `srcType` 兼容归一 | `core.js` / `validate.js` | 契约已改 `valueSrcFmt`，且无老数据外流 |
 | 2 | `item.fields` 老形态回退 | `core.js` / `validate.js` | 已迁到 `reportChannelDefs[].fieldDefs` |
-| 3 | `usedCtxKeyDefs` 旧 `scopes`（数字）兼容 | `core.js` / `app.js` | 已改 `rules`（fdm / cvt / vdt 规则名）→ ✅ 已删 |
+| 3 | `usedCtxKeyDefs` 旧 `scopes`（数字）兼容 | `core.js` / `app.js` | 已改 `rules`（fmd / cvt / vdt 规则名）→ ✅ 已删 |
 | 4 | `enabledChannels` 检测分支 | `validate.js` / `core.js` 注释 | 契约早已单点化 |
 | 5 | 根级 `channels` / `sources` 识别 | `validate.js` / `core.js` / `sample-data.js` | 已改名 |
 | 6 | `tools/migrate-legacy-data.js` 及其文档章节 / 测试用例 | `tools/` / `docs/` / `test/` | 迁移窗口结束后无用 → ✅ 已删 |
@@ -263,7 +263,7 @@ Java 侧目标：
 | 3 | 契约校验 | `node lib/validate.js <生成的每个数据文件>` | 全部 `OK`，0 错 |
 | 4 | 多文件端到端 | `node tools/verify-multi-mode.mjs` | 27/27 |
 | 5 | 浏览器基线（单文件） | `REPORT_VIEWER_PORT=8801 node server.js` + 打开默认数据 | 78 字段 / 7 警告 / 日志行数与锚点数与重构前一致 |
-| 6 | 浏览器基线（多文件） | 打开批次 `batch-20260816-1700` | 渠道选项卡 HKTR·JSFA·CFTC；完整日志 **307 行 / 234 锚点**；`log-1-1-f1.1`、`data-log-key=1\|1\|1`；ctx 弹框显示 `fdm`/`cvt`/`vdt` 徽章 + 定义 + 命中 |
+| 6 | 浏览器基线（多文件） | 打开批次 `batch-20260816-1700` | 渠道选项卡 HKTR·JSFA·CFTC；完整日志 **307 行 / 234 锚点**；`log-1-1-f1.1`、`data-log-key=1\|1\|1`；ctx 弹框显示 `fmd`/`cvt`/`vdt` 徽章 + 定义 + 命中 |
 | 7 | 深链接与忽略配置 | 手工：`#batch=…&item=…&ch=HKTR&q=…`、忽略某条警告后刷新 | 状态可还原；忽略配置键仍按名称，跨批次有效 |
 | 8 | 体积不回退 | 记录 `raw / gzip / brotli` 三项 | 每阶段不得变差（P4 应显著变好） |
 

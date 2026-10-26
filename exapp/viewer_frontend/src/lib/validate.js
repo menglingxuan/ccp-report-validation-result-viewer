@@ -90,23 +90,28 @@ function checkIdRefFields(m, label, errors, opts) {
 
 // 日志行契约（`item.logs[]`，见 docs/DATA_SCHEMA.md §3）：
 //   { scope, channelId, sourceId, field, text }
-//   - scope 只能是 item / channel / field；
-//   - field（字段 id）仅在 scope="field" 时有值，且此时 channelId / sourceId 必须非空；
+//   - scope 只能是 item / channel / source / field；
+//   - scope="source"：来源渠道级日志，channelId / sourceId 均非空，field 为空；
+//   - scope="field"：字段级日志，channelId / sourceId / field 均非空（锚点与关联用 id）；
 //   - 渠道 / 来源渠道**只写 id**（名称由查看器按 id 从声明表解析回来）；
 //   - text 是给人看的展示内容：**不是数据通道**，不得用它携带渠道 / 来源信息。
+const LOG_SCOPES = ['item', 'channel', 'source', 'field'];
 function validateLogEntries(list, label, errors, opts) {
   list.forEach(function (l, li) {
     const llabel = label + '[' + li + ']';
     if (!l || typeof l !== 'object' || Array.isArray(l)) { errors.push(llabel + ' 必须是对象'); return; }
     if (typeof l.text !== 'string') errors.push(llabel + ' 缺少 text 字符串');
-    if (l.scope !== undefined && l.scope !== null
-        && l.scope !== 'item' && l.scope !== 'channel' && l.scope !== 'field') {
-      errors.push(llabel + ' scope 只能是 "item" / "channel" / "field"');
+    if (l.scope !== undefined && l.scope !== null && LOG_SCOPES.indexOf(l.scope) === -1) {
+      errors.push(llabel + ' scope 只能是 ' + LOG_SCOPES.map(function (s) { return '"' + s + '"'; }).join(' / '));
     }
     if (l.field !== undefined && l.field !== null && typeof l.field !== 'string') {
       errors.push(llabel + ' field 必须是字符串或 null');
     }
     checkIdRefFields(l, llabel, errors, opts);
+    // 来源渠道级 / 字段级日志都要定位到具体来源渠道 → sourceId 必填。
+    if ((l.scope === 'source' || l.scope === 'field') && l.sourceId == null) {
+      errors.push(llabel + ' scope="' + l.scope + '" 时 sourceId 不能为空');
+    }
     const field = typeof l.field === 'string' ? l.field : '';
     if (!field) return;
     if (l.scope !== 'field') errors.push(llabel + ' 只有 scope="field" 的日志行才允许有 field');
@@ -258,7 +263,7 @@ export function validateDataset(json) {
       declareSource(s.id, s.name, label);
     });
   }
-  // ctxKey 声明表（ctxKey -> { id, type, rules, def }）：id 数据集内唯一；rules 只能是 fdm / cvt / vdt。
+  // ctxKey 声明表（ctxKey -> { id, type, rules, def }）：id 数据集内唯一；rules 只能是 fmd / cvt / vdt。
   const ctxDeclared = {};
   const ctxDeclaredByKey = {};
   if (json.usedCtxKeyDefs && typeof json.usedCtxKeyDefs === 'object' && !Array.isArray(json.usedCtxKeyDefs)) {

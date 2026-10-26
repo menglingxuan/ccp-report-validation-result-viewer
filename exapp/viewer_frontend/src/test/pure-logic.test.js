@@ -336,7 +336,7 @@ test('每个 item 都有独立的 ctxDtls（需求 9）', () => {
   const d0 = hydrated.items[0].ctxDtls['hktr.ctx.default'];
   assert.ok(Number.isInteger(d0.id) && d0.id > 0, 'ctxDtls 应有正整数 id（从顶层补回）');
   assert.ok(Array.isArray(d0.rules) && d0.rules.length > 0, 'hydrate 后 ctxDtls 应有 rules 数组');
-  assert.ok(d0.rules.every((r) => ['fdm', 'cvt', 'vdt'].includes(r)), 'rules 只能是 fdm / cvt / vdt');
+  assert.ok(d0.rules.every((r) => ['fmd', 'cvt', 'vdt'].includes(r)), 'rules 只能是 fmd / cvt / vdt');
   assert.ok(d0.type === 'builtin' || d0.type === 'user', 'ctxDtls.type 应为 builtin 或 user');
 });
 

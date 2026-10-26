@@ -132,7 +132,7 @@ test('声明表：字段定义（fieldDefs）结构与渠道内 id 唯一', () =
 
 test('声明表：usedCtxKeyDefs 结构与 item.ctxDtls 的 ctxKey 引用', () => {
   const base = {
-    usedCtxKeyDefs: { 'hktr.ctx.default': { id: 1, type: 'builtin', rules: ['fdm'], def: 'HKTR 默认上下文' } },
+    usedCtxKeyDefs: { 'hktr.ctx.default': { id: 1, type: 'builtin', rules: ['fmd'], def: 'HKTR 默认上下文' } },
   };
   const okItem = oneItem({
     ctxDtls: { 'hktr.ctx.default': { hits: '命中 3 个映射条目' } },
@@ -140,22 +140,22 @@ test('声明表：usedCtxKeyDefs 结构与 item.ctxDtls 的 ctxKey 引用', () =
   });
   assert.equal(validateDataset(oneDataset([okItem], base)).ok, true, '合法的 ctxKey 引用');
 
-  // rules 只能是 fdm / cvt / vdt；id 必须唯一；根上不允许带 hits。
+  // rules 只能是 fmd / cvt / vdt；id 必须唯一；根上不允许带 hits。
   const badRoot = validateDataset(oneDataset(undefined, {
     usedCtxKeyDefs: {
       a: { id: 1, type: 'builtin', rules: ['x'], hits: '1' },
-      b: { id: 1, type: 'weird', rules: ['fdm'] },
+      b: { id: 1, type: 'weird', rules: ['fmd'] },
     },
   }));
   assert.equal(badRoot.ok, false);
   const msgs = badRoot.errors.join('；');
-  assert.match(msgs, /usedCtxKeyDefs\.a 的 rules 必须是 fdm \/ cvt \/ vdt/);
+  assert.match(msgs, /usedCtxKeyDefs\.a 的 rules 必须是 fmd \/ cvt \/ vdt/);
   assert.match(msgs, /usedCtxKeyDefs\.a 不应带 hits/);
   assert.match(msgs, /usedCtxKeyDefs\.b 的 id 与 usedCtxKeyDefs\.a 重复/);
   assert.match(msgs, /usedCtxKeyDefs\.b 的 type 只能是 "builtin" 或 "user"/);
 
   // item.ctxDtls：ctxKey 必须已声明，且不允许再带定义（id / type / rules / def）。
-  const badItem = validateDataset(oneDataset([oneItem({ ctxDtls: { 'hktr.ctx.default': { id: 9, type: 'builtin', rules: ['fdm'], def: 'x' } } })], base));
+  const badItem = validateDataset(oneDataset([oneItem({ ctxDtls: { 'hktr.ctx.default': { id: 9, type: 'builtin', rules: ['fmd'], def: 'x' } } })], base));
   assert.equal(badItem.ok, false);
   const imsgs = badItem.errors.join('；');
   assert.match(imsgs, /不应带 id/);
@@ -175,7 +175,7 @@ test('声明表：usedCtxKeyDefs 结构与 item.ctxDtls 的 ctxKey 引用', () =
 });
 
 test('声明表：规则里的 metaCtxs 引用必须已声明且写在本 item 的 ctxDtls 里', () => {
-  const base = { usedCtxKeyDefs: { 'hktr.ctx.default': { id: 1, type: 'builtin', rules: ['fdm'] } } };
+  const base = { usedCtxKeyDefs: { 'hktr.ctx.default': { id: 1, type: 'builtin', rules: ['fmd'] } } };
   const undeclared = validateDataset(oneDataset([oneItem({
     ctxDtls: { 'hktr.ctx.default': { hits: 'h' } },
     channels: [{ id: 1, sources: [{ id: 1, fields: [{ id: '1', cmpRight: { metaCtxs: [7] } }] }] }],
@@ -305,10 +305,23 @@ test('日志行（logs）只写 id：引用必须已声明，field 非空时 id 
     logs: [
       { scope: 'item', channelId: null, sourceId: null, text: '开始' },
       { scope: 'channel', channelId: 1, sourceId: null, text: '渠道级' },
+      { scope: 'source', channelId: 1, sourceId: 1, text: '来源渠道级' },
       { scope: 'field', channelId: 1, sourceId: 1, field: '1', text: '字段级' },
     ],
   })]));
   assert.equal(okLog.ok, true, JSON.stringify(okLog.errors));
+
+  // scope="source"（来源渠道级）允许，但必须能定位到具体来源渠道。
+  const sourceNoSourceId = validateDataset(oneDataset([oneItem({ logs: [{ scope: 'source', channelId: 1, sourceId: null, text: 'x' }] })]));
+  assert.equal(sourceNoSourceId.ok, false);
+  assert.ok(sourceNoSourceId.errors.some((e) => e.includes('scope="source" 时 sourceId 不能为空')), JSON.stringify(sourceNoSourceId.errors));
+
+  // 非法 scope 仍要报错（含大小写不一致）。
+  ['bogus', 'SOURCE'].forEach((bad) => {
+    const r = validateDataset(oneDataset([oneItem({ logs: [{ scope: bad, channelId: 1, sourceId: 1, text: 'x' }] })]));
+    assert.equal(r.ok, false, bad + ' 应被拒绝');
+    assert.ok(r.errors.some((e) => e.includes('scope 只能是 "item" / "channel" / "source" / "field"')), JSON.stringify(r.errors));
+  });
 
   const undeclared = validateDataset(oneDataset([oneItem({ logs: [{ scope: 'channel', channelId: 9, text: 'x' }] })]));
   assert.equal(undeclared.ok, false);

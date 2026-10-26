@@ -10,9 +10,10 @@ import lombok.NoArgsConstructor;
  * One item-level log entry ({@code item.logs[]}), object form:
  * {@code { scope, channelId, sourceId, field, text }}.
  *
- * <p>{@code scope} is {@code item}, {@code channel} or {@code field}:
+ * <p>{@code scope} is {@code item}, {@code channel}, {@code source} or {@code field}:
  * item-scoped lines have no channel / source / field; channel-scoped lines
- * carry a channel id but no field; field-scoped lines carry all of them
+ * carry a channel id but no field; source-scoped lines carry both a channel id and a source id
+ * but no field; field-scoped lines carry all of them
  * ({@code field} is the field id from {@code reportChannelDefs[].fieldDefs}).</p>
  *
  * <p>Log lines carry the <b>stable ids only</b> ({@code channelId} / {@code sourceId}); the
@@ -25,7 +26,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ItemLog {
-    /** {@code item}, {@code channel} or {@code field}. */
+    /** {@code item}, {@code channel}, {@code source} or {@code field}. */
     private String scope;
     /** Stable source id (resolved to a name by the viewer). */
     private Integer sourceId;

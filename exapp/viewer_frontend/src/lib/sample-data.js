@@ -618,7 +618,7 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
 
     // 每个 item 的 ctxKey 命中摘要：**定义只写一次**（hoistRegistries 会把 id / type / rules / def 提到
     // 顶层 `usedCtxKeyDefs`，item 内只留 `{ hits }`），hits（命中数）与 item 绑定。
-    // rules 为规则名数组：fdm 字段映射规则 / cvt 值转换规则 / vdt 终值校验规则。
+    // rules 为规则名数组：fmd 字段映射规则 / cvt 值转换规则 / vdt 终值校验规则。
     function buildCtxDefs(itemIndex) {
       const seed = itemIndex || 0;
       const defs = {};
@@ -631,11 +631,11 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
       };
       CHANNELS.forEach(function (ch) {
         const p = ch.name.toLowerCase();
-        // rules: fdm（字段映射规则）
-        add(p + '.ctx.default', ['fdm'], 'builtin', ch.name + ' 默认上下文（标准报送场景）', '命中 ' + (3 + seed % 3) + ' 个映射条目（EO 2 / AO 1）');
-        add(p + '.ctx.v2', ['fdm'], 'builtin', ch.name + ' v2 上下文（2024 新版映射）', '命中 ' + (2 + seed % 2) + ' 个映射条目（EO 1 / AO 1）');
-        add(p + '.ctx.v3', ['fdm'], 'builtin', ch.name + ' v3 上下文（最新版映射）', '命中 ' + (1 + seed % 2) + ' 个映射条目（EO 1 / AO 0）');
-        add(p + '.ctx.extended.production.region.east.v2024.latest', ['fdm'], 'user', ch.name + ' 扩展上下文（生产·东部区域·2024 最新）', '命中 ' + (4 + seed % 2) + ' 个映射条目（EO 2 / AO 2）');
+        // rules: fmd（字段映射规则）
+        add(p + '.ctx.default', ['fmd'], 'builtin', ch.name + ' 默认上下文（标准报送场景）', '命中 ' + (3 + seed % 3) + ' 个映射条目（EO 2 / AO 1）');
+        add(p + '.ctx.v2', ['fmd'], 'builtin', ch.name + ' v2 上下文（2024 新版映射）', '命中 ' + (2 + seed % 2) + ' 个映射条目（EO 1 / AO 1）');
+        add(p + '.ctx.v3', ['fmd'], 'builtin', ch.name + ' v3 上下文（最新版映射）', '命中 ' + (1 + seed % 2) + ' 个映射条目（EO 1 / AO 0）');
+        add(p + '.ctx.extended.production.region.east.v2024.latest', ['fmd'], 'user', ch.name + ' 扩展上下文（生产·东部区域·2024 最新）', '命中 ' + (4 + seed % 2) + ' 个映射条目（EO 2 / AO 2）');
         // rules: cvt（值转换规则）
         add(p + '.ctx.conv.default', ['cvt'], 'builtin', ch.name + ' 值转换默认上下文（EO 归一化）', '命中 ' + (2 + seed % 2) + ' 个转换规则（@trim / @toUpper 等）');
         add(p + '.ctx.conv.v2', ['cvt'], 'builtin', ch.name + ' 值转换 v2 上下文', '命中 ' + (1 + seed % 2) + ' 个转换规则');

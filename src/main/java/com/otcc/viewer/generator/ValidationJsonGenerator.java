@@ -217,7 +217,7 @@ public final class ValidationJsonGenerator {
      * <pre>
      * dataset.reportChannelDefs = [ { id, name, desc, format, fieldDefs: [ {id,name,userTag,type} ] } ]
      * dataset.sourceChannelDefs = [ { id, name, format } ]                 // format: csv / xml
-     * dataset.usedCtxKeyDefs    = { &lt;ctxKey&gt;: { id, type, rules, def } }   // rules: fdm / cvt / vdt
+     * dataset.usedCtxKeyDefs    = { &lt;ctxKey&gt;: { id, type, rules, def } }   // rules: fmd / cvt / vdt
      * item.ctxDtls              = { &lt;ctxKey&gt;: { hits } }
      * rule.ctxRaw               = "&lt;ctxKey&gt; and &lt;ctxKey&gt;" | null     // 命中 ctxKey 的原始表达式
      * rule.metaCtxs             = [ id, … ]                          // 命中 ctxKey 的 id 引用
@@ -997,7 +997,7 @@ public final class ValidationJsonGenerator {
     /**
      * Dataset-level ctxKey declarations of the ctxKeys actually used by the items
      * ({@code $root.usedCtxKeyDefs}): {@code <ctxKey> -> { id, type, rules, def }};
-     * {@code rules} uses rule names ({@code fdm} field mapping / {@code cvt} conversion /
+     * {@code rules} uses rule names ({@code fmd} field mapping / {@code cvt} conversion /
      * {@code vdt} validation).
      */
     public static Map<String, CtxKeyDef> buildUsedCtxKeyDefs() {
@@ -1005,14 +1005,14 @@ public final class ValidationJsonGenerator {
         int id = 1;
         for (String chName : CHANNEL_NAMES) {
             String p = chName.toLowerCase();
-            defs.put(p + ".ctx.default", CtxKeyDef.builder().id(id++).type("builtin").rules(List.of("fdm"))
+            defs.put(p + ".ctx.default", CtxKeyDef.builder().id(id++).type("builtin").rules(List.of("fmd"))
                     .def(chName + " 默认上下文（标准报送场景）").build());
-            defs.put(p + ".ctx.v2", CtxKeyDef.builder().id(id++).type("builtin").rules(List.of("fdm"))
+            defs.put(p + ".ctx.v2", CtxKeyDef.builder().id(id++).type("builtin").rules(List.of("fmd"))
                     .def(chName + " v2 上下文（2024 新版映射）").build());
-            defs.put(p + ".ctx.v3", CtxKeyDef.builder().id(id++).type("builtin").rules(List.of("fdm"))
+            defs.put(p + ".ctx.v3", CtxKeyDef.builder().id(id++).type("builtin").rules(List.of("fmd"))
                     .def(chName + " v3 上下文（最新版映射）").build());
             defs.put(p + ".ctx.extended.production.region.east.v2024.latest",
-                    CtxKeyDef.builder().id(id++).type("user").rules(List.of("fdm"))
+                    CtxKeyDef.builder().id(id++).type("user").rules(List.of("fmd"))
                             .def(chName + " 扩展上下文（生产·东部区域·2024 最新）").build());
             defs.put(p + ".ctx.conv.default", CtxKeyDef.builder().id(id++).type("builtin").rules(List.of("cvt"))
                     .def(chName + " 值转换默认上下文（EO 归一化）").build());

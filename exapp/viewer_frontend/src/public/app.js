@@ -4322,9 +4322,17 @@
       return ['sidebarPlatform', 'colChannel', 'colSource', 'colElement'];
     }
 
+    // 消息 / 日志的作用域标签：item / channel / source（来源渠道级，v4 起允许）/ field。
+    function msgScopeLabel(scope) {
+      if (scope === 'field') return t('scopeField');
+      if (scope === 'source') return t('scopeSource');
+      if (scope === 'item') return t('scopeItem');
+      return t('scopeChannel');
+    }
+
     function ignoreMgrRowCells(e) {
       if (e.kind === 'warn') {
-        return [e.platform, e.channel, e.source, e.scope === 'field' ? t('scopeField') : t('scopeChannel'), e.type, e.level, e.field];
+        return [e.platform, e.channel, e.source, msgScopeLabel(e.scope), e.type, e.level, e.field];
       }
       return [e.platform, e.channel, e.source, e.value];
     }
@@ -4676,7 +4684,7 @@
         lines = lines.filter(l => String(l.text || '').toLowerCase().includes(q));
       }
       // scope="field" 的行带定位锚点（**id 合成键** + data-log-key），供字段比较 / 关联字段 / 字段详情跳转高亮；
-      // 其余日志行不带锚点（item / channel 级日志无法从字段侧定位）。
+      // 其余日志行不带锚点（item / channel / source 级日志无法从字段侧定位）。
       // 同键序号按 item.logs 顺序编号（与当前搜索 / 作用域筛选无关）→ 同一行 id 稳定，跳转取 .1。
       const it = currentItem() || {};
       const seqByLine = new Map();
@@ -4896,16 +4904,16 @@
     }
 
     // ctxKey 参与哪些规则（数据契约，见 docs/DATA_SCHEMA.md §3）：
-    //   fdm = 字段映射规则 / cvt = 值转换规则 / vdt = 终值校验规则。
+    //   fmd = 字段映射规则 / cvt = 值转换规则 / vdt = 终值校验规则。
     // 同一个 ctxKey 可被多种规则共享，因此 `rules` 是规则名数组。
     const RULE_META = {
-      fdm: { label: 'ctxTypeMapping', cls: 't1' },
+      fmd: { label: 'ctxTypeMapping', cls: 't1' },
       cvt: { label: 'ctxTypeConversion', cls: 't2' },
       vdt: { label: 'ctxTypeValidation', cls: 't3' },
     };
-    const RULE_ORDER = ['fdm', 'cvt', 'vdt'];
+    const RULE_ORDER = ['fmd', 'cvt', 'vdt'];
     function ctxRulesOf(def) {
-      // rules 为规则名数组（fdm / cvt / vdt），只认这三个名称。
+      // rules 为规则名数组（fmd / cvt / vdt），只认这三个名称。
       const source = def ? def.rules : null;
       const arr = Array.isArray(source) ? source : (source == null ? [] : [source]);
       const picked = [];

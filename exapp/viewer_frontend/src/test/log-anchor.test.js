@@ -446,3 +446,16 @@ test('文案：新增键三语齐备', () => {
     });
   });
 });
+
+test('日志 / 消息作用域标签：item / channel / source / field 四值均有文案', () => {
+  // v4 起日志行允许 scope="source"（来源渠道级），作用域列不能再把非 field 一律当成 channel。
+  const body = bodyOf('function msgScopeLabel(', 400);
+  assert.match(body, /scope === 'field'[\s\S]*?t\('scopeField'\)/, "field 用 scopeField");
+  assert.match(body, /scope === 'source'[\s\S]*?t\('scopeSource'\)/, "source 用 scopeSource");
+  assert.match(body, /t\('scopeChannel'\)/, 'channel（及未知值）回退到 scopeChannel');
+  LANGS.forEach((lang) => {
+    const v = I18N[lang].scopeSource;
+    assert.equal(typeof v, 'string', lang + '.scopeSource 缺失');
+    assert.ok(v.length > 0, lang + '.scopeSource 不应为空');
+  });
+});
