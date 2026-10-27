@@ -10,7 +10,7 @@ import com.otcc.viewer.model.BatchIndex;
 import com.otcc.viewer.model.BatchMeta;
 import com.otcc.viewer.model.Channel;
 import com.otcc.viewer.model.CmpSide;
-import com.otcc.viewer.model.CtxDef;
+import com.otcc.viewer.model.CtxDetail;
 import com.otcc.viewer.model.CtxKeyDef;
 import com.otcc.viewer.model.DescriptionEx;
 import com.otcc.viewer.model.Field;
@@ -125,7 +125,7 @@ class ValidationJsonEngineTest {
         Map<String, CtxKeyDef> ctxReg = ds.getUsedCtxKeyDefs() == null ? Map.of() : ds.getUsedCtxKeyDefs();
         for (ValidationItem item : ds.getItems()) {
             if (item.getCtxDtls() != null) {
-                for (Map.Entry<String, CtxDef> e : item.getCtxDtls().entrySet()) {
+                for (Map.Entry<String, CtxDetail> e : item.getCtxDtls().entrySet()) {
                     CtxKeyDef kdef = ctxReg.get(e.getKey());
                     if (kdef == null) {
                         throw new IllegalStateException("item ctxDtls 的 ctxKey 未在 usedCtxKeyDefs 声明：" + e.getKey());
@@ -678,8 +678,8 @@ class ValidationJsonEngineTest {
             return;
         }
         Map<String, CtxKeyDef> defs = ds.getUsedCtxKeyDefs() == null ? Map.of() : ds.getUsedCtxKeyDefs();
-        for (Map.Entry<String, CtxDef> e : item.getCtxDtls().entrySet()) {
-            CtxDef def = e.getValue();
+        for (Map.Entry<String, CtxDetail> e : item.getCtxDtls().entrySet()) {
+            CtxDetail def = e.getValue();
             String label = it + ".ctxDtls[" + e.getKey() + "]";
             c.check(nonBlank(e.getKey()), it + ".ctxDtls key non-blank");
             c.check(defs.get(e.getKey()) != null, label + " 的 ctxKey 必须在 usedCtxKeyDefs 里声明");
