@@ -27,7 +27,7 @@
     "compatibleApiVersions": {
       "type": "array",
       "items": { "type": "integer", "minimum": 1 },
-      "description": "可加载的 API（数据契约）版本白名单：批次元数据的 formatVersion 必须在其中，否则视为版本不兼容。会自动去重升序，并自动包含生成器写出的当前版本。与公开的 HTTP 接口无关。",
+      "description": "可加载的 API（数据契约）版本白名单：批次元数据的 formatVersion 必须在其中，否则视为版本不兼容。会去重升序，并自动包含生成器写出的当前版本。扫描、启动校验与 `lib/validate.js` 的版本闸门也读这一项（缺省才回退代码常量）；改此项需重启服务。与公开的 HTTP 接口无关。",
       "default": [4]
     },
     "runType": {

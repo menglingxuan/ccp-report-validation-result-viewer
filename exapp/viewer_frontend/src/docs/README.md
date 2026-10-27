@@ -42,7 +42,7 @@
   - 开关 `features.clearLocalCache`（`config.json` / dev / test 默认 `true`，**prod 默认 `false`**，关闭时按钮隐藏）；服务器端数据（批次、收藏夹、忽略配置）不受影响。其它已打开的标签页建议一并刷新，否则可能把旧状态写回。
 - **主页（顶栏）**：同一排新增按钮（简约房子内联 SVG 图标，与帮助 / 清除按钮同一套 30×30 圆形按钮与 15×15 图标尺寸，画布占比对齐；hover 提示「回到站点根」/ Back to Site Root），点击回到站点根（`origin + pathname`，不带查询参数与深链接）并重新加载页面（先 `history.replaceState` 去掉 query/hash，避免被查看器的 `syncHash` 写回，再 `location.reload`）；与启动失败提示条里的「回到主页」链接共用 `webRootUrl()`；开关 `features.homeButton`（prod 默认 `false`）。
 - **版本兼容性合并到版本号标签**：批次列表卡片、dock 悬停小卡片与批次详情的标签行统一由 `batchBadgesHTML` 渲染，不再单独展示「版本兼容 / 版本不兼容」标签，兼容性以版本号标签的配色 + title 提示表达；详情标签与卡片一致（仅不含 item 数量标签）。
-  - **API 版本白名单是配置项**：批次能否加载只看 `batch-meta.json` 的 `formatVersion` 是否在 `config.json` 的 `compatibleApiVersions` 内（默认 `[4]`，会自动补上当前版本 `4`）；写入方（扫描器 / JS / Java 生成器）用代码常量（`public/core.js` 的 `DEFAULT_API_VERSION` / Java `API_VERSION`），**不读该配置项**。
+  - **API 版本白名单是配置项**：批次能否加载只看 `batch-meta.json` 的 `formatVersion` 是否在 `config.json` 的 `compatibleApiVersions` 内（默认 `[4]`，会自动补上当前版本 `4`）；**扫描 / 启动校验 / `node lib/validate.js` 的版本闸门也读同一配置项**（不再写死），只有配置缺失/非法时才回退代码常量。写入方（扫描器缺省值 / JS / Java 生成器）仍用代码常量（`public/core.js` 的 `DEFAULT_API_VERSION` / Java `API_VERSION`）。改该配置需重启服务。
 - **Item 关联属性浮层（hover 展示）**：主列表「报告日期」左侧的 item id **鼠标悬停**即弹出（原为点击），移出后延迟收起；鼠标进入浮层内部保持展开，便于点击复制。浮层首行为带标签的 `Item ID` 行并附复制按钮（其余行为对手方 Item ID / 平台 Trade ID / 平台 Trade Deal ID，均带复制按钮）。
 - **激活筛选标签（chips）与「清除全部」**：
   - Item 列表（左栏）与批次列表都会在列表上方显示当前激活的筛选标签（Item：**报告日期** / 状态 / 平台 / 产品 / TradeId；批次：名称 / 命令行 / 描述 / 日期 / 环境 / 标签），主列表字段筛选同样沿用该样式。批次标签位于列表上方的**独立区域**（在拖动标记之上，不随列表高度拖拽变化，无标签时自动收起）。
@@ -56,7 +56,7 @@
   - **自愈（双数据源对账）**：星标来自 `batch-meta.json` 的 `favorite`，收藏夹内容来自 `favorites.json`，两者分开存储，可能因换数据根 / 迁移目录 / 只写成功一半而分叉。服务端在**启动、扫描成功后、元数据写回后的索引重建完成时**自动对账：`favorite: true` 但不在任何收藏包里的批次 → 补进保留包 **`archived`**（不猜原包名；软删除批次不补；幂等；只写 `favorites.json` 不回写 meta），并打一行日志 `收藏自愈（原因）：N 个批次…`。代码见 `lib/favorites.js`（纯函数）+ `server.js` 的 `reconcileFavoritesFile()`。
   - **写入顺序（避免半成功）**：先落库收藏树（`POST /api/favorites`），**成功后才**回写 `batch-meta` 的 `favorite`；任一步失败都会回滚内存并提示（`favSaveFailed` / `favFlagFailed`），不再出现「星标在、收藏夹里没有」或反之。
   - 已收藏批次在批次列表卡片、docker 小卡片与「当前批次」徽章上显式显示 ★ 标记。
-  - dock 小卡片**只有一个角标位（左上角）**，同一时刻最多显示一个标记，优先级 `新增 > 置顶 > 收藏 ★ > 版本不兼容`；优先级低的状态**不再换角位显示，直接不显示**（四角各挂一个标记会显得杂乱）。判定集中在 `core.js` 的 `dockBadgeOf()`（纯函数，带单测），完整状态仍写入方块的 `aria-label`，读屏信息不受影响。标记靠**形状**区分（部分主题里 `--fail` / `--warn` / `--accent` 色相很接近）：`新增 = 文字胶囊（新 / New）`、`置顶 = 实心菱形 ◆`、`收藏 = 金色 ★`、`版本不兼容 = 橙色实心圆点 ●`。
+  - dock 小卡片**只有一个角标位（左上角）**，同一时刻最多显示一个标记，优先级 `新增 > 置顶 > 收藏 ★ > 版本不兼容`；优先级低的状态**不再换角位显示，直接不显示**（四角各挂一个标记会显得杂乱）。判定集中在 `core.js` 的 `dockBadgeOf()`（纯函数，带单测），完整状态仍写入方块的 `aria-label`，读屏信息不受影响。标记靠**形状 / 颜色**区分：`新增 = 红色实心圆点 ●`、`置顶 = 实心菱形 ◆`、`收藏 = 金色 ★`、`版本不兼容 = 橙色实心圆点 ●`（新增与不兼容同为圆点，靠色相区分）。
   - 记录**收藏时间**（悬停提示）；支持检测被收藏批次是否仍存在（缺失标记）与版本是否兼容（**不兼容**标记）：
     `batchId` 在索引里找不到 / 已软删除 → **缺失**；找得到但 `formatVersion` 不在 `compatibleApiVersions` 内（例如升级数据文件版本号之后）→ **不兼容**（虚线 warn 徽章，处理见 `core.js` 的 `favoriteStateOf()`）。**缺失优先于不兼容**：同一个收藏项只会出现一个徽章。
   - 收藏超过 8 项时显示搜索框，可按「包名 / 批次名」简易搜索。
@@ -86,6 +86,7 @@
 - **启动期兜底**：`initApp()` 的任何未预期异常都会移除加载骨架层并**贴底**显示固定提示条（`--warn` 配色，「页面初始化失败，请刷新重试…」），避免用户停留在全屏骨架层（观感等同空白页），也不会遮挡页头；提示条不依赖任何页面容器，DOM 缺元素时同样可见。提示条末尾附「或 回到主页」超链接，指向 web 根（`origin + pathname`，不含查询参数与深链接），便于从失效的深链接回到干净主页。
 - **主列表分页在选项卡切换间保留**：字段比较用 `state.page`、消息类（警告 / 错误 / 未比较 / 未比较项）用 `state.msgPage`，两者互不干扰，所以切换选项卡（含点当前选项卡）**不再把页码重置为 1**；页码越界由 `computeFieldPage()` / `renderMsgTable()` 调用 `paginateRows()` 自动收敛。会改变数据集的操作仍各自重置页码：切换 item、全局搜索、列 / 特殊值筛选浮层、清除筛选标签与「清除全部」、汇总卡片跳转、字段警告图标的选项卡跳转、每页条数下拉。副作用是 hash 里的 `page=` 在非字段选项卡下也会保留，刷新后可按深链接还原字段比较所在页。
 - **键盘导航**：字段表与消息表行可聚焦（↑/↓ 移动、`Enter` 打开字段详情、`Space` 切换忽略）。
+- **输入 / 配置文件（含额外输入 EX）**：「输入 / 配置文件」面板按渠道列出 `item.channels[].files`：`eo`（来源 CSV）、`ao`（报送 XML/CSV）、**`other`（额外输入文件，标签 `EX`）**、`excel`（映射配置，标签 `XL`）。`other` 与 `eo` / `ao` 同形（`[{ name, path }]`，可省略；也接受文件名数组），渲染 / 打开链接 / 悬停提示与 EO / AO 完全一致；`lib/validate.js` 会校验 `files` 的形状（`other` 非数组、条目缺 `name` 都会报错）。样例生成器（JS `lib/sample-data.js` 与 Java `ValidationJsonGenerator`）默认写一个 `data/other/*.csv`。`files`（含 `other`）是 **item 级**数据：多文件模式下随 `data/items/*.json` 一起写、**不进清单**，`hydrateItem()` / `hoistRegistries()` / 拆分与合并工具都原样保留（`verify-multi-mode.mjs` 与 `test/files-other.test.js` 均有断言）。
 - **声明表（定义与引用分离，三张表）**：报告渠道、来源渠道、ctxKey 与字段定义的**定义只在顶层写一次** ——
   `$root.reportChannelDefs = [{id,name,desc,format,fieldDefs}]`、`$root.sourceChannelDefs = [{id,name,format}]`、`$root.usedCtxKeyDefs = {<ctxKey>:{id,type,rules,def}}`（与 `items` / `skippedItems` 同级）；
   item 里只保留 id 引用（`item.channels[] = {id, enabled?, files, sources:[{id, fields}]}`、`item.ctxDtls[<ctxKey>] = {hits}`），不再重复写定义。

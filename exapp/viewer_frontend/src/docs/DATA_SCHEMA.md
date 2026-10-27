@@ -428,7 +428,8 @@ item 里只保留**命中摘要**（ctxKey 就是引用，`id` / `type` / `rules
 | `format` | 声明 | 字符串 | `xml` 或 `csv` |
 | `fieldDefs` | 声明 | 数组 | 该渠道的字段定义声明表（见 `fieldDefs`） |
 | `enabled` | item | 布尔（可省略） | 是否参与本次比较；**省略 = 启用**（唯一的启用标记） |
-| `files` | item | 对象 | 输入/配置文件（`eo` / `ao` / `excel`）；文件名含 tradeId，故逐 item |
+| `files` | item | 对象 | 输入/配置文件（`eo` / `ao` / `other` / `excel`）；文件名含 tradeId，故逐 item |
+| `files.other` | item | 数组（可省略） | **额外输入文件**：`[{ name, path }]`（与 `eo` / `ao` 同形；也接受文件名数组）；查看器「输入 / 配置文件」以 **EX** 标签展示，交互同 EO / AO。多文件模式下随 `data/items/*.json` 写入（不进清单），拆分 / 合并 / hydrate 均原样保留 |
 | `sources` | item | 数组 | 来源渠道引用 + 比较结果：`{ id, fields }`（`id` 引用 `sourceChannelDefs`） |
 
 > 启用口径只有一处：`item.channels[].enabled`。查看器与服务端的**所有**展开 / 计数 / 统计（字段表、侧栏卡片、统计卡、图表、对比、全局搜索、健康总览）都经 `public/core.js` 的 `enabledChannelsOf` 取渠道集合，
@@ -476,7 +477,7 @@ item 里只保留**命中摘要**（ctxKey 就是引用，`id` / `type` / `rules
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `formatVersion` | integer | **API（数据契约）版本**，决定该批次能否被查看器加载：必须在 `config.json` 的 `compatibleApiVersions` 内（默认 `[4]`）；缺省时扫描器按代码常量 `DEFAULT_API_VERSION`（`4`）填充 |
+| `formatVersion` | integer | **API（数据契约）版本**，决定该批次能否被查看器加载、也是扫描 / 启动校验的版本闸门依据：必须在 `config.json` 的 `compatibleApiVersions` 内（默认 `[4]`，由配置驱动而非代码写死）；缺省时扫描器按代码常量 `DEFAULT_API_VERSION`（`4`）填充 |
 | `deleted` | boolean | 软删除标记。扫描器**不跳过**该批次，而是写入索引并带 `deleted: true`（默认范围不展示，需切到「全部批次(含已删除)」范围） |
 | `favorite` | boolean | 收藏标记（回写元数据，扫描后仍保留） |
 | `tags` | string[] | 自定义批次标签。清洗规则（`lib/scanner.js` 的 `sanitizeTags`）：去空白、去重、单个最长 24 字符、最多 12 个；空数组等同未定义 |

@@ -77,6 +77,7 @@ public final class MinimalDataGenerator {
         ChannelFiles files = ChannelFiles.builder()
                 .eo(List.of())
                 .ao(List.of())
+                .other(List.of())
                 .excel(ExcelFile.builder().file("mapping.xlsx").sheet("HKTR").build())
                 .build();
 

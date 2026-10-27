@@ -80,15 +80,20 @@ function readDataInfo(dataPath) {
 
 /**
  * 扫描批次目录（异步，支持 onProgress 回调）。
- * @param {{basedir: string, out: string, ignore?: string[], env?: string|null, onProgress?: function}} opts
+ * @param {{basedir: string, out: string, ignore?: string[], env?: string|null,
+ *   compatibleApiVersions?: number[], onProgress?: function}} opts
  *   批次元数据未声明 {@code formatVersion} 时，索引里写入 {@code DEFAULT_API_VERSION}（代码常量，
- *   不从 config.json 读——配置只决定查看器「允许加载哪些版本」）。
+ *   不从 config.json 读——配置只决定「允许加载 / 校验哪些版本」）。
+ *   ``opts.compatibleApiVersions`` 是可兼容版本的**校验口径**（通常由 server.js 传 CFG.compatibleApiVersions，
+ *   即 config.json 的顶层 ``compatibleApiVersions``）；未传时由 validate.js 自行从配置文件解析。
  * @returns {Promise<{ok: boolean, error?: string, count: number, batches: object[], out: string, skipped: number}>}
  */
 export async function scan(opts) {
   const basedir = opts.basedir;
   const out = opts.out;
   const apiVersion = DEFAULT_API_VERSION;
+  // 版本闸门的可兼容版本：配置驱动（未给则交给 validate.js 读配置，不回退到写死的版本号）。
+  const compatibleApiVersions = opts.compatibleApiVersions;
   const onProgress = typeof opts.onProgress === 'function' ? opts.onProgress : null;
   const ignoreRes = (opts.ignore || []).map(function (s) {
     try {
@@ -154,14 +159,15 @@ export async function scan(opts) {
     let validationErrors = null;
     if (hasData) {
         dataInfo = readDataInfo(dataPath);
-      // 版本闸门：不兼容版本只报一条错误，不再逐字段校验（版本取自本批次的 batch-meta.json）。
-      const v = validateDataset(readJSON(dataPath), { formatVersion: meta.formatVersion });
+      // 版本闸门：不兼容版本只报一条错误，不再逐字段校验（版本取自本批次的 batch-meta.json，
+      // 可兼容版本取自配置项 compatibleApiVersions）。
+      const v = validateDataset(readJSON(dataPath), { formatVersion: meta.formatVersion, compatibleApiVersions: compatibleApiVersions });
       if (!v.ok) validationErrors = v.errors;
     } else if (typeof meta.dataUrl === 'string' && meta.dataUrl && !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(meta.dataUrl)) {
       const refPath = path.isAbsolute(meta.dataUrl) ? meta.dataUrl : path.resolve(dir, meta.dataUrl);
       if (fs.existsSync(refPath)) {
         dataInfo = readDataInfo(refPath);
-        const v = validateDataset(readJSON(refPath), { formatVersion: meta.formatVersion });
+        const v = validateDataset(readJSON(refPath), { formatVersion: meta.formatVersion, compatibleApiVersions: compatibleApiVersions });
         if (!v.ok) validationErrors = v.errors;
       }
     }

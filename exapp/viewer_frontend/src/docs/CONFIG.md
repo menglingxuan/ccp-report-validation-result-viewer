@@ -58,8 +58,10 @@ REPORT_VIEWER_CONFIG=prod node server.js
 - 批次元数据 `batch-meta.json` 的 `formatVersion` 不在列表内 → 列表中显示**红色版本徽章**（「版本不兼容」），加载前需二次确认（强制加载）；未声明 `formatVersion` 的批次按当前版本（`4`）处理。
 - 缺省 / 非法（非数组、全是非法项）→ 回退 `DEFAULT_COMPATIBLE_API_VERSIONS = [4]`。
 - **v4 不兼容 v2 / v3**：`item.ctxDefs` 已改为 `item.ctxDtls`（去掉冗余 `id`），规则对象 `ctx` / `ctxs` 已改名 `ctxRaw` / `metaCtxs`；需要同时读两种形态时请把它们并列写进白名单（如 `[3, 4]`），但 v3 数据里的旧键名会被 `lib/validate.js` 报错。
-- **写入方不读这个配置**：扫描器缺省值、JS / Java 生成器写入的 `formatVersion` 都取代码常量（`DEFAULT_API_VERSION` / Java `ValidationJsonGenerator.API_VERSION`）；配置只决定「查看器允许加载哪些版本」。
-- 服务端 `/status` 返回的 `config.compatibleApiVersions` 与这里一致。
+- **写入方不读这个配置**：扫描器缺省值、JS / Java 生成器写入的 `formatVersion` 都取代码常量（`DEFAULT_API_VERSION` / Java `ValidationJsonGenerator.API_VERSION`）；配置只决定「允许加载 / 校验哪些版本」。
+- **校验器读这个配置**：扫描（`lib/scanner.js`）、启动时主数据校验（`server.js`）、`node lib/validate.js <file>` 与 `validateFile()` 的版本闸门，可兼容版本均取自本配置项（经 `normalizeCompatibleApiVersions` 归一，与查看器完全同一口径）；只有“显式传入的 `opts.compatibleApiVersions` → 配置项 → `DEFAULT_COMPATIBLE_API_VERSIONS`”全部缺失时才回退代码常量。因此把 `[4]` 改成 `[3, 4]` 时，查看器、扫描与校验器会同时放行 v3。
+- 改了本配置需要**重启**服务（与其它配置项一致；`/config.json` 每次请求重读，但校验器缓存的是首次解析结果）。
+- 服务端 `/status` 返回的 `config.compatibleApiVersions` 与这里一致（已是归一形态）。
 
 ---
 

@@ -28,7 +28,7 @@ public class ValidationItem {
     /** Original platform trade deal id ({@code platformOriTradeDealId}). */
     private String platformOriTradeDealId;
     /** Per-item hit summaries ({@code item.ctxDtls}): {@code <ctxKey> -> { hits }}. */
-    private Map<String, CtxDef> ctxDtls;
+    private Map<String, CtxDetail> ctxDtls;
     /**
      * Channels taking part in the comparison: a channel is enabled unless it carries
      * {@code enabled = false} ({@code Channel#getEnabled()}). The former

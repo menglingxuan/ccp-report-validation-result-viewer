@@ -11,7 +11,7 @@ import com.otcc.viewer.model.Channel;
 import com.otcc.viewer.model.ChannelFiles;
 import com.otcc.viewer.model.CmpSide;
 import com.otcc.viewer.model.ConversionRule;
-import com.otcc.viewer.model.CtxDef;
+import com.otcc.viewer.model.CtxDetail;
 import com.otcc.viewer.model.CtxKeyDef;
 import com.otcc.viewer.model.DescriptionEx;
 import com.otcc.viewer.model.ExcelFile;
@@ -338,9 +338,9 @@ public final class ValidationJsonGenerator {
         // dataset.usedCtxKeyDefs；ctxKey 本身就是键，不再重复写 id）。
         for (ValidationItem item : dataset.getItems()) {
             if (item.getCtxDtls() != null) {
-                Map<String, CtxDef> slim = new LinkedHashMap<>();
-                for (Map.Entry<String, CtxDef> e : item.getCtxDtls().entrySet()) {
-                    slim.put(e.getKey(), CtxDef.builder()
+                Map<String, CtxDetail> slim = new LinkedHashMap<>();
+                for (Map.Entry<String, CtxDetail> e : item.getCtxDtls().entrySet()) {
+                    slim.put(e.getKey(), CtxDetail.builder()
                             .hits(e.getValue() == null ? null : e.getValue().getHits())
                             .build());
                 }
@@ -416,7 +416,7 @@ public final class ValidationJsonGenerator {
         List<Message> errors = new ArrayList<>();
         List<UncomparedEntry> uncompared = new ArrayList<>();
         List<ChannelBuild> channelBuilds = new ArrayList<>();
-        Map<String, CtxDef> ctxDtls = buildCtxDefs(i);
+        Map<String, CtxDetail> ctxDtls = buildCtxDefs(i);
         Map<String, Integer> ctxIdByKey = ctxIdByKey(buildUsedCtxKeyDefs());
         // Enable flag: written as channels[].enabled (the single source of truth).
         List<String> enabledNames = switch (i % 3) {
@@ -558,9 +558,13 @@ public final class ValidationJsonGenerator {
         List<FileEntry> ao = sourceCount == 1
                 ? List.of(fileEntry(aoNameA, "ao"))
                 : List.of(fileEntry(aoNameA, "ao"), fileEntry(aoNameB, "ao"));
+        // Extra input files (optional, shown as EX in the viewer): same shape as eo / ao.
+        String otherNameA = p + "_ref_" + tradeId + ".csv";
+        List<FileEntry> other = List.of(fileEntry(otherNameA, "other"));
         ChannelFiles files = ChannelFiles.builder()
                 .eo(eo)
                 .ao(ao)
+                .other(other)
                 .excel(ExcelFile.builder().file("mapping.xlsx").sheet(chName).path("data/excel/mapping.xlsx").build())
                 .build();
 
@@ -969,26 +973,26 @@ public final class ValidationJsonGenerator {
      * The definitions themselves (id / type / rules / def) are dataset level and are built once by
      * {@link #buildUsedCtxKeyDefs()} - they are not repeated per item.
      */
-    private static Map<String, CtxDef> buildCtxDefs(int itemIndex) {
+    private static Map<String, CtxDetail> buildCtxDefs(int itemIndex) {
         int seed = itemIndex;
-        Map<String, CtxDef> defs = new LinkedHashMap<>();
+        Map<String, CtxDetail> defs = new LinkedHashMap<>();
         for (String chName : CHANNEL_NAMES) {
             String p = chName.toLowerCase();
-            defs.put(p + ".ctx.default", CtxDef.builder()
+            defs.put(p + ".ctx.default", CtxDetail.builder()
                     .hits("命中 " + (3 + seed % 3) + " 个映射条目（EO 2 / AO 1）").build());
-            defs.put(p + ".ctx.v2", CtxDef.builder()
+            defs.put(p + ".ctx.v2", CtxDetail.builder()
                     .hits("命中 " + (2 + seed % 2) + " 个映射条目（EO 1 / AO 1）").build());
-            defs.put(p + ".ctx.v3", CtxDef.builder()
+            defs.put(p + ".ctx.v3", CtxDetail.builder()
                     .hits("命中 " + (1 + seed % 2) + " 个映射条目（EO 1 / AO 0）").build());
-            defs.put(p + ".ctx.extended.production.region.east.v2024.latest", CtxDef.builder()
+            defs.put(p + ".ctx.extended.production.region.east.v2024.latest", CtxDetail.builder()
                     .hits("命中 " + (4 + seed % 2) + " 个映射条目（EO 2 / AO 2）").build());
-            defs.put(p + ".ctx.conv.default", CtxDef.builder()
+            defs.put(p + ".ctx.conv.default", CtxDetail.builder()
                     .hits("命中 " + (2 + seed % 2) + " 个转换规则（@trim / @toUpper 等）").build());
-            defs.put(p + ".ctx.conv.v2", CtxDef.builder()
+            defs.put(p + ".ctx.conv.v2", CtxDetail.builder()
                     .hits("命中 " + (1 + seed % 2) + " 个转换规则").build());
-            defs.put(p + ".ctx.val.default", CtxDef.builder()
+            defs.put(p + ".ctx.val.default", CtxDetail.builder()
                     .hits("命中 " + (3 + seed % 3) + " 个校验规则（枚举/正则/非空）").build());
-            defs.put(p + ".ctx.val.v2", CtxDef.builder()
+            defs.put(p + ".ctx.val.v2", CtxDetail.builder()
                     .hits("命中 " + (2 + seed % 2) + " 个校验规则").build());
         }
         return defs;

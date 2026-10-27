@@ -1,11 +1,11 @@
 package com.otcc.viewer.model;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
  * Optional {@code descriptionEx} extension content of {@code batch-meta.json}.

@@ -2,12 +2,12 @@ package com.otcc.viewer.model;
 
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
  * One report channel (HKTR / JSFA / CFTC).

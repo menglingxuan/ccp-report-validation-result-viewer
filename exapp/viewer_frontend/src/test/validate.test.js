@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { validateDataset, validateFile } from '../lib/validate.js';
+import { validateDataset, validateFile, configCompatibleApiVersions, setConfigCompatibleApiVersions } from '../lib/validate.js';
 
 test('validateDataset 拒绝非对象顶层', () => {
   assert.equal(validateDataset(null).ok, false);
@@ -57,6 +57,32 @@ test('版本闸门：不兼容版本只报一条错误，不再逐字段校验',
 
   // 调用方可以给自定义白名单（如同时读 v3 / v4）
   assert.equal(validateDataset(oneDataset(), { formatVersion: 3, compatibleApiVersions: [3, 4] }).ok, true);
+});
+
+test('版本闸门：可兼容版本默认取自配置项 compatibleApiVersions（不写死在代码里）', () => {
+  const shipped = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url), 'utf8'));
+  // ① 默认解析：未传 opts 时应读配置文件（仓库自带 config.json 是 [4]）
+  assert.deepEqual(configCompatibleApiVersions(), shipped.compatibleApiVersions.slice().sort((a, b) => a - b),
+    '默认白名单应与 config.json 的 compatibleApiVersions 一致');
+  assert.equal(validateDataset(oneDataset(), { formatVersion: 3 }).versionIncompatible, true);
+
+  // ② 把配置改成 [3, 4]（模拟用户改配置）：v3 数据不再因版本被闸门，错误文案也换成配置里的版本
+  setConfigCompatibleApiVersions([3, 4]);
+  try {
+    assert.deepEqual(configCompatibleApiVersions(), [3, 4]);
+    assert.equal(validateDataset(oneDataset(), { formatVersion: 3 }).ok, true, '配置允许 v3 后应通过版本闸门');
+    const bad = validateDataset(oneDataset(), { formatVersion: 2 });
+    assert.equal(bad.versionIncompatible, true);
+    assert.match(bad.errors[0], /兼容版本为 v3 \/ v4/, '错误文案应回显配置里的白名单：' + bad.errors[0]);
+
+    // ③ 调用方显式传入的白名单优先级最高（server.js 传 CFG.compatibleApiVersions）
+    assert.equal(validateDataset(oneDataset(), { formatVersion: 3, compatibleApiVersions: [4] }).versionIncompatible, true,
+      'opts.compatibleApiVersions 应覆盖配置值');
+  } finally {
+    setConfigCompatibleApiVersions(undefined);   // 恢复：下次重新读配置文件
+  }
+  assert.deepEqual(configCompatibleApiVersions(), shipped.compatibleApiVersions.slice().sort((a, b) => a - b));
+  assert.equal(validateDataset(oneDataset(), { formatVersion: 3 }).versionIncompatible, true, '重置后回到配置值');
 });
 
 test('版本闸门：validateFile 自动读取同事目录的 batch-meta.json 版本', () => {

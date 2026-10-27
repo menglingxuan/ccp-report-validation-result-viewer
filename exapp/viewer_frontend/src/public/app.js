@@ -45,10 +45,9 @@
 
     // dock 方块角标的 HTML（分支键与 core.js 的 dockBadgeOf() 返回值一致）。
     // 角标是纯装饰：aria-hidden + pointer-events: none，状态由方块 aria-label 承载。
-    // 四种形状互不相同（部分主题里 --fail / --warn / --accent 色相接近，不能只靠颜色）：
-    //   新增 = 文字胶囊（新 / New，文案见 i18n 的 bdNewTag）；置顶 = 实心菱形；收藏 = 金色 ★；不兼容 = 橙色实心圆点。
+    //   新增 = 红色实心圆点；置顶 = 实心菱形；收藏 = 金色 ★；不兼容 = 橙色实心圆点。
     function dockBadgeHTML(badge) {
-      if (badge === 'new') return '<span class="bd-new-tag" aria-hidden="true">' + esc(t('bdNewTag')) + '</span>';
+      if (badge === 'new') return '<span class="bd-new-dot" aria-hidden="true"></span>';
       if (badge === 'pin') return '<span class="bd-pin-dot" aria-hidden="true"></span>';
       if (badge === 'fav') return '<span class="bd-fav-star" aria-hidden="true">★</span>';
       if (badge === 'incompat') return '<span class="bd-incompat-dot" aria-hidden="true"></span>';
@@ -3154,11 +3153,13 @@
         const eoRows = ((ch.files && ch.files.eo) || []).map(function (v) { return fileRowHTML('EO', 'ftag-eo', stripColon(t('filesEO')), v); }).join('');
         const aoTip = stripColon(ch.format === 'csv' ? t('filesAOCsv') : t('filesAO'));
         const aoRows = ((ch.files && ch.files.ao) || []).map(function (v) { return fileRowHTML('AO', 'ftag-ao', aoTip, v); }).join('');
+        // 额外输入文件（files.other）：与 EO / AO 同一套展示与交互（可点击打开、同名标签配色区分）。
+        const exRows = ((ch.files && ch.files.other) || []).map(function (v) { return fileRowHTML('EX', 'ftag-ex', stripColon(t('filesOther')), v); }).join('');
         const xl = (ch.files && ch.files.excel) || {};
         const xlRow = fileRowHTML('XL', 'ftag-xl', stripColon(t('filesExcel')), { name: xl.file, path: xl.path }, 'sheet: ' + (xl.sheet || ''));
         return '<div class="file-card">' +
           '<div class="fc-head">' + esc(ch.name) + '</div>' +
-          '<div class="fc-body">' + eoRows + aoRows + xlRow + '</div>' +
+          '<div class="fc-body">' + eoRows + aoRows + exRows + xlRow + '</div>' +
           '</div>';
       }).join('');
       document.getElementById('filesPanel').innerHTML =

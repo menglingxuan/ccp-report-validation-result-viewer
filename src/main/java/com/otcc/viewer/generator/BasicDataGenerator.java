@@ -8,7 +8,7 @@ import com.otcc.viewer.model.Channel;
 import com.otcc.viewer.model.ChannelFiles;
 import com.otcc.viewer.model.CmpSide;
 import com.otcc.viewer.model.ConversionRule;
-import com.otcc.viewer.model.CtxDef;
+import com.otcc.viewer.model.CtxDetail;
 import com.otcc.viewer.model.ExcelFile;
 import com.otcc.viewer.model.ExtraResult;
 import com.otcc.viewer.model.Field;
@@ -97,7 +97,7 @@ public final class BasicDataGenerator {
         String product = "IRS";
         String tradeId = "BASIC-0001";
 
-        Map<String, CtxDef> ctxDtls = buildCtxDefs();
+        Map<String, CtxDetail> ctxDtls = buildCtxDefs();
         Map<String, Integer> ctxIdByKey = new LinkedHashMap<>();
         ValidationJsonGenerator.buildUsedCtxKeyDefs().forEach((k, v) -> ctxIdByKey.put(k, v.getId()));
 
@@ -166,6 +166,7 @@ public final class BasicDataGenerator {
         ChannelFiles files = ChannelFiles.builder()
                 .eo(List.of(FileEntry.builder().name(eoName).path("data/eo/" + eoName).build()))
                 .ao(List.of(FileEntry.builder().name(aoName).path("data/ao/" + aoName).build()))
+                .other(List.of())
                 .excel(ExcelFile.builder().file("mapping.xlsx").sheet(name).path("data/excel/mapping.xlsx").build())
                 .build();
 
@@ -248,13 +249,13 @@ public final class BasicDataGenerator {
         return ctx.get(0) + ":\n-; " + rule;
     }
 
-    private static Map<String, CtxDef> buildCtxDefs() {
-        Map<String, CtxDef> defs = new LinkedHashMap<>();
+    private static Map<String, CtxDetail> buildCtxDefs() {
+        Map<String, CtxDetail> defs = new LinkedHashMap<>();
         for (String name : List.of("HKTR", "JSFA", "CFTC")) {
             String p = name.toLowerCase();
-            defs.put(p + ".ctx.default", CtxDef.builder()
+            defs.put(p + ".ctx.default", CtxDetail.builder()
                     .hits("命中 3 个映射条目（EO 2 / AO 1）").build());
-            defs.put(p + ".ctx.v2", CtxDef.builder()
+            defs.put(p + ".ctx.v2", CtxDetail.builder()
                     .hits("命中 2 个映射条目（EO 1 / AO 1）").build());
         }
         return defs;

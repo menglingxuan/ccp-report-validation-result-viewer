@@ -60,7 +60,7 @@ test('落盘配置：四份 config*.json 只有顶层 compatibleApiVersions（�
   });
 });
 
-test('查看器读配置，扫描器 / 生成器用代码常量（Java 读不了也不需要）', () => {
+test('查看器 / 校验器读配置，扫描器写入值 / 生成器用代码常量', () => {
   const app = read('public/app.js');
   assert.match(app, /normalizeCompatibleApiVersions\(cfg\.compatibleApiVersions\)/,
     'app.js 必须从 cfg.compatibleApiVersions 读取白名单');
@@ -71,10 +71,31 @@ test('查看器读配置，扫描器 / 生成器用代码常量（Java 读不了
 
   const scanner = read('lib/scanner.js');
   assert.match(scanner, /import \{ DEFAULT_API_VERSION \} from '\.\.\/public\/core\.js'/, 'scanner.js 应引用代码常量');
-  assert.match(scanner, /const apiVersion = DEFAULT_API_VERSION;/, '扫描器缺省版本必须用代码常量，不从配置读');
+  assert.match(scanner, /const apiVersion = DEFAULT_API_VERSION;/, '扫描器写入索引的缺省版本必须用代码常量，不从配置读');
+  // 但**校验口径**（可兼容版本）必须由配置驱动：扫描器把调用方给的 compatibleApiVersions 透传给校验器。
+  assert.match(scanner, /compatibleApiVersions: compatibleApiVersions/, '扫描器应把 compatibleApiVersions 透传给 validateDataset');
+  assert.equal(/compatibleApiVersions: \[/.test(scanner), false, '扫描器不得写死可兼容版本数组');
+
+  // 校验器：默认从配置文件解析白名单，代码里只保留常量兑底。
+  const validator = read('lib/validate.js');
+  assert.match(validator, /import \{ resolveConfigFile \} from '\.\/config\.js'/, '校验器应从配置解析版本白名单');
+  assert.match(validator, /normalizeCompatibleApiVersions\(\s*o\.compatibleApiVersions !== undefined \? o\.compatibleApiVersions : configCompatibleApiVersions\(\)\)/,
+    '版本闸门应优先用显式传入的白名单，否则读配置');
+  assert.equal(/const list = \[4\]/.test(validator), false, '校验器不得写死版本数组');
+
+  // 配置加载器：与前端同一个归一函数，避免「配置写 [3,4] 但校验器只放行 [4]」。
+  const cfgLoader = read('lib/config.js');
+  assert.match(cfgLoader, /cfg\.compatibleApiVersions = normalizeCompatibleApiVersions\(cfg\.compatibleApiVersions\)/,
+    'loadConfig 应归一 compatibleApiVersions');
 
   const server = read('server.js');
   assert.match(server, /compatibleApiVersions: CFG\.compatibleApiVersions/, '/status 应回显 compatibleApiVersions');
+  assert.match(server, /validateFile\(abs, \{ compatibleApiVersions: CFG\.compatibleApiVersions \}\)/,
+    '启动校验必须用配置白名单');
+  const scanCalls = server.split('await scan({').slice(1).map((rest) => rest.slice(0, 600));
+  assert.ok(scanCalls.length >= 2, '应至少有两处 scan 调用');
+  scanCalls.forEach((block) => assert.match(block, /compatibleApiVersions: CFG\.compatibleApiVersions/,
+    '每次扫描都应传入配置白名单：' + block.slice(0, 120)));
   assert.equal(/configVersion/.test(server), false, 'server 不应再引用 configVersion');
 
   ['tools/generate-sample-data.js', 'tools/verify-multi-mode.mjs'].forEach((rel) => {

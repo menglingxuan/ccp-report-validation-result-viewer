@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { normalizeCompatibleApiVersions } from '../public/core.js';
 
 const LIB_DIR = path.dirname(fileURLToPath(import.meta.url));
 export const SRC_ROOT = path.dirname(LIB_DIR);
@@ -108,6 +109,9 @@ export function loadConfig(cli) {
   }
 
   const cfg = mergeDeep(DEFAULTS, fileCfg);
+  // 可加载的 API 版本白名单：与前端 / 校验器共用同一个归一函数（去重升序 + 自动补上当前版本），
+  // 保证「配置里写什么」与「扫描 / 启动校验 / 查看器实际放行什么」完全一致。
+  cfg.compatibleApiVersions = normalizeCompatibleApiVersions(cfg.compatibleApiVersions);
   const env = process.env;
 
   // 租户模式：默认非租户（共享 web 根数据）；--tenant[=xxx] / REPORT_VIEWER_TENANT 开启，--no-tenant 强制关闭。

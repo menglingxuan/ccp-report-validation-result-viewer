@@ -1,12 +1,13 @@
 package com.otcc.viewer.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * {@code deepseek-validation-config.json} model, mirroring {@code config.schema.json}.

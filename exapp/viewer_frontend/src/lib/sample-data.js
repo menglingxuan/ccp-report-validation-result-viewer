@@ -538,6 +538,7 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
       const eoNameB = ch.name.toLowerCase() + '_srcB_' + tradeId + '.csv';
       const aoNameA = ch.name.toUpperCase() + '_' + tradeId + '_001' + aoExt;
       const aoNameB = ch.name.toUpperCase() + '_' + tradeId + '_002' + aoExt;
+      const otherNameA = ch.name.toLowerCase() + '_ref_' + tradeId + '.csv';
       const files = {
         eo: sourceCount === 1
           ? [{ name: eoNameA, path: 'data/eo/' + eoNameA }]
@@ -545,6 +546,8 @@ import { CHANNEL_ID_PRESET, SOURCE_ID_PRESET, itemStatsPure, hoistRegistries } f
         ao: sourceCount === 1
           ? [{ name: aoNameA, path: 'data/ao/' + aoNameA }]
           : [{ name: aoNameA, path: 'data/ao/' + aoNameA }, { name: aoNameB, path: 'data/ao/' + aoNameB }],
+        // 额外输入文件（可选）：查看器「输入 / 配置文件」里以 EX 标签展示，交互同 EO / AO。
+        other: [{ name: otherNameA, path: 'data/other/' + otherNameA }],
         excel: { file: 'mapping.xlsx', sheet: ch.name, path: 'data/excel/mapping.xlsx' },
       };
 

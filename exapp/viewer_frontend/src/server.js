@@ -273,6 +273,8 @@ async function handleScan(res) {
       out: CFG.scan.outAbs,
       ignore: CFG.scan.ignore,
       env: CFG.scan.env,
+      // 可兼容版本白名单来自 config.json（与前端 /status 回显同一份）。
+      compatibleApiVersions: CFG.compatibleApiVersions,
       onProgress: function (p) {
         STATE.progress = { phase: 'scanning', dirCount: p.dirCount, batchCount: p.batchCount, skipped: p.skipped };
         broadcastProgress();
@@ -441,6 +443,7 @@ async function rescanIndex() {
       out: CFG.scan.outAbs,
       ignore: CFG.scan.ignore,
       env: CFG.scan.env,
+      compatibleApiVersions: CFG.compatibleApiVersions,
     });
     // 元数据写回后索引是最新的：立刻对账收藏夹（favorite=true 但树里没有 → 补进 archived）。
     reconcileFavoritesFile('meta write-back');
@@ -748,7 +751,7 @@ const server = http.createServer(function (req, res) {
 ['report-validation-data.json'].forEach(function (f) {
   const abs = path.join(CFG.server.webRootAbs, f);
   if (fs.existsSync(abs)) {
-    const r = validateFile(abs);
+    const r = validateFile(abs, { compatibleApiVersions: CFG.compatibleApiVersions });
     if (!r.ok) {
       console.warn('[report-viewer] Data validation failed: ' + f);
       r.errors.forEach(function (e) { console.warn('   - ' + e); });

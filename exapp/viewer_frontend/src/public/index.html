@@ -155,10 +155,10 @@
     .bd-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
     /* 角标统一挂在槽位左上角，且同一时刻最多只显示一个：
          新增 > 置顶 > 收藏 ★ > 版本不兼容（优先级见 app.js / core.js 的 dockBadgeOf）。
-       同一角位只有一个时，靠**形状**而不是颜色区分（部分主题的 --fail / --warn / --accent
-       色相很接近）：新增 = 文字胶囊；置顶 = 实心菱形 ◆；收藏 = 金色 ★；不兼容 = 橙色实心圆点 ●。
+       形状：新增 = 红色实心圆点 ●；置顶 = 实心菱形 ◆；收藏 = 金色 ★；不兼容 = 橙色实心圆点 ●
+       （新增与不兼容同为圆点，靠 --fail / --warn 的色相区分）。
        pointer-events: none 让点击 / 悬停穿透到方块。 */
-    .bd-fav-star, .bd-pin-dot, .bd-incompat-dot, .bd-new-tag {
+    .bd-fav-star, .bd-pin-dot, .bd-incompat-dot, .bd-new-dot {
       position: absolute; top: -4px; left: -4px; pointer-events: none;
     }
     .bd-fav-star {
@@ -167,15 +167,10 @@
       /* 同色系描边：压在方块上（尤其 active 的实心色）也能看出完整星形轮廓。 */
       text-shadow: 0 0 2px var(--card), 0 0 2px var(--card);
     }
-    /* 文字胶囊 = 新增批次（文案见 i18n 的 bdNewTag：中文一个字「新」、英文「New」）。
-       文字色用 --fail-bg：浅色主题下是浅粉压深红、深色主题下是深栗压亮粉，两套都够对比。
-       尺寸尽量小（12px 高、左右各 2px 内边距，单字约 15px 宽），尽量不遮住方块上的日号。 */
-    .bd-new-tag {
-      top: -5px; left: -5px;
-      display: block; height: 12px; line-height: 10px; padding: 0 2px;
-      font-size: 9px; font-weight: 700; letter-spacing: 0; white-space: nowrap;
-      color: var(--fail-bg); background: var(--fail);
-      border: 1px solid var(--card); border-radius: 5px;
+    /* 红色实心圆点 = 新增批次 */
+    .bd-new-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%; background: var(--fail); border: 2px solid var(--card);
     }
     /* 实心菱形 = 置顶（8×8 旋转 45° 后外接框约 11px，与圆点的视觉大小和中心对齐） */
     .bd-pin-dot {
@@ -747,6 +742,8 @@
     .ftag { flex: 0 0 auto; min-width: 26px; text-align: center; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; font-family: var(--mono); }
     .ftag-eo { background: var(--pass-bg); color: var(--pass); }
     .ftag-ao { background: var(--accent-bg); color: var(--accent); }
+    /* EX = 额外输入文件（files.other）：与 EO / AO 同款标签，用未占用的 code 色区分 */
+    .ftag-ex { background: var(--chip-code-bg); color: var(--chip-code-fg); }
     .ftag-xl { background: var(--chip-product-bg); color: var(--chip-product-fg); }
     .file-row .file-link, .file-row .file-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .file-row .file-meta { flex: 0 0 auto; color: var(--muted); font-size: 11px; font-family: var(--mono); }

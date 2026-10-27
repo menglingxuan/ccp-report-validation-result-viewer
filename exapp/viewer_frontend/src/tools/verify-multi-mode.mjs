@@ -221,6 +221,7 @@ async function main() {
     // 每个 item 文件都按「相对清单文件所在目录」解析（与 app.js resolveUrl(DATA_FILE_URL, item.file) 一致）
     const badItems = [];
     const withDefinitions = [];
+    const missingOther = [];
     for (const it of mItems) {
       const r = await getJSON(new URL(it.file, manifestUrl).href);
       if (r.status !== 200 || !r.json || r.json.tradeId !== it.tradeId
@@ -231,6 +232,12 @@ async function main() {
         r.json.channels.forEach((ch) => {
           if ('name' in ch || 'desc' in ch || 'format' in ch || 'fields' in ch) withDefinitions.push(it.tradeId + '/' + ch.id);
           (ch.sources || []).forEach((s) => { if ('name' in s) withDefinitions.push(it.tradeId + '/' + ch.id + '/' + s.id); });
+          // 额外输入文件（files.other）属于 item 级数据：多文件模式下必须随 item 文件一起保留。
+          const other = ch.files && ch.files.other;
+          if (!Array.isArray(other) || other.length === 0
+              || typeof other[0].name !== 'string' || typeof other[0].path !== 'string') {
+            missingOther.push(it.tradeId + '/' + ch.id);
+          }
         });
         Object.keys(r.json.ctxDtls || {}).forEach((k) => {
           const d = r.json.ctxDtls[k] || {};
@@ -240,6 +247,7 @@ async function main() {
     }
     check('全部 ' + mItems.length + ' 个 item 文件可懒加载（含 channels/ctxDtls）', badItems.length === 0, badItems.join(','));
     check('item 文件只有 id 引用（定义在清单的声明表里）', withDefinitions.length === 0, withDefinitions.slice(0, 5).join(','));
+    check('item 文件保留 files.other（额外输入文件随 item 走，不进清单）', missingOther.length === 0, missingOther.slice(0, 5).join(','));
 
     // 默认数据源：不再有独立的 -default / -init 数据文件，默认模板即主数据文件。
     check('config.json 不再暴露 urls.defaultData / urls.initData',

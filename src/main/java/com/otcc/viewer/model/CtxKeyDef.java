@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
  *
  * <p>{@code rules} holds rule names, not numbers: {@code fmd} (field mapping),
  * {@code cvt} (value conversion), {@code vdt} (final value validation). A single ctxKey can take
- * part in several rules. The per-item hit summary lives in {@link CtxDef} instead.</p>
+ * part in several rules. The per-item hit summary lives in {@link CtxDetail} instead.</p>
  */
 @Data
 @Builder

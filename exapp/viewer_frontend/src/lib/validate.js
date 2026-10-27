@@ -6,7 +6,41 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CTX_RULES, DEFAULT_COMPATIBLE_API_VERSIONS, apiVersionSupported } from '../public/core.js';
+import { resolveConfigFile } from './config.js';
+import { CTX_RULES, DEFAULT_COMPATIBLE_API_VERSIONS, normalizeCompatibleApiVersions, apiVersionSupported } from '../public/core.js';
+
+// 可加载的 API（数据契约）版本白名单：**默认读配置文件**（`config.json`，或 `REPORT_VIEWER_CONFIG=dev|test|prod`
+// 对应的 `config-<env>.json` 里的顶层 `compatibleApiVersions`），与查看器 / 扫描器 / 启动校验共用同一口径；
+// 配置文件缺失或非法时才回退 core.js 的 `DEFAULT_COMPATIBLE_API_VERSIONS`。
+// 归一规则与前端完全一致（去重升序 + 自动补上 ``DEFAULT_API_VERSION``，见 core.js normalizeCompatibleApiVersions），
+// 所以「配置里写 [3, 4]」在查看器与校验器两侧得到同一个集合。
+let CONFIG_VERSIONS;   // undefined = 尚未解析；null = 解析失败（回退默认值）
+
+export function configCompatibleApiVersions() {
+  if (CONFIG_VERSIONS === undefined) {
+    CONFIG_VERSIONS = null;
+    try {
+      let raw = fs.readFileSync(resolveConfigFile(), 'utf8');
+      if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1);   // 容忍 UTF-8 BOM
+      const cfg = JSON.parse(raw) || {};
+      if (cfg.compatibleApiVersions !== undefined && !Array.isArray(cfg.compatibleApiVersions)) {
+        console.warn('[validate] config.compatibleApiVersions 应为整数数组，已回退默认值');
+      } else {
+        CONFIG_VERSIONS = normalizeCompatibleApiVersions(cfg.compatibleApiVersions);
+      }
+    } catch (e) {
+      CONFIG_VERSIONS = null;   // 配置缺失 / 非法：回退默认值
+    }
+  }
+  return CONFIG_VERSIONS || DEFAULT_COMPATIBLE_API_VERSIONS;
+}
+
+// 覆盖 / 重置缓存（测试与「改了配置不重启」场景用）：
+//   传数组 = 直接用这份白名单；传 null = 强制回退默认值；传 undefined = 下次重新读配置文件。
+export function setConfigCompatibleApiVersions(raw) {
+  if (raw === undefined) { CONFIG_VERSIONS = undefined; return; }
+  CONFIG_VERSIONS = raw === null ? null : normalizeCompatibleApiVersions(raw);
+}
 
 // 消息段（warnings / errors / uncompared）的渠道 / 来源渠道引用：**只写名称**。
 // 原始可读性是这些段的首要目标（条目少、人工排查时直接看名字），因此不带 id；
@@ -123,16 +157,23 @@ function validateLogEntries(list, label, errors, opts) {
 //   1. `opts.formatVersion`（调用方显式给：扫描器从 batch-meta.json 读，validateFile 自动探测同事目录）
 //   2. `json.formatVersion`（数据文件自带；当前生成器不写，为将来预留）
 //   3. 都没有 → 视为当前版本（兼容），行为与改动前一致
+//
+// 版本白名单（可兼容版本）来源优先级：
+//   1. `opts.compatibleApiVersions`（server.js 等调用方显式传入，通常是已加载的 CFG.compatibleApiVersions）
+//   2. 配置文件顶层的 `compatibleApiVersions`（configCompatibleApiVersions()，与查看器同一口径）
+//   3. 配置缺失 / 非法 → `DEFAULT_COMPATIBLE_API_VERSIONS`
 function versionGateError(json, opts) {
   const o = opts || {};
   const declared = o.formatVersion !== undefined && o.formatVersion !== null
     ? o.formatVersion
     : json.formatVersion;
   if (declared === undefined || declared === null || declared === '') return null;
-  const list = o.compatibleApiVersions !== undefined ? o.compatibleApiVersions : DEFAULT_COMPATIBLE_API_VERSIONS;
+  // 可兼容版本一律经 normalizeCompatibleApiVersions 归一（去重升序 + 补上当前版本），
+  // 不在代码里写死具体版本号。
+  const list = normalizeCompatibleApiVersions(
+    o.compatibleApiVersions !== undefined ? o.compatibleApiVersions : configCompatibleApiVersions());
   if (apiVersionSupported(declared, list)) return null;
-  const allowed = (Array.isArray(list) && list.length ? list : DEFAULT_COMPATIBLE_API_VERSIONS)
-    .map(function (v) { return 'v' + v; }).join(' / ');
+  const allowed = list.map(function (v) { return 'v' + v; }).join(' / ');
   return '数据文件版本不兼容：formatVersion=' + declared + '，兼容版本为 ' + allowed +
     ' → 已跳过字段级校验';
 }
@@ -425,6 +466,38 @@ export function validateDataset(json, opts) {
       // 字段定义注册表已迁移到顶层（reportChannelDefs[].fieldDefs）：item 里出现即报错。
       if (ch.fields !== undefined) {
         errors.push(clabel + ' fields 已迁移到 reportChannelDefs[].fieldDefs（item 里只引用字段 id）');
+      }
+      // 输入 / 配置文件（可选）：eo / ao / other 是文件条目数组（{ name, path } 对象或文件名字符串），
+      // excel 是映射配置 { file, sheet?, path? }。`other` = 额外输入文件（查看器「输入 / 配置文件」里以 EX 展示）。
+      if (ch.files !== undefined && ch.files !== null) {
+        if (typeof ch.files !== 'object' || Array.isArray(ch.files)) {
+          errors.push(clabel + ' files 必须是对象（{ eo, ao, other, excel }）');
+        } else {
+          ['eo', 'ao', 'other'].forEach(function (k) {
+            const list = ch.files[k];
+            if (list === undefined || list === null) return;
+            if (!Array.isArray(list)) { errors.push(clabel + '.files.' + k + ' 必须是数组'); return; }
+            list.forEach(function (f, fi) {
+              const flabel = clabel + '.files.' + k + '[' + fi + ']';
+              if (typeof f === 'string') {
+                if (!f.trim()) errors.push(flabel + ' 文件名不能为空');
+                return;
+              }
+              if (!f || typeof f !== 'object' || Array.isArray(f)) {
+                errors.push(flabel + ' 必须是 { name, path } 对象或文件名字符串');
+                return;
+              }
+              if (typeof f.name !== 'string' || !f.name.trim()) errors.push(flabel + ' 缺少 name（文件名）');
+              if (f.path !== undefined && f.path !== null && typeof f.path !== 'string') {
+                errors.push(flabel + ' path 必须是字符串');
+              }
+            });
+          });
+          if (ch.files.excel !== undefined && ch.files.excel !== null
+              && (typeof ch.files.excel !== 'object' || Array.isArray(ch.files.excel))) {
+            errors.push(clabel + '.files.excel 必须是对象（{ file, sheet, path }）');
+          }
+        }
       }
       if (!Array.isArray(ch.sources)) errors.push(clabel + ' 缺少 sources 数组');
       if (Array.isArray(ch.sources)) {

@@ -1,10 +1,11 @@
 package com.otcc.viewer.model;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
  * One item-level log entry ({@code item.logs[]}), object form:

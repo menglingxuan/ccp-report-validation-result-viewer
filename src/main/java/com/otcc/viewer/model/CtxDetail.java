@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CtxDef {
+public class CtxDetail {
     /** Item specific hit summary. */
     private String hits;
 }
