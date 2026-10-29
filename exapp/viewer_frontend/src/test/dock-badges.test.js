@@ -59,15 +59,51 @@ test('dock 方块：角标是装饰（aria-hidden，无 title），状态进方�
   // pointer-events: none 时 title 永远不会弹，属于死属性（.bd-empty 之类非角标元素不受影响）。
   assert.equal(/class="bd-(fav-star|pin-dot|incompat-dot|new-dot)" title=/.test(APP), false,
     '角标不应再带 title（pointer-events: none 时不会显示）');
-  // 状态（收藏 / 置顶 / 版本不兼容 / 新批次）改由 aria-label 承载。
-  assert.match(dock, /states\.push\(t\('bdFavAria'\)\)/, '收藏状态应进 aria-label');
-  assert.match(dock, /states\.push\(t\('pinTitle'\)\)/, '置顶状态应进 aria-label');
-  assert.match(dock, /states\.push\(t\('batchIncompat'\)\)/, '版本不兼容状态应进 aria-label');
-  assert.match(dock, /states\.push\(t\('batchNew'\)\)/, '新批次状态应进 aria-label');
+  // 状态（新批次 / 置顶 / 收藏 / 版本不兼容）改由 aria-label 承载，且**顺序与视觉优先级一致**
+  // （新增 > 置顶 > 收藏 > 不兼容），这样读屏念出的第一项就是角标上那一个。
+  const order = ['batchNew', 'pinTitle', 'bdFavAria', 'batchIncompat'];
+  const idx = order.map(function (k) { return dock.indexOf("states.push(t('" + k + "'))"); });
+  idx.forEach(function (i, n) { assert.ok(i >= 0, 'states 应包含 ' + order[n]); });
+  assert.deepEqual(idx.slice().sort(function (a, b) { return a - b; }), idx,
+    'aria-label 状态顺序应与视觉优先级一致（新增 > 置顶 > 收藏 > 不兼容）');
   assert.match(dock, /aria-label="' \+ esc\(label\) \+ '"/, 'aria-label 应使用拼好的 label（名称 · 时间 · 状态…）');
 });
 
-test('dock 方块角标：定位基准是槽位，且 pointer-events 穿透到方块', () => {
+test('dock 角标：状态机取值 ↔ 渲染分支 ↔ 样式类三方一一对应（不会静默漏渲染）', () => {
+  // ① 枚举四个布尔的全部组合，收集 dockBadgeOf() 可能返回的取值
+  const values = new Set();
+  [false, true].forEach(function (fresh) {
+    [false, true].forEach(function (pinned) {
+      [false, true].forEach(function (fav) {
+        [false, true].forEach(function (compatible) {
+          values.add(dockBadgeOf({ fresh: fresh, pinned: pinned, fav: fav, compatible: compatible }));
+        });
+      });
+    });
+  });
+  const expected = [...values].filter(Boolean).sort();
+  assert.deepEqual(expected, ['fav', 'incompat', 'new', 'pin'], '状态机取值集合发生变化：需同步更新 dockBadgeHTML 与样式');
+
+  // ② dockBadgeHTML() 的分支集合必须与之完全相等（少了分支 → 静默不显示，多了分支 → 死代码）
+  const badgeFn = bodyOf('function dockBadgeHTML(', 900);
+  const branches = [...badgeFn.matchAll(/badge === '([a-z]+)'/g)].map(function (m) { return m[1]; }).sort();
+  assert.deepEqual(branches, expected, 'dockBadgeOf 的每个非空取值都必须在 dockBadgeHTML 里有分支（反之亦然）');
+
+  // ③ 每个分支用的类名都要有对应样式规则（否则渲染出来是个没样式的空 span）
+  const classByBadge = {};
+  badgeFn.split("badge === '").slice(1).forEach(function (chunk) {
+    const name = chunk.slice(0, chunk.indexOf("'"));
+    const cls = chunk.match(/class="([\w-]+)"/);
+    if (name && cls) classByBadge[name] = cls[1];
+  });
+  assert.deepEqual(Object.keys(classByBadge).sort(), expected, '每个分支都应输出带类名的 span');
+  expected.forEach(function (badge) {
+    const cls = classByBadge[badge];
+    assert.match(HTML, new RegExp('\\.' + cls + '\\s*\\{'), badge + ' 分支的类名 ' + cls + ' 应有对应样式');
+  });
+});
+
+test('dock 方块角标：定位只在基础规则里写一处，各形状只管自己的尺寸', () => {
   assert.match(HTML, /\.bd-slot\s*\{[^}]*position:\s*relative[^}]*\}/,
     '.bd-slot 需要 position: relative 作为角标定位基准');
   const baseRe = /\.bd-fav-star,\s*\.bd-pin-dot,\s*\.bd-incompat-dot,\s*\.bd-new-dot\s*\{([^}]*)\}/;
@@ -75,15 +111,22 @@ test('dock 方块角标：定位基准是槽位，且 pointer-events 穿透到�
   const base = HTML.match(baseRe)[1];
   assert.match(base, /position:\s*absolute;/, '角标应相对 .bd-slot 绝对定位');
   assert.match(base, /pointer-events:\s*none;/, '点击 / 悬停应穿透到方块');
-  assert.match(base, /top:\s*-4px;/, '所有角标统一贴左上角（top: -4px）');
-  assert.match(base, /left:\s*-4px;/, '所有角标统一贴左上角（left: -4px）');
-  // 单角位：任何角标规则都不应再用 right / bottom（多角位会让方块四周挂满标记）。
+  // 单一锚点：贴槽位左上角 + translate 半个身位 → 不管尺寸多大都正好压在角上（不再逐形状写 top/left）
+  assert.match(base, /top:\s*0;/, '锚点应是槽位左上角（top: 0）');
+  assert.match(base, /left:\s*0;/, '锚点应是槽位左上角（left: 0）');
+  assert.match(base, /translate:\s*-50%\s+-50%/, '应用 translate 把角标自身居中到角上（尺寸无关）');
+  // 单角位 + 单一偏移源：各形状规则不得再写 top / left / right / bottom
+  //（正则从行首锚定，否则会命中 `.bd-fav-star, … .bd-new-dot {` 这条基础规则）
   ['fav-star', 'pin-dot', 'incompat-dot', 'new-dot'].forEach(function (name) {
-    const re = new RegExp('\\.bd-' + name + '\\s*\\{([^}]*)\\}', 'g');
+    const re = new RegExp('\\n\\s*\\.bd-' + name + '\\s*\\{([^}]*)\\}', 'g');
     let hit;
+    let seen = 0;
     while ((hit = re.exec(HTML)) !== null) {
-      assert.equal(/\b(right|bottom)\s*:/.test(hit[1]), false, '.bd-' + name + ' 不应再使用 right / bottom（角标统一在左上角）');
+      seen++;
+      assert.equal(/\b(top|right|bottom|left)\s*:/.test(hit[1]), false,
+        '.bd-' + name + ' 不应声明 top/right/bottom/left（偏移只写在基础规则里）');
     }
+    assert.ok(seen > 0, '应存在 .bd-' + name + ' 的形状样式');
   });
   // 旧的伪元素写法会把角标画到 button 背景下面，必须移除。
   assert.equal(/\.bd-chip\.fav::before/.test(HTML), false, '不应再用 .bd-chip.fav::before（会被 button 背景遮挡）');

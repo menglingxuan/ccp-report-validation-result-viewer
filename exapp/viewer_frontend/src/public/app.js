@@ -1058,17 +1058,18 @@
         // 点击 / 悬停仍然穿透到方块上。
         // 角标纯粹是视觉装饰（pointer-events: none 时 title 也不会弹），状态改由方块的
         // aria-label 表达，角标本身加 aria-hidden，避免读屏单独念出「★」。
+        // 顺序与视觉优先级一致（新增 > 置顶 > 收藏 > 不兼容），读屏念出的第一项就是角标上的那一项。
         const states = [];
-        if (fav) states.push(t('bdFavAria'));
-        if (pinned) states.push(t('pinTitle'));
-        if (!compat) states.push(t('batchIncompat'));
         if (fresh) states.push(t('batchNew'));
+        if (pinned) states.push(t('pinTitle'));
+        if (fav) states.push(t('bdFavAria'));
+        if (!compat) states.push(t('batchIncompat'));
         const label = b.batchName + ' · ' + formatBatchTime(b.executedAt) + (states.length ? ' · ' + states.join(' · ') : '');
         // 角标统一挂左上角，且同一时刻最多只显示一个：优先级 新增 > 置顶 > 收藏 ★ > 版本不兼容，
         // 优先级低的状态不再换角位显示（判定见 core.js 的 dockBadgeOf()）。
         const badge = dockBadgeOf({ fresh: fresh, pinned: pinned, fav: fav, compatible: compat });
         chips += '<span class="bd-slot">' +
-          '<button class="bd-chip' + (active ? ' active' : '') + (compat ? '' : ' incompat') + (fav ? ' fav' : '') + (pinned ? ' pinned' : '') + '" data-batch="' + esc(b.batchId) + '" aria-label="' + esc(label) + '">' + esc(day || '?') + '</button>' +
+          '<button class="bd-chip' + (active ? ' active' : '') + '" data-batch="' + esc(b.batchId) + '" aria-label="' + esc(label) + '">' + esc(day || '?') + '</button>' +
           dockBadgeHTML(badge) +
           '</span>';
       });
