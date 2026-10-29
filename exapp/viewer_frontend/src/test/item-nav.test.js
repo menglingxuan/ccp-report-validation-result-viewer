@@ -107,6 +107,19 @@ test('默认选中「侧栏列表第一项」，而不是数据文件里的第�
     'hash 里没有有效 item 时应回退到当前选中项');
 });
 
+test('侧栏折叠时不重排列表，展开后自动重排（否则列表会盖住头部 / 筛选区）', () => {
+  // 回归背景：折叠后侧栏是 display:none，所有量度都是 0 → 此时若切 item 触发 renderSidebar，
+  // layoutSidebarList() 会写入 top:0/bottom:0，列表就盖住侧栏头部与筛选区；
+  // 展开后没人重排 → 必须手动点一下侧栏里的 item（触发 render）才恢复。
+  const layout = bodyOf('function layoutSidebarList() {', 1200);
+  assert.match(layout, /if \(list\.offsetParent === null\) return;/, '折叠（display:none）时应跳过量度，保留上一次正确的 top/bottom');
+  const expand = bodyOf("document.getElementById('sideExpand').addEventListener('click'", 800);
+  assert.match(expand, /document\.body\.classList\.remove\('sidebar-collapsed'\);/, '先取消折叠');
+  assert.match(expand, /requestAnimationFrame\(function \(\) \{/, '展开后应等一帧（样式生效）再重排');
+  assert.match(expand, /renderSidebarVirtual\(state\._sidebarAll\)/, 'combined 模式下重建可见窗口（内部会重排）');
+  assert.match(expand, /else layoutSidebarList\(\);/, '其它模式至少重排一次');
+});
+
 test('i18n：位置提示三语齐备', () => {
   ['zh-CN', 'zh-HK', 'en'].forEach(function (lang) {
     const v = I18N[lang].itemNavPosTitle;

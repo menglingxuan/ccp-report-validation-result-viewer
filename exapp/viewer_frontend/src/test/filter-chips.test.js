@@ -61,7 +61,8 @@ test('匹配数量小字：仅在存在筛选标签时显示，且用统一的 c
 });
 
 test('布局：侧栏列表的起点要计入计数小字高度（避免首个 item 被遮挡）', () => {
-  const body = bodyOf('function layoutSidebarList() {', 800);
+  // 注意：layoutSidebarList 开头有「折叠时跳过量度」的守卫，切片要够长才会覆盖到后续语句。
+  const body = bodyOf('function layoutSidebarList() {', 1400);
   assert.match(body, /const chipCount = document\.getElementById\('sidebarMatchCount'\);/, 'layoutSidebarList 应读取计数元素');
   assert.match(body, /top = Math\.max\(top, chipCount\.offsetTop \+ chipCount\.offsetHeight\)/, '计数小字的高度应计入列表起点');
 });

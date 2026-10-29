@@ -51,6 +51,7 @@
   - **日期提示互斥**：「N 个报告日期（有数据）」/「N 个批次日期（有数据）」提示**仅在未指定具体日期时显示**，选定某个日期后自动隐藏（批次侧 `updateBatchDateHint()`，手动输入即时生效）。
   - Item 列表的标签区高度变化后会自动重算列表起始位置（`renderSidebarChips` → `layoutSidebarList`），**并计入下方计数小字的高度**，避免首个 item 被标签或计数行遮挡。
   - **筛选控件与 state 必须双向同步**：`#itemSearch` / `#itemFilter`（状态下拉）/ `#reportDateFilter` 这三个控件**不随 render 回写**，因此统一由 `syncSidebarFilterControls()`（state → 控件）处理 —— `initState()`（切批次 / 回退默认数据后清空）与 `applyHash()`（深链接回填）**共用同一处**。此前只清 state 不清控件，会出现「下拉仍显示『全部通过』，但过滤标签与 item 列表已经重置」的错位（刷新页面反而是对的，因为控件由 HTML 默认值重建）。
+  - **侧栏折叠期间不重排列表**：折叠时 `.sidebar` 是 `display:none`，所有量度都是 0，此时若切 item / 切批次触发 `renderSidebar()`，`layoutSidebarList()` 会写入 `top:0/bottom:0` → 展开后列表**盖住侧栏头部与筛选区**（以前得手动点一下侧栏才恢复）。现在 `layoutSidebarList()` 以 `list.offsetParent === null` 守卫直接跳过（保留上一次正确的 top/bottom），并在 `#sideExpand` 的点击里用 `requestAnimationFrame` 重新排一次（combined 模式直接 `renderSidebarVirtual()` 重建可见窗口）。
 - **常驻 item 导航（`‹ N / M ›`，位于「统计图表」图标左侧）**：
   - 位置：详情标题栏 `.item-bar` 里的 `#itemNavBar`，排在 `#reportCats`（◔/▤/📄）**之前** → 紧贴「统计图表」左侧；与侧栏标题处 hover 浮出的箭头是两处入口、同一份状态。
   - 显隐：**常驻**，仅当（筛选后的）item 总数 `<= 1` 时隐藏（没有可切换的目标）。

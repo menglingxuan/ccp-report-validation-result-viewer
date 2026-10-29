@@ -2941,6 +2941,10 @@
     function layoutSidebarList() {
       const list = document.getElementById('sidebarList');
       if (!list) return;
+      // 侧栏折叠时（body.sidebar-collapsed → .sidebar display:none）所有元素量度都是 0：
+      // 此时写 top/bottom 会把列表拉到卡片顶部（盖住头部与筛选区），展开后不会自动恢复。
+      // 直接跳过 ——— 保留上一次的正确值，展开时再由 #sideExpand 的 rAF 重排。
+      if (list.offsetParent === null) return;
       if (window.innerWidth <= 920) { list.style.top = ''; list.style.bottom = ''; return; }
       const chips = document.getElementById('sidebarChips');
       const chipCount = document.getElementById('sidebarMatchCount');
@@ -6345,7 +6349,15 @@ export function parseHash(raw) {
         e.target.value = '';
       });
       document.getElementById('sideCollapse').addEventListener('click', function () { document.body.classList.add('sidebar-collapsed'); });
-      document.getElementById('sideExpand').addEventListener('click', function () { document.body.classList.remove('sidebar-collapsed'); });
+      document.getElementById('sideExpand').addEventListener('click', function () {
+        document.body.classList.remove('sidebar-collapsed');
+        // 折叠期间无法量度（display:none）→ 展开后等本帧样式生效再重排列表可视区，
+        // 否则列表会盖住侧栏头部 / 筛选区（需手动点一下侧栏才能恢复）。
+        requestAnimationFrame(function () {
+          if (SIDEBAR_MODE === 'combined' && state && state._sidebarAll) renderSidebarVirtual(state._sidebarAll);
+          else layoutSidebarList();
+        });
+      });
       // 「统计图表」左侧的常驻导航（在 .item-bar 里，不在侧栏内）：条目点击 → 上/下一个 item。
       document.getElementById('itemNavBar').addEventListener('click', function (e) {
         const nav = e.target.closest('[data-item-nav]');
