@@ -557,6 +557,28 @@
       // 否则切批次 / 回退默认数据后输入框仍留着上一批的搜索词，而过滤其实已经清空（观感是「过滤没生效」）。
       const searchEl = document.getElementById('search');
       if (searchEl) searchEl.value = '';
+      // 侧栏那组筛选控件（item 搜索 / 状态下拉 / 报告日期）同理：它们不随 render 回写，
+      // 必须显式同步，否则切批次后下拉仍显示「全部通过」但标签与列表已重置（新批次列表与控件不一致）。
+      syncSidebarFilterControls();
+    }
+
+    // 侧栏筛选控件回写（state → 控件）。深链接生效时把值填回去；state 被重建（切批次 /
+    // 回退默认数据）时把控件清空。**两个方向共用这一处**，避免「标签/列表是一种状态、
+    // 控件是另一种状态」的错位（刷新页面反而是对的，因为控件由 HTML 默认值重建）。
+    function syncSidebarFilterControls() {
+      const itemSearchEl = document.getElementById('itemSearch');
+      if (itemSearchEl) {
+        itemSearchEl.value = state.itemSearch || '';
+        if (itemSearchEl.parentElement) itemSearchEl.parentElement.classList.toggle('has-value', !!state.itemSearch);
+      }
+      // 状态下拉只有 change 事件（没有输入事件驱动），只能显式回写。
+      const statusSel = document.getElementById('itemFilter');
+      if (statusSel) statusSel.value = state.itemFilter || 'ALL';
+      const dateInput = document.getElementById('reportDateFilter');
+      if (dateInput) {
+        dateInput.value = state.reportDateFilter || '';
+        if (dateInput.parentElement) dateInput.parentElement.classList.toggle('has-value', !!state.reportDateFilter);
+      }
     }
     let ACTIVE_FILTERS = [];
     let SIDEBAR_FILTERS = [];
@@ -5630,13 +5652,8 @@ export function parseHash(raw) {
       } finally { HASH_SYNC.applying = false; }
       const searchEl = document.getElementById('search');
       if (searchEl) searchEl.value = state.search || '';
-      const itemSearchEl = document.getElementById('itemSearch');
-      if (itemSearchEl) itemSearchEl.value = state.itemSearch || '';
-      // 状态筛选下拉不参与输入事件，必须显式回写，否则深链接（st=…）生效时下拉仍显示「全部状态」。
-      const statusSel = document.getElementById('itemFilter');
-      if (statusSel) statusSel.value = state.itemFilter || 'ALL';
-      const dateInput = document.getElementById('reportDateFilter');
-      if (dateInput) { dateInput.value = state.reportDateFilter || ''; dateInput.parentElement.classList.toggle('has-value', !!state.reportDateFilter); }
+      // 侧栏筛选控件统一回写（item 搜索 / 状态 / 报告日期）：深链接 st=… 生效时下拉也必须跟着变。
+      syncSidebarFilterControls();
     }
 
     async function onHashChange() {

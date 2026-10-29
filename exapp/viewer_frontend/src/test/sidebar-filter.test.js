@@ -50,9 +50,23 @@ test('侧栏筛选：状态判定基于 failed / warnings，全部通过不含�
 test('深链接：st=… 生效时状态筛选下拉必须同步（不能停在「全部状态」）', () => {
   const i = APP.indexOf("if (p.st === 'PASSED'");
   assert.notEqual(i, -1, '未找到 st= 解析');
-  assert.match(APP, /statusSel\.value = state\.itemFilter \|\| 'ALL'/, 'applyHash 应把状态写回 #itemFilter');
-  // 与其它筛选控件的回写保持在同一处（applyHash 尾部）。
-  const tail = APP.slice(APP.indexOf("const itemSearchEl = document.getElementById('itemSearch')"), APP.indexOf("const itemSearchEl = document.getElementById('itemSearch')") + 700);
-  assert.match(tail, /itemSearchEl\.value = state\.itemSearch/, 'itemSearch 回写仍在');
-  assert.match(tail, /dateInput\.value = state\.reportDateFilter/, 'reportDateFilter 回写仍在');
+  assert.match(APP, /statusSel\.value = state\.itemFilter \|\| 'ALL'/, '应把状态写回 #itemFilter');
+  // 三个侧栏筛选控件的回写集中在 syncSidebarFilterControls()，applyHash 与 initState 共用。
+  const helper = APP.slice(APP.indexOf('function syncSidebarFilterControls()'), APP.indexOf('function syncSidebarFilterControls()') + 900);
+  assert.match(helper, /itemSearchEl\.value = state\.itemSearch/, 'itemSearch 回写应在 helper 里');
+  assert.match(helper, /dateInput\.value = state\.reportDateFilter/, 'reportDateFilter 回写应在 helper 里');
+  assert.match(helper, /statusSel\.value = state\.itemFilter \|\| 'ALL'/, '状态回写应在 helper 里');
+  const hashAt = APP.indexOf('function applyHash() {');
+  assert.match(APP.slice(hashAt, hashAt + 4000), /syncSidebarFilterControls\(\);/, 'applyHash 应调用统一的控件回写');
+});
+
+test('切批次：侧栏筛选控件必须跟着 state 一起重置（否则下拉与标签/列表不一致）', () => {
+  // 回归背景：state 由 initState() 重建（itemFilter=ALL / itemSearch='' / reportDateFilter=''），
+  // 但这三个控件不随 render 回写 —— 只清 state 不清控件时，下拉仍显示「全部通过」，
+  // 而过滤标签与 item 列表已经重置（刷新页面反而是对的，因为控件由 HTML 默认值重建）。
+  const initAt = APP.indexOf('function initState() {');
+  const init = APP.slice(initAt, initAt + 3000);
+  assert.match(init, /itemFilter: 'ALL'/, 'initState 仍应把 itemFilter 重置为 ALL');
+  assert.match(init, /itemSearch: ''/, 'initState 仍应把 itemSearch 重置为空');
+  assert.match(init, /syncSidebarFilterControls\(\);/, 'initState 应同步侧栏筛选控件');
 });
