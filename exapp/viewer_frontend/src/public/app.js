@@ -2859,18 +2859,46 @@
         '</div>';
     }
 
-    // 侧栏头「上一个 / 下一个 Item」箭头：位于标题与统计数字之间，简约样式（类分页箭头），默认隐藏、悬停显示。
-    // 落在筛选后列表的首/末项时，对应方向置灰。
-    function itemNavHTML() {
+    // 侧栏 item 导航：两处共用同一口径 —— ① 标题栏的 hover 浮出箭头（不占空间）② 「统计图表」图标左侧的常驻导航。
+    // 落在（筛选后）列表的首/末项时对应方向置灰；当前 item 被筛掉（idx = -1）时两个方向都可用
+    // （moveItem 把 -1 当作「没找到」，会跳到首项 / 末项）。
+    function itemNavState() {
       const all = (state._sidebarAll && state._sidebarAll.length) ? state._sidebarAll : filteredItems();
       const idx = all.findIndex(function (it) { return it.tradeId === state.itemId; });
-      const atFirst = all.length <= 1 || idx === 0;
-      const atLast = all.length <= 1 || (idx >= 0 && idx >= all.length - 1);
-      return '<button class="item-nav" data-item-nav="-1" title="' + t('prevItem') + '" aria-label="' + t('prevItem') + '"' + (atFirst ? ' disabled' : '') + '>‹</button>' +
-        '<button class="item-nav" data-item-nav="1" title="' + t('nextItem') + '" aria-label="' + t('nextItem') + '"' + (atLast ? ' disabled' : '') + '>›</button>';
+      return {
+        all: all,
+        idx: idx,
+        atFirst: all.length <= 1 || idx === 0,
+        atLast: all.length <= 1 || (idx >= 0 && idx >= all.length - 1),
+      };
+    }
+    function itemNavButtonHTML(dir, label, disabled) {
+      return '<button class="item-nav" data-item-nav="' + dir + '" title="' + esc(label) + '" aria-label="' + esc(label) + '"' +
+        (disabled ? ' disabled' : '') + '>' + (dir < 0 ? '‹' : '›') + '</button>';
+    }
+    function itemNavHTML() {
+      const s = itemNavState();
+      return itemNavButtonHTML(-1, t('prevItem'), s.atFirst) + itemNavButtonHTML(1, t('nextItem'), s.atLast);
+    }
+
+    // 常驻 item 导航（位于详情标题栏「统计图表」图标左侧）：显式摆出「上一个 / 下一个」+ 位置。
+    // 显隐规则：**常驻**，仅当（筛选后的）item 总数 <= 1 时隐藏（没有可切换的目标）。
+    // 与侧栏标题处 hover 浮出的箭头共用 itemNavState() / itemNavButtonHTML()，口径与置灰规则一致。
+    function updateItemNav() {
+      const nav = document.getElementById('itemNavBar');
+      if (!nav) return;
+      const s = itemNavState();
+      // 位置：当前 item 在筛选后列表里的序号（被筛掉时显示 –）。
+      const pos = (s.idx >= 0 ? String(s.idx + 1) : '–') + ' / ' + s.all.length;
+      nav.innerHTML = itemNavButtonHTML(-1, t('prevItem'), s.atFirst) +
+        '<span class="nav-pos" title="' + esc(t('itemNavPosTitle')) + '">' + esc(pos) + '</span>' +
+        itemNavButtonHTML(1, t('nextItem'), s.atLast);
+      nav.hidden = !(s.all.length > 1);
     }
 
     function pagerHTML(p, pages) {
+      // 只有 1 页时分页控件没有意义：它会把侧栏底部的高度白吃掉一块。
+      if (pages <= 1) return '';
       const from = Math.max(1, p - 1), to = Math.min(pages, p + 1);
       let parts = [];
       if (pages > 3) parts.push('<button class="pg" data-sidepage="1"' + (p === 1 ? ' disabled' : '') + ' title="' + t('pageFirst') + '">«</button>');
@@ -2887,12 +2915,13 @@
       if (window.innerWidth <= 920) { list.style.top = ''; list.style.bottom = ''; return; }
       const chips = document.getElementById('sidebarChips');
       const chipCount = document.getElementById('sidebarMatchCount');
-      const pager = document.getElementById('sidebarPager');
+      const foot = document.getElementById('sidebarFoot');
       const topEl = (chips && chips.offsetHeight) ? chips : document.querySelector('.sidebar-filters');
       let top = topEl ? topEl.offsetTop + topEl.offsetHeight : 0;
       // 标签下方的「匹配 N 项」小字也占高度，需一并计入，否则首个 item 会被它遮挡。
       if (chipCount && chipCount.offsetHeight) top = Math.max(top, chipCount.offsetTop + chipCount.offsetHeight);
-      const bottom = pager ? pager.offsetHeight : 0;
+      // 底部固定区（分页器）——显示时会占高度，必须扣掉，否则最后一行被盖住。
+      const bottom = foot ? foot.offsetHeight : 0;
       list.style.top = top + 'px';
       list.style.bottom = bottom + 'px';
     }
@@ -2959,6 +2988,7 @@
       syncHash();
       if (SIDEBAR_MODE === 'combined') {
         renderSidebarVirtual(all);
+        updateItemNav();
         return;
       }
       const q = state.itemSearch.trim();
@@ -2988,6 +3018,7 @@
       }
       document.getElementById('sidebarPager').innerHTML = footerHtml;
       layoutSidebarList();
+      updateItemNav();
     }
 
     function renderSidebarChips() {
@@ -3044,6 +3075,8 @@
       // 标签区高度变化会影响列表起始位置：必须在写入标签后重新布局，
       // 否则新增/移除标签时 #sidebarList 的 top 会沿用过时高度，首个 item 被标签遮挡。
       layoutSidebarList();
+      // 标签（“匹配 N 项”）也反映筛选后的 item 总数 → 常驻导航的显隐/位置需跟着刷新。
+      updateItemNav();
     }
 
     // 清除全部 Item 列表筛选标签（报告日期 / 状态 / 平台 / 产品 / TradeId）并重置分页。
@@ -6289,6 +6322,11 @@ export function parseHash(raw) {
       });
       document.getElementById('sideCollapse').addEventListener('click', function () { document.body.classList.add('sidebar-collapsed'); });
       document.getElementById('sideExpand').addEventListener('click', function () { document.body.classList.remove('sidebar-collapsed'); });
+      // 「统计图表」左侧的常驻导航（在 .item-bar 里，不在侧栏内）：条目点击 → 上/下一个 item。
+      document.getElementById('itemNavBar').addEventListener('click', function (e) {
+        const nav = e.target.closest('[data-item-nav]');
+        if (nav && !nav.disabled) moveItem(parseInt(nav.getAttribute('data-item-nav'), 10));
+      });
       document.getElementById('topCollapse').addEventListener('click', function () {
         const collapsed = document.body.classList.toggle('top-collapsed');
         const btn = document.getElementById('topCollapse');

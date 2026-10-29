@@ -106,6 +106,8 @@
           "H 健康总览",
           "J / K 上 / 下一个 item",
           "L 锁定 / 解锁过滤",
+          "字段行聚焦时 Enter 打开字段详情页",
+          "字段详情页 ← / → 上一个 / 下一个字段",
           "批次列表：↑ / ↓ 移动焦点，Enter 加载",
           "Esc 关闭弹窗 / 浮层"
         ]
@@ -129,6 +131,15 @@
           "这两个顶栏按钮可用 features.clearLocalCache / features.homeButton 关闭（config.json / dev / test 默认开，prod 默认关）",
           "其它已打开的标签页仍持有旧内存状态，其后续写入会把键写回，建议一并刷新",
           "完整说明见 docs/LOCAL_CACHE.md"
+        ]
+      },
+      {
+        "h": "十一、侧栏 item 列表与导航",
+        "items": [
+          "主列表行数很少时，侧栏会跟着变矮（与主列表齐平），可视 item 可能只剩 1~2 行，鼠标滚动不方",
+          "详情标题栏右侧（「统计图表」图标左侧）有常驻的 ‹ N / M ›：N = 当前 item 在（筛选后）列表中的位置，M = 列表总数（当前 item 被筛掉时显示 – / M）；仅当列表只有 0~1 个 item 时隐藏",
+          "鼠标悬停侧栏标题处也会浮出同款的 ‹ › 箭头（不占空间）",
+          "快捷键 J / K = 下一个 / 上一个 item，与常驻导航等价"
         ]
       }
     ]
@@ -240,6 +251,8 @@
           "H 健康總覽",
           "J / K 上 / 下一個 item",
           "L 鎖定 / 解鎖過濾",
+          "欄位列聚焦時 Enter 打開欄位詳情頁",
+          "欄位詳情頁 ← / → 上一個 / 下一個欄位",
           "批次列表：↑ / ↓ 移動焦點，Enter 載入",
           "Esc 關閉彈窗 / 浮層"
         ]
@@ -263,6 +276,15 @@
           "這兩個頂欄按鈕可用 features.clearLocalCache / features.homeButton 關閉（config.json / dev / test 預設開，prod 預設關）",
           "其它已開啟的標籤頁仍持有舊內存狀態，其後續寫入會把鍵寫回，建議一併重新整理",
           "完整說明見 docs/LOCAL_CACHE.md"
+        ]
+      },
+      {
+        "h": "十一、側欄 item 列表與導航",
+        "items": [
+          "主列表行數很少時，側欄會跟著變矮（與主列表齊平），可視 item 可能只剩 1~2 行，滑鼠滾動不方便",
+          "詳情標題欄右側（「統計圖表」圖示左側）有常駐的 ‹ N / M ›：N = 當前 item 在（篩選後）列表中的位置，M = 列表總數（當前 item 被篩掉時顯示 – / M）；僅當列表只有 0~1 個 item 時隱藏",
+          "滑鼠懸停側欄標題處也會浮出同款的 ‹ › 箭頭（不佔空間）",
+          "快捷鍵 J / K = 下一個 / 上一個 item，與常駐導航等價"
         ]
       }
     ]
@@ -374,6 +396,8 @@
           "H Health overview",
           "J / K Previous / next item",
           "L Lock / unlock filters",
+          "Enter on a focused field row opens the field detail dialog",
+          "← / → in the field detail dialog: previous / next field",
           "Batch list: ↑ / ↓ move focus, Enter load",
           "Esc Close dialog / popover"
         ]
@@ -397,6 +421,15 @@
           "Both top-bar buttons can be disabled via features.clearLocalCache / features.homeButton (on by default in config.json / dev / test, off in prod)",
           "Other open tabs still hold the old in-memory state and will write the keys back on their next change; refresh them too",
           "Full description: docs/LOCAL_CACHE.md"
+        ]
+      },
+      {
+        "h": "11. Sidebar item list & navigation",
+        "items": [
+          "When the main list has very few rows the sidebar shrinks with it, so only 1–2 items may be visible and scrolling gets awkward",
+          "The detail header (left of the Charts icon) has a permanent ‹ N / M › control: N is the position of the current item in the (filtered) list and M the total (shows – / M when the current item is filtered out); it hides only when the list has 0–1 items",
+          "Hovering the sidebar title also reveals the same ‹ › arrows (they take no space)",
+          "Shortcuts J / K = next / previous item, equivalent to the permanent control"
         ]
       }
     ]

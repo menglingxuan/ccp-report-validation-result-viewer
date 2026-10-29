@@ -938,8 +938,18 @@
     .item-bar { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
     .item-bar h2 { margin: 0; font-size: 18px; font-family: var(--mono); }
     .item-bar .meta-line { margin-top: 0; }
+    /* 上一个 / 下一个 item（常驻，紧贴「统计图表」图标左侧）：总数 > 1 才显示（见 app.js 的 updateItemNav）。
+       与图标组包在同一个右对齐容器里，否则 .report-cats 的 margin-left:auto 会把两者拉开。 */
+    .item-bar-right { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }
+    .item-nav-bar { display: inline-flex; align-items: center; gap: 4px; }
+    .item-nav-bar[hidden] { display: none; }
+    .item-nav-bar .item-nav { height: 24px; min-width: 26px; font-size: 14px; }
+    .item-nav-bar .nav-pos {
+      font-family: var(--mono); font-size: 12px; color: var(--muted);
+      font-variant-numeric: tabular-nums; min-width: 52px; text-align: center;
+    }
 
-    .report-cats { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; align-self: center; }
+    .report-cats { display: inline-flex; align-items: center; gap: 4px; align-self: center; }
     .report-cat {
       width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
       border: 1px solid var(--border); background: var(--surface); border-radius: 8px;
@@ -960,7 +970,9 @@
     }
     .sidebar-filters input:focus, .sidebar-filters select:focus { border-color: var(--accent); }
     .sidebar-list { position: absolute; left: 0; right: 0; overflow: auto; }
-    .sidebar-pager { margin-top: auto; padding: 8px 12px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px; }
+    /* 底部固定区（分页器）：margin-top:auto 把它顶到底部，列表用绝对定位避开它的高度。 */
+    .sidebar-foot { margin-top: auto; }
+    .sidebar-pager { padding: 8px 12px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px; }
     .sidebar-pager:empty { display: none; }
     /* 上一个 / 下一个 Item：位于侧栏头标题与统计数字之间，简约样式（类分页箭头），默认隐藏、悬停显示。 */
     .item-nav-group { display: inline-flex; align-items: center; gap: 2px; opacity: 0; transition: opacity .15s ease; }
@@ -1600,7 +1612,9 @@
         <div class="sidebar-chips" id="sidebarChips"></div>
         <div class="chip-count" id="sidebarMatchCount"></div>
         <div class="sidebar-list" id="sidebarList"></div>
-        <div class="sidebar-pager" id="sidebarPager"></div>
+        <div class="sidebar-foot" id="sidebarFoot">
+          <div class="sidebar-pager" id="sidebarPager"></div>
+        </div>
       </aside>
       <section class="detail">
         <div class="batch-force-banner" id="batchForceBanner" hidden>
@@ -1611,10 +1625,13 @@
           <div class="item-bar">
             <h2 id="itemMeta"></h2>
             <div class="meta-line" id="reportMeta"></div>
-            <div class="report-cats" id="reportCats">
-              <button class="report-cat" data-cat="charts" title="统计图表" aria-label="统计图表"><span class="rc-ico">◔</span></button>
-              <button class="report-cat" data-cat="files" title="输入 / 配置文件" aria-label="输入 / 配置文件"><span class="rc-ico">▤</span></button>
-              <button class="report-cat" data-cat="note" title="任务说明" aria-label="任务说明"><span class="rc-ico">📄</span></button>
+            <div class="item-bar-right">
+              <div class="item-nav-bar" id="itemNavBar" hidden></div>
+              <div class="report-cats" id="reportCats">
+                <button class="report-cat" data-cat="charts" title="统计图表" aria-label="统计图表"><span class="rc-ico">◔</span></button>
+                <button class="report-cat" data-cat="files" title="输入 / 配置文件" aria-label="输入 / 配置文件"><span class="rc-ico">▤</span></button>
+                <button class="report-cat" data-cat="note" title="任务说明" aria-label="任务说明"><span class="rc-ico">📄</span></button>
+              </div>
             </div>
             <button class="top-collapse" id="topCollapse" title="折叠顶部区域" aria-expanded="true"><span class="tc-ico">⟨</span></button>
           </div>
