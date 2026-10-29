@@ -63,6 +63,22 @@ test('前端：selector=false 的列不进菜单也不渲染', () => {
   assert.match(app, /const COLUMNS = \[[\s\S]*?key: 'userTag'[\s\S]*?key: 'type'/, 'COLUMNS 应仍包含 userTag / type');
 });
 
+test('前端：不允许把字段比较表的所有列都关掉', () => {
+  const app = fs.readFileSync(path.join(SRC_DIR, 'public/app.js'), 'utf8');
+  // 兜底函数：全部不可见时恢复首列。
+  assert.match(app, /function ensureOneFieldCol\(\) \{\s*if \(COLUMNS\.some\(isFieldColVisible\)\) return false;/,
+    'ensureOneFieldCol 应只在「一列都不剩」时动手');
+  assert.match(app, /state\.columns\[first\.key\] = true;/, 'ensureOneFieldCol 应恢复首列');
+  // 三个入口都要兜底：列选择菜单、深链接 cols=…、localStorage 偏好。
+  const menuAt = app.indexOf('function openColumnMenu(');
+  assert.match(app.slice(menuAt, menuAt + 2600), /if \(ensureOneFieldCol\(\)\) showToast\(t\('colKeepOne'\)\);/,
+    '「列选择」菜单改动后应兜底并提示');
+  const hashAt = app.indexOf('function applyHash() {');
+  assert.match(app.slice(hashAt, hashAt + 4000), /ensureOneFieldCol\(\);/, 'applyHash 解析 cols= 后应兜底');
+  const initAt = app.indexOf('function initState() {');
+  assert.match(app.slice(initAt, initAt + 4000), /ensureOneFieldCol\(\);/, 'initState 恢复偏好后应兜底');
+});
+
 test('文档：CONFIG.md 说明 selector 的禁用语义与 prod 默认值', () => {
   const doc = fs.readFileSync(path.join(SRC_DIR, 'docs/CONFIG.md'), 'utf8');
   assert.match(doc, /`selector`：列是否在本次部署中\*\*启用\*\*/, 'CONFIG.md 应说明 selector 语义');

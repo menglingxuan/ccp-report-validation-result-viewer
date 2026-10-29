@@ -255,6 +255,32 @@ test('深链接往返：stateToHash() -> parseHash() 保持关键字段', () => 
   assert.equal(p2.ch, undefined, 'channel=ALL 不写入 hash');
 });
 
+test('深链接往返：EO / AO 特殊值过滤写入 `sf`（sp 是侧栏页码，两者不冲突）', () => {
+  const base = {
+    itemId: 'T-9', channel: 'ALL', tab: 'fields', search: '', rowId: -1, page: 1,
+    sort: { key: '', dir: 1 }, columns: {}, colFilter: { result: 'ALL' },
+    itemSearch: '', itemFilter: 'ALL', itemPlatforms: [], itemProducts: [], itemTradeIds: [],
+    reportDateFilter: '', sidebarPage: 1,
+  };
+  // 默认态（全 ALL）不写 sf。
+  T.setState(Object.assign({}, base, { specialFilter: { eo: 'ALL', ao: 'ALL' } }));
+  assert.equal(app.parseHash(app.stateToHash()).sf, undefined, '默认态不应写入 sf');
+
+  // 单列过滤 → `eo=blank`。
+  T.setState(Object.assign({}, base, { specialFilter: { eo: 'blank', ao: 'ALL' } }));
+  const p1 = app.parseHash(app.stateToHash());
+  assert.equal(p1.sf, 'eo=blank');
+  // 与侧栏页码同时存在时互不干扰。
+  T.setState(Object.assign({}, base, { sidebarPage: 3, specialFilter: { eo: 'blank', ao: 'ALL' } }));
+  const p2 = app.parseHash(app.stateToHash());
+  assert.equal(p2.sf, 'eo=blank');
+  assert.equal(p2.sp, '3', 'sp 仍为侧栏页码');
+
+  // 双列过滤 → 逗号拼接，顺序固定 eo 在前。
+  T.setState(Object.assign({}, base, { specialFilter: { eo: 'empty', ao: 'special' } }));
+  assert.equal(app.parseHash(app.stateToHash()).sf, 'eo=empty,ao=special');
+});
+
 test('filteredFields 计数（ALL=78，HKTR=26，FAILED 过滤）', () => {
   T.setState(fieldsState());
   assert.equal(app.filteredFields(item).length, 78, 'ALL 渠道应为 78 个字段');

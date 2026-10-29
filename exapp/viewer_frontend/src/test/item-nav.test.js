@@ -80,6 +80,13 @@ test('位置口径：与 J/K、moveItem 同源，标题箭头与常驻导航共�
   assert.match(bodyOf('function itemNavButtonHTML(', 400), /\(disabled \? ' disabled' : ''\)/, '禁用态由 itemNavButtonHTML 统一处理');
 });
 
+test('当前 item 被筛掉时（idx = -1）方向仍然生效：上一个 → 末尾，下一个 → 首个', () => {
+  const mv = bodyOf('function moveItem(dir) {', 900);
+  assert.match(mv, /idx === -1 \? \(dir < 0 \? all\.length - 1 : 0\)/,
+    'idx = -1 时必须按方向分派；一律取 0 会让「上一个」和「下一个」都跳到第一个');
+  assert.match(mv, /: Math\.min\(all\.length - 1, Math\.max\(0, idx \+ dir\)\)/, '列表内仍按 idx + dir 并夹紧边界');
+});
+
 test('点击接线：#itemNavBar 自己的委托 → moveItem；侧栏委托仍留在 #sidebar', () => {
   assert.match(bodyOf("document.getElementById('itemNavBar').addEventListener('click'", 500),
     /moveItem\(parseInt\(nav\.getAttribute\('data-item-nav'\), 10\)\)/, '常驻导航应调用 moveItem');

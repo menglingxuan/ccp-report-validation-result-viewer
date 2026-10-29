@@ -511,6 +511,12 @@
     }
     function isColSelectable(c) { return COL_SELECTOR[c.key] !== false; }
 
+    // 特殊值过滤（EO / AO）的可用取值：与 core.js 的 specialValueMatch 一一对应。
+    // 深链接解析（applyHash 的 `sf=`）与列表浮层共用这一份清单，避免两处各自硬编码。
+    const SPECIAL_VALUES = ['empty', 'blank', 'special'];
+    // 取值 → i18n 键（写成字面量：test/i18n.test.js 靠字面量判断是否有死键）。
+    const SPECIAL_LABELS = { empty: 'specialEmpty', blank: 'specialBlank', special: 'specialSpecial' };
+
     let state = null;
     function initState() {
       state = {
@@ -547,6 +553,8 @@
         reportDateFilter: '',
         compare: { mode: 'channel', channelA: 'HKTR', channelB: 'JSFA', itemB: '', sort: { key: '', dir: 1 }, filter: { f: '', source: 'ALL', aResult: 'ALL', bResult: 'ALL', diff: 'ALL' }, page: 1, pageSize: 20 },
       };
+      // 从 localStorage 恢复的列可见性可能是「全列隐藏」（历史版本允许），这里兜底为至少 1 列。
+      ensureOneFieldCol();
       // 默认选中「侧栏列表的第一项」，而不是数据文件里的第一项：
       // 侧栏按报告日期倒序展示（filteredItems()），与文件里的顺序无关。
       // 若固定用 DATA.items[0]，加载批次后常驻导航会显示「26 / 28」这类非 1 的位置，
@@ -2598,7 +2606,9 @@
       const all = (state._sidebarAll && state._sidebarAll.length) ? state._sidebarAll : filteredItems();
       if (!all.length) return;
       const idx = all.findIndex(function (it) { return it.tradeId === state.itemId; });
-      const next = idx === -1 ? 0 : Math.min(all.length - 1, Math.max(0, idx + dir));
+      // 当前 item 被侧栏筛选排除（idx === -1，导航显示「– / M」）时，方向必须仍然生效：
+      // 「下一个」落到列表首个，「上一个」落到列表末尾；一律取 0 会让两个方向都跳到第一个。
+      const next = idx === -1 ? (dir < 0 ? all.length - 1 : 0) : Math.min(all.length - 1, Math.max(0, idx + dir));
       if (all[next] && all[next].tradeId !== state.itemId) selectItem(all[next].tradeId);
     }
 
@@ -2640,6 +2650,17 @@
       // 被配置禁用（columns.selector[key] === false）的列一律不渲染：
       // 它不会出现在「列选择」菜单里，若仍按历史预置 / 深链接渲染就会变成无法关闭的列。
       return !!state.columns[c.key] && isColSelectable(c);
+    }
+
+    // 「列选择」允许逐列关闭，但不能全关：0 列表格只会得到 0 个表头 + 每行 0 个单元格的空壳，
+    // 而页脚依旧报「N 条字段比较记录」，用户只能重新打开「列选择」才能恢复（看起来像数据丢了）。
+    // 兜底：返回 true 表示刚刚自动恢复了第一列（调用方可据本次操作给出提示）。
+    function ensureOneFieldCol() {
+      if (COLUMNS.some(isFieldColVisible)) return false;
+      const first = COLUMNS.find(isColSelectable);
+      if (!first) return false;
+      state.columns[first.key] = true;
+      return true;
     }
 
     function itemStatsAll(item) {
@@ -3966,7 +3987,7 @@
 
     function openSpecialPopover(btn) {
       const col = btn.getAttribute('data-special');
-      const opts = [['ALL', t('all')], ['empty', t('specialEmpty')], ['blank', t('specialBlank')], ['special', t('specialSpecial')]];
+      const opts = [['ALL', t('all')]].concat(SPECIAL_VALUES.map(function (v) { return [v, t(SPECIAL_LABELS[v])]; }));
       const control = '<select class="pop-control">' +
         opts.map(function (o) { return '<option value="' + o[0] + '"' + (state.specialFilter[col] === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
       const pop = openPopover(btn, control);
@@ -3996,6 +4017,8 @@
             const key = cb.getAttribute('data-colkey');
             if (key === '__ALL__') COLUMNS.forEach(function (c) { state.columns[c.key] = cb.checked; });
             else state.columns[key] = cb.checked;
+            // 「全选」取消 / 逐列关到最后一列：自动恢复首列并提示（不允许出现 0 列表格）。
+            if (ensureOneFieldCol()) showToast(t('colKeepOne'));
             renderFields();
             savePrefs();
             syncHash();
@@ -4294,6 +4317,9 @@
       if (tbody) tbody.innerHTML = buildFieldRows(p.pageRows);
       const footer = document.getElementById('fFooter');
       if (footer) footer.innerHTML = fieldsFooterHTML(p.total, p.pages);
+      // 轻量刷新（列过滤浮层 onApply / 特殊值过滤浮层）不经过 render()，这里必须自己同步 URL：
+      // 否则 colFilter / specialFilter 明明生效了却进不了 hash，刷新 / 分享链接就丢掉过滤。
+      syncHash();
     }
 
     function renderFields() {
@@ -5578,6 +5604,13 @@ export function parseHash(raw) {
         if (v && v !== 'ALL') filters[k] = v;
       });
       if (Object.keys(filters).length) parts.push('filters=' + encodeURIComponent(JSON.stringify(filters)));
+      // 特殊值过滤（EO / AO）：与 colFilter 一样只编码非默认值。
+      // 注意键名用 `sf`：`sp` 已被侧栏页码（sidebarPage）占用，两者互不相干。
+      const specials = ['eo', 'ao'].filter(function (k) {
+        const v = state.specialFilter && state.specialFilter[k];
+        return v && v !== 'ALL';
+      }).map(function (k) { return k + '=' + state.specialFilter[k]; });
+      if (specials.length) parts.push('sf=' + encodeURIComponent(specials.join(',')));
       // 侧栏 item 筛选器
       if (state.itemSearch) parts.push('is=' + encodeURIComponent(state.itemSearch));
       if (state.itemFilter !== 'ALL') parts.push('st=' + encodeURIComponent(state.itemFilter));
@@ -5617,6 +5650,8 @@ export function parseHash(raw) {
             if (COLUMNS.some(function (c) { return c.key === k; })) state.columns[k] = kv.slice(i + 1) === '1';
           });
         }
+        // 深链接可能带「全列隐藏」的历史 hash（cols=field=0,eo=0,…）：解析后必须兜底为至少 1 列。
+        ensureOneFieldCol();
         if (p.filters) {
           try {
             const f = JSON.parse(p.filters);
@@ -5624,6 +5659,16 @@ export function parseHash(raw) {
               if (COLUMNS.some(function (c) { return c.key === k; })) state.colFilter[k] = String(f[k]);
             });
           } catch (e) {}
+        }
+        // 特殊值过滤（EO / AO）：`sf=eo=blank,ao=empty`，非法值忽略（保留默认 ALL）。
+        if (p.sf) {
+          p.sf.split(',').forEach(function (kv) {
+            const i = kv.indexOf('=');
+            if (i === -1) return;
+            const k = kv.slice(0, i);
+            const v = kv.slice(i + 1);
+            if ((k === 'eo' || k === 'ao') && SPECIAL_VALUES.indexOf(v) !== -1) state.specialFilter[k] = v;
+          });
         }
         // 来源渠道作用域与列筛选在 UI 中始终同步：由 colFilter.source 回写 state.source（URL 未单列 source 参数）。
         state.source = state.colFilter.source;
