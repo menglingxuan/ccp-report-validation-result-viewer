@@ -73,7 +73,10 @@
           "命令行搜索：匹配 commandLine / argv",
           "描述搜索：匹配批次描述",
           "正则语法：以 regex: 开头，例如 regex:nightly.* 或 regex:^eod",
-          "日期筛选：输入或 📅 选择 YYYY-MM-DD"
+          "日期筛选：输入或 📅 选择 YYYY-MM-DD",
+          "锁定过滤：字段比较的过滤标签行首有「锁定过滤」按钮（快捷键 L，仅在该选项卡生效）；锁定后切换 item 仍沿用当前过滤，用于逐 item 查看同一批字段；按钮上的数字 = 本页可见的锁定过滤标签数，本页没有时按钮不显示",
+          "锁定范围：渠道 / 来源渠道 / 搜索词 / 列头过滤 / EO·AO 特殊值；侧栏 item 过滤器与消息类列过滤不参与锁定",
+          "解除锁定：点按钮或「清除全部」、切换批次、刷新页面；切换 item 时若锁定的渠道 / 来源渠道在该 item 不存在，只丢弃那一项并提示（其余过滤继续生效）"
         ],
         "code": "regex:nightly.*\nregex:^daily-2026081[56]"
       },
@@ -102,6 +105,7 @@
           "G 全局搜索",
           "H 健康总览",
           "J / K 上 / 下一个 item",
+          "L 锁定 / 解锁过滤",
           "批次列表：↑ / ↓ 移动焦点，Enter 加载",
           "Esc 关闭弹窗 / 浮层"
         ]
@@ -203,7 +207,10 @@
           "命令行搜尋：匹配 commandLine / argv",
           "描述搜尋：匹配批次描述",
           "正則語法：以 regex: 開頭，例如 regex:nightly.* 或 regex:^eod",
-          "日期篩選：輸入或 📅 選擇 YYYY-MM-DD"
+          "日期篩選：輸入或 📅 選擇 YYYY-MM-DD",
+          "鎖定過濾：欄位比較的過濾標籤行首有「鎖定過濾」按鈕（快捷鍵 L，僅在該選項卡生效）；鎖定後切換 item 仍沿用當前過濾，用於逐 item 檢視同一批欄位；按鈕上的數字 = 本頁可見的鎖定過濾標籤數，本頁沒有時按鈕不顯示",
+          "鎖定範圍：渠道 / 來源渠道 / 搜尋詞 / 欄頭過濾 / EO·AO 特殊值；側欄 item 篩選器與訊息類欄過濾不參與鎖定",
+          "解除鎖定：點按鈕或「清除全部」、切換批次、重新整理頁面；切換 item 時若鎖定的渠道 / 來源渠道在該 item 不存在，只丟棄該項並提示（其餘過濾繼續生效）"
         ],
         "code": "regex:nightly.*\nregex:^daily-2026081[56]"
       },
@@ -232,6 +239,7 @@
           "G 全域搜尋",
           "H 健康總覽",
           "J / K 上 / 下一個 item",
+          "L 鎖定 / 解鎖過濾",
           "批次列表：↑ / ↓ 移動焦點，Enter 載入",
           "Esc 關閉彈窗 / 浮層"
         ]
@@ -333,7 +341,10 @@
           "Command-line search: matches commandLine / argv",
           "Description search: matches the batch description",
           "Regex syntax: prefix with regex:, e.g. regex:nightly.* or regex:^eod",
-          "Date filter: type or pick YYYY-MM-DD"
+          "Date filter: type or pick YYYY-MM-DD",
+          "Lock filters: the leading button in the field-comparison filter bar (shortcut L, active on that tab only) keeps the current filters when switching items, so you can review the same fields item by item; the number equals the locked chips visible on the current page (the button is hidden when there are none)",
+          "Locked scope: channel / source / search text / column filters / EO·AO special values; sidebar item filters and message-table column filters are never locked",
+          "Unlock by clicking the button or Clear all, switching batch, or reloading the page; if a locked channel / source does not exist in the next item, only that filter is dropped (with a toast) and the rest stay applied"
         ],
         "code": "regex:nightly.*\nregex:^daily-2026081[56]"
       },
@@ -362,6 +373,7 @@
           "G Global search",
           "H Health overview",
           "J / K Previous / next item",
+          "L Lock / unlock filters",
           "Batch list: ↑ / ↓ move focus, Enter load",
           "Esc Close dialog / popover"
         ]

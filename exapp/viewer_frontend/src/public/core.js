@@ -130,6 +130,27 @@ export function enabledChannelsOf(item) {
 export function enabledChannelIds(item) {
   return enabledChannelsOf(item).map(function (e) { return e.id; });
 }
+// 「锁定过滤」的可应用性判定（锁定 = 切换 item 时保留当前过滤，逐 item 查看同一批字段）。
+// 过滤条件里**只有渠道 / 来源渠道会随 item 变化**：其余（type / userTag / result / 搜索词 /
+// 文本列过滤 / EO·AO 特殊值）是枚举或自由文本，在任何 item 上都能应用，最坏结果是 0 条。
+// 因此这里只回答「哪些维度在这个 item 上无法应用」：返回 'channel' / 'source' 组成的数组
+// （channel 在前；channel 被丢弃后，source 按「全部启用渠道」的范围再判一次 —— 它可能存在于别的渠道下）。
+export function scopeFilterDrops(item, channel, source) {
+  const enabled = enabledChannelsOf(item).map(function (e) { return e.ch; }).filter(Boolean);
+  const drops = [];
+  const wantCh = !!channel && channel !== 'ALL';
+  const chOk = !wantCh || enabled.some(function (ch) { return ch.name === channel; });
+  if (!chOk) drops.push('channel');
+  const wantSrc = !!source && source !== 'ALL';
+  if (wantSrc) {
+    const scope = (!wantCh || !chOk) ? enabled : enabled.filter(function (ch) { return ch.name === channel; });
+    const srcOk = scope.some(function (ch) {
+      return (ch.sources || []).some(function (s) { return s && s.name === source; });
+    });
+    if (!srcOk) drops.push('source');
+  }
+  return drops;
+}
 // 名称 -> id / id -> 名称（边界转换用；未登记时回退预设表，再不行返回 null / ''）。
 export function channelIdByName(item, name) {
   const chs = (item && item.channels) || [];

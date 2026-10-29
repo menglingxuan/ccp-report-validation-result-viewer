@@ -723,6 +723,17 @@
       border-radius: 6px; line-height: 1;
     }
     .filter-clear-all:hover { background: var(--accent-bg); text-decoration: underline; }
+    /* 锁定过滤：切换 item 时保留当前过滤（逐 item 查看同一批字段）。
+       放在过滤标签行首 —— .filters 是 flex-wrap，标签多时行尾会换行跳动，行首位置稳定。
+       锁定后变实心高亮 = 「正在生效」；命中状态用 aria-pressed 表达，不靠颜色单人。 */
+    .filter-lock {
+      border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+      cursor: pointer; font-size: 12px; padding: 3px 10px; border-radius: 999px;
+      line-height: 1.4; white-space: nowrap;
+    }
+    .filter-lock:hover { border-color: var(--accent); color: var(--accent); }
+    .filter-lock.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    .filter-lock.on:hover { color: #fff; filter: brightness(1.08); }
     /* 筛选标签下方的「匹配 N 项」小字（无标签时文本为空 -> 自动收起，不占位） */
     .chip-count { padding: 2px 12px 8px; color: var(--muted); font-size: 11px; line-height: 1.4; }
     .chip-count:empty { display: none; }

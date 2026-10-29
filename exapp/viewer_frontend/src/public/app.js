@@ -28,6 +28,8 @@
       logFieldKey, logAnchorId, isFieldLogLine,
       // 启用口径（channels[].enabled）与 id 引用解析统一由 core.js 提供，app.js 内不再自行判定。
       enabledChannelsOf, itemStatsPure, refChannelId, refSourceId,
+      // 锁定过滤的可应用性判定（渠道 / 来源渠道是否存在于给定 item）。
+      scopeFilterDrops,
       // API（数据契约）版本：默认值集中在 core.js，可加载白名单来自 config.json 的 compatibleApiVersions。
       DEFAULT_API_VERSION, DEFAULT_COMPATIBLE_API_VERSIONS,
       normalizeCompatibleApiVersions, apiVersionSupported, favoriteStateOf,
@@ -533,6 +535,10 @@
         sidebarPage: 1,
         sidebarPageSize: APP_LIMITS.sidebarPageSize,
         specialFilter: { eo: 'ALL', ao: 'ALL' },
+        // 锁定过滤：切换 item 时保留当前「字段比较」过滤（逐 item 查看同一批字段）。
+        // 放在 state 内 → initState() 重建 state 时自动归零（切批次 / 回退默认数据即清除）；
+        // 不写 localStorage、不进 URL hash → 刷新页面即清除。
+        filtersLocked: false,
         showFieldMsg: false,
         msgSort: { key: '', dir: 1 },
         msgFilter: {},
@@ -541,6 +547,10 @@
         reportDateFilter: '',
         compare: { mode: 'channel', channelA: 'HKTR', channelB: 'JSFA', itemB: '', sort: { key: '', dir: 1 }, filter: { f: '', source: 'ALL', aResult: 'ALL', bResult: 'ALL', diff: 'ALL' }, page: 1, pageSize: 20 },
       };
+      // 搜索框的值不在每次渲染时回写（否则输入过程会被打断），所以重建 state 时显式清空它：
+      // 否则切批次 / 回退默认数据后输入框仍留着上一批的搜索词，而过滤其实已经清空（观感是「过滤没生效」）。
+      const searchEl = document.getElementById('search');
+      if (searchEl) searchEl.value = '';
     }
     let ACTIVE_FILTERS = [];
     let SIDEBAR_FILTERS = [];
@@ -2455,20 +2465,90 @@
       return DATA.items.find(it => it.tradeId === state.itemId) || DATA.items[0] || null;
     }
 
+    // ---------- 锁定过滤（切换 item 时保留当前「字段比较」过滤，逐 item 查看同一批字段） ----------
+    // 锁定的范围 = 字段比较的过滤：渠道 / 来源渠道 / 搜索词 / 列头过滤（含汇总卡片的 result）/ EO·AO 特殊值。
+    // **不锁定**：消息类列过滤（msgFilter，切 tab 本就清零）、侧栏 item 过滤器（itemSearch / itemFilter /
+    // itemPlatforms…—— 它们是「选哪些 item」，锁定后切换 item 会把自己锁在外面对应的列表里）。
+    // 生命周期：state.filtersLocked 存在 state 内 → 切批次（initState 重建）自动清除；不写 localStorage
+    // 与 URL hash → 刷新页面自动清除；「清除全部过滤」= 清过滤 + 解锁。
+    function lockedFilterKeys() {
+      const keys = [];
+      if (state.channel !== 'ALL') keys.push('channel');
+      if (state.source && state.source !== 'ALL') keys.push('source');
+      if (state.search.trim()) keys.push('search');
+      COLUMNS.forEach(function (c) {
+        if (c.key === 'channel' || c.key === 'source') return; // 已由上面的作用域统计
+        const v = state.colFilter[c.key];
+        if (v && v !== 'ALL') keys.push(c.key);
+      });
+      ['eo', 'ao'].forEach(function (col) {
+        if (state.specialFilter[col] && state.specialFilter[col] !== 'ALL') keys.push('special-' + col);
+      });
+      return keys;
+    }
+    // 丢弃在本 item 上无法应用的锁定过滤（只有渠道 / 来源渠道会不适用，见 core.js 的 scopeFilterDrops）。
+    // 返回被丢弃项的标签文案（供 toast 提示）；其余过滤继续生效。
+    function dropInapplicableLockedFilters() {
+      if (!state.filtersLocked) return [];
+      return scopeFilterDrops(currentItem(), state.channel, state.source).map(function (k) {
+        const name = k === 'channel' ? state.channel : state.source;
+        state[k] = 'ALL';
+        state.colFilter[k] = 'ALL';
+        return t(k === 'channel' ? 'colChannel' : 'colSource') + ': ' + name;
+      });
+    }
+    function notifyLockDrop(dropped) {
+      if (!dropped.length) return;
+      showToast(t('lockDropped').replace('{label}', dropped.join(', ')));
+    }
+    // 当前 tab 里「因锁定而保留」的过滤标签数 —— 锁定按钮上的数字必须与它一致，
+    // 否则会出现「显示已锁定 1、下面却一个过滤标签都没有」的矛盾：
+    // 列头过滤（colFilter）/ 特殊值过滤（specialFilter）只在「字段比较」tab 有对应标签，
+    // 而消息类 tab 的 chips 是各表自己的 msgFilter（从不锁定）；那里可见且被锁定保留的
+    // 只有共享作用域三项（渠道 / 来源渠道 / 搜索）。
+    function lockedVisibleCount() {
+      if (!state.filtersLocked) return 0;
+      if (state.tab === 'fields') return ACTIVE_FILTERS.length; // 锁定的就是当前这组过滤
+      let n = 0;
+      if (state.channel !== 'ALL') n++;
+      if (state.source && state.source !== 'ALL') n++;
+      if (state.search.trim()) n++;
+      return n;
+    }
+    // 切换 item 时的过滤处理：锁定 → 保留（只丢不可应用的）；未锁定 → 整套复位。
+    function applyItemFilterMode() {
+      if (state.filtersLocked) return dropInapplicableLockedFilters();
+      state.channel = 'ALL';
+      state.source = 'ALL';
+      state.colFilter = { channel: 'ALL', source: 'ALL', field: '', userTag: 'ALL', eoEl: '', aoEl: '', eoCvtEl: '', aoCvtEl: '', vdtEl: '', type: 'ALL', ctxs: '', eoUnconverted: '', eo: '', aoUnconverted: '', ao: '', result: 'ALL', remarks: '' };
+      state.specialFilter = { eo: 'ALL', ao: 'ALL' };
+      state.search = '';
+      const searchEl = document.getElementById('search');
+      if (searchEl) searchEl.value = '';
+      return [];
+    }
+    // 锁定 / 解锁开关（入口：过滤标签栏行首的按钮，快捷键 L）。
+    function toggleFilterLock() {
+      if (state.filtersLocked) {
+        state.filtersLocked = false;
+      } else {
+        if (!lockedFilterKeys().length) return; // 没有可锁定的过滤（按钮此时也不显示，兜底）
+        state.filtersLocked = true;
+      }
+      renderFilterChips();
+      refreshFieldsFooter();
+    }
+
     async function selectItem(id) {
       state.itemId = id;
       state.rowId = -1;
       state.page = 1;
-      state.channel = 'ALL';
-      state.source = 'ALL';
-      state.colFilter = { channel: 'ALL', source: 'ALL', field: '', userTag: 'ALL', eoEl: '', aoEl: '', eoCvtEl: '', aoCvtEl: '', vdtEl: '', type: 'ALL', ctxs: '', eoUnconverted: '', eo: '', aoUnconverted: '', ao: '', result: 'ALL', remarks: '' };
       state.sort = { key: '', dir: 1 };
       state.msgSort = { key: '', dir: 1 };
       state.msgFilter = {};
-      state.specialFilter = { eo: 'ALL', ao: 'ALL' };
-      state.search = '';
-      document.getElementById('search').value = '';
+      // 多文件模式：先取回 item 数据 —— 锁定过滤的可应用性判定需要该 item 的渠道 / 来源渠道。
       if (isMultiMode()) await ensureItemLoaded(id);
+      notifyLockDrop(applyItemFilterMode());
       render();
       if (SIDEBAR_MODE === 'combined') {
         const all = state._sidebarAll || [];
@@ -3621,6 +3701,18 @@
 
     function renderFilterChips() {
       ACTIVE_FILTERS = activeFilters();
+      const lockCount = lockedFilterKeys().length;
+      // 锁定一个空集合没有意义（例如用户把最后一项过滤清掉了 / 不可应用的过滤被丢弃）→ 自动解锁。
+      if (state.filtersLocked && lockCount === 0) state.filtersLocked = false;
+      const locked = state.filtersLocked;
+      const shown = lockedVisibleCount();
+      // 锁定按钮：行首（标签换行时位置稳定）。数字取「当前 tab 可见的锁定标签数」，
+      // 而非锁定总数 —— 否则在消息类 tab 上会出现「已锁定 N 但一个标签都没有」。
+      const lockBtn = (locked ? shown > 0 : (state.tab === 'fields' && lockCount > 0))
+        ? '<button class="filter-lock' + (locked ? ' on' : '') + '" data-lock-filters="1" aria-pressed="' + (locked ? 'true' : 'false') + '"' +
+          ' title="' + esc(t(locked ? 'lockFiltersOnTip' : 'lockFiltersTip')) + '" aria-label="' + esc(t(locked ? 'lockFiltersOnTip' : 'lockFiltersTip')) + '">' +
+          (locked ? esc(t('lockFiltersOn')) + ' ' + shown : esc(t('lockFilters'))) + '</button>'
+        : '';
       const html = ACTIVE_FILTERS.map((f, i) =>
         '<span class="filter-chip">' + esc(f.label) +
         '<button data-clear="' + i + '" title="' + t('filterClearThis') + '">✕</button></span>'
@@ -3628,7 +3720,7 @@
       const clearAll = ACTIVE_FILTERS.length > 1
         ? '<button class="filter-clear-all" data-clear-all="1" title="' + t('clearAllFilters') + '">' + t('clearAllFilters') + '</button>'
         : '';
-      document.getElementById('filterChips').innerHTML = html + clearAll;
+      document.getElementById('filterChips').innerHTML = lockBtn + html + clearAll;
     }
 
     // 清除全部过滤标签，并把主列表的报告渠道/来源渠道重置为「全部」。
@@ -3640,6 +3732,8 @@
       state.msgFilter = {};
       state.search = '';
       state.page = 1;
+      // 「清除全部」= 清过滤 + 解锁（锁一个空集合没有意义）。
+      state.filtersLocked = false;
       const searchEl = document.getElementById('search');
       if (searchEl) searchEl.value = '';
       render();
@@ -4033,7 +4127,13 @@
         return '<tr class="' + (pass ? '' : 'row-fail') + '" tabindex="0" data-fid="' + esc(fieldLocKey(r.channel, r.source, r.id)) + '" data-rid="' + r._idx + '">' +
           visible.map(c => cellWithWidth(c.key, fieldCellHTML(r, c.key))).join('') + '</tr>';
       }).join('');
-      return trs || '<tr><td colspan="' + visible.length + '" class="empty">无匹配记录</td></tr>';
+      return trs || '<tr><td colspan="' + visible.length + '" class="empty">' + esc(fieldsEmptyHint()) + '</td></tr>';
+    }
+
+    // 空表提示：锁定过滤生效时说明「是过滤的结果，不是数据缺失」（0 条 ≠ 过滤不可应用）。
+    function fieldsEmptyHint() {
+      const n = state.filtersLocked ? lockedFilterKeys().length : 0;
+      return n ? t('lockEmptyHint').replace('{N}', n) : '无匹配记录';
     }
 
     const COL_WIDTHS = {
@@ -4106,8 +4206,20 @@
     }
 
     function fieldsFooterHTML(total, pages) {
+      // 锁定过滤时在页脚常驻提示：标签栏换行 / 滚动时「已锁定」状态依然可见。
+      const lockCount = state.filtersLocked ? lockedFilterKeys().length : 0;
       return renderPagination(total, pages) +
-        '<div class="meta-note">' + total + ' ' + t('metaFields') + '</div>';
+        '<div class="meta-note">' + total + ' ' + t('metaFields') +
+        (lockCount ? ' · ' + t('lockFooter').replace('{N}', lockCount) : '') + '</div>';
+    }
+
+    // 只刷新字段表页脚（锁定/解锁开关用：不改表格内容与滚动位置）。
+    function refreshFieldsFooter() {
+      const footer = document.getElementById('fFooter');
+      if (!footer) return;
+      const rows = filteredFields(currentItem());
+      const pages = Math.max(1, Math.ceil(rows.length / state.pageSize));
+      footer.innerHTML = fieldsFooterHTML(rows.length, pages);
     }
 
     function refreshFieldsBody() {
@@ -5499,6 +5611,8 @@ export function parseHash(raw) {
       }
       await ensureHashItemLoaded();
       applyHash();
+      // 深链接 / 前进后退同样会换 item：锁定过滤也要做一次可应用性判定（不适用则丢弃 + 提示）。
+      notifyLockDrop(dropInapplicableLockedFilters());
       render();
     }
 
@@ -6628,6 +6742,7 @@ export function parseHash(raw) {
       });
 
       document.getElementById('filterChips').addEventListener('click', function (e) {
+        if (e.target.closest('[data-lock-filters]')) { toggleFilterLock(); return; }
         if (e.target.closest('[data-clear-all]')) { clearAllFilters(); return; }
         const btn = e.target.closest('[data-clear]');
         if (!btn) return;
@@ -6737,7 +6852,10 @@ export function parseHash(raw) {
         if (!el) return;
         state.channel = el.getAttribute('data-channel'); state.page = 1;
         state.source = 'ALL';
-        state.colFilter = { channel: state.channel, source: 'ALL', field: '', userTag: 'ALL', eoEl: '', aoEl: '', eoCvtEl: '', aoCvtEl: '', vdtEl: '', type: 'ALL', ctxs: '', eoUnconverted: '', eo: '', aoUnconverted: '', ao: '', result: 'ALL', remarks: '' };
+        // 点渠道 tab 属于「换作用域」，只重置 channel / source 两个键：整体重建 colFilter 会连带清掉
+        // 字段列头过滤器（锁定过滤时表现为「锁定失效」，过滤凭空消失）。
+        state.colFilter.channel = state.channel;
+        state.colFilter.source = 'ALL';
         render();
       });
 
@@ -6921,6 +7039,9 @@ export function parseHash(raw) {
         if (e.key === 'h' || e.key === 'H') { if (APP_FEATURES.healthOverview) { e.preventDefault(); openHealthOverview(); } return; }
         if (e.key === 'j' || e.key === 'J') { e.preventDefault(); moveItem(1); return; }
         if (e.key === 'k' || e.key === 'K') { e.preventDefault(); moveItem(-1); return; }
+        // L：锁定 / 解锁当前过滤（「逐 item 查看同一批字段」的开关）。
+        // 只作用于「字段比较」tab —— 锁定的是那里的过滤，在别的 tab 按下去既看不到标签也看不到按钮。
+        if ((e.key === 'l' || e.key === 'L') && state.tab === 'fields') { e.preventDefault(); toggleFilterLock(); return; }
       });
 
       // 表格行键盘导航：↑/↓ 移动焦点，Enter 打开字段详情，Space 切换忽略。
