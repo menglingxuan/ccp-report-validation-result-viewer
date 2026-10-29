@@ -23,9 +23,11 @@ function bodyOf(sig) {
 
 test('回退默认数据：loadDefaultReport 不在空 items 上解引用', () => {
   const body = bodyOf('async function loadDefaultReport() {');
-  assert.match(body, /isMultiMode\(\) && DATA\.items\.length/, 'loadDefaultReport 缺少 items 长度保护');
-  assert.doesNotMatch(body, /if \(isMultiMode\(\)\) await ensureItemLoaded\(DATA\.items\[0\]/,
-    'loadDefaultReport 又回到无保护地读取 DATA.items[0]');
+  // 空清单（mode:multi + items: []）时 initState() 的 itemId 为空串 → 不会去加载不存在的 item。
+  assert.match(body, /if \(isMultiMode\(\) && state\.itemId\) await ensureItemLoaded\(state\.itemId\)/,
+    'loadDefaultReport 应只在选中了 item 时才加载（空清单直接渲染空状态）');
+  assert.doesNotMatch(body, /DATA\.items\[0\]/,
+    'loadDefaultReport 不应再直接读取 DATA.items[0]（默认项已由 initState 按侧栏顺序决定）');
 });
 
 test('回退默认数据：统一入口吞掉异常且保证提示可见', () => {

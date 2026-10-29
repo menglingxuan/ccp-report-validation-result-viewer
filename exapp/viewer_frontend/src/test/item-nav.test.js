@@ -96,6 +96,17 @@ test('重算时机：渲染（含筛选标签）后刷新常驻导航', () => {
   assert.equal(/requestAnimationFrame\(updateItemNav\)/.test(APP), false, '常驻导航与高度无关，不需要 rAF 兜首帧');
 });
 
+test('默认选中「侧栏列表第一项」，而不是数据文件里的第一项', () => {
+  const init = bodyOf('function initState() {', 2600);
+  assert.equal(/itemId: DATA\.items\.length \? DATA\.items\[0\]\.tradeId/.test(init), false,
+    '不应再用数据文件里的第一项（侧栏按报告日期倒序，两者顺序不同）');
+  assert.match(init, /const first = filteredItems\(\)\[0\];/, '应按侧栏（排序 + 筛选后）列表取首项');
+  assert.match(init, /if \(first\) state\.itemId = first\.tradeId;/, '默认 itemId = 侧栏首项');
+  // 多文件模式的预加载也要跟着走，否则选中项还没 hydrate
+  assert.match(bodyOf('async function ensureHashItemLoaded(', 600), /const fallback = \(state && state\.itemId\)/,
+    'hash 里没有有效 item 时应回退到当前选中项');
+});
+
 test('i18n：位置提示三语齐备', () => {
   ['zh-CN', 'zh-HK', 'en'].forEach(function (lang) {
     const v = I18N[lang].itemNavPosTitle;

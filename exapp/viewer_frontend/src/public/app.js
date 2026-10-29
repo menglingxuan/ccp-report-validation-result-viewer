@@ -451,13 +451,13 @@
     }
     // 后台渐进加载所有 item 文件（不阻塞首屏渲染）。
     function preloadAllItems() { ensureAllLoaded(); }
-    // 多文件模式下：确保 URL（或默认首个）item 已加载，否则 applyHash→rowPageFor→filteredFields 得到空列表，
-    // fr 行选中定位与主列表渲染会静默失败。useHash=false 时固定加载首个 item。
+    // 多文件模式下：确保 URL（或当前选中的）item 已加载，否则 applyHash→rowPageFor→filteredFields 得到空列表，
+    // fr 行选中定位与主列表渲染会静默失败。useHash=false 时忽略 URL，固定加载 initState() 选中的那一项。
     async function ensureHashItemLoaded(useHash) {
       if (!isMultiMode()) return;
       const want = useHash === false ? null : hashParams().item;
-      const first = DATA.items[0] && DATA.items[0].tradeId;
-      const id = (want && DATA.items.some(function (it) { return it.tradeId === want; })) ? want : first;
+      const fallback = (state && state.itemId) || (DATA.items[0] && DATA.items[0].tradeId);
+      const id = (want && DATA.items.some(function (it) { return it.tradeId === want; })) ? want : fallback;
       if (id) await ensureItemLoaded(id);
     }
     // 字段比较表列注册表。label 为 i18n 键，可被 config.columns.labels 覆盖为字面量。
@@ -514,7 +514,7 @@
     let state = null;
     function initState() {
       state = {
-        itemId: DATA.items.length ? DATA.items[0].tradeId : '',
+        itemId: '',
         rowId: -1,
         tab: 'fields',
         channel: 'ALL',
@@ -547,6 +547,12 @@
         reportDateFilter: '',
         compare: { mode: 'channel', channelA: 'HKTR', channelB: 'JSFA', itemB: '', sort: { key: '', dir: 1 }, filter: { f: '', source: 'ALL', aResult: 'ALL', bResult: 'ALL', diff: 'ALL' }, page: 1, pageSize: 20 },
       };
+      // 默认选中「侧栏列表的第一项」，而不是数据文件里的第一项：
+      // 侧栏按报告日期倒序展示（filteredItems()），与文件里的顺序无关。
+      // 若固定用 DATA.items[0]，加载批次后常驻导航会显示「26 / 28」这类非 1 的位置，
+      // 而且该 item 落在侧栏可视区之外（看起来像选错了 item）。
+      const first = filteredItems()[0];
+      if (first) state.itemId = first.tradeId;
       // 搜索框的值不在每次渲染时回写（否则输入过程会被打断），所以重建 state 时显式清空它：
       // 否则切批次 / 回退默认数据后输入框仍留着上一批的搜索词，而过滤其实已经清空（观感是「过滤没生效」）。
       const searchEl = document.getElementById('search');
@@ -2013,8 +2019,9 @@
       DATA = await loadData();
       initState();
       // 多文件模式允许空清单（items 为空）：没有 item 可加载时直接渲染空状态，
-      // 避免 DATA.items[0] 解引用抛 TypeError（曾导致回退提示丢失、hash 与内容不一致）。
-      if (isMultiMode() && DATA.items.length) await ensureItemLoaded(DATA.items[0].tradeId);
+      // 避免解引用抛 TypeError（曾导致回退提示丢失、hash 与内容不一致）。
+      // 加载的是 initState() 选中的那一项（侧栏首项），不是数据文件的第一项。
+      if (isMultiMode() && state.itemId) await ensureItemLoaded(state.itemId);
       applyDateFilterVisibility();
       render();
       preloadAllItems();
