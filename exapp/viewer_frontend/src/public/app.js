@@ -118,6 +118,11 @@
     };
     let SIDEBAR_MODE = 'combined';
     const SIDEBAR_ROW_H = 112;
+    // 实测行高：SIDEBAR_ROW_H 只是首帧 / 空列表时的估算值，真实 .item 高 120px。
+    // 虚拟滚动必须用实测值作步长，否则每换可见窗口行位置就会偏移 (120-112)×窗口起点，
+    // 表现为：切 item 后选中行被推出视口、最后一行永远滚不到。
+    let SIDEBAR_ROW_MEASURED = 0;
+    const sidebarRowH = () => SIDEBAR_ROW_MEASURED || SIDEBAR_ROW_H;
     let SIDEBAR_SCROLL_PENDING = false;
 
     /* ---------- 最近批次（多批次扫描） ---------- */
@@ -2592,9 +2597,13 @@
         const idx = all.findIndex(function (it) { return it.tradeId === id; });
         if (idx >= 0) {
           const listEl = document.getElementById('sidebarList');
-          const rowH = SIDEBAR_ROW_H;
+          // 用实测行高居中：视口恰好只能放 1 个 item 时（主列表被过滤到极少行），
+          // 用 112 估算会把选中行顶出视口 20px 左右 → item 看不全。
+          const rowH = sidebarRowH();
           listEl.scrollTop = Math.max(0, idx * rowH - listEl.clientHeight / 2 + rowH / 2);
           renderSidebarVirtual(all);
+          // 居中会改变「当前侧栏页」，这里补一次 hash 同步，避免 URL 里的 sp 落后于实际页码。
+          syncHash();
         }
       } else {
         const el = document.querySelector('#sidebarList .item[data-id="' + id + '"]');
@@ -2966,7 +2975,13 @@
       // 此时写 top/bottom 会把列表拉到卡片顶部（盖住头部与筛选区），展开后不会自动恢复。
       // 直接跳过 ——— 保留上一次的正确值，展开时再由 #sideExpand 的 rAF 重排。
       if (list.offsetParent === null) return;
-      if (window.innerWidth <= 920) { list.style.top = ''; list.style.bottom = ''; return; }
+      const side = list.parentElement; // .sidebar
+      if (window.innerWidth <= 920) {
+        list.style.top = ''; list.style.bottom = '';
+        // 窄屏是上下堆叠布局（.sidebar-list 改成 static + max-height），不需要兜底高度。
+        if (side) side.style.minHeight = '';
+        return;
+      }
       const chips = document.getElementById('sidebarChips');
       const chipCount = document.getElementById('sidebarMatchCount');
       const foot = document.getElementById('sidebarFoot');
@@ -2978,6 +2993,15 @@
       const bottom = foot ? foot.offsetHeight : 0;
       list.style.top = top + 'px';
       list.style.bottom = bottom + 'px';
+      // 至少完整显示 1 个 item：.layout 是 align-items:stretch，侧栏高度由 .detail 决定。
+      // 主列表被过滤到 0/1 行时 .detail 很矮（实测 356px），侧栏卡片跟着变矮，
+      // #sidebarList 只剩 76~115px（< 1 个 item 的 120px）→ item 几乎不可见。
+      // 这里给 .sidebar 一个下限：头部 + 筛选区 + 1 个 item + 分页器（+2 是上下边框）。
+      if (side) {
+        const firstItem = list.querySelector('.item');
+        const rowH = Math.max(SIDEBAR_ROW_H, firstItem ? firstItem.offsetHeight : 0);
+        side.style.minHeight = (top + rowH + bottom + 2) + 'px';
+      }
     }
 
     function renderSidebarVirtual(all) {
@@ -2988,7 +3012,7 @@
         layoutSidebarList();
         return;
       }
-      const rowH = SIDEBAR_ROW_H;
+      const rowH = sidebarRowH();
       const pageSize = state.sidebarPageSize;
       const pages = Math.max(1, Math.ceil(all.length / pageSize));
       const stride = pageSize * rowH;
@@ -3020,6 +3044,13 @@
       listEl.innerHTML =
         '<div style="height:' + topPad + 'px"></div>' + rows +
         '<div style="height:' + Math.max(0, totalH - topPad - slice.length * rowH) + 'px"></div>';
+      // 行高校准：首次渲染后才能量到真实行高（估算值 112 ≠ 实测 120）。
+      // 量到不同值时按真实步长重排一次（递归调用时测得相同值，不会死循环）。
+      const measured = (listEl.querySelector('.item') || {}).offsetHeight || 0;
+      if (measured > 0 && measured !== SIDEBAR_ROW_MEASURED) {
+        SIDEBAR_ROW_MEASURED = measured;
+        renderSidebarVirtual(all);
+      }
     }
 
     function renderSidebar() {
@@ -6887,7 +6918,7 @@ export function parseHash(raw) {
         if (pg && !pg.disabled) {
           state.sidebarPage = parseInt(pg.getAttribute('data-sidepage'), 10);
           if (SIDEBAR_MODE === 'combined') {
-            document.getElementById('sidebarList').scrollTop = (state.sidebarPage - 1) * state.sidebarPageSize * SIDEBAR_ROW_H;
+            document.getElementById('sidebarList').scrollTop = (state.sidebarPage - 1) * state.sidebarPageSize * sidebarRowH();
           }
           renderSidebar();
           return;

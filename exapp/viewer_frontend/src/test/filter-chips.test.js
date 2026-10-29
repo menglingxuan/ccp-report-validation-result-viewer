@@ -62,9 +62,38 @@ test('匹配数量小字：仅在存在筛选标签时显示，且用统一的 c
 
 test('布局：侧栏列表的起点要计入计数小字高度（避免首个 item 被遮挡）', () => {
   // 注意：layoutSidebarList 开头有「折叠时跳过量度」的守卫，切片要够长才会覆盖到后续语句。
-  const body = bodyOf('function layoutSidebarList() {', 1400);
+  const body = bodyOf('function layoutSidebarList() {', 2400);
   assert.match(body, /const chipCount = document\.getElementById\('sidebarMatchCount'\);/, 'layoutSidebarList 应读取计数元素');
   assert.match(body, /top = Math\.max\(top, chipCount\.offsetTop \+ chipCount\.offsetHeight\)/, '计数小字的高度应计入列表起点');
+});
+
+test('虚拟滚动步长用实测行高（SIDEBAR_ROW_H=112 只是估算，真实 .item 高 120）', () => {
+  // 回归背景：主列表被过滤到 1 行时侧栏视口只剩 120px（恰好 1 个 item），
+  // 而 selectItem 居中用的是 112 步长 → 每往后切一个 item 就多顶出 8px，
+  // 实测 next1/2/3 的选中行分别被裁掉 12 / 20 / 28px，item 看不全。
+  assert.match(APP, /let SIDEBAR_ROW_MEASURED = 0;/, '应有实测行高缓存');
+  assert.match(APP, /const sidebarRowH = \(\) => SIDEBAR_ROW_MEASURED \|\| SIDEBAR_ROW_H;/, '未量到真实行高时回退估算值');
+  const virt = bodyOf('function renderSidebarVirtual(all) {', 3200);
+  assert.match(virt, /const rowH = sidebarRowH\(\);/, '可见窗口/总高度应按实测步长计算');
+  assert.match(virt, /if \(measured > 0 && measured !== SIDEBAR_ROW_MEASURED\) \{[\s\S]{0,120}?renderSidebarVirtual\(all\);/, '量到不同行高后应重排一次（第二次测得相同值即终止）');
+  const sel = bodyOf('async function selectItem(id) {', 1200);
+  assert.match(sel, /const rowH = sidebarRowH\(\);/, '切 item 的居中计算也应用实测行高');
+  assert.match(bodyOf("const pg = e.target.closest('[data-sidepage]');", 500), /state\.sidebarPageSize \* sidebarRowH\(\)/, '分页跳转同理');
+});
+
+test('布局：侧栏至少能完整显示 1 个 item（主列表只剩 0/1 行时也不能把 item 压没）', () => {
+  // 回归背景：.layout 是 align-items:stretch，侧栏高度由 .detail 决定；
+  // 主列表被过滤到 1 行时 .detail 只有 356px，侧栏 .sidebar-list 只剩 76px，
+  // 而一个 .item 实际高 120px（SIDEBAR_ROW_H 是虚拟滚动的估算值 112）→ item 几乎不可见。
+  const body = bodyOf('function layoutSidebarList() {', 2400);
+  assert.match(body, /const firstItem = list\.querySelector\('\.item'\);/, '应量取真实 item 高度（不是只用 SIDEBAR_ROW_H 估算）');
+  assert.match(body, /const rowH = Math\.max\(SIDEBAR_ROW_H, firstItem \? firstItem\.offsetHeight : 0\);/, 'rowH 取估算值与实测值的较大者');
+  assert.match(body, /side\.style\.minHeight = \(top \+ rowH \+ bottom \+ 2\) \+ 'px';/,
+    '.sidebar 的 min-height 应覆盖「头部 + 筛选 + 1 个 item + 分页器」，保证首行完整可见');
+  // 窄屏是堆叠布局，不能套用固定下限。
+  assert.match(body, /if \(side\) side\.style\.minHeight = '';/, '窄屏（<= 920px）应清除 min-height');
+  // 折叠时仍要跳过量度（否则 min-height 也会被写坏）。
+  assert.match(body, /if \(list\.offsetParent === null\) return;/);
 });
 
 test('批次：指定日期后隐藏「N 个批次日期（有数据）」提示', () => {
